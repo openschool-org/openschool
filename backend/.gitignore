@@ -1,0 +1,15 @@
+# Environment
+.env
+
+# Go build output
+*.exe
+*.out
+tmp/
+
+# Air live reload
+.air.toml
+tmp/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS academic_years;
+DROP TABLE IF EXISTS school;
