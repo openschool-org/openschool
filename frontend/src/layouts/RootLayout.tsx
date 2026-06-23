@@ -2,10 +2,12 @@ import { Outlet, Link } from "react-router";
 import {
   Header,
   HeaderName,
+  HeaderNavigation,
+  HeaderMenuItem,
   HeaderGlobalBar,
-  HeaderGlobalAction,
 } from "@carbon/react";
-import { Notification, UserAvatar, Settings } from "@carbon/icons-react";
+
+import { UserDropdown } from "@thunderid/react";
 
 export default function RootLayout() {
   return (
@@ -14,16 +16,13 @@ export default function RootLayout() {
         <HeaderName as={Link} to="/" prefix="">
           OpenSchool
         </HeaderName>
+        <HeaderNavigation aria-label="OpenSchool">
+          <HeaderMenuItem as={Link} to="/showcase">
+            Showcase
+          </HeaderMenuItem>
+        </HeaderNavigation>
         <HeaderGlobalBar>
-          <HeaderGlobalAction aria-label="Notifications">
-            <Notification size={20} />
-          </HeaderGlobalAction>
-          <HeaderGlobalAction aria-label="Settings">
-            <Settings size={20} />
-          </HeaderGlobalAction>
-          <HeaderGlobalAction aria-label="User">
-            <UserAvatar size={20} />
-          </HeaderGlobalAction>
+          <UserDropdown />
         </HeaderGlobalBar>
       </Header>
       <main style={{ marginTop: "3rem" }}>

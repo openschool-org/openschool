@@ -1,1 +1,53 @@
 @use "@carbon/react";
+
+html,
+body,
+#root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.thunderid-signin-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f4f4f4;
+}
+
+.thunderid-signin-card {
+    width: 100%;
+    max-width: 480px;
+}
+
+.thunderid-signin {
+    padding: 2rem !important;
+}
+
+.home-hero {
+    height: calc(100vh - 3rem);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 1rem;
+
+    &__title {
+        font-family: 'IBM Plex Sans', sans-serif;
+        font-size: 4.5rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin: 0 0 1.5rem;
+        line-height: 1.1;
+    }
+
+    &__subtitle {
+        font-family: 'IBM Plex Sans', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 400;
+        color: #525252;
+        margin: 1.5rem 0 0;
+    }
+}
