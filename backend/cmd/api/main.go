@@ -2,12 +2,14 @@ package main
 
 import (
 	"log"
-	"net/http"
+	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/openschool-org/openschool/internal/config"
 	"github.com/openschool-org/openschool/internal/database"
+	"github.com/openschool-org/openschool/internal/middleware"
+	"github.com/openschool-org/openschool/internal/routes"
 )
 
 func main() {
@@ -15,7 +17,6 @@ func main() {
 
 	dsn := database.BuildDSN()
 
-	// migration before anything else
 	if err := database.RunMigrations(dsn); err != nil {
 		log.Fatalf("migrations failed: %v", err)
 	}
@@ -28,12 +29,17 @@ func main() {
 	defer db.Close()
 	log.Println("database connected")
 
+	// init JWKS for JWT validation
+	jwksURL := os.Getenv("THUNDERID_JWKS_URL")
+	if err := middleware.InitJWKS(jwksURL); err != nil {
+		log.Fatalf("failed to init JWKS: %v", err)
+	}
+	log.Println("JWKS initialized")
+
 	r := gin.Default()
 	r.Use(cors.Default())
 
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	})
+	routes.Setup(r)
 
-	r.Run(":8080")
+	r.Run(":" + os.Getenv("PORT"))
 }

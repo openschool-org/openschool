@@ -10,7 +10,6 @@ createRoot(document.getElementById("root")!).render(
     <ThunderIDProvider
       applicationId="019ef471-fd6a-7396-be8a-fd78cd972664"
       baseUrl="https://localhost:8090"
-      signInUrl="http://localhost:5173/signin"
       afterSignInUrl="/"
       afterSignOutUrl="/signin"
       preferences={{
