@@ -5,52 +5,50 @@
 package db
 
 import (
-	"database/sql"
-	"time"
-
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type AcademicYear struct {
-	ID        uuid.UUID `json:"id"`
-	Label     string    `json:"label"`
-	StartDate time.Time `json:"start_date"`
-	EndDate   time.Time `json:"end_date"`
-	IsCurrent bool      `json:"is_current"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID          `json:"id"`
+	Label     string             `json:"label"`
+	StartDate pgtype.Date        `json:"start_date"`
+	EndDate   pgtype.Date        `json:"end_date"`
+	IsCurrent bool               `json:"is_current"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type AttendanceRecord struct {
-	ID        uuid.UUID      `json:"id"`
-	SessionID uuid.UUID      `json:"session_id"`
-	StudentID uuid.UUID      `json:"student_id"`
-	Status    string         `json:"status"`
-	Note      sql.NullString `json:"note"`
+	ID        uuid.UUID   `json:"id"`
+	SessionID uuid.UUID   `json:"session_id"`
+	StudentID uuid.UUID   `json:"student_id"`
+	Status    string      `json:"status"`
+	Note      pgtype.Text `json:"note"`
 }
 
 type AttendanceSession struct {
-	ID        uuid.UUID `json:"id"`
-	ClassID   uuid.UUID `json:"class_id"`
-	TakenBy   uuid.UUID `json:"taken_by"`
-	Date      time.Time `json:"date"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID          `json:"id"`
+	ClassID   uuid.UUID          `json:"class_id"`
+	TakenBy   uuid.UUID          `json:"taken_by"`
+	Date      pgtype.Date        `json:"date"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Class struct {
-	ID             uuid.UUID     `json:"id"`
-	GradeID        uuid.UUID     `json:"grade_id"`
-	AcademicYearID uuid.UUID     `json:"academic_year_id"`
-	FormTeacherID  uuid.NullUUID `json:"form_teacher_id"`
-	StreamID       uuid.NullUUID `json:"stream_id"`
-	StreamGroupID  uuid.NullUUID `json:"stream_group_id"`
-	Name           string        `json:"name"`
-	CreatedAt      time.Time     `json:"created_at"`
+	ID             uuid.UUID          `json:"id"`
+	GradeID        uuid.UUID          `json:"grade_id"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	FormTeacherID  pgtype.UUID        `json:"form_teacher_id"`
+	StreamID       pgtype.UUID        `json:"stream_id"`
+	StreamGroupID  pgtype.UUID        `json:"stream_group_id"`
+	Name           string             `json:"name"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type ClassStudent struct {
-	ClassID    uuid.UUID `json:"class_id"`
-	StudentID  uuid.UUID `json:"student_id"`
-	EnrolledAt time.Time `json:"enrolled_at"`
+	ClassID    uuid.UUID          `json:"class_id"`
+	StudentID  uuid.UUID          `json:"student_id"`
+	EnrolledAt pgtype.Timestamptz `json:"enrolled_at"`
 }
 
 type ClassSubjectTeacher struct {
@@ -60,10 +58,10 @@ type ClassSubjectTeacher struct {
 }
 
 type Grade struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	SortOrder int32     `json:"sort_order"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID          `json:"id"`
+	Name      string             `json:"name"`
+	SortOrder int32              `json:"sort_order"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type GradeSubject struct {
@@ -72,36 +70,36 @@ type GradeSubject struct {
 }
 
 type Guardian struct {
-	ID           uuid.UUID      `json:"id"`
-	UserID       uuid.NullUUID  `json:"user_id"`
-	FullName     string         `json:"full_name"`
-	Relationship string         `json:"relationship"`
-	Phone        string         `json:"phone"`
-	Email        sql.NullString `json:"email"`
-	CreatedAt    time.Time      `json:"created_at"`
+	ID           uuid.UUID          `json:"id"`
+	UserID       pgtype.UUID        `json:"user_id"`
+	FullName     string             `json:"full_name"`
+	Relationship string             `json:"relationship"`
+	Phone        string             `json:"phone"`
+	Email        pgtype.Text        `json:"email"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
 type School struct {
-	ID        uuid.UUID      `json:"id"`
-	Name      string         `json:"name"`
-	Address   sql.NullString `json:"address"`
-	Phone     sql.NullString `json:"phone"`
-	Email     sql.NullString `json:"email"`
-	LogoUrl   sql.NullString `json:"logo_url"`
-	CreatedAt time.Time      `json:"created_at"`
+	ID        uuid.UUID          `json:"id"`
+	Name      string             `json:"name"`
+	Address   pgtype.Text        `json:"address"`
+	Phone     pgtype.Text        `json:"phone"`
+	Email     pgtype.Text        `json:"email"`
+	LogoUrl   pgtype.Text        `json:"logo_url"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Stream struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID          `json:"id"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type StreamGroup struct {
-	ID        uuid.UUID `json:"id"`
-	StreamID  uuid.UUID `json:"stream_id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID          `json:"id"`
+	StreamID  uuid.UUID          `json:"stream_id"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type StudentGuardian struct {
@@ -111,16 +109,16 @@ type StudentGuardian struct {
 }
 
 type StudentProfile struct {
-	ID             uuid.UUID      `json:"id"`
-	UserID         uuid.NullUUID  `json:"user_id"`
-	FullName       string         `json:"full_name"`
-	IndexNumber    string         `json:"index_number"`
-	Address        sql.NullString `json:"address"`
-	Phone          sql.NullString `json:"phone"`
-	Whatsapp       sql.NullString `json:"whatsapp"`
-	SpecialRemarks sql.NullString `json:"special_remarks"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
+	ID             uuid.UUID          `json:"id"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	FullName       string             `json:"full_name"`
+	IndexNumber    string             `json:"index_number"`
+	Address        pgtype.Text        `json:"address"`
+	Phone          pgtype.Text        `json:"phone"`
+	Whatsapp       pgtype.Text        `json:"whatsapp"`
+	SpecialRemarks pgtype.Text        `json:"special_remarks"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
 type StudentSibling struct {
@@ -135,17 +133,17 @@ type StudentSubjectSelection struct {
 }
 
 type Subject struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	Code      string    `json:"code"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID          `json:"id"`
+	Name      string             `json:"name"`
+	Code      string             `json:"code"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type SubjectBucket struct {
-	ID        uuid.UUID `json:"id"`
-	GradeID   uuid.UUID `json:"grade_id"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        uuid.UUID          `json:"id"`
+	GradeID   uuid.UUID          `json:"grade_id"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type SubjectBucketOption struct {
@@ -154,14 +152,14 @@ type SubjectBucketOption struct {
 }
 
 type TeacherProfile struct {
-	ID             uuid.UUID      `json:"id"`
-	UserID         uuid.UUID      `json:"user_id"`
-	FullName       string         `json:"full_name"`
-	EmployeeNumber string         `json:"employee_number"`
-	JoinedDate     time.Time      `json:"joined_date"`
-	Phone          sql.NullString `json:"phone"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
+	ID             uuid.UUID          `json:"id"`
+	UserID         uuid.UUID          `json:"user_id"`
+	FullName       string             `json:"full_name"`
+	EmployeeNumber string             `json:"employee_number"`
+	JoinedDate     pgtype.Date        `json:"joined_date"`
+	Phone          pgtype.Text        `json:"phone"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
 type TeacherSubject struct {
@@ -170,11 +168,11 @@ type TeacherSubject struct {
 }
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	Email     string    `json:"email"`
-	FullName  string    `json:"full_name"`
-	Role      string    `json:"role"`
-	IsActive  bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        uuid.UUID          `json:"id"`
+	Email     string             `json:"email"`
+	FullName  string             `json:"full_name"`
+	Role      string             `json:"role"`
+	IsActive  bool               `json:"is_active"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }

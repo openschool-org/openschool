@@ -7,10 +7,9 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createAttendanceSession = `-- name: CreateAttendanceSession :one
@@ -20,13 +19,13 @@ RETURNING id, class_id, taken_by, date, created_at
 `
 
 type CreateAttendanceSessionParams struct {
-	ClassID uuid.UUID `json:"class_id"`
-	TakenBy uuid.UUID `json:"taken_by"`
-	Date    time.Time `json:"date"`
+	ClassID uuid.UUID   `json:"class_id"`
+	TakenBy uuid.UUID   `json:"taken_by"`
+	Date    pgtype.Date `json:"date"`
 }
 
 func (q *Queries) CreateAttendanceSession(ctx context.Context, arg CreateAttendanceSessionParams) (AttendanceSession, error) {
-	row := q.db.QueryRowContext(ctx, createAttendanceSession, arg.ClassID, arg.TakenBy, arg.Date)
+	row := q.db.QueryRow(ctx, createAttendanceSession, arg.ClassID, arg.TakenBy, arg.Date)
 	var i AttendanceSession
 	err := row.Scan(
 		&i.ID,
@@ -49,7 +48,7 @@ type GetAttendanceRecordParams struct {
 }
 
 func (q *Queries) GetAttendanceRecord(ctx context.Context, arg GetAttendanceRecordParams) (AttendanceRecord, error) {
-	row := q.db.QueryRowContext(ctx, getAttendanceRecord, arg.SessionID, arg.StudentID)
+	row := q.db.QueryRow(ctx, getAttendanceRecord, arg.SessionID, arg.StudentID)
 	var i AttendanceRecord
 	err := row.Scan(
 		&i.ID,
@@ -67,12 +66,12 @@ WHERE class_id = $1 AND date = $2
 `
 
 type GetAttendanceSessionByClassAndDateParams struct {
-	ClassID uuid.UUID `json:"class_id"`
-	Date    time.Time `json:"date"`
+	ClassID uuid.UUID   `json:"class_id"`
+	Date    pgtype.Date `json:"date"`
 }
 
 func (q *Queries) GetAttendanceSessionByClassAndDate(ctx context.Context, arg GetAttendanceSessionByClassAndDateParams) (AttendanceSession, error) {
-	row := q.db.QueryRowContext(ctx, getAttendanceSessionByClassAndDate, arg.ClassID, arg.Date)
+	row := q.db.QueryRow(ctx, getAttendanceSessionByClassAndDate, arg.ClassID, arg.Date)
 	var i AttendanceSession
 	err := row.Scan(
 		&i.ID,
@@ -90,7 +89,7 @@ WHERE id = $1
 `
 
 func (q *Queries) GetAttendanceSessionByID(ctx context.Context, id uuid.UUID) (AttendanceSession, error) {
-	row := q.db.QueryRowContext(ctx, getAttendanceSessionByID, id)
+	row := q.db.QueryRow(ctx, getAttendanceSessionByID, id)
 	var i AttendanceSession
 	err := row.Scan(
 		&i.ID,
@@ -129,7 +128,7 @@ type GetAttendanceSummaryByStudentRow struct {
 }
 
 func (q *Queries) GetAttendanceSummaryByStudent(ctx context.Context, arg GetAttendanceSummaryByStudentParams) (GetAttendanceSummaryByStudentRow, error) {
-	row := q.db.QueryRowContext(ctx, getAttendanceSummaryByStudent, arg.StudentID, arg.ClassID)
+	row := q.db.QueryRow(ctx, getAttendanceSummaryByStudent, arg.StudentID, arg.ClassID)
 	var i GetAttendanceSummaryByStudentRow
 	err := row.Scan(
 		&i.TotalDays,
@@ -153,17 +152,17 @@ ORDER BY sp.full_name ASC
 `
 
 type ListAttendanceBySessionRow struct {
-	ID           uuid.UUID      `json:"id"`
-	SessionID    uuid.UUID      `json:"session_id"`
-	StudentID    uuid.UUID      `json:"student_id"`
-	Status       string         `json:"status"`
-	Note         sql.NullString `json:"note"`
-	StudentName  string         `json:"student_name"`
-	StudentIndex string         `json:"student_index"`
+	ID           uuid.UUID   `json:"id"`
+	SessionID    uuid.UUID   `json:"session_id"`
+	StudentID    uuid.UUID   `json:"student_id"`
+	Status       string      `json:"status"`
+	Note         pgtype.Text `json:"note"`
+	StudentName  string      `json:"student_name"`
+	StudentIndex string      `json:"student_index"`
 }
 
 func (q *Queries) ListAttendanceBySession(ctx context.Context, sessionID uuid.UUID) ([]ListAttendanceBySessionRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAttendanceBySession, sessionID)
+	rows, err := q.db.Query(ctx, listAttendanceBySession, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -184,9 +183,6 @@ func (q *Queries) ListAttendanceBySession(ctx context.Context, sessionID uuid.UU
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -206,17 +202,17 @@ ORDER BY ats.date DESC
 `
 
 type ListAttendanceByStudentRow struct {
-	ID          uuid.UUID      `json:"id"`
-	SessionID   uuid.UUID      `json:"session_id"`
-	StudentID   uuid.UUID      `json:"student_id"`
-	Status      string         `json:"status"`
-	Note        sql.NullString `json:"note"`
-	SessionDate time.Time      `json:"session_date"`
-	ClassName   string         `json:"class_name"`
+	ID          uuid.UUID   `json:"id"`
+	SessionID   uuid.UUID   `json:"session_id"`
+	StudentID   uuid.UUID   `json:"student_id"`
+	Status      string      `json:"status"`
+	Note        pgtype.Text `json:"note"`
+	SessionDate pgtype.Date `json:"session_date"`
+	ClassName   string      `json:"class_name"`
 }
 
 func (q *Queries) ListAttendanceByStudent(ctx context.Context, studentID uuid.UUID) ([]ListAttendanceByStudentRow, error) {
-	rows, err := q.db.QueryContext(ctx, listAttendanceByStudent, studentID)
+	rows, err := q.db.Query(ctx, listAttendanceByStudent, studentID)
 	if err != nil {
 		return nil, err
 	}
@@ -237,9 +233,6 @@ func (q *Queries) ListAttendanceByStudent(ctx context.Context, studentID uuid.UU
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -253,7 +246,7 @@ ORDER BY date DESC
 `
 
 func (q *Queries) ListAttendanceSessionsByClass(ctx context.Context, classID uuid.UUID) ([]AttendanceSession, error) {
-	rows, err := q.db.QueryContext(ctx, listAttendanceSessionsByClass, classID)
+	rows, err := q.db.Query(ctx, listAttendanceSessionsByClass, classID)
 	if err != nil {
 		return nil, err
 	}
@@ -272,9 +265,6 @@ func (q *Queries) ListAttendanceSessionsByClass(ctx context.Context, classID uui
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -292,14 +282,14 @@ RETURNING id, session_id, student_id, status, note
 `
 
 type MarkAttendanceParams struct {
-	SessionID uuid.UUID      `json:"session_id"`
-	StudentID uuid.UUID      `json:"student_id"`
-	Status    string         `json:"status"`
-	Note      sql.NullString `json:"note"`
+	SessionID uuid.UUID   `json:"session_id"`
+	StudentID uuid.UUID   `json:"student_id"`
+	Status    string      `json:"status"`
+	Note      pgtype.Text `json:"note"`
 }
 
 func (q *Queries) MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error) {
-	row := q.db.QueryRowContext(ctx, markAttendance,
+	row := q.db.QueryRow(ctx, markAttendance,
 		arg.SessionID,
 		arg.StudentID,
 		arg.Status,

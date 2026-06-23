@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -31,6 +32,7 @@ type Querier interface {
 	CreateTeacherProfile(ctx context.Context, arg CreateTeacherProfileParams) (TeacherProfile, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeactivateUser(ctx context.Context, id uuid.UUID) (User, error)
+	DeleteAcademicYear(ctx context.Context, id uuid.UUID) error
 	EnrollStudentInClass(ctx context.Context, arg EnrollStudentInClassParams) error
 	GetAcademicYearByID(ctx context.Context, id uuid.UUID) (AcademicYear, error)
 	GetAttendanceRecord(ctx context.Context, arg GetAttendanceRecordParams) (AttendanceRecord, error)
@@ -39,14 +41,14 @@ type Querier interface {
 	GetAttendanceSummaryByStudent(ctx context.Context, arg GetAttendanceSummaryByStudentParams) (GetAttendanceSummaryByStudentRow, error)
 	GetClassByID(ctx context.Context, id uuid.UUID) (Class, error)
 	GetCurrentAcademicYear(ctx context.Context) (AcademicYear, error)
-	GetFormTeacherClass(ctx context.Context, formTeacherID uuid.NullUUID) (Class, error)
+	GetFormTeacherClass(ctx context.Context, formTeacherID pgtype.UUID) (Class, error)
 	GetGradeByID(ctx context.Context, id uuid.UUID) (Grade, error)
 	GetGuardianByID(ctx context.Context, id uuid.UUID) (Guardian, error)
 	GetPrimaryGuardian(ctx context.Context, studentID uuid.UUID) (Guardian, error)
 	GetSchool(ctx context.Context) (School, error)
 	GetStudentByID(ctx context.Context, id uuid.UUID) (StudentProfile, error)
 	GetStudentByIndexNumber(ctx context.Context, indexNumber string) (StudentProfile, error)
-	GetStudentByUserID(ctx context.Context, userID uuid.NullUUID) (StudentProfile, error)
+	GetStudentByUserID(ctx context.Context, userID pgtype.UUID) (StudentProfile, error)
 	GetStudentCurrentClass(ctx context.Context, studentID uuid.UUID) (Class, error)
 	GetStudentWithClass(ctx context.Context, id uuid.UUID) (GetStudentWithClassRow, error)
 	GetSubjectByCode(ctx context.Context, code string) (Subject, error)

@@ -31,7 +31,7 @@ type CreateUserParams struct {
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser,
+	row := q.db.QueryRow(ctx, createUser,
 		arg.ID,
 		arg.Email,
 		arg.FullName,
@@ -60,7 +60,7 @@ RETURNING id, email, full_name, role, is_active, created_at, updated_at
 `
 
 func (q *Queries) DeactivateUser(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, deactivateUser, id)
+	row := q.db.QueryRow(ctx, deactivateUser, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -80,7 +80,7 @@ WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -100,7 +100,7 @@ WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByID, id)
+	row := q.db.QueryRow(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -120,7 +120,7 @@ ORDER BY full_name ASC
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, listUsers)
+	rows, err := q.db.Query(ctx, listUsers)
 	if err != nil {
 		return nil, err
 	}
@@ -140,9 +140,6 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -157,7 +154,7 @@ ORDER BY full_name ASC
 `
 
 func (q *Queries) ListUsersByRole(ctx context.Context, role string) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, listUsersByRole, role)
+	rows, err := q.db.Query(ctx, listUsersByRole, role)
 	if err != nil {
 		return nil, err
 	}
@@ -177,9 +174,6 @@ func (q *Queries) ListUsersByRole(ctx context.Context, role string) ([]User, err
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -204,7 +198,7 @@ type UpdateUserParams struct {
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, updateUser, arg.ID, arg.FullName, arg.Email)
+	row := q.db.QueryRow(ctx, updateUser, arg.ID, arg.FullName, arg.Email)
 	var i User
 	err := row.Scan(
 		&i.ID,

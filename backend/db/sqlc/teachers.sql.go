@@ -7,10 +7,9 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const assignSubjectToTeacher = `-- name: AssignSubjectToTeacher :exec
@@ -25,7 +24,7 @@ type AssignSubjectToTeacherParams struct {
 }
 
 func (q *Queries) AssignSubjectToTeacher(ctx context.Context, arg AssignSubjectToTeacherParams) error {
-	_, err := q.db.ExecContext(ctx, assignSubjectToTeacher, arg.TeacherID, arg.SubjectID)
+	_, err := q.db.Exec(ctx, assignSubjectToTeacher, arg.TeacherID, arg.SubjectID)
 	return err
 }
 
@@ -43,15 +42,15 @@ RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_a
 `
 
 type CreateTeacherProfileParams struct {
-	UserID         uuid.UUID      `json:"user_id"`
-	FullName       string         `json:"full_name"`
-	EmployeeNumber string         `json:"employee_number"`
-	JoinedDate     time.Time      `json:"joined_date"`
-	Phone          sql.NullString `json:"phone"`
+	UserID         uuid.UUID   `json:"user_id"`
+	FullName       string      `json:"full_name"`
+	EmployeeNumber string      `json:"employee_number"`
+	JoinedDate     pgtype.Date `json:"joined_date"`
+	Phone          pgtype.Text `json:"phone"`
 }
 
 func (q *Queries) CreateTeacherProfile(ctx context.Context, arg CreateTeacherProfileParams) (TeacherProfile, error) {
-	row := q.db.QueryRowContext(ctx, createTeacherProfile,
+	row := q.db.QueryRow(ctx, createTeacherProfile,
 		arg.UserID,
 		arg.FullName,
 		arg.EmployeeNumber,
@@ -82,8 +81,8 @@ WHERE c.form_teacher_id = $1
   )
 `
 
-func (q *Queries) GetFormTeacherClass(ctx context.Context, formTeacherID uuid.NullUUID) (Class, error) {
-	row := q.db.QueryRowContext(ctx, getFormTeacherClass, formTeacherID)
+func (q *Queries) GetFormTeacherClass(ctx context.Context, formTeacherID pgtype.UUID) (Class, error) {
+	row := q.db.QueryRow(ctx, getFormTeacherClass, formTeacherID)
 	var i Class
 	err := row.Scan(
 		&i.ID,
@@ -104,7 +103,7 @@ WHERE employee_number = $1
 `
 
 func (q *Queries) GetTeacherByEmployeeNumber(ctx context.Context, employeeNumber string) (TeacherProfile, error) {
-	row := q.db.QueryRowContext(ctx, getTeacherByEmployeeNumber, employeeNumber)
+	row := q.db.QueryRow(ctx, getTeacherByEmployeeNumber, employeeNumber)
 	var i TeacherProfile
 	err := row.Scan(
 		&i.ID,
@@ -125,7 +124,7 @@ WHERE id = $1
 `
 
 func (q *Queries) GetTeacherByID(ctx context.Context, id uuid.UUID) (TeacherProfile, error) {
-	row := q.db.QueryRowContext(ctx, getTeacherByID, id)
+	row := q.db.QueryRow(ctx, getTeacherByID, id)
 	var i TeacherProfile
 	err := row.Scan(
 		&i.ID,
@@ -146,7 +145,7 @@ WHERE user_id = $1
 `
 
 func (q *Queries) GetTeacherByUserID(ctx context.Context, userID uuid.UUID) (TeacherProfile, error) {
-	row := q.db.QueryRowContext(ctx, getTeacherByUserID, userID)
+	row := q.db.QueryRow(ctx, getTeacherByUserID, userID)
 	var i TeacherProfile
 	err := row.Scan(
 		&i.ID,
@@ -171,7 +170,7 @@ ORDER BY s.name ASC
 `
 
 func (q *Queries) ListSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID) ([]Subject, error) {
-	rows, err := q.db.QueryContext(ctx, listSubjectsByTeacher, teacherID)
+	rows, err := q.db.Query(ctx, listSubjectsByTeacher, teacherID)
 	if err != nil {
 		return nil, err
 	}
@@ -189,9 +188,6 @@ func (q *Queries) ListSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -204,7 +200,7 @@ ORDER BY full_name ASC
 `
 
 func (q *Queries) ListTeachers(ctx context.Context) ([]TeacherProfile, error) {
-	rows, err := q.db.QueryContext(ctx, listTeachers)
+	rows, err := q.db.Query(ctx, listTeachers)
 	if err != nil {
 		return nil, err
 	}
@@ -225,9 +221,6 @@ func (q *Queries) ListTeachers(ctx context.Context) ([]TeacherProfile, error) {
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -245,7 +238,7 @@ ORDER BY tp.full_name ASC
 `
 
 func (q *Queries) ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID) ([]TeacherProfile, error) {
-	rows, err := q.db.QueryContext(ctx, listTeachersBySubject, subjectID)
+	rows, err := q.db.Query(ctx, listTeachersBySubject, subjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -266,9 +259,6 @@ func (q *Queries) ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -287,7 +277,7 @@ type RemoveSubjectFromTeacherParams struct {
 }
 
 func (q *Queries) RemoveSubjectFromTeacher(ctx context.Context, arg RemoveSubjectFromTeacherParams) error {
-	_, err := q.db.ExecContext(ctx, removeSubjectFromTeacher, arg.TeacherID, arg.SubjectID)
+	_, err := q.db.Exec(ctx, removeSubjectFromTeacher, arg.TeacherID, arg.SubjectID)
 	return err
 }
 
@@ -303,14 +293,14 @@ RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_a
 `
 
 type UpdateTeacherProfileParams struct {
-	ID             uuid.UUID      `json:"id"`
-	FullName       string         `json:"full_name"`
-	EmployeeNumber string         `json:"employee_number"`
-	Phone          sql.NullString `json:"phone"`
+	ID             uuid.UUID   `json:"id"`
+	FullName       string      `json:"full_name"`
+	EmployeeNumber string      `json:"employee_number"`
+	Phone          pgtype.Text `json:"phone"`
 }
 
 func (q *Queries) UpdateTeacherProfile(ctx context.Context, arg UpdateTeacherProfileParams) (TeacherProfile, error) {
-	row := q.db.QueryRowContext(ctx, updateTeacherProfile,
+	row := q.db.QueryRow(ctx, updateTeacherProfile,
 		arg.ID,
 		arg.FullName,
 		arg.EmployeeNumber,

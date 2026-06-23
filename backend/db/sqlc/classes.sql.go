@@ -7,9 +7,9 @@ package db
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const assignFormTeacher = `-- name: AssignFormTeacher :one
@@ -20,12 +20,12 @@ RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_gro
 `
 
 type AssignFormTeacherParams struct {
-	ID            uuid.UUID     `json:"id"`
-	FormTeacherID uuid.NullUUID `json:"form_teacher_id"`
+	ID            uuid.UUID   `json:"id"`
+	FormTeacherID pgtype.UUID `json:"form_teacher_id"`
 }
 
 func (q *Queries) AssignFormTeacher(ctx context.Context, arg AssignFormTeacherParams) (Class, error) {
-	row := q.db.QueryRowContext(ctx, assignFormTeacher, arg.ID, arg.FormTeacherID)
+	row := q.db.QueryRow(ctx, assignFormTeacher, arg.ID, arg.FormTeacherID)
 	var i Class
 	err := row.Scan(
 		&i.ID,
@@ -54,7 +54,7 @@ type AssignSubjectTeacherToClassParams struct {
 }
 
 func (q *Queries) AssignSubjectTeacherToClass(ctx context.Context, arg AssignSubjectTeacherToClassParams) error {
-	_, err := q.db.ExecContext(ctx, assignSubjectTeacherToClass, arg.ClassID, arg.SubjectID, arg.TeacherID)
+	_, err := q.db.Exec(ctx, assignSubjectTeacherToClass, arg.ClassID, arg.SubjectID, arg.TeacherID)
 	return err
 }
 
@@ -73,16 +73,16 @@ RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_gro
 `
 
 type CreateClassParams struct {
-	GradeID        uuid.UUID     `json:"grade_id"`
-	AcademicYearID uuid.UUID     `json:"academic_year_id"`
-	FormTeacherID  uuid.NullUUID `json:"form_teacher_id"`
-	StreamID       uuid.NullUUID `json:"stream_id"`
-	StreamGroupID  uuid.NullUUID `json:"stream_group_id"`
-	Name           string        `json:"name"`
+	GradeID        uuid.UUID   `json:"grade_id"`
+	AcademicYearID uuid.UUID   `json:"academic_year_id"`
+	FormTeacherID  pgtype.UUID `json:"form_teacher_id"`
+	StreamID       pgtype.UUID `json:"stream_id"`
+	StreamGroupID  pgtype.UUID `json:"stream_group_id"`
+	Name           string      `json:"name"`
 }
 
 func (q *Queries) CreateClass(ctx context.Context, arg CreateClassParams) (Class, error) {
-	row := q.db.QueryRowContext(ctx, createClass,
+	row := q.db.QueryRow(ctx, createClass,
 		arg.GradeID,
 		arg.AcademicYearID,
 		arg.FormTeacherID,
@@ -116,7 +116,7 @@ type CreateGradeParams struct {
 }
 
 func (q *Queries) CreateGrade(ctx context.Context, arg CreateGradeParams) (Grade, error) {
-	row := q.db.QueryRowContext(ctx, createGrade, arg.Name, arg.SortOrder)
+	row := q.db.QueryRow(ctx, createGrade, arg.Name, arg.SortOrder)
 	var i Grade
 	err := row.Scan(
 		&i.ID,
@@ -134,7 +134,7 @@ RETURNING id, name, created_at
 `
 
 func (q *Queries) CreateStream(ctx context.Context, name string) (Stream, error) {
-	row := q.db.QueryRowContext(ctx, createStream, name)
+	row := q.db.QueryRow(ctx, createStream, name)
 	var i Stream
 	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
 	return i, err
@@ -152,7 +152,7 @@ type CreateStreamGroupParams struct {
 }
 
 func (q *Queries) CreateStreamGroup(ctx context.Context, arg CreateStreamGroupParams) (StreamGroup, error) {
-	row := q.db.QueryRowContext(ctx, createStreamGroup, arg.StreamID, arg.Name)
+	row := q.db.QueryRow(ctx, createStreamGroup, arg.StreamID, arg.Name)
 	var i StreamGroup
 	err := row.Scan(
 		&i.ID,
@@ -175,7 +175,7 @@ type EnrollStudentInClassParams struct {
 }
 
 func (q *Queries) EnrollStudentInClass(ctx context.Context, arg EnrollStudentInClassParams) error {
-	_, err := q.db.ExecContext(ctx, enrollStudentInClass, arg.ClassID, arg.StudentID)
+	_, err := q.db.Exec(ctx, enrollStudentInClass, arg.ClassID, arg.StudentID)
 	return err
 }
 
@@ -185,7 +185,7 @@ WHERE id = $1
 `
 
 func (q *Queries) GetClassByID(ctx context.Context, id uuid.UUID) (Class, error) {
-	row := q.db.QueryRowContext(ctx, getClassByID, id)
+	row := q.db.QueryRow(ctx, getClassByID, id)
 	var i Class
 	err := row.Scan(
 		&i.ID,
@@ -206,7 +206,7 @@ WHERE id = $1
 `
 
 func (q *Queries) GetGradeByID(ctx context.Context, id uuid.UUID) (Grade, error) {
-	row := q.db.QueryRowContext(ctx, getGradeByID, id)
+	row := q.db.QueryRow(ctx, getGradeByID, id)
 	var i Grade
 	err := row.Scan(
 		&i.ID,
@@ -229,7 +229,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetStudentCurrentClass(ctx context.Context, studentID uuid.UUID) (Class, error) {
-	row := q.db.QueryRowContext(ctx, getStudentCurrentClass, studentID)
+	row := q.db.QueryRow(ctx, getStudentCurrentClass, studentID)
 	var i Class
 	err := row.Scan(
 		&i.ID,
@@ -257,20 +257,20 @@ ORDER BY g.sort_order ASC, c.name ASC
 `
 
 type ListClassesByAcademicYearRow struct {
-	ID                uuid.UUID     `json:"id"`
-	GradeID           uuid.UUID     `json:"grade_id"`
-	AcademicYearID    uuid.UUID     `json:"academic_year_id"`
-	FormTeacherID     uuid.NullUUID `json:"form_teacher_id"`
-	StreamID          uuid.NullUUID `json:"stream_id"`
-	StreamGroupID     uuid.NullUUID `json:"stream_group_id"`
-	Name              string        `json:"name"`
-	CreatedAt         time.Time     `json:"created_at"`
-	GradeName         string        `json:"grade_name"`
-	AcademicYearLabel string        `json:"academic_year_label"`
+	ID                uuid.UUID          `json:"id"`
+	GradeID           uuid.UUID          `json:"grade_id"`
+	AcademicYearID    uuid.UUID          `json:"academic_year_id"`
+	FormTeacherID     pgtype.UUID        `json:"form_teacher_id"`
+	StreamID          pgtype.UUID        `json:"stream_id"`
+	StreamGroupID     pgtype.UUID        `json:"stream_group_id"`
+	Name              string             `json:"name"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	GradeName         string             `json:"grade_name"`
+	AcademicYearLabel string             `json:"academic_year_label"`
 }
 
 func (q *Queries) ListClassesByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]ListClassesByAcademicYearRow, error) {
-	rows, err := q.db.QueryContext(ctx, listClassesByAcademicYear, academicYearID)
+	rows, err := q.db.Query(ctx, listClassesByAcademicYear, academicYearID)
 	if err != nil {
 		return nil, err
 	}
@@ -294,9 +294,6 @@ func (q *Queries) ListClassesByAcademicYear(ctx context.Context, academicYearID 
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -316,20 +313,20 @@ ORDER BY g.sort_order ASC, c.name ASC
 `
 
 type ListCurrentClassesRow struct {
-	ID                uuid.UUID     `json:"id"`
-	GradeID           uuid.UUID     `json:"grade_id"`
-	AcademicYearID    uuid.UUID     `json:"academic_year_id"`
-	FormTeacherID     uuid.NullUUID `json:"form_teacher_id"`
-	StreamID          uuid.NullUUID `json:"stream_id"`
-	StreamGroupID     uuid.NullUUID `json:"stream_group_id"`
-	Name              string        `json:"name"`
-	CreatedAt         time.Time     `json:"created_at"`
-	GradeName         string        `json:"grade_name"`
-	AcademicYearLabel string        `json:"academic_year_label"`
+	ID                uuid.UUID          `json:"id"`
+	GradeID           uuid.UUID          `json:"grade_id"`
+	AcademicYearID    uuid.UUID          `json:"academic_year_id"`
+	FormTeacherID     pgtype.UUID        `json:"form_teacher_id"`
+	StreamID          pgtype.UUID        `json:"stream_id"`
+	StreamGroupID     pgtype.UUID        `json:"stream_group_id"`
+	Name              string             `json:"name"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	GradeName         string             `json:"grade_name"`
+	AcademicYearLabel string             `json:"academic_year_label"`
 }
 
 func (q *Queries) ListCurrentClasses(ctx context.Context) ([]ListCurrentClassesRow, error) {
-	rows, err := q.db.QueryContext(ctx, listCurrentClasses)
+	rows, err := q.db.Query(ctx, listCurrentClasses)
 	if err != nil {
 		return nil, err
 	}
@@ -353,9 +350,6 @@ func (q *Queries) ListCurrentClasses(ctx context.Context) ([]ListCurrentClassesR
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -368,7 +362,7 @@ ORDER BY sort_order ASC, name ASC
 `
 
 func (q *Queries) ListGrades(ctx context.Context) ([]Grade, error) {
-	rows, err := q.db.QueryContext(ctx, listGrades)
+	rows, err := q.db.Query(ctx, listGrades)
 	if err != nil {
 		return nil, err
 	}
@@ -386,9 +380,6 @@ func (q *Queries) ListGrades(ctx context.Context) ([]Grade, error) {
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -402,7 +393,7 @@ ORDER BY name ASC
 `
 
 func (q *Queries) ListStreamGroupsByStream(ctx context.Context, streamID uuid.UUID) ([]StreamGroup, error) {
-	rows, err := q.db.QueryContext(ctx, listStreamGroupsByStream, streamID)
+	rows, err := q.db.Query(ctx, listStreamGroupsByStream, streamID)
 	if err != nil {
 		return nil, err
 	}
@@ -420,9 +411,6 @@ func (q *Queries) ListStreamGroupsByStream(ctx context.Context, streamID uuid.UU
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -435,7 +423,7 @@ ORDER BY name ASC
 `
 
 func (q *Queries) ListStreams(ctx context.Context) ([]Stream, error) {
-	rows, err := q.db.QueryContext(ctx, listStreams)
+	rows, err := q.db.Query(ctx, listStreams)
 	if err != nil {
 		return nil, err
 	}
@@ -447,9 +435,6 @@ func (q *Queries) ListStreams(ctx context.Context) ([]Stream, error) {
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -480,7 +465,7 @@ type ListSubjectTeachersByClassRow struct {
 }
 
 func (q *Queries) ListSubjectTeachersByClass(ctx context.Context, classID uuid.UUID) ([]ListSubjectTeachersByClassRow, error) {
-	rows, err := q.db.QueryContext(ctx, listSubjectTeachersByClass, classID)
+	rows, err := q.db.Query(ctx, listSubjectTeachersByClass, classID)
 	if err != nil {
 		return nil, err
 	}
@@ -499,9 +484,6 @@ func (q *Queries) ListSubjectTeachersByClass(ctx context.Context, classID uuid.U
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -519,6 +501,6 @@ type UnenrollStudentFromClassParams struct {
 }
 
 func (q *Queries) UnenrollStudentFromClass(ctx context.Context, arg UnenrollStudentFromClassParams) error {
-	_, err := q.db.ExecContext(ctx, unenrollStudentFromClass, arg.ClassID, arg.StudentID)
+	_, err := q.db.Exec(ctx, unenrollStudentFromClass, arg.ClassID, arg.StudentID)
 	return err
 }

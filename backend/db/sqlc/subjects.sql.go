@@ -23,7 +23,7 @@ type AddSubjectToBucketParams struct {
 }
 
 func (q *Queries) AddSubjectToBucket(ctx context.Context, arg AddSubjectToBucketParams) error {
-	_, err := q.db.ExecContext(ctx, addSubjectToBucket, arg.BucketID, arg.SubjectID)
+	_, err := q.db.Exec(ctx, addSubjectToBucket, arg.BucketID, arg.SubjectID)
 	return err
 }
 
@@ -39,7 +39,7 @@ type AssignSubjectToGradeParams struct {
 }
 
 func (q *Queries) AssignSubjectToGrade(ctx context.Context, arg AssignSubjectToGradeParams) error {
-	_, err := q.db.ExecContext(ctx, assignSubjectToGrade, arg.GradeID, arg.SubjectID)
+	_, err := q.db.Exec(ctx, assignSubjectToGrade, arg.GradeID, arg.SubjectID)
 	return err
 }
 
@@ -58,7 +58,7 @@ type CreateStudentSubjectSelectionParams struct {
 }
 
 func (q *Queries) CreateStudentSubjectSelection(ctx context.Context, arg CreateStudentSubjectSelectionParams) (StudentSubjectSelection, error) {
-	row := q.db.QueryRowContext(ctx, createStudentSubjectSelection, arg.StudentID, arg.BucketID, arg.SubjectID)
+	row := q.db.QueryRow(ctx, createStudentSubjectSelection, arg.StudentID, arg.BucketID, arg.SubjectID)
 	var i StudentSubjectSelection
 	err := row.Scan(&i.StudentID, &i.BucketID, &i.SubjectID)
 	return i, err
@@ -76,7 +76,7 @@ type CreateSubjectParams struct {
 }
 
 func (q *Queries) CreateSubject(ctx context.Context, arg CreateSubjectParams) (Subject, error) {
-	row := q.db.QueryRowContext(ctx, createSubject, arg.Name, arg.Code)
+	row := q.db.QueryRow(ctx, createSubject, arg.Name, arg.Code)
 	var i Subject
 	err := row.Scan(
 		&i.ID,
@@ -99,7 +99,7 @@ type CreateSubjectBucketParams struct {
 }
 
 func (q *Queries) CreateSubjectBucket(ctx context.Context, arg CreateSubjectBucketParams) (SubjectBucket, error) {
-	row := q.db.QueryRowContext(ctx, createSubjectBucket, arg.GradeID, arg.Name)
+	row := q.db.QueryRow(ctx, createSubjectBucket, arg.GradeID, arg.Name)
 	var i SubjectBucket
 	err := row.Scan(
 		&i.ID,
@@ -116,7 +116,7 @@ WHERE code = $1
 `
 
 func (q *Queries) GetSubjectByCode(ctx context.Context, code string) (Subject, error) {
-	row := q.db.QueryRowContext(ctx, getSubjectByCode, code)
+	row := q.db.QueryRow(ctx, getSubjectByCode, code)
 	var i Subject
 	err := row.Scan(
 		&i.ID,
@@ -133,7 +133,7 @@ WHERE id = $1
 `
 
 func (q *Queries) GetSubjectByID(ctx context.Context, id uuid.UUID) (Subject, error) {
-	row := q.db.QueryRowContext(ctx, getSubjectByID, id)
+	row := q.db.QueryRow(ctx, getSubjectByID, id)
 	var i Subject
 	err := row.Scan(
 		&i.ID,
@@ -165,7 +165,7 @@ type ListStudentSubjectSelectionsRow struct {
 }
 
 func (q *Queries) ListStudentSubjectSelections(ctx context.Context, studentID uuid.UUID) ([]ListStudentSubjectSelectionsRow, error) {
-	rows, err := q.db.QueryContext(ctx, listStudentSubjectSelections, studentID)
+	rows, err := q.db.Query(ctx, listStudentSubjectSelections, studentID)
 	if err != nil {
 		return nil, err
 	}
@@ -183,9 +183,6 @@ func (q *Queries) ListStudentSubjectSelections(ctx context.Context, studentID uu
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -202,7 +199,7 @@ ORDER BY s.name ASC
 `
 
 func (q *Queries) ListSubjectBucketOptions(ctx context.Context, bucketID uuid.UUID) ([]Subject, error) {
-	rows, err := q.db.QueryContext(ctx, listSubjectBucketOptions, bucketID)
+	rows, err := q.db.Query(ctx, listSubjectBucketOptions, bucketID)
 	if err != nil {
 		return nil, err
 	}
@@ -220,9 +217,6 @@ func (q *Queries) ListSubjectBucketOptions(ctx context.Context, bucketID uuid.UU
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -236,7 +230,7 @@ ORDER BY name ASC
 `
 
 func (q *Queries) ListSubjectBucketsByGrade(ctx context.Context, gradeID uuid.UUID) ([]SubjectBucket, error) {
-	rows, err := q.db.QueryContext(ctx, listSubjectBucketsByGrade, gradeID)
+	rows, err := q.db.Query(ctx, listSubjectBucketsByGrade, gradeID)
 	if err != nil {
 		return nil, err
 	}
@@ -254,9 +248,6 @@ func (q *Queries) ListSubjectBucketsByGrade(ctx context.Context, gradeID uuid.UU
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -269,7 +260,7 @@ ORDER BY name ASC
 `
 
 func (q *Queries) ListSubjects(ctx context.Context) ([]Subject, error) {
-	rows, err := q.db.QueryContext(ctx, listSubjects)
+	rows, err := q.db.Query(ctx, listSubjects)
 	if err != nil {
 		return nil, err
 	}
@@ -286,9 +277,6 @@ func (q *Queries) ListSubjects(ctx context.Context) ([]Subject, error) {
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -306,7 +294,7 @@ ORDER BY s.name ASC
 `
 
 func (q *Queries) ListSubjectsByGrade(ctx context.Context, gradeID uuid.UUID) ([]Subject, error) {
-	rows, err := q.db.QueryContext(ctx, listSubjectsByGrade, gradeID)
+	rows, err := q.db.Query(ctx, listSubjectsByGrade, gradeID)
 	if err != nil {
 		return nil, err
 	}
@@ -323,9 +311,6 @@ func (q *Queries) ListSubjectsByGrade(ctx context.Context, gradeID uuid.UUID) ([
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -344,6 +329,6 @@ type RemoveSubjectFromGradeParams struct {
 }
 
 func (q *Queries) RemoveSubjectFromGrade(ctx context.Context, arg RemoveSubjectFromGradeParams) error {
-	_, err := q.db.ExecContext(ctx, removeSubjectFromGrade, arg.GradeID, arg.SubjectID)
+	_, err := q.db.Exec(ctx, removeSubjectFromGrade, arg.GradeID, arg.SubjectID)
 	return err
 }

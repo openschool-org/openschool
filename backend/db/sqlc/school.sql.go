@@ -7,10 +7,9 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createAcademicYear = `-- name: CreateAcademicYear :one
@@ -26,14 +25,14 @@ RETURNING id, label, start_date, end_date, is_current, created_at
 `
 
 type CreateAcademicYearParams struct {
-	Label     string    `json:"label"`
-	StartDate time.Time `json:"start_date"`
-	EndDate   time.Time `json:"end_date"`
-	IsCurrent bool      `json:"is_current"`
+	Label     string      `json:"label"`
+	StartDate pgtype.Date `json:"start_date"`
+	EndDate   pgtype.Date `json:"end_date"`
+	IsCurrent bool        `json:"is_current"`
 }
 
 func (q *Queries) CreateAcademicYear(ctx context.Context, arg CreateAcademicYearParams) (AcademicYear, error) {
-	row := q.db.QueryRowContext(ctx, createAcademicYear,
+	row := q.db.QueryRow(ctx, createAcademicYear,
 		arg.Label,
 		arg.StartDate,
 		arg.EndDate,
@@ -65,15 +64,15 @@ RETURNING id, name, address, phone, email, logo_url, created_at
 `
 
 type CreateSchoolParams struct {
-	Name    string         `json:"name"`
-	Address sql.NullString `json:"address"`
-	Phone   sql.NullString `json:"phone"`
-	Email   sql.NullString `json:"email"`
-	LogoUrl sql.NullString `json:"logo_url"`
+	Name    string      `json:"name"`
+	Address pgtype.Text `json:"address"`
+	Phone   pgtype.Text `json:"phone"`
+	Email   pgtype.Text `json:"email"`
+	LogoUrl pgtype.Text `json:"logo_url"`
 }
 
 func (q *Queries) CreateSchool(ctx context.Context, arg CreateSchoolParams) (School, error) {
-	row := q.db.QueryRowContext(ctx, createSchool,
+	row := q.db.QueryRow(ctx, createSchool,
 		arg.Name,
 		arg.Address,
 		arg.Phone,
@@ -93,13 +92,26 @@ func (q *Queries) CreateSchool(ctx context.Context, arg CreateSchoolParams) (Sch
 	return i, err
 }
 
+const deleteAcademicYear = `-- name: DeleteAcademicYear :exec
+DELETE FROM academic_years AS ay
+WHERE ay.id = $1
+AND ay.id NOT IN (
+    SELECT DISTINCT academic_year_id FROM classes
+)
+`
+
+func (q *Queries) DeleteAcademicYear(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAcademicYear, id)
+	return err
+}
+
 const getAcademicYearByID = `-- name: GetAcademicYearByID :one
 SELECT id, label, start_date, end_date, is_current, created_at FROM academic_years
 WHERE id = $1
 `
 
 func (q *Queries) GetAcademicYearByID(ctx context.Context, id uuid.UUID) (AcademicYear, error) {
-	row := q.db.QueryRowContext(ctx, getAcademicYearByID, id)
+	row := q.db.QueryRow(ctx, getAcademicYearByID, id)
 	var i AcademicYear
 	err := row.Scan(
 		&i.ID,
@@ -119,7 +131,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetCurrentAcademicYear(ctx context.Context) (AcademicYear, error) {
-	row := q.db.QueryRowContext(ctx, getCurrentAcademicYear)
+	row := q.db.QueryRow(ctx, getCurrentAcademicYear)
 	var i AcademicYear
 	err := row.Scan(
 		&i.ID,
@@ -138,7 +150,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetSchool(ctx context.Context) (School, error) {
-	row := q.db.QueryRowContext(ctx, getSchool)
+	row := q.db.QueryRow(ctx, getSchool)
 	var i School
 	err := row.Scan(
 		&i.ID,
@@ -158,7 +170,7 @@ ORDER BY start_date DESC
 `
 
 func (q *Queries) ListAcademicYears(ctx context.Context) ([]AcademicYear, error) {
-	rows, err := q.db.QueryContext(ctx, listAcademicYears)
+	rows, err := q.db.Query(ctx, listAcademicYears)
 	if err != nil {
 		return nil, err
 	}
@@ -178,9 +190,6 @@ func (q *Queries) ListAcademicYears(ctx context.Context) ([]AcademicYear, error)
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -193,7 +202,7 @@ SET is_current = (id = $1)
 `
 
 func (q *Queries) SetCurrentAcademicYear(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, setCurrentAcademicYear, id)
+	_, err := q.db.Exec(ctx, setCurrentAcademicYear, id)
 	return err
 }
 
@@ -210,16 +219,16 @@ RETURNING id, name, address, phone, email, logo_url, created_at
 `
 
 type UpdateSchoolParams struct {
-	ID      uuid.UUID      `json:"id"`
-	Name    string         `json:"name"`
-	Address sql.NullString `json:"address"`
-	Phone   sql.NullString `json:"phone"`
-	Email   sql.NullString `json:"email"`
-	LogoUrl sql.NullString `json:"logo_url"`
+	ID      uuid.UUID   `json:"id"`
+	Name    string      `json:"name"`
+	Address pgtype.Text `json:"address"`
+	Phone   pgtype.Text `json:"phone"`
+	Email   pgtype.Text `json:"email"`
+	LogoUrl pgtype.Text `json:"logo_url"`
 }
 
 func (q *Queries) UpdateSchool(ctx context.Context, arg UpdateSchoolParams) (School, error) {
-	row := q.db.QueryRowContext(ctx, updateSchool,
+	row := q.db.QueryRow(ctx, updateSchool,
 		arg.ID,
 		arg.Name,
 		arg.Address,

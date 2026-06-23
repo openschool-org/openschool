@@ -7,10 +7,9 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createGuardian = `-- name: CreateGuardian :one
@@ -26,14 +25,14 @@ RETURNING id, user_id, full_name, relationship, phone, email, created_at
 `
 
 type CreateGuardianParams struct {
-	FullName     string         `json:"full_name"`
-	Relationship string         `json:"relationship"`
-	Phone        string         `json:"phone"`
-	Email        sql.NullString `json:"email"`
+	FullName     string      `json:"full_name"`
+	Relationship string      `json:"relationship"`
+	Phone        string      `json:"phone"`
+	Email        pgtype.Text `json:"email"`
 }
 
 func (q *Queries) CreateGuardian(ctx context.Context, arg CreateGuardianParams) (Guardian, error) {
-	row := q.db.QueryRowContext(ctx, createGuardian,
+	row := q.db.QueryRow(ctx, createGuardian,
 		arg.FullName,
 		arg.Relationship,
 		arg.Phone,
@@ -58,7 +57,7 @@ WHERE id = $1
 `
 
 func (q *Queries) GetGuardianByID(ctx context.Context, id uuid.UUID) (Guardian, error) {
-	row := q.db.QueryRowContext(ctx, getGuardianByID, id)
+	row := q.db.QueryRow(ctx, getGuardianByID, id)
 	var i Guardian
 	err := row.Scan(
 		&i.ID,
@@ -83,7 +82,7 @@ LIMIT 1
 `
 
 func (q *Queries) GetPrimaryGuardian(ctx context.Context, studentID uuid.UUID) (Guardian, error) {
-	row := q.db.QueryRowContext(ctx, getPrimaryGuardian, studentID)
+	row := q.db.QueryRow(ctx, getPrimaryGuardian, studentID)
 	var i Guardian
 	err := row.Scan(
 		&i.ID,
@@ -110,7 +109,7 @@ type LinkGuardianToStudentParams struct {
 }
 
 func (q *Queries) LinkGuardianToStudent(ctx context.Context, arg LinkGuardianToStudentParams) error {
-	_, err := q.db.ExecContext(ctx, linkGuardianToStudent, arg.StudentID, arg.GuardianID, arg.IsPrimaryContact)
+	_, err := q.db.Exec(ctx, linkGuardianToStudent, arg.StudentID, arg.GuardianID, arg.IsPrimaryContact)
 	return err
 }
 
@@ -125,18 +124,18 @@ ORDER BY sg.is_primary_contact DESC, g.full_name ASC
 `
 
 type ListGuardiansByStudentRow struct {
-	ID               uuid.UUID      `json:"id"`
-	UserID           uuid.NullUUID  `json:"user_id"`
-	FullName         string         `json:"full_name"`
-	Relationship     string         `json:"relationship"`
-	Phone            string         `json:"phone"`
-	Email            sql.NullString `json:"email"`
-	CreatedAt        time.Time      `json:"created_at"`
-	IsPrimaryContact bool           `json:"is_primary_contact"`
+	ID               uuid.UUID          `json:"id"`
+	UserID           pgtype.UUID        `json:"user_id"`
+	FullName         string             `json:"full_name"`
+	Relationship     string             `json:"relationship"`
+	Phone            string             `json:"phone"`
+	Email            pgtype.Text        `json:"email"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	IsPrimaryContact bool               `json:"is_primary_contact"`
 }
 
 func (q *Queries) ListGuardiansByStudent(ctx context.Context, studentID uuid.UUID) ([]ListGuardiansByStudentRow, error) {
-	rows, err := q.db.QueryContext(ctx, listGuardiansByStudent, studentID)
+	rows, err := q.db.Query(ctx, listGuardiansByStudent, studentID)
 	if err != nil {
 		return nil, err
 	}
@@ -158,9 +157,6 @@ func (q *Queries) ListGuardiansByStudent(ctx context.Context, studentID uuid.UUI
 		}
 		items = append(items, i)
 	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
@@ -179,7 +175,7 @@ type SetPrimaryContactParams struct {
 }
 
 func (q *Queries) SetPrimaryContact(ctx context.Context, arg SetPrimaryContactParams) error {
-	_, err := q.db.ExecContext(ctx, setPrimaryContact, arg.StudentID, arg.GuardianID)
+	_, err := q.db.Exec(ctx, setPrimaryContact, arg.StudentID, arg.GuardianID)
 	return err
 }
 
@@ -194,7 +190,7 @@ type UnlinkGuardianFromStudentParams struct {
 }
 
 func (q *Queries) UnlinkGuardianFromStudent(ctx context.Context, arg UnlinkGuardianFromStudentParams) error {
-	_, err := q.db.ExecContext(ctx, unlinkGuardianFromStudent, arg.StudentID, arg.GuardianID)
+	_, err := q.db.Exec(ctx, unlinkGuardianFromStudent, arg.StudentID, arg.GuardianID)
 	return err
 }
 
@@ -210,15 +206,15 @@ RETURNING id, user_id, full_name, relationship, phone, email, created_at
 `
 
 type UpdateGuardianParams struct {
-	ID           uuid.UUID      `json:"id"`
-	FullName     string         `json:"full_name"`
-	Relationship string         `json:"relationship"`
-	Phone        string         `json:"phone"`
-	Email        sql.NullString `json:"email"`
+	ID           uuid.UUID   `json:"id"`
+	FullName     string      `json:"full_name"`
+	Relationship string      `json:"relationship"`
+	Phone        string      `json:"phone"`
+	Email        pgtype.Text `json:"email"`
 }
 
 func (q *Queries) UpdateGuardian(ctx context.Context, arg UpdateGuardianParams) (Guardian, error) {
-	row := q.db.QueryRowContext(ctx, updateGuardian,
+	row := q.db.QueryRow(ctx, updateGuardian,
 		arg.ID,
 		arg.FullName,
 		arg.Relationship,

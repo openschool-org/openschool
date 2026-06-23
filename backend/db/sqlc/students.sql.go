@@ -7,10 +7,9 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createStudentProfile = `-- name: CreateStudentProfile :one
@@ -29,17 +28,17 @@ RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, specia
 `
 
 type CreateStudentProfileParams struct {
-	UserID         uuid.NullUUID  `json:"user_id"`
-	FullName       string         `json:"full_name"`
-	IndexNumber    string         `json:"index_number"`
-	Address        sql.NullString `json:"address"`
-	Phone          sql.NullString `json:"phone"`
-	Whatsapp       sql.NullString `json:"whatsapp"`
-	SpecialRemarks sql.NullString `json:"special_remarks"`
+	UserID         pgtype.UUID `json:"user_id"`
+	FullName       string      `json:"full_name"`
+	IndexNumber    string      `json:"index_number"`
+	Address        pgtype.Text `json:"address"`
+	Phone          pgtype.Text `json:"phone"`
+	Whatsapp       pgtype.Text `json:"whatsapp"`
+	SpecialRemarks pgtype.Text `json:"special_remarks"`
 }
 
 func (q *Queries) CreateStudentProfile(ctx context.Context, arg CreateStudentProfileParams) (StudentProfile, error) {
-	row := q.db.QueryRowContext(ctx, createStudentProfile,
+	row := q.db.QueryRow(ctx, createStudentProfile,
 		arg.UserID,
 		arg.FullName,
 		arg.IndexNumber,
@@ -70,7 +69,7 @@ WHERE id = $1
 `
 
 func (q *Queries) GetStudentByID(ctx context.Context, id uuid.UUID) (StudentProfile, error) {
-	row := q.db.QueryRowContext(ctx, getStudentByID, id)
+	row := q.db.QueryRow(ctx, getStudentByID, id)
 	var i StudentProfile
 	err := row.Scan(
 		&i.ID,
@@ -93,7 +92,7 @@ WHERE index_number = $1
 `
 
 func (q *Queries) GetStudentByIndexNumber(ctx context.Context, indexNumber string) (StudentProfile, error) {
-	row := q.db.QueryRowContext(ctx, getStudentByIndexNumber, indexNumber)
+	row := q.db.QueryRow(ctx, getStudentByIndexNumber, indexNumber)
 	var i StudentProfile
 	err := row.Scan(
 		&i.ID,
@@ -115,8 +114,8 @@ SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_r
 WHERE user_id = $1
 `
 
-func (q *Queries) GetStudentByUserID(ctx context.Context, userID uuid.NullUUID) (StudentProfile, error) {
-	row := q.db.QueryRowContext(ctx, getStudentByUserID, userID)
+func (q *Queries) GetStudentByUserID(ctx context.Context, userID pgtype.UUID) (StudentProfile, error) {
+	row := q.db.QueryRow(ctx, getStudentByUserID, userID)
 	var i StudentProfile
 	err := row.Scan(
 		&i.ID,
@@ -148,23 +147,23 @@ WHERE sp.id = $1
 `
 
 type GetStudentWithClassRow struct {
-	ID             uuid.UUID      `json:"id"`
-	UserID         uuid.NullUUID  `json:"user_id"`
-	FullName       string         `json:"full_name"`
-	IndexNumber    string         `json:"index_number"`
-	Address        sql.NullString `json:"address"`
-	Phone          sql.NullString `json:"phone"`
-	Whatsapp       sql.NullString `json:"whatsapp"`
-	SpecialRemarks sql.NullString `json:"special_remarks"`
-	CreatedAt      time.Time      `json:"created_at"`
-	UpdatedAt      time.Time      `json:"updated_at"`
-	ClassName      sql.NullString `json:"class_name"`
-	GradeName      sql.NullString `json:"grade_name"`
-	AcademicYear   sql.NullString `json:"academic_year"`
+	ID             uuid.UUID          `json:"id"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	FullName       string             `json:"full_name"`
+	IndexNumber    string             `json:"index_number"`
+	Address        pgtype.Text        `json:"address"`
+	Phone          pgtype.Text        `json:"phone"`
+	Whatsapp       pgtype.Text        `json:"whatsapp"`
+	SpecialRemarks pgtype.Text        `json:"special_remarks"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	ClassName      pgtype.Text        `json:"class_name"`
+	GradeName      pgtype.Text        `json:"grade_name"`
+	AcademicYear   pgtype.Text        `json:"academic_year"`
 }
 
 func (q *Queries) GetStudentWithClass(ctx context.Context, id uuid.UUID) (GetStudentWithClassRow, error) {
-	row := q.db.QueryRowContext(ctx, getStudentWithClass, id)
+	row := q.db.QueryRow(ctx, getStudentWithClass, id)
 	var i GetStudentWithClassRow
 	err := row.Scan(
 		&i.ID,
@@ -190,7 +189,7 @@ ORDER BY full_name ASC
 `
 
 func (q *Queries) ListStudents(ctx context.Context) ([]StudentProfile, error) {
-	rows, err := q.db.QueryContext(ctx, listStudents)
+	rows, err := q.db.Query(ctx, listStudents)
 	if err != nil {
 		return nil, err
 	}
@@ -213,9 +212,6 @@ func (q *Queries) ListStudents(ctx context.Context) ([]StudentProfile, error) {
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -233,7 +229,7 @@ ORDER BY sp.full_name ASC
 `
 
 func (q *Queries) ListStudentsByClass(ctx context.Context, classID uuid.UUID) ([]StudentProfile, error) {
-	rows, err := q.db.QueryContext(ctx, listStudentsByClass, classID)
+	rows, err := q.db.Query(ctx, listStudentsByClass, classID)
 	if err != nil {
 		return nil, err
 	}
@@ -256,9 +252,6 @@ func (q *Queries) ListStudentsByClass(ctx context.Context, classID uuid.UUID) ([
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -280,16 +273,16 @@ RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, specia
 `
 
 type UpdateStudentProfileParams struct {
-	ID             uuid.UUID      `json:"id"`
-	FullName       string         `json:"full_name"`
-	Address        sql.NullString `json:"address"`
-	Phone          sql.NullString `json:"phone"`
-	Whatsapp       sql.NullString `json:"whatsapp"`
-	SpecialRemarks sql.NullString `json:"special_remarks"`
+	ID             uuid.UUID   `json:"id"`
+	FullName       string      `json:"full_name"`
+	Address        pgtype.Text `json:"address"`
+	Phone          pgtype.Text `json:"phone"`
+	Whatsapp       pgtype.Text `json:"whatsapp"`
+	SpecialRemarks pgtype.Text `json:"special_remarks"`
 }
 
 func (q *Queries) UpdateStudentProfile(ctx context.Context, arg UpdateStudentProfileParams) (StudentProfile, error) {
-	row := q.db.QueryRowContext(ctx, updateStudentProfile,
+	row := q.db.QueryRow(ctx, updateStudentProfile,
 		arg.ID,
 		arg.FullName,
 		arg.Address,

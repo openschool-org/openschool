@@ -39,7 +39,7 @@ func main() {
 	r := gin.Default()
 	r.Use(cors.Default())
 
-	routes.Setup(r)
+	routes.Setup(r, db)
 
 	r.Run(":" + os.Getenv("PORT"))
 }
