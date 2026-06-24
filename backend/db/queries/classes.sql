@@ -168,3 +168,22 @@ WHERE sg.id = $1
 AND sg.id NOT IN (
     SELECT DISTINCT stream_group_id FROM classes WHERE stream_group_id IS NOT NULL
 );
+
+-- name: UpdateClass :one
+UPDATE classes
+SET
+    name            = $2,
+    form_teacher_id = $3
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteClass :exec
+DELETE FROM classes AS c
+WHERE c.id = $1
+AND c.id NOT IN (
+    SELECT DISTINCT class_id FROM class_students
+);
+
+-- name: GetClassStudentCount :one
+SELECT COUNT(*) FROM class_students
+WHERE class_id = $1;

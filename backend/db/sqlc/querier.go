@@ -33,6 +33,7 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeactivateUser(ctx context.Context, id uuid.UUID) (User, error)
 	DeleteAcademicYear(ctx context.Context, id uuid.UUID) error
+	DeleteClass(ctx context.Context, id uuid.UUID) error
 	DeleteGrade(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStream(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStreamGroup(ctx context.Context, id uuid.UUID) (int64, error)
@@ -44,6 +45,7 @@ type Querier interface {
 	GetAttendanceSessionByID(ctx context.Context, id uuid.UUID) (AttendanceSession, error)
 	GetAttendanceSummaryByStudent(ctx context.Context, arg GetAttendanceSummaryByStudentParams) (GetAttendanceSummaryByStudentRow, error)
 	GetClassByID(ctx context.Context, id uuid.UUID) (Class, error)
+	GetClassStudentCount(ctx context.Context, classID uuid.UUID) (int64, error)
 	GetCurrentAcademicYear(ctx context.Context) (AcademicYear, error)
 	GetFormTeacherClass(ctx context.Context, formTeacherID pgtype.UUID) (Class, error)
 	GetGradeByID(ctx context.Context, id uuid.UUID) (Grade, error)
@@ -95,6 +97,7 @@ type Querier interface {
 	SetPrimaryContact(ctx context.Context, arg SetPrimaryContactParams) error
 	UnenrollStudentFromClass(ctx context.Context, arg UnenrollStudentFromClassParams) error
 	UnlinkGuardianFromStudent(ctx context.Context, arg UnlinkGuardianFromStudentParams) error
+	UpdateClass(ctx context.Context, arg UpdateClassParams) (Class, error)
 	UpdateGrade(ctx context.Context, arg UpdateGradeParams) (Grade, error)
 	UpdateGuardian(ctx context.Context, arg UpdateGuardianParams) (Guardian, error)
 	UpdateSchool(ctx context.Context, arg UpdateSchoolParams) (School, error)

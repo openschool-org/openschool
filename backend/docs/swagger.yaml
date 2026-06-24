@@ -1,11 +1,11 @@
 basePath: /api/v1
 definitions:
-  github_com_openschool-org_openschool_db_sqlc.AcademicYear:
+  models.AcademicYearResponse:
     properties:
       created_at:
-        $ref: '#/definitions/pgtype.Timestamptz'
+        type: string
       end_date:
-        $ref: '#/definitions/pgtype.Date'
+        type: string
       id:
         type: string
       is_current:
@@ -13,68 +13,68 @@ definitions:
       label:
         type: string
       start_date:
-        $ref: '#/definitions/pgtype.Date'
+        type: string
     type: object
-  github_com_openschool-org_openschool_db_sqlc.Grade:
+  models.AssignFormTeacherRequest:
     properties:
+      teacher_id:
+        type: string
+    required:
+    - teacher_id
+    type: object
+  models.AssignSubjectTeacherRequest:
+    properties:
+      subject_id:
+        type: string
+      teacher_id:
+        type: string
+    required:
+    - subject_id
+    - teacher_id
+    type: object
+  models.ClassResponse:
+    properties:
+      academic_year_id:
+        type: string
       created_at:
-        $ref: '#/definitions/pgtype.Timestamptz'
+        type: string
+      form_teacher_id:
+        type: string
+      grade_id:
+        type: string
       id:
         type: string
       name:
         type: string
-      sort_order:
-        type: integer
-    type: object
-  github_com_openschool-org_openschool_db_sqlc.School:
-    properties:
-      address:
-        $ref: '#/definitions/pgtype.Text'
-      created_at:
-        $ref: '#/definitions/pgtype.Timestamptz'
-      email:
-        $ref: '#/definitions/pgtype.Text'
-      id:
-        type: string
-      logo_url:
-        $ref: '#/definitions/pgtype.Text'
-      name:
-        type: string
-      phone:
-        $ref: '#/definitions/pgtype.Text'
-    type: object
-  github_com_openschool-org_openschool_db_sqlc.Stream:
-    properties:
-      created_at:
-        $ref: '#/definitions/pgtype.Timestamptz'
-      id:
-        type: string
-      name:
-        type: string
-    type: object
-  github_com_openschool-org_openschool_db_sqlc.StreamGroup:
-    properties:
-      created_at:
-        $ref: '#/definitions/pgtype.Timestamptz'
-      id:
-        type: string
-      name:
+      stream_group_id:
         type: string
       stream_id:
         type: string
     type: object
-  github_com_openschool-org_openschool_db_sqlc.Subject:
+  models.ClassWithDetailsResponse:
     properties:
-      code:
+      academic_year_id:
+        type: string
+      academic_year_label:
         type: string
       created_at:
-        $ref: '#/definitions/pgtype.Timestamptz'
+        type: string
+      form_teacher_id:
+        type: string
+      grade_id:
+        type: string
+      grade_name:
+        type: string
       id:
         type: string
       name:
         type: string
+      stream_group_id:
+        type: string
+      stream_id:
+        type: string
     type: object
-  github_com_openschool-org_openschool_internal_models.CreateAcademicYearRequest:
+  models.CreateAcademicYearRequest:
     properties:
       end_date:
         type: string
@@ -89,7 +89,26 @@ definitions:
     - label
     - start_date
     type: object
-  github_com_openschool-org_openschool_internal_models.CreateGradeRequest:
+  models.CreateClassRequest:
+    properties:
+      academic_year_id:
+        type: string
+      form_teacher_id:
+        type: string
+      grade_id:
+        type: string
+      name:
+        type: string
+      stream_group_id:
+        type: string
+      stream_id:
+        type: string
+    required:
+    - academic_year_id
+    - grade_id
+    - name
+    type: object
+  models.CreateGradeRequest:
     properties:
       name:
         type: string
@@ -98,7 +117,7 @@ definitions:
     required:
     - name
     type: object
-  github_com_openschool-org_openschool_internal_models.CreateSchoolRequest:
+  models.CreateSchoolRequest:
     properties:
       address:
         type: string
@@ -113,21 +132,21 @@ definitions:
     required:
     - name
     type: object
-  github_com_openschool-org_openschool_internal_models.CreateStreamGroupRequest:
+  models.CreateStreamGroupRequest:
     properties:
       name:
         type: string
     required:
     - name
     type: object
-  github_com_openschool-org_openschool_internal_models.CreateStreamRequest:
+  models.CreateStreamRequest:
     properties:
       name:
         type: string
     required:
     - name
     type: object
-  github_com_openschool-org_openschool_internal_models.CreateSubjectRequest:
+  models.CreateSubjectRequest:
     properties:
       code:
         type: string
@@ -137,7 +156,88 @@ definitions:
     - code
     - name
     type: object
-  github_com_openschool-org_openschool_internal_models.UpdateGradeRequest:
+  models.GradeResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      sort_order:
+        type: integer
+    type: object
+  models.SchoolResponse:
+    properties:
+      address:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      logo_url:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+    type: object
+  models.StreamGroupResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      stream_id:
+        type: string
+    type: object
+  models.StreamResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  models.SubjectResponse:
+    properties:
+      code:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  models.SubjectTeacherResponse:
+    properties:
+      subject_code:
+        type: string
+      subject_id:
+        type: string
+      subject_name:
+        type: string
+      teacher_id:
+        type: string
+      teacher_name:
+        type: string
+    type: object
+  models.UpdateClassRequest:
+    properties:
+      form_teacher_id:
+        type: string
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  models.UpdateGradeRequest:
     properties:
       name:
         type: string
@@ -146,7 +246,7 @@ definitions:
     required:
     - name
     type: object
-  github_com_openschool-org_openschool_internal_models.UpdateSchoolRequest:
+  models.UpdateSchoolRequest:
     properties:
       address:
         type: string
@@ -161,21 +261,21 @@ definitions:
     required:
     - name
     type: object
-  github_com_openschool-org_openschool_internal_models.UpdateStreamGroupRequest:
+  models.UpdateStreamGroupRequest:
     properties:
       name:
         type: string
     required:
     - name
     type: object
-  github_com_openschool-org_openschool_internal_models.UpdateStreamRequest:
+  models.UpdateStreamRequest:
     properties:
       name:
         type: string
     required:
     - name
     type: object
-  github_com_openschool-org_openschool_internal_models.UpdateSubjectRequest:
+  models.UpdateSubjectRequest:
     properties:
       code:
         type: string
@@ -184,42 +284,6 @@ definitions:
     required:
     - code
     - name
-    type: object
-  pgtype.Date:
-    properties:
-      infinityModifier:
-        $ref: '#/definitions/pgtype.InfinityModifier'
-      time:
-        type: string
-      valid:
-        type: boolean
-    type: object
-  pgtype.InfinityModifier:
-    enum:
-    - 1
-    - 0
-    - -1
-    format: int32
-    type: integer
-    x-enum-varnames:
-    - Infinity
-    - Finite
-    - NegativeInfinity
-  pgtype.Text:
-    properties:
-      string:
-        type: string
-      valid:
-        type: boolean
-    type: object
-  pgtype.Timestamptz:
-    properties:
-      infinityModifier:
-        $ref: '#/definitions/pgtype.InfinityModifier'
-      time:
-        type: string
-      valid:
-        type: boolean
     type: object
 host: localhost:8080
 info:
@@ -238,7 +302,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.AcademicYear'
+              $ref: '#/definitions/models.AcademicYearResponse'
             type: array
         "500":
           description: Internal Server Error
@@ -261,14 +325,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.CreateAcademicYearRequest'
+          $ref: '#/definitions/models.CreateAcademicYearRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.AcademicYear'
+            $ref: '#/definitions/models.AcademicYearResponse'
         "400":
           description: Bad Request
           schema:
@@ -280,6 +344,35 @@ paths:
       summary: Create academic year
       tags:
       - academic-years
+  /academic-years/{academic_year_id}/classes:
+    get:
+      description: Get all classes for a specific academic year
+      parameters:
+      - description: Academic Year ID
+        in: path
+        name: academic_year_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ClassWithDetailsResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List classes by academic year
+      tags:
+      - classes
   /academic-years/{id}:
     delete:
       description: Delete an academic year by ID
@@ -353,7 +446,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.AcademicYear'
+            $ref: '#/definitions/models.AcademicYearResponse'
         "404":
           description: Not Found
           schema:
@@ -365,6 +458,254 @@ paths:
       summary: Get current academic year
       tags:
       - academic-years
+  /classes:
+    post:
+      consumes:
+      - application/json
+      description: Create a new class for a grade and academic year
+      parameters:
+      - description: Class details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateClassRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.ClassResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create class
+      tags:
+      - classes
+  /classes/{id}:
+    delete:
+      description: Delete a class if no students are enrolled
+      parameters:
+      - description: Class ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete class
+      tags:
+      - classes
+    get:
+      description: Get a single class by its ID
+      parameters:
+      - description: Class ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ClassResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get class by ID
+      tags:
+      - classes
+    put:
+      consumes:
+      - application/json
+      description: Update class name or form teacher
+      parameters:
+      - description: Class ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Class details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateClassRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ClassResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update class
+      tags:
+      - classes
+  /classes/{id}/form-teacher:
+    put:
+      consumes:
+      - application/json
+      description: Assign a form teacher to a class
+      parameters:
+      - description: Class ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Teacher details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AssignFormTeacherRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ClassResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assign form teacher
+      tags:
+      - classes
+  /classes/{id}/subject-teachers:
+    get:
+      description: Get all subject teachers assigned to a class
+      parameters:
+      - description: Class ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SubjectTeacherResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List subject teachers
+      tags:
+      - classes
+    post:
+      consumes:
+      - application/json
+      description: Assign a teacher to teach a subject in a class
+      parameters:
+      - description: Class ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Subject teacher details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AssignSubjectTeacherRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assign subject teacher
+      tags:
+      - classes
+  /classes/current:
+    get:
+      description: Get all classes for the current academic year
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ClassWithDetailsResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List current classes
+      tags:
+      - classes
   /grades:
     get:
       description: Retrieve all grades ordered by sort_order then name
@@ -375,7 +716,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Grade'
+              $ref: '#/definitions/models.GradeResponse'
             type: array
         "500":
           description: Internal Server Error
@@ -398,14 +739,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.CreateGradeRequest'
+          $ref: '#/definitions/models.CreateGradeRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Grade'
+            $ref: '#/definitions/models.GradeResponse'
         "400":
           description: Bad Request
           schema:
@@ -472,7 +813,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Grade'
+            $ref: '#/definitions/models.GradeResponse'
         "400":
           description: Bad Request
           schema:
@@ -505,14 +846,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.UpdateGradeRequest'
+          $ref: '#/definitions/models.UpdateGradeRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Grade'
+            $ref: '#/definitions/models.GradeResponse'
         "400":
           description: Bad Request
           schema:
@@ -533,7 +874,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.School'
+            $ref: '#/definitions/models.SchoolResponse'
         "404":
           description: Not Found
           schema:
@@ -555,14 +896,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.CreateSchoolRequest'
+          $ref: '#/definitions/models.CreateSchoolRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.School'
+            $ref: '#/definitions/models.SchoolResponse'
         "400":
           description: Bad Request
           schema:
@@ -590,14 +931,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.UpdateSchoolRequest'
+          $ref: '#/definitions/models.UpdateSchoolRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.School'
+            $ref: '#/definitions/models.SchoolResponse'
         "400":
           description: Bad Request
           schema:
@@ -625,7 +966,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Stream'
+              $ref: '#/definitions/models.StreamResponse'
             type: array
         "500":
           description: Internal Server Error
@@ -648,14 +989,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.CreateStreamRequest'
+          $ref: '#/definitions/models.CreateStreamRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Stream'
+            $ref: '#/definitions/models.StreamResponse'
         "400":
           description: Bad Request
           schema:
@@ -723,7 +1064,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Stream'
+            $ref: '#/definitions/models.StreamResponse'
         "400":
           description: Bad Request
           schema:
@@ -756,14 +1097,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.UpdateStreamRequest'
+          $ref: '#/definitions/models.UpdateStreamRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Stream'
+            $ref: '#/definitions/models.StreamResponse'
         "400":
           description: Bad Request
           schema:
@@ -791,7 +1132,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.StreamGroup'
+              $ref: '#/definitions/models.StreamGroupResponse'
             type: array
         "400":
           description: Bad Request
@@ -825,14 +1166,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.CreateStreamGroupRequest'
+          $ref: '#/definitions/models.CreateStreamGroupRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.StreamGroup'
+            $ref: '#/definitions/models.StreamGroupResponse'
         "400":
           description: Bad Request
           schema:
@@ -910,7 +1251,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.StreamGroup'
+            $ref: '#/definitions/models.StreamGroupResponse'
         "400":
           description: Bad Request
           schema:
@@ -948,14 +1289,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.UpdateStreamGroupRequest'
+          $ref: '#/definitions/models.UpdateStreamGroupRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.StreamGroup'
+            $ref: '#/definitions/models.StreamGroupResponse'
         "400":
           description: Bad Request
           schema:
@@ -977,7 +1318,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Subject'
+              $ref: '#/definitions/models.SubjectResponse'
             type: array
         "500":
           description: Internal Server Error
@@ -1000,14 +1341,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.CreateSubjectRequest'
+          $ref: '#/definitions/models.CreateSubjectRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Subject'
+            $ref: '#/definitions/models.SubjectResponse'
         "400":
           description: Bad Request
           schema:
@@ -1075,7 +1416,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Subject'
+            $ref: '#/definitions/models.SubjectResponse'
         "400":
           description: Bad Request
           schema:
@@ -1108,14 +1449,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.UpdateSubjectRequest'
+          $ref: '#/definitions/models.UpdateSubjectRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Subject'
+            $ref: '#/definitions/models.SubjectResponse'
         "400":
           description: Bad Request
           schema:
@@ -1129,8 +1470,8 @@ paths:
       - subjects
 securityDefinitions:
   BearerAuth:
-    description: 'Type "Bearer" followed by a space and your JWT token. Example:
-      "Bearer eyJhbGci..."'
+    description: 'Type "Bearer" followed by a space and your JWT token. Example: "Bearer
+      eyJhbGci..."'
     in: header
     name: Authorization
     type: apiKey

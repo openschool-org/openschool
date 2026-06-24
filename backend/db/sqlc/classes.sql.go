@@ -163,6 +163,19 @@ func (q *Queries) CreateStreamGroup(ctx context.Context, arg CreateStreamGroupPa
 	return i, err
 }
 
+const deleteClass = `-- name: DeleteClass :exec
+DELETE FROM classes AS c
+WHERE c.id = $1
+AND c.id NOT IN (
+    SELECT DISTINCT class_id FROM class_students
+)
+`
+
+func (q *Queries) DeleteClass(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteClass, id)
+	return err
+}
+
 const deleteGrade = `-- name: DeleteGrade :execrows
 DELETE FROM grades AS g
 WHERE g.id = $1
@@ -246,6 +259,18 @@ func (q *Queries) GetClassByID(ctx context.Context, id uuid.UUID) (Class, error)
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getClassStudentCount = `-- name: GetClassStudentCount :one
+SELECT COUNT(*) FROM class_students
+WHERE class_id = $1
+`
+
+func (q *Queries) GetClassStudentCount(ctx context.Context, classID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, getClassStudentCount, classID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const getGradeByID = `-- name: GetGradeByID :one
@@ -587,6 +612,37 @@ type UnenrollStudentFromClassParams struct {
 func (q *Queries) UnenrollStudentFromClass(ctx context.Context, arg UnenrollStudentFromClassParams) error {
 	_, err := q.db.Exec(ctx, unenrollStudentFromClass, arg.ClassID, arg.StudentID)
 	return err
+}
+
+const updateClass = `-- name: UpdateClass :one
+UPDATE classes
+SET
+    name            = $2,
+    form_teacher_id = $3
+WHERE id = $1
+RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at
+`
+
+type UpdateClassParams struct {
+	ID            uuid.UUID   `json:"id"`
+	Name          string      `json:"name"`
+	FormTeacherID pgtype.UUID `json:"form_teacher_id"`
+}
+
+func (q *Queries) UpdateClass(ctx context.Context, arg UpdateClassParams) (Class, error) {
+	row := q.db.QueryRow(ctx, updateClass, arg.ID, arg.Name, arg.FormTeacherID)
+	var i Class
+	err := row.Scan(
+		&i.ID,
+		&i.GradeID,
+		&i.AcademicYearID,
+		&i.FormTeacherID,
+		&i.StreamID,
+		&i.StreamGroupID,
+		&i.Name,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const updateGrade = `-- name: UpdateGrade :one

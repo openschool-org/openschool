@@ -6,12 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/services"
 )
-
-var _ db.Stream
 
 type StreamHandler struct {
 	service *services.StreamService
@@ -28,7 +25,7 @@ func NewStreamHandler(service *services.StreamService) *StreamHandler {
 // @Accept       json
 // @Produce      json
 // @Param        request  body      models.CreateStreamRequest  true  "Stream info"
-// @Success      201      {object}  db.Stream
+// @Success      201      {object}  models.StreamResponse
 // @Failure      400      {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /streams [post]
@@ -54,7 +51,7 @@ func (h *StreamHandler) Create(c *gin.Context) {
 // @Tags         streams
 // @Produce      json
 // @Param        id   path      string  true  "Stream UUID"
-// @Success      200  {object}  db.Stream
+// @Success      200  {object}  models.StreamResponse
 // @Failure      400  {object}  map[string]string
 // @Failure      404  {object}  map[string]string
 // @Security     BearerAuth
@@ -80,7 +77,7 @@ func (h *StreamHandler) GetByID(c *gin.Context) {
 // @Description  Retrieve all streams ordered by name
 // @Tags         streams
 // @Produce      json
-// @Success      200  {array}   db.Stream
+// @Success      200  {array}   models.StreamResponse
 // @Failure      500  {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /streams [get]
@@ -102,7 +99,7 @@ func (h *StreamHandler) List(c *gin.Context) {
 // @Produce      json
 // @Param        id       path      string                      true  "Stream UUID"
 // @Param        request  body      models.UpdateStreamRequest  true  "Stream info"
-// @Success      200      {object}  db.Stream
+// @Success      200      {object}  models.StreamResponse
 // @Failure      400      {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /streams/{id} [put]
@@ -167,7 +164,7 @@ func (h *StreamHandler) Delete(c *gin.Context) {
 // @Produce      json
 // @Param        id       path      string                           true  "Stream UUID"
 // @Param        request  body      models.CreateStreamGroupRequest  true  "Stream group info"
-// @Success      201      {object}  db.StreamGroup
+// @Success      201      {object}  models.StreamGroupResponse
 // @Failure      400      {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /streams/{id}/groups [post]
@@ -199,7 +196,7 @@ func (h *StreamHandler) CreateGroup(c *gin.Context) {
 // @Tags         streams
 // @Produce      json
 // @Param        id   path      string  true  "Stream UUID"
-// @Success      200  {array}   db.StreamGroup
+// @Success      200  {array}   models.StreamGroupResponse
 // @Failure      400  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Security     BearerAuth
@@ -227,7 +224,7 @@ func (h *StreamHandler) ListGroups(c *gin.Context) {
 // @Produce      json
 // @Param        id       path      string  true  "Stream UUID"
 // @Param        groupId  path      string  true  "Stream group UUID"
-// @Success      200      {object}  db.StreamGroup
+// @Success      200      {object}  models.StreamGroupResponse
 // @Failure      400      {object}  map[string]string
 // @Failure      404      {object}  map[string]string
 // @Security     BearerAuth
@@ -257,7 +254,7 @@ func (h *StreamHandler) GetGroupByID(c *gin.Context) {
 // @Param        id       path      string                           true  "Stream UUID"
 // @Param        groupId  path      string                           true  "Stream group UUID"
 // @Param        request  body      models.UpdateStreamGroupRequest  true  "Stream group info"
-// @Success      200      {object}  db.StreamGroup
+// @Success      200      {object}  models.StreamGroupResponse
 // @Failure      400      {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /streams/{id}/groups/{groupId} [put]

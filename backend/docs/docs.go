@@ -36,7 +36,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.AcademicYear"
+                                "$ref": "#/definitions/models.AcademicYearResponse"
                             }
                         }
                     },
@@ -75,7 +75,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_internal_models.CreateAcademicYearRequest"
+                            "$ref": "#/definitions/models.CreateAcademicYearRequest"
                         }
                     }
                 ],
@@ -83,7 +83,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.AcademicYear"
+                            "$ref": "#/definitions/models.AcademicYearResponse"
                         }
                     },
                     "400": {
@@ -117,11 +117,57 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.AcademicYear"
+                            "$ref": "#/definitions/models.AcademicYearResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/academic-years/{academic_year_id}/classes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all classes for a specific academic year",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "List classes by academic year",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Academic Year ID",
+                        "name": "academic_year_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ClassWithDetailsResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -233,6 +279,397 @@ const docTemplate = `{
                 }
             }
         },
+        "/classes": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new class for a grade and academic year",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Create class",
+                "parameters": [
+                    {
+                        "description": "Class details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateClassRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.ClassResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/classes/current": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all classes for the current academic year",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "List current classes",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ClassWithDetailsResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/classes/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a single class by its ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Get class by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Class ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ClassResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update class name or form teacher",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Update class",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Class ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Class details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateClassRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ClassResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a class if no students are enrolled",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Delete class",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Class ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/classes/{id}/form-teacher": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assign a form teacher to a class",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Assign form teacher",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Class ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Teacher details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AssignFormTeacherRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ClassResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/classes/{id}/subject-teachers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all subject teachers assigned to a class",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "List subject teachers",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Class ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SubjectTeacherResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assign a teacher to teach a subject in a class",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Assign subject teacher",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Class ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Subject teacher details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AssignSubjectTeacherRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/grades": {
             "get": {
                 "security": [
@@ -254,7 +691,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.Grade"
+                                "$ref": "#/definitions/models.GradeResponse"
                             }
                         }
                     },
@@ -293,7 +730,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_internal_models.CreateGradeRequest"
+                            "$ref": "#/definitions/models.CreateGradeRequest"
                         }
                     }
                 ],
@@ -301,7 +738,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.Grade"
+                            "$ref": "#/definitions/models.GradeResponse"
                         }
                     },
                     "400": {
@@ -344,7 +781,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.Grade"
+                            "$ref": "#/definitions/models.GradeResponse"
                         }
                     },
                     "400": {
@@ -398,7 +835,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_internal_models.UpdateGradeRequest"
+                            "$ref": "#/definitions/models.UpdateGradeRequest"
                         }
                     }
                 ],
@@ -406,7 +843,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.Grade"
+                            "$ref": "#/definitions/models.GradeResponse"
                         }
                     },
                     "400": {
@@ -502,7 +939,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.School"
+                            "$ref": "#/definitions/models.SchoolResponse"
                         }
                     },
                     "404": {
@@ -540,7 +977,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_internal_models.CreateSchoolRequest"
+                            "$ref": "#/definitions/models.CreateSchoolRequest"
                         }
                     }
                 ],
@@ -548,7 +985,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.School"
+                            "$ref": "#/definitions/models.SchoolResponse"
                         }
                     },
                     "400": {
@@ -595,7 +1032,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_internal_models.UpdateSchoolRequest"
+                            "$ref": "#/definitions/models.UpdateSchoolRequest"
                         }
                     }
                 ],
@@ -603,7 +1040,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.School"
+                            "$ref": "#/definitions/models.SchoolResponse"
                         }
                     },
                     "400": {
@@ -648,7 +1085,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.Stream"
+                                "$ref": "#/definitions/models.StreamResponse"
                             }
                         }
                     },
@@ -687,7 +1124,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_internal_models.CreateStreamRequest"
+                            "$ref": "#/definitions/models.CreateStreamRequest"
                         }
                     }
                 ],
@@ -695,7 +1132,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.Stream"
+                            "$ref": "#/definitions/models.StreamResponse"
                         }
                     },
                     "400": {
@@ -738,7 +1175,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.Stream"
+                            "$ref": "#/definitions/models.StreamResponse"
                         }
                     },
                     "400": {
@@ -792,7 +1229,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_internal_models.UpdateStreamRequest"
+                            "$ref": "#/definitions/models.UpdateStreamRequest"
                         }
                     }
                 ],
@@ -800,7 +1237,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.Stream"
+                            "$ref": "#/definitions/models.StreamResponse"
                         }
                     },
                     "400": {
@@ -907,7 +1344,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.StreamGroup"
+                                "$ref": "#/definitions/models.StreamGroupResponse"
                             }
                         }
                     },
@@ -962,7 +1399,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_internal_models.CreateStreamGroupRequest"
+                            "$ref": "#/definitions/models.CreateStreamGroupRequest"
                         }
                     }
                 ],
@@ -970,7 +1407,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.StreamGroup"
+                            "$ref": "#/definitions/models.StreamGroupResponse"
                         }
                     },
                     "400": {
@@ -1020,7 +1457,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.StreamGroup"
+                            "$ref": "#/definitions/models.StreamGroupResponse"
                         }
                     },
                     "400": {
@@ -1081,7 +1518,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_internal_models.UpdateStreamGroupRequest"
+                            "$ref": "#/definitions/models.UpdateStreamGroupRequest"
                         }
                     }
                 ],
@@ -1089,7 +1526,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.StreamGroup"
+                            "$ref": "#/definitions/models.StreamGroupResponse"
                         }
                     },
                     "400": {
@@ -1194,7 +1631,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.Subject"
+                                "$ref": "#/definitions/models.SubjectResponse"
                             }
                         }
                     },
@@ -1233,7 +1670,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_internal_models.CreateSubjectRequest"
+                            "$ref": "#/definitions/models.CreateSubjectRequest"
                         }
                     }
                 ],
@@ -1241,7 +1678,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.Subject"
+                            "$ref": "#/definitions/models.SubjectResponse"
                         }
                     },
                     "400": {
@@ -1284,7 +1721,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.Subject"
+                            "$ref": "#/definitions/models.SubjectResponse"
                         }
                     },
                     "400": {
@@ -1338,7 +1775,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_internal_models.UpdateSubjectRequest"
+                            "$ref": "#/definitions/models.UpdateSubjectRequest"
                         }
                     }
                 ],
@@ -1346,7 +1783,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_openschool-org_openschool_db_sqlc.Subject"
+                            "$ref": "#/definitions/models.SubjectResponse"
                         }
                     },
                     "400": {
@@ -1425,14 +1862,14 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_openschool-org_openschool_db_sqlc.AcademicYear": {
+        "models.AcademicYearResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
-                    "$ref": "#/definitions/pgtype.Timestamptz"
+                    "type": "string"
                 },
                 "end_date": {
-                    "$ref": "#/definitions/pgtype.Date"
+                    "type": "string"
                 },
                 "id": {
                     "type": "string"
@@ -1444,15 +1881,50 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "start_date": {
-                    "$ref": "#/definitions/pgtype.Date"
+                    "type": "string"
                 }
             }
         },
-        "github_com_openschool-org_openschool_db_sqlc.Grade": {
+        "models.AssignFormTeacherRequest": {
+            "type": "object",
+            "required": [
+                "teacher_id"
+            ],
+            "properties": {
+                "teacher_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.AssignSubjectTeacherRequest": {
+            "type": "object",
+            "required": [
+                "subject_id",
+                "teacher_id"
+            ],
+            "properties": {
+                "subject_id": {
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ClassResponse": {
             "type": "object",
             "properties": {
+                "academic_year_id": {
+                    "type": "string"
+                },
                 "created_at": {
-                    "$ref": "#/definitions/pgtype.Timestamptz"
+                    "type": "string"
+                },
+                "form_teacher_id": {
+                    "type": "string"
+                },
+                "grade_id": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "string"
@@ -1460,61 +1932,7 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
-                "sort_order": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_openschool-org_openschool_db_sqlc.School": {
-            "type": "object",
-            "properties": {
-                "address": {
-                    "$ref": "#/definitions/pgtype.Text"
-                },
-                "created_at": {
-                    "$ref": "#/definitions/pgtype.Timestamptz"
-                },
-                "email": {
-                    "$ref": "#/definitions/pgtype.Text"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "logo_url": {
-                    "$ref": "#/definitions/pgtype.Text"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "phone": {
-                    "$ref": "#/definitions/pgtype.Text"
-                }
-            }
-        },
-        "github_com_openschool-org_openschool_db_sqlc.Stream": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "$ref": "#/definitions/pgtype.Timestamptz"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_openschool-org_openschool_db_sqlc.StreamGroup": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "$ref": "#/definitions/pgtype.Timestamptz"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
+                "stream_group_id": {
                     "type": "string"
                 },
                 "stream_id": {
@@ -1522,24 +1940,42 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_openschool-org_openschool_db_sqlc.Subject": {
+        "models.ClassWithDetailsResponse": {
             "type": "object",
             "properties": {
-                "code": {
+                "academic_year_id": {
+                    "type": "string"
+                },
+                "academic_year_label": {
                     "type": "string"
                 },
                 "created_at": {
-                    "$ref": "#/definitions/pgtype.Timestamptz"
+                    "type": "string"
+                },
+                "form_teacher_id": {
+                    "type": "string"
+                },
+                "grade_id": {
+                    "type": "string"
+                },
+                "grade_name": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
+                },
+                "stream_group_id": {
+                    "type": "string"
+                },
+                "stream_id": {
+                    "type": "string"
                 }
             }
         },
-        "github_com_openschool-org_openschool_internal_models.CreateAcademicYearRequest": {
+        "models.CreateAcademicYearRequest": {
             "type": "object",
             "required": [
                 "end_date",
@@ -1561,7 +1997,35 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_openschool-org_openschool_internal_models.CreateGradeRequest": {
+        "models.CreateClassRequest": {
+            "type": "object",
+            "required": [
+                "academic_year_id",
+                "grade_id",
+                "name"
+            ],
+            "properties": {
+                "academic_year_id": {
+                    "type": "string"
+                },
+                "form_teacher_id": {
+                    "type": "string"
+                },
+                "grade_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "stream_group_id": {
+                    "type": "string"
+                },
+                "stream_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CreateGradeRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -1575,7 +2039,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_openschool-org_openschool_internal_models.CreateSchoolRequest": {
+        "models.CreateSchoolRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -1598,7 +2062,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_openschool-org_openschool_internal_models.CreateStreamGroupRequest": {
+        "models.CreateStreamGroupRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -1609,7 +2073,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_openschool-org_openschool_internal_models.CreateStreamRequest": {
+        "models.CreateStreamRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -1620,7 +2084,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_openschool-org_openschool_internal_models.CreateSubjectRequest": {
+        "models.CreateSubjectRequest": {
             "type": "object",
             "required": [
                 "code",
@@ -1635,7 +2099,132 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_openschool-org_openschool_internal_models.UpdateGradeRequest": {
+        "models.GradeResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.SchoolResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "logo_url": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.StreamGroupResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "stream_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.StreamResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SubjectResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SubjectTeacherResponse": {
+            "type": "object",
+            "properties": {
+                "subject_code": {
+                    "type": "string"
+                },
+                "subject_id": {
+                    "type": "string"
+                },
+                "subject_name": {
+                    "type": "string"
+                },
+                "teacher_id": {
+                    "type": "string"
+                },
+                "teacher_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UpdateClassRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "form_teacher_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UpdateGradeRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -1649,7 +2238,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_openschool-org_openschool_internal_models.UpdateSchoolRequest": {
+        "models.UpdateSchoolRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -1672,7 +2261,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_openschool-org_openschool_internal_models.UpdateStreamGroupRequest": {
+        "models.UpdateStreamGroupRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -1683,7 +2272,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_openschool-org_openschool_internal_models.UpdateStreamRequest": {
+        "models.UpdateStreamRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -1694,7 +2283,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_openschool-org_openschool_internal_models.UpdateSubjectRequest": {
+        "models.UpdateSubjectRequest": {
             "type": "object",
             "required": [
                 "code",
@@ -1706,59 +2295,6 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
-                }
-            }
-        },
-        "pgtype.Date": {
-            "type": "object",
-            "properties": {
-                "infinityModifier": {
-                    "$ref": "#/definitions/pgtype.InfinityModifier"
-                },
-                "time": {
-                    "type": "string"
-                },
-                "valid": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "pgtype.InfinityModifier": {
-            "type": "integer",
-            "format": "int32",
-            "enum": [
-                1,
-                0,
-                -1
-            ],
-            "x-enum-varnames": [
-                "Infinity",
-                "Finite",
-                "NegativeInfinity"
-            ]
-        },
-        "pgtype.Text": {
-            "type": "object",
-            "properties": {
-                "string": {
-                    "type": "string"
-                },
-                "valid": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "pgtype.Timestamptz": {
-            "type": "object",
-            "properties": {
-                "infinityModifier": {
-                    "$ref": "#/definitions/pgtype.InfinityModifier"
-                },
-                "time": {
-                    "type": "string"
-                },
-                "valid": {
-                    "type": "boolean"
                 }
             }
         }

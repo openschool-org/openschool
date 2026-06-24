@@ -5,12 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/services"
 )
-
-var _ db.School
 
 type SchoolHandler struct {
 	service *services.SchoolService
@@ -27,7 +24,7 @@ func NewSchoolHandler(service *services.SchoolService) *SchoolHandler {
 // @Accept       json
 // @Produce      json
 // @Param        request  body      models.CreateSchoolRequest  true  "School info"
-// @Success      201      {object}  db.School
+// @Success      201      {object}  models.SchoolResponse
 // @Failure      400      {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /school [post]
@@ -52,7 +49,7 @@ func (h *SchoolHandler) Create(c *gin.Context) {
 // @Description  Retrieve the school record for this instance
 // @Tags         school
 // @Produce      json
-// @Success      200  {object}  db.School
+// @Success      200  {object}  models.SchoolResponse
 // @Failure      404  {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /school [get]
@@ -74,7 +71,7 @@ func (h *SchoolHandler) Get(c *gin.Context) {
 // @Produce      json
 // @Param        id       path      string                      true  "School UUID"
 // @Param        request  body      models.UpdateSchoolRequest  true  "School info"
-// @Success      200      {object}  db.School
+// @Success      200      {object}  models.SchoolResponse
 // @Failure      400      {object}  map[string]string
 // @Failure      500      {object}  map[string]string
 // @Security     BearerAuth
@@ -109,7 +106,7 @@ func (h *SchoolHandler) Update(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        request  body      models.CreateAcademicYearRequest  true  "Academic year info"
-// @Success      201      {object}  db.AcademicYear
+// @Success      201      {object}  models.AcademicYearResponse
 // @Failure      400      {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /academic-years [post]
@@ -134,7 +131,7 @@ func (h *SchoolHandler) CreateAcademicYear(c *gin.Context) {
 // @Description  Retrieve all academic years ordered by start date
 // @Tags         academic-years
 // @Produce      json
-// @Success      200  {array}   db.AcademicYear
+// @Success      200  {array}   models.AcademicYearResponse
 // @Failure      500  {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /academic-years [get]
@@ -153,7 +150,7 @@ func (h *SchoolHandler) ListAcademicYears(c *gin.Context) {
 // @Description  Retrieve the academic year marked as current
 // @Tags         academic-years
 // @Produce      json
-// @Success      200  {object}  db.AcademicYear
+// @Success      200  {object}  models.AcademicYearResponse
 // @Failure      404  {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /academic-years/current [get]

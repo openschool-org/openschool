@@ -6,12 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/services"
 )
-
-var _ db.Grade
 
 type GradeHandler struct {
 	service *services.GradeService
@@ -28,7 +25,7 @@ func NewGradeHandler(service *services.GradeService) *GradeHandler {
 // @Accept       json
 // @Produce      json
 // @Param        request  body      models.CreateGradeRequest  true  "Grade info"
-// @Success      201      {object}  db.Grade
+// @Success      201      {object}  models.GradeResponse
 // @Failure      400      {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /grades [post]
@@ -54,7 +51,7 @@ func (h *GradeHandler) Create(c *gin.Context) {
 // @Tags         grades
 // @Produce      json
 // @Param        id   path      string  true  "Grade UUID"
-// @Success      200  {object}  db.Grade
+// @Success      200  {object}  models.GradeResponse
 // @Failure      400  {object}  map[string]string
 // @Failure      404  {object}  map[string]string
 // @Security     BearerAuth
@@ -81,7 +78,7 @@ func (h *GradeHandler) GetByID(c *gin.Context) {
 // @Description  Retrieve all grades ordered by sort_order then name
 // @Tags         grades
 // @Produce      json
-// @Success      200  {array}   db.Grade
+// @Success      200  {array}   models.GradeResponse
 // @Failure      500  {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /grades [get]
@@ -103,7 +100,7 @@ func (h *GradeHandler) List(c *gin.Context) {
 // @Produce      json
 // @Param        id       path      string                     true  "Grade UUID"
 // @Param        request  body      models.UpdateGradeRequest  true  "Grade info"
-// @Success      200      {object}  db.Grade
+// @Success      200      {object}  models.GradeResponse
 // @Failure      400      {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /grades/{id} [put]

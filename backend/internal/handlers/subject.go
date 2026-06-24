@@ -6,12 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/services"
 )
-
-var _ db.Subject
 
 type SubjectHandler struct {
 	service *services.SubjectService
@@ -28,7 +25,7 @@ func NewSubjectHandler(service *services.SubjectService) *SubjectHandler {
 // @Accept       json
 // @Produce      json
 // @Param        request  body      models.CreateSubjectRequest  true  "Subject info"
-// @Success      201      {object}  db.Subject
+// @Success      201      {object}  models.SubjectResponse
 // @Failure      400      {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /subjects [post]
@@ -54,7 +51,7 @@ func (h *SubjectHandler) Create(c *gin.Context) {
 // @Tags         subjects
 // @Produce      json
 // @Param        id   path      string  true  "Subject UUID"
-// @Success      200  {object}  db.Subject
+// @Success      200  {object}  models.SubjectResponse
 // @Failure      400  {object}  map[string]string
 // @Failure      404  {object}  map[string]string
 // @Security     BearerAuth
@@ -81,7 +78,7 @@ func (h *SubjectHandler) GetByID(c *gin.Context) {
 // @Description  Retrieve all subjects ordered by name
 // @Tags         subjects
 // @Produce      json
-// @Success      200  {array}   db.Subject
+// @Success      200  {array}   models.SubjectResponse
 // @Failure      500  {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /subjects [get]
@@ -103,7 +100,7 @@ func (h *SubjectHandler) List(c *gin.Context) {
 // @Produce      json
 // @Param        id       path      string                       true  "Subject UUID"
 // @Param        request  body      models.UpdateSubjectRequest  true  "Subject info"
-// @Success      200      {object}  db.Subject
+// @Success      200      {object}  models.SubjectResponse
 // @Failure      400      {object}  map[string]string
 // @Security     BearerAuth
 // @Router       /subjects/{id} [put]
