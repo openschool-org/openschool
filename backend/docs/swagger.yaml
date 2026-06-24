@@ -1,0 +1,1137 @@
+basePath: /api/v1
+definitions:
+  github_com_openschool-org_openschool_db_sqlc.AcademicYear:
+    properties:
+      created_at:
+        $ref: '#/definitions/pgtype.Timestamptz'
+      end_date:
+        $ref: '#/definitions/pgtype.Date'
+      id:
+        type: string
+      is_current:
+        type: boolean
+      label:
+        type: string
+      start_date:
+        $ref: '#/definitions/pgtype.Date'
+    type: object
+  github_com_openschool-org_openschool_db_sqlc.Grade:
+    properties:
+      created_at:
+        $ref: '#/definitions/pgtype.Timestamptz'
+      id:
+        type: string
+      name:
+        type: string
+      sort_order:
+        type: integer
+    type: object
+  github_com_openschool-org_openschool_db_sqlc.School:
+    properties:
+      address:
+        $ref: '#/definitions/pgtype.Text'
+      created_at:
+        $ref: '#/definitions/pgtype.Timestamptz'
+      email:
+        $ref: '#/definitions/pgtype.Text'
+      id:
+        type: string
+      logo_url:
+        $ref: '#/definitions/pgtype.Text'
+      name:
+        type: string
+      phone:
+        $ref: '#/definitions/pgtype.Text'
+    type: object
+  github_com_openschool-org_openschool_db_sqlc.Stream:
+    properties:
+      created_at:
+        $ref: '#/definitions/pgtype.Timestamptz'
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_openschool-org_openschool_db_sqlc.StreamGroup:
+    properties:
+      created_at:
+        $ref: '#/definitions/pgtype.Timestamptz'
+      id:
+        type: string
+      name:
+        type: string
+      stream_id:
+        type: string
+    type: object
+  github_com_openschool-org_openschool_db_sqlc.Subject:
+    properties:
+      code:
+        type: string
+      created_at:
+        $ref: '#/definitions/pgtype.Timestamptz'
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_openschool-org_openschool_internal_models.CreateAcademicYearRequest:
+    properties:
+      end_date:
+        type: string
+      is_current:
+        type: boolean
+      label:
+        type: string
+      start_date:
+        type: string
+    required:
+    - end_date
+    - label
+    - start_date
+    type: object
+  github_com_openschool-org_openschool_internal_models.CreateGradeRequest:
+    properties:
+      name:
+        type: string
+      sort_order:
+        type: integer
+    required:
+    - name
+    type: object
+  github_com_openschool-org_openschool_internal_models.CreateSchoolRequest:
+    properties:
+      address:
+        type: string
+      email:
+        type: string
+      logo_url:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_openschool-org_openschool_internal_models.CreateStreamGroupRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_openschool-org_openschool_internal_models.CreateStreamRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_openschool-org_openschool_internal_models.CreateSubjectRequest:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+    required:
+    - code
+    - name
+    type: object
+  github_com_openschool-org_openschool_internal_models.UpdateGradeRequest:
+    properties:
+      name:
+        type: string
+      sort_order:
+        type: integer
+    required:
+    - name
+    type: object
+  github_com_openschool-org_openschool_internal_models.UpdateSchoolRequest:
+    properties:
+      address:
+        type: string
+      email:
+        type: string
+      logo_url:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_openschool-org_openschool_internal_models.UpdateStreamGroupRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_openschool-org_openschool_internal_models.UpdateStreamRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_openschool-org_openschool_internal_models.UpdateSubjectRequest:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+    required:
+    - code
+    - name
+    type: object
+  pgtype.Date:
+    properties:
+      infinityModifier:
+        $ref: '#/definitions/pgtype.InfinityModifier'
+      time:
+        type: string
+      valid:
+        type: boolean
+    type: object
+  pgtype.InfinityModifier:
+    enum:
+    - 1
+    - 0
+    - -1
+    format: int32
+    type: integer
+    x-enum-varnames:
+    - Infinity
+    - Finite
+    - NegativeInfinity
+  pgtype.Text:
+    properties:
+      string:
+        type: string
+      valid:
+        type: boolean
+    type: object
+  pgtype.Timestamptz:
+    properties:
+      infinityModifier:
+        $ref: '#/definitions/pgtype.InfinityModifier'
+      time:
+        type: string
+      valid:
+        type: boolean
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Digital Infrastructure for Sri Lankan Schools
+  title: OpenSchool API
+  version: "1.0"
+paths:
+  /academic-years:
+    get:
+      description: Retrieve all academic years ordered by start date
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.AcademicYear'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List academic years
+      tags:
+      - academic-years
+    post:
+      consumes:
+      - application/json
+      description: Create a new academic year
+      parameters:
+      - description: Academic year info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.CreateAcademicYearRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.AcademicYear'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create academic year
+      tags:
+      - academic-years
+  /academic-years/{id}:
+    delete:
+      description: Delete an academic year by ID
+      parameters:
+      - description: Academic year UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete academic year
+      tags:
+      - academic-years
+  /academic-years/{id}/set-current:
+    put:
+      description: Mark an academic year as the current one; clears the previous current
+      parameters:
+      - description: Academic year UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Set current academic year
+      tags:
+      - academic-years
+  /academic-years/current:
+    get:
+      description: Retrieve the academic year marked as current
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.AcademicYear'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get current academic year
+      tags:
+      - academic-years
+  /grades:
+    get:
+      description: Retrieve all grades ordered by sort_order then name
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Grade'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List grades
+      tags:
+      - grades
+    post:
+      consumes:
+      - application/json
+      description: Create a new grade level
+      parameters:
+      - description: Grade info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.CreateGradeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Grade'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create grade
+      tags:
+      - grades
+  /grades/{id}:
+    delete:
+      description: Delete a grade by ID; blocked if the grade is assigned to any class
+      parameters:
+      - description: Grade UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete grade
+      tags:
+      - grades
+    get:
+      description: Retrieve a grade by ID
+      parameters:
+      - description: Grade UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Grade'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get grade
+      tags:
+      - grades
+    put:
+      consumes:
+      - application/json
+      description: Update a grade's name or sort order by ID
+      parameters:
+      - description: Grade UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Grade info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.UpdateGradeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Grade'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update grade
+      tags:
+      - grades
+  /school:
+    get:
+      description: Retrieve the school record for this instance
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.School'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get school
+      tags:
+      - school
+    post:
+      consumes:
+      - application/json
+      description: Create the school record for this instance
+      parameters:
+      - description: School info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.CreateSchoolRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.School'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create school
+      tags:
+      - school
+  /school/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Update the school record by ID
+      parameters:
+      - description: School UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: School info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.UpdateSchoolRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.School'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update school
+      tags:
+      - school
+  /streams:
+    get:
+      description: Retrieve all streams ordered by name
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Stream'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List streams
+      tags:
+      - streams
+    post:
+      consumes:
+      - application/json
+      description: Create a new A/L stream (e.g. Science, Commerce, Arts)
+      parameters:
+      - description: Stream info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.CreateStreamRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Stream'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create stream
+      tags:
+      - streams
+  /streams/{id}:
+    delete:
+      description: Delete a stream by ID; blocked if the stream is assigned to any
+        class
+      parameters:
+      - description: Stream UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete stream
+      tags:
+      - streams
+    get:
+      description: Retrieve a stream by ID
+      parameters:
+      - description: Stream UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Stream'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get stream
+      tags:
+      - streams
+    put:
+      consumes:
+      - application/json
+      description: Update a stream's name by ID
+      parameters:
+      - description: Stream UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stream info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.UpdateStreamRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Stream'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update stream
+      tags:
+      - streams
+  /streams/{id}/groups:
+    get:
+      description: Retrieve all groups belonging to a stream
+      parameters:
+      - description: Stream UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.StreamGroup'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List stream groups
+      tags:
+      - streams
+    post:
+      consumes:
+      - application/json
+      description: Create a sub-group under a stream (e.g. Bio, Maths under Science)
+      parameters:
+      - description: Stream UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stream group info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.CreateStreamGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.StreamGroup'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create stream group
+      tags:
+      - streams
+  /streams/{id}/groups/{groupId}:
+    delete:
+      description: Delete a stream group by ID; blocked if the group is assigned to
+        any class
+      parameters:
+      - description: Stream UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stream group UUID
+        in: path
+        name: groupId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete stream group
+      tags:
+      - streams
+    get:
+      description: Retrieve a stream group by ID
+      parameters:
+      - description: Stream UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stream group UUID
+        in: path
+        name: groupId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.StreamGroup'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get stream group
+      tags:
+      - streams
+    put:
+      consumes:
+      - application/json
+      description: Update a stream group's name by ID
+      parameters:
+      - description: Stream UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stream group UUID
+        in: path
+        name: groupId
+        required: true
+        type: string
+      - description: Stream group info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.UpdateStreamGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.StreamGroup'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update stream group
+      tags:
+      - streams
+  /subjects:
+    get:
+      description: Retrieve all subjects ordered by name
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Subject'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List subjects
+      tags:
+      - subjects
+    post:
+      consumes:
+      - application/json
+      description: Create a new subject with a unique name and code
+      parameters:
+      - description: Subject info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.CreateSubjectRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Subject'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create subject
+      tags:
+      - subjects
+  /subjects/{id}:
+    delete:
+      description: Delete a subject by ID; blocked if the subject is assigned to a
+        grade, class, or student selection
+      parameters:
+      - description: Subject UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete subject
+      tags:
+      - subjects
+    get:
+      description: Retrieve a subject by ID
+      parameters:
+      - description: Subject UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Subject'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get subject
+      tags:
+      - subjects
+    put:
+      consumes:
+      - application/json
+      description: Update a subject's name and code by ID
+      parameters:
+      - description: Subject UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Subject info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_openschool-org_openschool_internal_models.UpdateSubjectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_openschool-org_openschool_db_sqlc.Subject'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update subject
+      tags:
+      - subjects
+securityDefinitions:
+  BearerAuth:
+    description: 'Type "Bearer" followed by a space and your JWT token. Example:
+      "Bearer eyJhbGci..."'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
