@@ -163,6 +163,54 @@ func (q *Queries) CreateStreamGroup(ctx context.Context, arg CreateStreamGroupPa
 	return i, err
 }
 
+const deleteGrade = `-- name: DeleteGrade :execrows
+DELETE FROM grades AS g
+WHERE g.id = $1
+AND g.id NOT IN (
+    SELECT DISTINCT grade_id FROM classes
+)
+`
+
+func (q *Queries) DeleteGrade(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteGrade, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteStream = `-- name: DeleteStream :execrows
+DELETE FROM streams AS s
+WHERE s.id = $1
+AND s.id NOT IN (
+    SELECT DISTINCT stream_id FROM classes WHERE stream_id IS NOT NULL
+)
+`
+
+func (q *Queries) DeleteStream(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteStream, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteStreamGroup = `-- name: DeleteStreamGroup :execrows
+DELETE FROM stream_groups AS sg
+WHERE sg.id = $1
+AND sg.id NOT IN (
+    SELECT DISTINCT stream_group_id FROM classes WHERE stream_group_id IS NOT NULL
+)
+`
+
+func (q *Queries) DeleteStreamGroup(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteStreamGroup, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const enrollStudentInClass = `-- name: EnrollStudentInClass :exec
 INSERT INTO class_students (class_id, student_id)
 VALUES ($1, $2)
@@ -217,9 +265,45 @@ func (q *Queries) GetGradeByID(ctx context.Context, id uuid.UUID) (Grade, error)
 	return i, err
 }
 
+const getStreamByID = `-- name: GetStreamByID :one
+SELECT id, name, created_at FROM streams
+WHERE id = $1
+`
+
+func (q *Queries) GetStreamByID(ctx context.Context, id uuid.UUID) (Stream, error) {
+	row := q.db.QueryRow(ctx, getStreamByID, id)
+	var i Stream
+	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	return i, err
+}
+
+const getStreamGroupByID = `-- name: GetStreamGroupByID :one
+SELECT id, stream_id, name, created_at FROM stream_groups
+WHERE id = $1
+`
+
+func (q *Queries) GetStreamGroupByID(ctx context.Context, id uuid.UUID) (StreamGroup, error) {
+	row := q.db.QueryRow(ctx, getStreamGroupByID, id)
+	var i StreamGroup
+	err := row.Scan(
+		&i.ID,
+		&i.StreamID,
+		&i.Name,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getStudentCurrentClass = `-- name: GetStudentCurrentClass :one
 SELECT
-    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at
+    c.id,
+    c.grade_id,
+    c.academic_year_id,
+    c.form_teacher_id,
+    c.stream_id,
+    c.stream_group_id,
+    c.name,
+    c.created_at
 FROM classes c
 INNER JOIN class_students cs ON cs.class_id = c.id
 INNER JOIN academic_years ay ON ay.id = c.academic_year_id
@@ -503,4 +587,74 @@ type UnenrollStudentFromClassParams struct {
 func (q *Queries) UnenrollStudentFromClass(ctx context.Context, arg UnenrollStudentFromClassParams) error {
 	_, err := q.db.Exec(ctx, unenrollStudentFromClass, arg.ClassID, arg.StudentID)
 	return err
+}
+
+const updateGrade = `-- name: UpdateGrade :one
+UPDATE grades
+SET
+    name       = $2,
+    sort_order = $3
+WHERE id = $1
+RETURNING id, name, sort_order, created_at
+`
+
+type UpdateGradeParams struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	SortOrder int32     `json:"sort_order"`
+}
+
+func (q *Queries) UpdateGrade(ctx context.Context, arg UpdateGradeParams) (Grade, error) {
+	row := q.db.QueryRow(ctx, updateGrade, arg.ID, arg.Name, arg.SortOrder)
+	var i Grade
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.SortOrder,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateStream = `-- name: UpdateStream :one
+UPDATE streams
+SET name = $2
+WHERE id = $1
+RETURNING id, name, created_at
+`
+
+type UpdateStreamParams struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+func (q *Queries) UpdateStream(ctx context.Context, arg UpdateStreamParams) (Stream, error) {
+	row := q.db.QueryRow(ctx, updateStream, arg.ID, arg.Name)
+	var i Stream
+	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	return i, err
+}
+
+const updateStreamGroup = `-- name: UpdateStreamGroup :one
+UPDATE stream_groups
+SET name = $2
+WHERE id = $1
+RETURNING id, stream_id, name, created_at
+`
+
+type UpdateStreamGroupParams struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+func (q *Queries) UpdateStreamGroup(ctx context.Context, arg UpdateStreamGroupParams) (StreamGroup, error) {
+	row := q.db.QueryRow(ctx, updateStreamGroup, arg.ID, arg.Name)
+	var i StreamGroup
+	err := row.Scan(
+		&i.ID,
+		&i.StreamID,
+		&i.Name,
+		&i.CreatedAt,
+	)
+	return i, err
 }

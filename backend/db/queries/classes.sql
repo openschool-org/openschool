@@ -86,7 +86,14 @@ WHERE class_id = $1 AND student_id = $2;
 
 -- name: GetStudentCurrentClass :one
 SELECT
-    c.*
+    c.id,
+    c.grade_id,
+    c.academic_year_id,
+    c.form_teacher_id,
+    c.stream_id,
+    c.stream_group_id,
+    c.name,
+    c.created_at
 FROM classes c
 INNER JOIN class_students cs ON cs.class_id = c.id
 INNER JOIN academic_years ay ON ay.id = c.academic_year_id
@@ -112,3 +119,52 @@ INNER JOIN subjects         s  ON s.id  = cst.subject_id
 INNER JOIN teacher_profiles tp ON tp.id = cst.teacher_id
 WHERE cst.class_id = $1
 ORDER BY s.name ASC;
+
+-- name: UpdateGrade :one
+UPDATE grades
+SET
+    name       = $2,
+    sort_order = $3
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteGrade :execrows
+DELETE FROM grades AS g
+WHERE g.id = $1
+AND g.id NOT IN (
+    SELECT DISTINCT grade_id FROM classes
+);
+
+-- name: GetStreamByID :one
+SELECT * FROM streams
+WHERE id = $1;
+
+-- name: UpdateStream :one
+UPDATE streams
+SET name = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteStream :execrows
+DELETE FROM streams AS s
+WHERE s.id = $1
+AND s.id NOT IN (
+    SELECT DISTINCT stream_id FROM classes WHERE stream_id IS NOT NULL
+);
+
+-- name: GetStreamGroupByID :one
+SELECT * FROM stream_groups
+WHERE id = $1;
+
+-- name: UpdateStreamGroup :one
+UPDATE stream_groups
+SET name = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteStreamGroup :execrows
+DELETE FROM stream_groups AS sg
+WHERE sg.id = $1
+AND sg.id NOT IN (
+    SELECT DISTINCT stream_group_id FROM classes WHERE stream_group_id IS NOT NULL
+);

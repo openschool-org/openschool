@@ -20,6 +20,9 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	admin.Use(middleware.RequireRole("admin"))
 
 	RegisterSchoolRoutes(admin, pool)
+	RegisterGradeRoutes(admin, pool)
+	RegisterSubjectRoutes(admin, pool)
+	RegisterStreamRoutes(admin, pool)
 
 	teacherOrAdmin := protected.Group("")
 	teacherOrAdmin.Use(middleware.RequireRole("admin", "teacher"))

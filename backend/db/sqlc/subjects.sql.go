@@ -110,6 +110,26 @@ func (q *Queries) CreateSubjectBucket(ctx context.Context, arg CreateSubjectBuck
 	return i, err
 }
 
+const deleteSubject = `-- name: DeleteSubject :execrows
+DELETE FROM subjects AS s
+WHERE s.id = $1
+AND s.id NOT IN (
+    SELECT DISTINCT subject_id FROM grade_subjects
+    UNION
+    SELECT DISTINCT subject_id FROM class_subject_teachers
+    UNION
+    SELECT DISTINCT subject_id FROM student_subject_selections
+)
+`
+
+func (q *Queries) DeleteSubject(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSubject, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getSubjectByCode = `-- name: GetSubjectByCode :one
 SELECT id, name, code, created_at FROM subjects
 WHERE code = $1
@@ -331,4 +351,31 @@ type RemoveSubjectFromGradeParams struct {
 func (q *Queries) RemoveSubjectFromGrade(ctx context.Context, arg RemoveSubjectFromGradeParams) error {
 	_, err := q.db.Exec(ctx, removeSubjectFromGrade, arg.GradeID, arg.SubjectID)
 	return err
+}
+
+const updateSubject = `-- name: UpdateSubject :one
+UPDATE subjects
+SET
+    name = $2,
+    code = $3
+WHERE id = $1
+RETURNING id, name, code, created_at
+`
+
+type UpdateSubjectParams struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+	Code string    `json:"code"`
+}
+
+func (q *Queries) UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error) {
+	row := q.db.QueryRow(ctx, updateSubject, arg.ID, arg.Name, arg.Code)
+	var i Subject
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Code,
+		&i.CreatedAt,
+	)
+	return i, err
 }
