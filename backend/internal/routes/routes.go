@@ -29,6 +29,14 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	teacherOrAdmin.Use(middleware.RequireRole("admin", "teacher"))
 
 	protected.GET("/me", func(c *gin.Context) {
-		c.JSON(200, gin.H{"message": "coming soon"})
+		c.JSON(200, gin.H{
+			"user_id":      c.GetString("userID"),
+			"email":        c.GetString("email"),
+			"username":     c.GetString("username"),
+			"given_name":   c.GetString("given_name"),
+			"family_name":  c.GetString("family_name"),
+			"phone_number": c.GetString("phone_number"),
+			"roles":        c.MustGet("roles"),
+		})
 	})
 }

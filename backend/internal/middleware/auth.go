@@ -12,9 +12,13 @@ import (
 )
 
 type Claims struct {
-	Sub   string   `json:"sub"`
-	Email string   `json:"email"`
-	Roles []string `json:"roles"`
+	Sub         string   `json:"sub"`
+	Email       string   `json:"email"`
+	Username    string   `json:"username"`
+	GivenName   string   `json:"given_name"`
+	FamilyName  string   `json:"family_name"`
+	PhoneNumber string   `json:"phone_number"`
+	Roles       []string `json:"roles"`
 	jwt.RegisteredClaims
 }
 
@@ -68,8 +72,12 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("userId", claims.Sub)
+		c.Set("userID", claims.Sub)
 		c.Set("email", claims.Email)
+		c.Set("username", claims.Username)
+		c.Set("given_name", claims.GivenName)
+		c.Set("family_name", claims.FamilyName)
+		c.Set("phone_number", claims.PhoneNumber)
 		c.Set("roles", claims.Roles)
 
 		c.Next()
