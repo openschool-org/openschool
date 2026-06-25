@@ -14,7 +14,7 @@
     "@carbon/react": "^1.110.0",
     "@tanstack/react-query": "^5.101.0",
     "@tanstack/react-query-devtools": "^5.101.0",
-    "@thunderid/react": "^0.3.0",
+    "@thunderid/react": "^0.3.3",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router": "^8.0.1"

@@ -8,15 +8,9 @@ import { ThunderIDProvider } from "@thunderid/react";
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThunderIDProvider
-      applicationId="019ef471-fd6a-7396-be8a-fd78cd972664"
+      clientId="Yk-roYC3mJrf1SB_oXm_aQ"
       baseUrl="https://localhost:8090"
-      afterSignInUrl="/"
-      afterSignOutUrl="/signin"
-      preferences={{
-        theme: {
-          inheritFromBranding: false,
-        },
-      }}
+      afterSignInUrl="http://localhost:5173"
     >
       <BrowserRouter>
         <App />

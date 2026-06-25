@@ -1,5 +1,4 @@
 import { Routes, Route } from "react-router";
-import { SignIn } from "@thunderid/react";
 import RootLayout from "./layouts/RootLayout";
 import Home from "./pages/Home";
 import Showcase from "./pages/Showcase";
@@ -9,16 +8,6 @@ import ProtectedRoute from "./components/ProtectedRoute";
 function App() {
   return (
     <Routes>
-      <Route
-        path="/signin"
-        element={
-          <div className="thunderid-signin-wrapper">
-            <div className="thunderid-signin-card">
-              <SignIn />
-            </div>
-          </div>
-        }
-      />
       <Route
         element={
           <ProtectedRoute>
