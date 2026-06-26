@@ -39,6 +39,61 @@ definitions:
     required:
     - subject_id
     type: object
+  models.AttendanceRecord:
+    properties:
+      note:
+        type: string
+      status:
+        type: string
+      student_id:
+        type: string
+    required:
+    - status
+    - student_id
+    type: object
+  models.AttendanceRecordResponse:
+    properties:
+      id:
+        type: string
+      note:
+        type: string
+      session_id:
+        type: string
+      status:
+        type: string
+      student_id:
+        type: string
+      student_index:
+        type: string
+      student_name:
+        type: string
+    type: object
+  models.AttendanceSessionResponse:
+    properties:
+      class_id:
+        type: string
+      created_at:
+        type: string
+      date:
+        type: string
+      id:
+        type: string
+      taken_by:
+        type: string
+    type: object
+  models.AttendanceSummaryResponse:
+    properties:
+      absent:
+        type: integer
+      excused:
+        type: integer
+      late:
+        type: integer
+      present:
+        type: integer
+      total_days:
+        type: integer
+    type: object
   models.ClassResponse:
     properties:
       academic_year_id:
@@ -95,6 +150,16 @@ definitions:
     - end_date
     - label
     - start_date
+    type: object
+  models.CreateAttendanceSessionRequest:
+    properties:
+      class_id:
+        type: string
+      date:
+        type: string
+    required:
+    - class_id
+    - date
     type: object
   models.CreateClassRequest:
     properties:
@@ -199,6 +264,15 @@ definitions:
         type: string
       sort_order:
         type: integer
+    type: object
+  models.MarkAttendanceRequest:
+    properties:
+      records:
+        items:
+          $ref: '#/definitions/models.AttendanceRecord'
+        type: array
+    required:
+    - records
     type: object
   models.SchoolResponse:
     properties:
@@ -598,6 +672,128 @@ paths:
       summary: Get current academic year
       tags:
       - academic-years
+  /attendance/sessions:
+    post:
+      consumes:
+      - application/json
+      description: Create a new attendance session for a class on a specific date
+      parameters:
+      - description: Session details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateAttendanceSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.AttendanceSessionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create attendance session
+      tags:
+      - attendance
+  /attendance/sessions/{id}:
+    get:
+      description: Get an attendance session by ID
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AttendanceSessionResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get attendance session
+      tags:
+      - attendance
+  /attendance/sessions/{id}/records:
+    get:
+      description: Get all attendance records for a session
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.AttendanceRecordResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List attendance by session
+      tags:
+      - attendance
+    post:
+      consumes:
+      - application/json
+      description: Mark attendance for all students in a session
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Attendance records
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.MarkAttendanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark attendance
+      tags:
+      - attendance
   /classes:
     post:
       consumes:
@@ -723,6 +919,35 @@ paths:
       summary: Update class
       tags:
       - classes
+  /classes/{id}/attendance/sessions:
+    get:
+      description: Get all attendance sessions for a specific class
+      parameters:
+      - description: Class ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.AttendanceSessionResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List attendance sessions by class
+      tags:
+      - attendance
   /classes/{id}/form-teacher:
     put:
       consumes:
@@ -1663,6 +1888,35 @@ paths:
       summary: Update student
       tags:
       - students
+  /students/{id}/attendance:
+    get:
+      description: Get all attendance records for a student
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.AttendanceRecordResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List attendance by student
+      tags:
+      - attendance
   /students/{id}/class:
     get:
       description: Get a student profile with their current class details
@@ -1696,6 +1950,38 @@ paths:
       summary: Get student with class
       tags:
       - students
+  /students/{student_id}/attendance/summary/{class_id}:
+    get:
+      description: Get attendance summary for a student in a specific class
+      parameters:
+      - description: Student ID
+        in: path
+        name: student_id
+        required: true
+        type: string
+      - description: Class ID
+        in: path
+        name: class_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AttendanceSummaryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get attendance summary
+      tags:
+      - attendance
   /subjects:
     get:
       description: Retrieve all subjects ordered by name
