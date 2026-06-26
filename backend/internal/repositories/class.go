@@ -60,3 +60,17 @@ func (r *ClassRepository) GetStudentCount(ctx context.Context, classID uuid.UUID
 	count, err := r.queries.GetClassStudentCount(ctx, classID)
 	return count, err
 }
+
+func (r *ClassRepository) EnrollStudent(ctx context.Context, classID uuid.UUID, studentID uuid.UUID) error {
+	return r.queries.EnrollStudentInClass(ctx, db.EnrollStudentInClassParams{
+		ClassID:   classID,
+		StudentID: studentID,
+	})
+}
+
+func (r *ClassRepository) UnenrollStudent(ctx context.Context, classID uuid.UUID, studentID uuid.UUID) error {
+	return r.queries.UnenrollStudentFromClass(ctx, db.UnenrollStudentFromClassParams{
+		ClassID:   classID,
+		StudentID: studentID,
+	})
+}

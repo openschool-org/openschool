@@ -19,16 +19,16 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	admin := protected.Group("")
 	admin.Use(middleware.RequireRole("admin"))
 
+	teacherOrAdmin := protected.Group("")
+	teacherOrAdmin.Use(middleware.RequireRole("admin", "teacher"))
+
 	RegisterSchoolRoutes(admin, pool)
 	RegisterGradeRoutes(admin, pool)
 	RegisterSubjectRoutes(admin, pool)
 	RegisterStreamRoutes(admin, pool)
-	RegisterClassRoutes(admin, pool)
-	RegisterStudentRoutes(admin, pool)
+	RegisterClassRoutes(admin, teacherOrAdmin, pool)
+	RegisterStudentRoutes(admin, teacherOrAdmin, pool)
 	RegisterTeacherRoutes(admin, pool)
-
-	teacherOrAdmin := protected.Group("")
-	teacherOrAdmin.Use(middleware.RequireRole("admin", "teacher"))
 
 	protected.GET("/me", func(c *gin.Context) {
 		c.JSON(200, gin.H{

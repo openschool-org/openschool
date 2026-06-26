@@ -9,18 +9,18 @@ import (
 	"github.com/openschool-org/openschool/internal/thunderid"
 )
 
-func RegisterStudentRoutes(r *gin.RouterGroup, pool *pgxpool.Pool) {
+func RegisterStudentRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewStudentRepository(pool)
 	thunderIDClient := thunderid.NewClient()
 	service := services.NewStudentService(repo, thunderIDClient)
 	handler := handlers.NewStudentHandler(service)
 
-	r.POST("/students", handler.Create)
-	r.GET("/students", handler.List)
-	r.GET("/students/:id", handler.GetByID)
-	r.GET("/students/:id/class", handler.GetWithClass)
-	r.PUT("/students/:id", handler.Update)
-	r.GET("/classes/:id/students", handler.ListByClass)
-	r.DELETE("/students/:id", handler.Delete)
+	admin.POST("/students", handler.Create)
+	admin.GET("/students", handler.List)
+	admin.GET("/students/:id", handler.GetByID)
+	admin.GET("/students/:id/class", handler.GetWithClass)
+	admin.PUT("/students/:id", handler.Update)
+	admin.DELETE("/students/:id", handler.Delete)
 
+	teacherOrAdmin.GET("/classes/:id/students", handler.ListByClass)
 }

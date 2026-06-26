@@ -8,18 +8,21 @@ import (
 	"github.com/openschool-org/openschool/internal/services"
 )
 
-func RegisterClassRoutes(r *gin.RouterGroup, pool *pgxpool.Pool) {
+func RegisterClassRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewClassRepository(pool)
 	service := services.NewClassService(repo)
 	handler := handlers.NewClassHandler(service)
 
-	r.POST("/classes", handler.Create)
-	r.GET("/classes/current", handler.ListCurrent)
-	r.GET("/classes/:id", handler.GetByID)
-	r.PUT("/classes/:id", handler.Update)
-	r.DELETE("/classes/:id", handler.Delete)
-	r.PUT("/classes/:id/form-teacher", handler.AssignFormTeacher)
-	r.POST("/classes/:id/subject-teachers", handler.AssignSubjectTeacher)
-	r.GET("/classes/:id/subject-teachers", handler.ListSubjectTeachers)
-	r.GET("/academic-years/:academic_year_id/classes", handler.ListByAcademicYear)
+	admin.POST("/classes", handler.Create)
+	admin.GET("/classes/current", handler.ListCurrent)
+	admin.GET("/classes/:id", handler.GetByID)
+	admin.PUT("/classes/:id", handler.Update)
+	admin.DELETE("/classes/:id", handler.Delete)
+	admin.PUT("/classes/:id/form-teacher", handler.AssignFormTeacher)
+	admin.POST("/classes/:id/subject-teachers", handler.AssignSubjectTeacher)
+	admin.GET("/classes/:id/subject-teachers", handler.ListSubjectTeachers)
+	admin.GET("/academic-years/:academic_year_id/classes", handler.ListByAcademicYear)
+
+	teacherOrAdmin.POST("/classes/:id/students/:student_id/enroll", handler.EnrollStudent)
+	teacherOrAdmin.DELETE("/classes/:id/students/:student_id/unenroll", handler.UnenrollStudent)
 }

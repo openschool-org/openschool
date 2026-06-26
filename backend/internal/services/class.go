@@ -90,3 +90,11 @@ func (s *ClassService) AssignSubjectTeacher(ctx context.Context, classID uuid.UU
 func (s *ClassService) ListSubjectTeachers(ctx context.Context, classID uuid.UUID) ([]db.ListSubjectTeachersByClassRow, error) {
 	return s.repo.ListSubjectTeachers(ctx, classID)
 }
+
+func (s *ClassService) EnrollStudent(ctx context.Context, classID uuid.UUID, studentID uuid.UUID) error {
+	return s.repo.EnrollStudent(ctx, classID, studentID)
+}
+
+func (s *ClassService) UnenrollStudent(ctx context.Context, classID uuid.UUID, studentID uuid.UUID) error {
+	return s.repo.UnenrollStudent(ctx, classID, studentID)
+}

@@ -267,3 +267,67 @@ func (h *ClassHandler) ListSubjectTeachers(c *gin.Context) {
 
 	c.JSON(http.StatusOK, teachers)
 }
+
+// EnrollStudent godoc
+// @Summary      Enroll student in class
+// @Description  Enroll a student into a class
+// @Tags         classes
+// @Produce      json
+// @Param        id path string true "Class ID"
+// @Param        student_id path string true "Student ID"
+// @Success      200 {object} map[string]string
+// @Failure      400 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /classes/{id}/students/{student_id}/enroll [post]
+func (h *ClassHandler) EnrollStudent(c *gin.Context) {
+	classID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid class id"})
+		return
+	}
+
+	studentID, err := uuid.Parse(c.Param("student_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid student id"})
+		return
+	}
+
+	if err := h.service.EnrollStudent(c.Request.Context(), classID, studentID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "student enrolled"})
+}
+
+// UnenrollStudent godoc
+// @Summary      Unenroll student from class
+// @Description  Remove a student from a class
+// @Tags         classes
+// @Produce      json
+// @Param        id path string true "Class ID"
+// @Param        student_id path string true "Student ID"
+// @Success      200 {object} map[string]string
+// @Failure      400 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /classes/{id}/students/{student_id}/unenroll [delete]
+func (h *ClassHandler) UnenrollStudent(c *gin.Context) {
+	classID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid class id"})
+		return
+	}
+
+	studentID, err := uuid.Parse(c.Param("student_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid student id"})
+		return
+	}
+
+	if err := h.service.UnenrollStudent(c.Request.Context(), classID, studentID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "student unenrolled"})
+}

@@ -787,6 +787,74 @@ paths:
       summary: List students by class
       tags:
       - students
+  /classes/{id}/students/{student_id}/enroll:
+    post:
+      description: Enroll a student into a class
+      parameters:
+      - description: Class ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Student ID
+        in: path
+        name: student_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Enroll student in class
+      tags:
+      - classes
+  /classes/{id}/students/{student_id}/unenroll:
+    delete:
+      description: Remove a student from a class
+      parameters:
+      - description: Class ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Student ID
+        in: path
+        name: student_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Unenroll student from class
+      tags:
+      - classes
   /classes/{id}/subject-teachers:
     get:
       description: Get all subject teachers assigned to a class
