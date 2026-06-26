@@ -60,3 +60,12 @@ FROM student_profiles sp
 INNER JOIN class_students cs ON cs.student_id = sp.id
 WHERE cs.class_id = $1
 ORDER BY sp.full_name ASC;
+
+
+-- name: DeleteStudentProfile :exec
+DELETE FROM student_profiles
+WHERE id = $1;
+
+-- name: DeleteUser :exec
+DELETE FROM users
+WHERE id = $1;
