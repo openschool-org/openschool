@@ -32,6 +32,13 @@ definitions:
     - subject_id
     - teacher_id
     type: object
+  models.AssignSubjectToTeacherRequest:
+    properties:
+      subject_id:
+        type: string
+    required:
+    - subject_id
+    type: object
   models.ClassResponse:
     properties:
       academic_year_id:
@@ -156,6 +163,32 @@ definitions:
     - code
     - name
     type: object
+  models.CreateTeacherRequest:
+    properties:
+      email:
+        description: ThunderID fields
+        type: string
+      employee_number:
+        description: Teacher profile fields
+        type: string
+      family_name:
+        type: string
+      given_name:
+        type: string
+      joined_date:
+        type: string
+      password:
+        type: string
+      phone_number:
+        type: string
+    required:
+    - email
+    - employee_number
+    - family_name
+    - given_name
+    - joined_date
+    - password
+    type: object
   models.GradeResponse:
     properties:
       created_at:
@@ -204,6 +237,54 @@ definitions:
       name:
         type: string
     type: object
+  models.StudentResponse:
+    properties:
+      address:
+        type: string
+      created_at:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+      index_number:
+        type: string
+      phone:
+        type: string
+      special_remarks:
+        type: string
+      user_id:
+        type: string
+      whatsapp:
+        type: string
+    type: object
+  models.StudentWithClassResponse:
+    properties:
+      academic_year:
+        type: string
+      address:
+        type: string
+      class_name:
+        type: string
+      created_at:
+        type: string
+      full_name:
+        type: string
+      grade_name:
+        type: string
+      id:
+        type: string
+      index_number:
+        type: string
+      phone:
+        type: string
+      special_remarks:
+        type: string
+      user_id:
+        type: string
+      whatsapp:
+        type: string
+    type: object
   models.SubjectResponse:
     properties:
       code:
@@ -226,6 +307,32 @@ definitions:
       teacher_id:
         type: string
       teacher_name:
+        type: string
+    type: object
+  models.TeacherResponse:
+    properties:
+      created_at:
+        type: string
+      employee_number:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+      joined_date:
+        type: string
+      phone:
+        type: string
+      user_id:
+        type: string
+    type: object
+  models.TeacherSubjectResponse:
+    properties:
+      code:
+        type: string
+      id:
+        type: string
+      name:
         type: string
     type: object
   models.UpdateClassRequest:
@@ -275,6 +382,24 @@ definitions:
     required:
     - name
     type: object
+  models.UpdateStudentRequest:
+    properties:
+      address:
+        type: string
+      family_name:
+        type: string
+      given_name:
+        type: string
+      phone_number:
+        type: string
+      special_remarks:
+        type: string
+      whatsapp:
+        type: string
+    required:
+    - family_name
+    - given_name
+    type: object
   models.UpdateSubjectRequest:
     properties:
       code:
@@ -284,6 +409,21 @@ definitions:
     required:
     - code
     - name
+    type: object
+  models.UpdateTeacherRequest:
+    properties:
+      employee_number:
+        type: string
+      family_name:
+        type: string
+      given_name:
+        type: string
+      phone_number:
+        type: string
+    required:
+    - employee_number
+    - family_name
+    - given_name
     type: object
 host: localhost:8080
 info:
@@ -618,6 +758,35 @@ paths:
       summary: Assign form teacher
       tags:
       - classes
+  /classes/{id}/students:
+    get:
+      description: Get all students enrolled in a specific class
+      parameters:
+      - description: Class ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.StudentResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List students by class
+      tags:
+      - students
   /classes/{id}/subject-teachers:
     get:
       description: Get all subject teachers assigned to a class
@@ -1308,6 +1477,157 @@ paths:
       summary: Update stream group
       tags:
       - streams
+  /students:
+    get:
+      description: Get all students
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.StudentResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List students
+      tags:
+      - students
+  /students/{id}:
+    delete:
+      description: Delete a student profile and ThunderID user account
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete student
+      tags:
+      - students
+    get:
+      description: Get a student profile by ID
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.StudentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get student by ID
+      tags:
+      - students
+    put:
+      consumes:
+      - application/json
+      description: Update a student profile
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Student details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateStudentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.StudentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update student
+      tags:
+      - students
+  /students/{id}/class:
+    get:
+      description: Get a student profile with their current class details
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.StudentWithClassResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get student with class
+      tags:
+      - students
   /subjects:
     get:
       description: Retrieve all subjects ordered by name
@@ -1468,6 +1788,252 @@ paths:
       summary: Update subject
       tags:
       - subjects
+  /teachers:
+    get:
+      description: Get all teachers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.TeacherResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List teachers
+      tags:
+      - teachers
+    post:
+      consumes:
+      - application/json
+      description: Onboard a new teacher - creates ThunderID user and teacher profile
+      parameters:
+      - description: Teacher details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateTeacherRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.TeacherResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create teacher
+      tags:
+      - teachers
+  /teachers/{id}:
+    delete:
+      description: Delete a teacher profile and ThunderID user account
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete teacher
+      tags:
+      - teachers
+    get:
+      description: Get a teacher profile by ID
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TeacherResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get teacher by ID
+      tags:
+      - teachers
+    put:
+      consumes:
+      - application/json
+      description: Update a teacher profile
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Teacher details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateTeacherRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TeacherResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update teacher
+      tags:
+      - teachers
+  /teachers/{id}/subjects:
+    get:
+      description: Get all subjects assigned to a teacher
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.TeacherSubjectResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List teacher subjects
+      tags:
+      - teachers
+    post:
+      consumes:
+      - application/json
+      description: Assign a subject qualification to a teacher
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Subject details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AssignSubjectToTeacherRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assign subject to teacher
+      tags:
+      - teachers
+  /teachers/{id}/subjects/{subject_id}:
+    delete:
+      description: Remove a subject qualification from a teacher
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Subject ID
+        in: path
+        name: subject_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove subject from teacher
+      tags:
+      - teachers
 securityDefinitions:
   BearerAuth:
     description: 'Type "Bearer" followed by a space and your JWT token. Example: "Bearer

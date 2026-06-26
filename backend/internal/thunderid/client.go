@@ -195,3 +195,46 @@ func (c *Client) DeleteUser(ctx context.Context, userID string) error {
 
 	return nil
 }
+
+func (c *Client) AssignRole(ctx context.Context, roleID string, userID string) error {
+	token, err := c.getAccessToken(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get ThunderID token: %w", err)
+	}
+
+	body := map[string]interface{}{
+		"assignments": []map[string]interface{}{
+			{
+				"type": "user",
+				"id":   userID,
+			},
+		},
+	}
+
+	data, err := json.Marshal(body)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
+		c.baseUrl+"/roles/"+roleID+"/assignments/add", bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("thunderid error: %s", string(respBody))
+	}
+
+	return nil
+}
