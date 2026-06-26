@@ -5,11 +5,20 @@ import {
   HeaderNavigation,
   HeaderMenuItem,
   HeaderGlobalBar,
+  Button,
 } from "@carbon/react";
-
-import { UserDropdown } from "@thunderid/react";
+import { UserDropdown, useThunderID } from "@thunderid/react";
 
 export default function RootLayout() {
+  const { getAccessToken } = useThunderID();
+
+  const copyToken = async () => {
+    const token = await getAccessToken();
+    if (token) {
+      navigator.clipboard.writeText(token);
+    }
+  };
+
   return (
     <>
       <Header aria-label="OpenSchool">
@@ -22,6 +31,16 @@ export default function RootLayout() {
           </HeaderMenuItem>
         </HeaderNavigation>
         <HeaderGlobalBar>
+          {import.meta.env.DEV && (
+            <Button
+              kind="primary"
+              size="sm"
+              onClick={copyToken}
+              style={{ marginRight: "0.5rem" }}
+            >
+              Copy Token
+            </Button>
+          )}
           <UserDropdown />
         </HeaderGlobalBar>
       </Header>
