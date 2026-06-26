@@ -187,6 +187,11 @@ THUNDERID_CLIENT_SECRET=<backend_service_client_secret>
 THUNDERID_TOKEN_URL=https://localhost:8090/oauth2/token
 THUNDERID_JWKS_URL=https://localhost:8090/oauth2/jwks
 THUNDERID_ISSUER=https://localhost:8090
+
+# role ids from thunderid
+THUNDERID_ROLE_STUDENT=
+THUNDERID_ROLE_TEACHER=
+THUNDERID_ROLE_ADMIN=
 ```
 
 Get the Organization Unit ID from **Organization Units** in the ThunderID console.
