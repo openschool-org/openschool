@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -58,6 +59,11 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 	if err != nil {
 		_ = s.thunderIDClient.DeleteUser(ctx, thunderUser.ID)
 		return db.StudentProfile{}, fmt.Errorf("failed to create user record: %w", err)
+	}
+
+	// assign student role in ThunderID
+	if err := s.thunderIDClient.AssignRole(ctx, os.Getenv("THUNDERID_ROLE_STUDENT"), thunderUser.ID); err != nil {
+		fmt.Printf("warning: failed to assign student role: %v\n", err)
 	}
 
 	// create student profile

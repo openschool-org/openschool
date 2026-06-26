@@ -71,6 +71,16 @@ func (q *Queries) CreateTeacherProfile(ctx context.Context, arg CreateTeacherPro
 	return i, err
 }
 
+const deleteTeacher = `-- name: DeleteTeacher :exec
+DELETE FROM teacher_profiles
+WHERE id = $1
+`
+
+func (q *Queries) DeleteTeacher(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteTeacher, id)
+	return err
+}
+
 const getFormTeacherClass = `-- name: GetFormTeacherClass :one
 SELECT
     c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at
