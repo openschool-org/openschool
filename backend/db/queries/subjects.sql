@@ -64,6 +64,7 @@ RETURNING *;
 
 -- name: ListStudentSubjectSelections :many
 SELECT
+    sb.id         AS bucket_id,
     sb.name       AS bucket_name,
     s.id          AS subject_id,
     s.name        AS subject_name,
@@ -73,6 +74,10 @@ INNER JOIN subject_buckets sb ON sb.id  = sss.bucket_id
 INNER JOIN subjects        s  ON s.id   = sss.subject_id
 WHERE sss.student_id = $1
 ORDER BY sb.name ASC;
+
+-- name: DeleteStudentSubjectSelection :exec
+DELETE FROM student_subject_selections
+WHERE student_id = $1 AND bucket_id = $2;
 
 -- name: UpdateSubject :one
 UPDATE subjects
