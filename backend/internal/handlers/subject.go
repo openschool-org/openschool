@@ -42,7 +42,12 @@ func (h *SubjectHandler) Create(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, subject)
+	c.JSON(http.StatusCreated, models.SubjectResponse{
+		ID:        subject.ID.String(),
+		Name:      subject.Name,
+		Code:      subject.Code,
+		CreatedAt: subject.CreatedAt.Time.String(),
+	})
 }
 
 // GetByID godoc
@@ -70,7 +75,12 @@ func (h *SubjectHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, subject)
+	c.JSON(http.StatusOK, models.SubjectResponse{
+		ID:        subject.ID.String(),
+		Name:      subject.Name,
+		Code:      subject.Code,
+		CreatedAt: subject.CreatedAt.Time.String(),
+	})
 }
 
 // List godoc
@@ -89,7 +99,17 @@ func (h *SubjectHandler) List(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, subjects)
+	resp := make([]models.SubjectResponse, len(subjects))
+	for i, s := range subjects {
+		resp[i] = models.SubjectResponse{
+			ID:        s.ID.String(),
+			Name:      s.Name,
+			Code:      s.Code,
+			CreatedAt: s.CreatedAt.Time.String(),
+		}
+	}
+
+	c.JSON(http.StatusOK, resp)
 }
 
 // Update godoc
@@ -124,7 +144,12 @@ func (h *SubjectHandler) Update(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, subject)
+	c.JSON(http.StatusOK, models.SubjectResponse{
+		ID:        subject.ID.String(),
+		Name:      subject.Name,
+		Code:      subject.Code,
+		CreatedAt: subject.CreatedAt.Time.String(),
+	})
 }
 
 // Delete godoc

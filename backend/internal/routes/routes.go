@@ -27,6 +27,7 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	RegisterSchoolRoutes(admin, pool)
 	RegisterGradeRoutes(admin, pool)
 	RegisterSubjectRoutes(admin, pool)
+	RegisterGradeSubjectRoutes(admin, pool)
 	RegisterStreamRoutes(admin, pool)
 	RegisterClassRoutes(admin, teacherOrAdmin, pool)
 	RegisterStudentRoutes(admin, teacherOrAdmin, pool)

@@ -38,6 +38,7 @@ type Querier interface {
 	DeleteStream(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStreamGroup(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStudentProfile(ctx context.Context, id uuid.UUID) error
+	DeleteStudentSubjectSelection(ctx context.Context, arg DeleteStudentSubjectSelectionParams) error
 	DeleteSubject(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteTeacher(ctx context.Context, id uuid.UUID) error
 	DeleteUser(ctx context.Context, id uuid.UUID) error

@@ -15,6 +15,13 @@ definitions:
       start_date:
         type: string
     type: object
+  models.AddSubjectToBucketRequest:
+    properties:
+      subject_id:
+        type: string
+    required:
+    - subject_id
+    type: object
   models.AssignFormTeacherRequest:
     properties:
       teacher_id:
@@ -31,6 +38,13 @@ definitions:
     required:
     - subject_id
     - teacher_id
+    type: object
+  models.AssignSubjectToGradeRequest:
+    properties:
+      subject_id:
+        type: string
+    required:
+    - subject_id
     type: object
   models.AssignSubjectToTeacherRequest:
     properties:
@@ -218,6 +232,13 @@ definitions:
     required:
     - name
     type: object
+  models.CreateSubjectBucketRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
   models.CreateSubjectRequest:
     properties:
       code:
@@ -357,6 +378,17 @@ definitions:
       user_id:
         type: string
       whatsapp:
+        type: string
+    type: object
+  models.SubjectBucketResponse:
+    properties:
+      created_at:
+        type: string
+      grade_id:
+        type: string
+      id:
+        type: string
+      name:
         type: string
     type: object
   models.SubjectResponse:
@@ -1327,6 +1359,261 @@ paths:
       summary: Update grade
       tags:
       - grades
+  /grades/{id}/buckets:
+    get:
+      description: Retrieve all elective subject buckets for a grade
+      parameters:
+      - description: Grade UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SubjectBucketResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List subject buckets
+      tags:
+      - grade-subjects
+    post:
+      consumes:
+      - application/json
+      description: Create an elective subject bucket for a grade
+      parameters:
+      - description: Grade UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Bucket details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateSubjectBucketRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.SubjectBucketResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create subject bucket
+      tags:
+      - grade-subjects
+  /grades/{id}/buckets/{bucket_id}/subjects:
+    get:
+      description: Retrieve all subjects available in an elective bucket
+      parameters:
+      - description: Grade UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Bucket UUID
+        in: path
+        name: bucket_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SubjectResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List bucket options
+      tags:
+      - grade-subjects
+    post:
+      consumes:
+      - application/json
+      description: Add a subject as an option in an elective bucket
+      parameters:
+      - description: Grade UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Bucket UUID
+        in: path
+        name: bucket_id
+        required: true
+        type: string
+      - description: Subject details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddSubjectToBucketRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Add subject to bucket
+      tags:
+      - grade-subjects
+  /grades/{id}/subjects:
+    get:
+      description: Retrieve all subjects assigned to a specific grade
+      parameters:
+      - description: Grade UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SubjectResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List subjects for grade
+      tags:
+      - grade-subjects
+    post:
+      consumes:
+      - application/json
+      description: Assign a subject to be offered at a specific grade
+      parameters:
+      - description: Grade UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Subject details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AssignSubjectToGradeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assign subject to grade
+      tags:
+      - grade-subjects
+  /grades/{id}/subjects/{subject_id}:
+    delete:
+      description: Remove a subject assignment from a specific grade
+      parameters:
+      - description: Grade UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Subject UUID
+        in: path
+        name: subject_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove subject from grade
+      tags:
+      - grade-subjects
   /school:
     get:
       description: Retrieve the school record for this instance
@@ -1917,6 +2204,38 @@ paths:
       summary: List attendance by student
       tags:
       - attendance
+  /students/{id}/attendance/summary/{class_id}:
+    get:
+      description: Get attendance summary for a student in a specific class
+      parameters:
+      - description: Student ID
+        in: path
+        name: student_id
+        required: true
+        type: string
+      - description: Class ID
+        in: path
+        name: class_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AttendanceSummaryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get attendance summary
+      tags:
+      - attendance
   /students/{id}/class:
     get:
       description: Get a student profile with their current class details
@@ -1950,38 +2269,6 @@ paths:
       summary: Get student with class
       tags:
       - students
-  /students/{student_id}/attendance/summary/{class_id}:
-    get:
-      description: Get attendance summary for a student in a specific class
-      parameters:
-      - description: Student ID
-        in: path
-        name: student_id
-        required: true
-        type: string
-      - description: Class ID
-        in: path
-        name: class_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.AttendanceSummaryResponse'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get attendance summary
-      tags:
-      - attendance
   /subjects:
     get:
       description: Retrieve all subjects ordered by name

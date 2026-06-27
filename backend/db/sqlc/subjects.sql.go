@@ -110,6 +110,21 @@ func (q *Queries) CreateSubjectBucket(ctx context.Context, arg CreateSubjectBuck
 	return i, err
 }
 
+const deleteStudentSubjectSelection = `-- name: DeleteStudentSubjectSelection :exec
+DELETE FROM student_subject_selections
+WHERE student_id = $1 AND bucket_id = $2
+`
+
+type DeleteStudentSubjectSelectionParams struct {
+	StudentID uuid.UUID `json:"student_id"`
+	BucketID  uuid.UUID `json:"bucket_id"`
+}
+
+func (q *Queries) DeleteStudentSubjectSelection(ctx context.Context, arg DeleteStudentSubjectSelectionParams) error {
+	_, err := q.db.Exec(ctx, deleteStudentSubjectSelection, arg.StudentID, arg.BucketID)
+	return err
+}
+
 const deleteSubject = `-- name: DeleteSubject :execrows
 DELETE FROM subjects AS s
 WHERE s.id = $1
@@ -166,6 +181,7 @@ func (q *Queries) GetSubjectByID(ctx context.Context, id uuid.UUID) (Subject, er
 
 const listStudentSubjectSelections = `-- name: ListStudentSubjectSelections :many
 SELECT
+    sb.id         AS bucket_id,
     sb.name       AS bucket_name,
     s.id          AS subject_id,
     s.name        AS subject_name,
@@ -178,6 +194,7 @@ ORDER BY sb.name ASC
 `
 
 type ListStudentSubjectSelectionsRow struct {
+	BucketID    uuid.UUID `json:"bucket_id"`
 	BucketName  string    `json:"bucket_name"`
 	SubjectID   uuid.UUID `json:"subject_id"`
 	SubjectName string    `json:"subject_name"`
@@ -194,6 +211,7 @@ func (q *Queries) ListStudentSubjectSelections(ctx context.Context, studentID uu
 	for rows.Next() {
 		var i ListStudentSubjectSelectionsRow
 		if err := rows.Scan(
+			&i.BucketID,
 			&i.BucketName,
 			&i.SubjectID,
 			&i.SubjectName,
