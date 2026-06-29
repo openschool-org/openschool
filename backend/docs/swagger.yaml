@@ -203,6 +203,21 @@ definitions:
     required:
     - name
     type: object
+  models.CreateGuardianRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      phone:
+        type: string
+      relationship:
+        type: string
+    required:
+    - full_name
+    - phone
+    - relationship
+    type: object
   models.CreateSchoolRequest:
     properties:
       address:
@@ -286,6 +301,47 @@ definitions:
       sort_order:
         type: integer
     type: object
+  models.GuardianResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+      phone:
+        type: string
+      relationship:
+        type: string
+    type: object
+  models.GuardianWithPrimaryResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+      is_primary_contact:
+        type: boolean
+      phone:
+        type: string
+      relationship:
+        type: string
+    type: object
+  models.LinkGuardianRequest:
+    properties:
+      guardian_id:
+        type: string
+      is_primary_contact:
+        type: boolean
+    required:
+    - guardian_id
+    type: object
   models.MarkAttendanceRequest:
     properties:
       records:
@@ -351,6 +407,19 @@ definitions:
       user_id:
         type: string
       whatsapp:
+        type: string
+    type: object
+  models.StudentSubjectSelectionResponse:
+    properties:
+      bucket_id:
+        type: string
+      bucket_name:
+        type: string
+      subject_code:
+        type: string
+      subject_id:
+        type: string
+      subject_name:
         type: string
     type: object
   models.StudentWithClassResponse:
@@ -459,6 +528,21 @@ definitions:
     required:
     - name
     type: object
+  models.UpdateGuardianRequest:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      phone:
+        type: string
+      relationship:
+        type: string
+    required:
+    - full_name
+    - phone
+    - relationship
+    type: object
   models.UpdateSchoolRequest:
     properties:
       address:
@@ -530,6 +614,16 @@ definitions:
     - employee_number
     - family_name
     - given_name
+    type: object
+  models.UpsertStudentSubjectSelectionRequest:
+    properties:
+      bucket_id:
+        type: string
+      subject_id:
+        type: string
+    required:
+    - bucket_id
+    - subject_id
     type: object
 host: localhost:8080
 info:
@@ -1614,6 +1708,97 @@ paths:
       summary: Remove subject from grade
       tags:
       - grade-subjects
+  /guardians:
+    post:
+      consumes:
+      - application/json
+      description: Create a new guardian record
+      parameters:
+      - description: Guardian details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateGuardianRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.GuardianResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create guardian
+      tags:
+      - guardians
+  /guardians/{id}:
+    get:
+      description: Get a guardian record by ID
+      parameters:
+      - description: Guardian ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.GuardianResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get guardian by ID
+      tags:
+      - guardians
+    put:
+      consumes:
+      - application/json
+      description: Update a guardian record
+      parameters:
+      - description: Guardian ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Guardian details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateGuardianRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.GuardianResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update guardian
+      tags:
+      - guardians
   /school:
     get:
       description: Retrieve the school record for this instance
@@ -2269,6 +2454,244 @@ paths:
       summary: Get student with class
       tags:
       - students
+  /students/{id}/guardians:
+    get:
+      description: Get all guardians linked to a student
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.GuardianWithPrimaryResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List guardians by student
+      tags:
+      - guardians
+    post:
+      consumes:
+      - application/json
+      description: Link an existing guardian to a student
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Link details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LinkGuardianRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Link guardian to student
+      tags:
+      - guardians
+  /students/{id}/guardians/{guardian_id}:
+    delete:
+      description: Remove a guardian link from a student
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Guardian ID
+        in: path
+        name: guardian_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Unlink guardian from student
+      tags:
+      - guardians
+  /students/{id}/guardians/{guardian_id}/set-primary:
+    put:
+      description: Set a guardian as the primary contact for a student
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Guardian ID
+        in: path
+        name: guardian_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Set primary contact
+      tags:
+      - guardians
+  /students/{id}/selections:
+    get:
+      description: Retrieve all subject selections for a student
+      parameters:
+      - description: Student UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.StudentSubjectSelectionResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List student subject selections
+      tags:
+      - student-selections
+    post:
+      consumes:
+      - application/json
+      description: Set or update a student's subject choice for a given bucket (upsert)
+      parameters:
+      - description: Student UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Selection
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpsertStudentSubjectSelectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upsert student subject selection
+      tags:
+      - student-selections
+  /students/{id}/selections/{bucket_id}:
+    delete:
+      description: Remove a student's subject selection for a specific bucket
+      parameters:
+      - description: Student UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Bucket UUID
+        in: path
+        name: bucket_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete student subject selection
+      tags:
+      - student-selections
   /subjects:
     get:
       description: Retrieve all subjects ordered by name

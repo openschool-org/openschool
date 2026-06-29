@@ -33,6 +33,7 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	RegisterStudentRoutes(admin, teacherOrAdmin, pool)
 	RegisterTeacherRoutes(admin, pool)
 	RegisterAttendanceRoutes(teacherOrAdmin, pool)
+	RegisterGuardianRoutes(admin, pool)
 
 	protected.GET("/me", func(c *gin.Context) {
 		userID := c.GetString("userID")
