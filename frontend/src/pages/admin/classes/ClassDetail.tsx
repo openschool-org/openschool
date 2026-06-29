@@ -6,12 +6,12 @@ const CLASS_DATA: Record<string, {
   name: string; grade: string; stream: string; teacher: string; teacherId: string;
   room: string; capacity: number; academicYear: string;
 }> = {
-  "CL-001": { name: "10-A", grade: "Grade 10", stream: "Science",   teacher: "Priya Rathnayake",       teacherId: "T-0001", room: "Room 204", capacity: 45, academicYear: "2025/2026" },
-  "CL-002": { name: "10-B", grade: "Grade 10", stream: "Arts",      teacher: "Chamari Wickramasinghe", teacherId: "T-0003", room: "Room 106", capacity: 45, academicYear: "2025/2026" },
-  "CL-003": { name: "11-A", grade: "Grade 11", stream: "Science",   teacher: "Suresh Dissanayake",     teacherId: "T-0002", room: "Room 301", capacity: 45, academicYear: "2025/2026" },
-  "CL-004": { name: "11-B", grade: "Grade 11", stream: "Commerce",  teacher: "Nimal Jayasuriya",       teacherId: "T-0004", room: "Room 215", capacity: 45, academicYear: "2025/2026" },
-  "CL-005": { name: "9-A",  grade: "Grade 9",  stream: "General",   teacher: "Anoma de Silva",         teacherId: "T-0005", room: "Room 112", capacity: 45, academicYear: "2025/2026" },
-  "CL-006": { name: "8-A",  grade: "Grade 8",  stream: "General",   teacher: "Priya Rathnayake",       teacherId: "T-0001", room: "Room 205", capacity: 45, academicYear: "2025/2026" },
+  "CL-001": { name: "10-A", grade: "Grade 10", stream: "Science",  teacher: "Priya Rathnayake",       teacherId: "T-0001", room: "Room 204", capacity: 45, academicYear: "2025/2026" },
+  "CL-002": { name: "10-B", grade: "Grade 10", stream: "Arts",     teacher: "Chamari Wickramasinghe", teacherId: "T-0003", room: "Room 106", capacity: 45, academicYear: "2025/2026" },
+  "CL-003": { name: "11-A", grade: "Grade 11", stream: "Science",  teacher: "Suresh Dissanayake",     teacherId: "T-0002", room: "Room 301", capacity: 45, academicYear: "2025/2026" },
+  "CL-004": { name: "11-B", grade: "Grade 11", stream: "Commerce", teacher: "Nimal Jayasuriya",       teacherId: "T-0004", room: "Room 215", capacity: 45, academicYear: "2025/2026" },
+  "CL-005": { name: "9-A",  grade: "Grade 9",  stream: "General",  teacher: "Anoma de Silva",         teacherId: "T-0005", room: "Room 112", capacity: 45, academicYear: "2025/2026" },
+  "CL-006": { name: "8-A",  grade: "Grade 8",  stream: "General",  teacher: "Priya Rathnayake",       teacherId: "T-0001", room: "Room 205", capacity: 45, academicYear: "2025/2026" },
 };
 
 const STUDENTS = [
@@ -45,7 +45,6 @@ export default function ClassDetail() {
   return (
     <div style={{ background: "#f4f4f4", minHeight: "calc(100vh - 3rem)" }}>
 
-      {/* Light profile banner */}
       <div className="os-profile__banner">
         <div className="os-profile__avatar" style={{ borderRadius: "6px", fontSize: "0.875rem", letterSpacing: "0" }}>
           {initials}
@@ -66,7 +65,6 @@ export default function ClassDetail() {
       <div style={{ padding: "1.5rem 2rem" }}>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem", alignItems: "start" }}>
 
-          {/* Main tabs */}
           <div>
             <Tabs>
               <TabList aria-label="Class sections">
@@ -76,7 +74,6 @@ export default function ClassDetail() {
               </TabList>
               <TabPanels>
 
-                {/* Students */}
                 <TabPanel style={{ padding: 0 }}>
                   <div className="os-section" style={{ marginTop: "1rem" }}>
                     <div className="os-section__header">
@@ -106,7 +103,6 @@ export default function ClassDetail() {
                   </div>
                 </TabPanel>
 
-                {/* Attendance */}
                 <TabPanel style={{ padding: 0 }}>
                   <div className="os-section" style={{ marginTop: "1rem" }}>
                     <div className="os-section__header">
@@ -154,7 +150,6 @@ export default function ClassDetail() {
                   </div>
                 </TabPanel>
 
-                {/* Details */}
                 <TabPanel style={{ padding: 0 }}>
                   <div className="os-section" style={{ marginTop: "1rem" }}>
                     <div className="os-section__header"><h2 className="os-section__title">Class Information</h2></div>
@@ -195,17 +190,16 @@ export default function ClassDetail() {
             </Tabs>
           </div>
 
-          {/* Sidebar */}
           <div>
             <div className="os-section">
               <div className="os-section__header"><h2 className="os-section__title">Quick Info</h2></div>
               <div className="os-section__body" style={{ padding: "0.75rem 1.5rem" }}>
                 {[
-                  ["Grade",        cls.grade],
-                  ["Stream",       cls.stream],
-                  ["Room",         cls.room],
-                  ["Enrolled",     `${STUDENTS.length} / ${cls.capacity}`],
-                  ["Academic Year",cls.academicYear],
+                  ["Grade",         cls.grade],
+                  ["Stream",        cls.stream],
+                  ["Room",          cls.room],
+                  ["Enrolled",      `${STUDENTS.length} / ${cls.capacity}`],
+                  ["Academic Year", cls.academicYear],
                 ].map(([label, value]) => (
                   <div key={label} style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid #f4f4f4", fontSize: "0.8125rem" }}>
                     <span style={{ color: "#525252" }}>{label}</span>

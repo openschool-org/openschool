@@ -18,6 +18,7 @@ import {
   EventSchedule,
   Settings,
   Calendar,
+  Notification,
 } from "@carbon/icons-react";
 import { UserDropdown, useThunderID } from "@thunderid/react";
 
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { path: "/subjects", label: "Subjects", Icon: Book },
   { path: "/attendance", label: "Attendance", Icon: EventSchedule },
   { path: "/academic-years", label: "Academic Years", Icon: Calendar },
+  { path: "/notifications", label: "Notifications", Icon: Notification },
   { path: "/settings", label: "Settings", Icon: Settings },
 ];
 

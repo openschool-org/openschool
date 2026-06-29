@@ -1,15 +1,52 @@
-import { useState } from "react";
-import { Button, TextInput, Select, SelectItem, Toggle } from "@carbon/react";
-import { Save, Edit, Building, Settings as SettingsIcon } from "@carbon/icons-react";
+import { useState, useEffect } from "react";
+import { Button, Select, SelectItem, Toggle } from "@carbon/react";
+import { Save, Edit, Settings as SettingsIcon } from "@carbon/icons-react";
+import SchoolInfoCard, { type SchoolFormValues } from "../../../components/school/SchoolInfoCard";
+import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import ErrorMessage from "../../../components/common/ErrorMessage";
+import { useSchool, useUpdateSchool } from "../../../queries/useSchool";
+
+const EMPTY_FORM: SchoolFormValues = { name: "", address: "", phone: "", email: "", logo_url: "" };
+
+function schoolToForm(s: { name: string; address: string; phone: string; email: string; logo_url: string }): SchoolFormValues {
+  return { name: s.name, address: s.address, phone: s.phone, email: s.email, logo_url: s.logo_url };
+}
 
 export default function SettingsPage() {
+  const { data: school, isLoading, isError, refetch } = useSchool();
+  const updateSchool = useUpdateSchool();
+
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [form, setForm] = useState<SchoolFormValues>(EMPTY_FORM);
+
+  useEffect(() => {
+    if (school) setForm(schoolToForm(school));
+  }, [school]);
+
+  const handleEdit = () => setEditing(true);
+
+  const handleCancel = () => {
+    if (school) setForm(schoolToForm(school));
+    setEditing(false);
+  };
 
   const handleSave = () => {
-    setSaved(true);
-    setEditing(false);
-    setTimeout(() => setSaved(false), 2500);
+    if (!school) return;
+    updateSchool.mutate(
+      { id: school.id, data: form },
+      {
+        onSuccess: () => {
+          setSaved(true);
+          setEditing(false);
+          setTimeout(() => setSaved(false), 2500);
+        },
+      }
+    );
+  };
+
+  const handleChange = (field: keyof SchoolFormValues, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -21,74 +58,27 @@ export default function SettingsPage() {
         </div>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
           {saved && <span style={{ fontSize: "0.8125rem", color: "#24a148" }}>✓ Saved</span>}
-          {editing
-            ? <>
-                <Button kind="secondary" size="md" onClick={() => setEditing(false)}>Cancel</Button>
-                <Button renderIcon={Save} kind="primary" size="md" onClick={handleSave}>Save Changes</Button>
-              </>
-            : <Button renderIcon={Edit} kind="secondary" size="md" onClick={() => setEditing(true)}>Edit</Button>
-          }
+          {updateSchool.isPending && <span style={{ fontSize: "0.8125rem", color: "#525252" }}>Saving…</span>}
+          {editing ? (
+            <>
+              <Button kind="secondary" size="md" onClick={handleCancel} disabled={updateSchool.isPending}>Cancel</Button>
+              <Button renderIcon={Save} kind="primary" size="md" onClick={handleSave} disabled={updateSchool.isPending}>
+                Save Changes
+              </Button>
+            </>
+          ) : (
+            <Button renderIcon={Edit} kind="secondary" size="md" onClick={handleEdit}>Edit</Button>
+          )}
         </div>
       </div>
 
-      {/* School Information */}
-      <div className="os-section">
-        <div className="os-section__header">
-          <h2 className="os-section__title" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Building size={16} style={{ fill: "#406AAF" }} /> School Information
-          </h2>
-        </div>
-        <div className="os-section__body">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-            <TextInput
-              id="school-name"
-              labelText="School Name"
-              defaultValue="Ananda Maha Vidyalaya"
-              readOnly={!editing}
-            />
-            <TextInput
-              id="reg-no"
-              labelText="Registration Number"
-              defaultValue="LK-EDU-00412"
-              readOnly={!editing}
-            />
-            <div style={{ gridColumn: "1 / -1" }}>
-              <TextInput
-                id="address"
-                labelText="Address"
-                defaultValue="123, Main Street, Kandy, Sri Lanka"
-                readOnly={!editing}
-              />
-            </div>
-            <TextInput
-              id="phone"
-              labelText="Phone"
-              defaultValue="+94 81 223 4567"
-              readOnly={!editing}
-            />
-            <TextInput
-              id="email"
-              labelText="Email"
-              defaultValue="info@anandamv.sch.lk"
-              readOnly={!editing}
-            />
-            <TextInput
-              id="principal"
-              labelText="Principal"
-              defaultValue="Mr. Lalith Perera"
-              readOnly={!editing}
-            />
-            <TextInput
-              id="website"
-              labelText="Website (optional)"
-              defaultValue="www.anandamv.sch.lk"
-              readOnly={!editing}
-            />
-          </div>
-        </div>
-      </div>
+      {isLoading && <LoadingSpinner />}
+      {isError && <ErrorMessage message="Could not load school information." onRetry={refetch} />}
 
-      {/* Academic Settings */}
+      {!isLoading && !isError && (
+        <SchoolInfoCard values={form} editing={editing} onChange={handleChange} />
+      )}
+
       <div className="os-section">
         <div className="os-section__header">
           <h2 className="os-section__title">Academic Settings</h2>
@@ -116,7 +106,6 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Attendance Settings */}
       <div className="os-section">
         <div className="os-section__header">
           <h2 className="os-section__title">Attendance Settings</h2>
@@ -124,9 +113,9 @@ export default function SettingsPage() {
         <div className="os-section__body">
           <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {[
-              { id: "att-late",     label: "Allow Late marking",             sub: "Mark students as Late instead of just Absent" },
-              { id: "att-notify",   label: "Absence notifications",          sub: "Notify guardians when a student is marked absent" },
-              { id: "att-lock",     label: "Lock sessions after 24 hours",   sub: "Prevent editing attendance after the next day" },
+              { id: "att-late",   label: "Allow Late marking",           sub: "Mark students as Late instead of just Absent" },
+              { id: "att-notify", label: "Absence notifications",        sub: "Notify guardians when a student is marked absent" },
+              { id: "att-lock",   label: "Lock sessions after 24 hours", sub: "Prevent editing attendance after the next day" },
             ].map(({ id, label, sub }) => (
               <div key={id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.75rem 0", borderBottom: "1px solid #f4f4f4" }}>
                 <div>
@@ -140,7 +129,6 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* About */}
       <div className="os-section">
         <div className="os-section__header">
           <h2 className="os-section__title">About OpenSchool</h2>

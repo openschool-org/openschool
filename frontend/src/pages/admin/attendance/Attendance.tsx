@@ -7,11 +7,11 @@ const TODAY = new Date().toLocaleDateString("en-LK", {
 });
 
 const SESSIONS = [
-  { id: "SES-001", class: "10-A", grade: "Grade 10", subject: "Mathematics", teacher: "Priya Rathnayake", time: "08:00", duration: "45 min", status: "Pending", students: 38 },
-  { id: "SES-002", class: "10-B", grade: "Grade 10", subject: "English",     teacher: "Suresh Dissanayake", time: "08:55", duration: "45 min", status: "Pending", students: 35 },
-  { id: "SES-003", class: "11-A", grade: "Grade 11", subject: "Science",     teacher: "Priya Rathnayake",   time: "09:50", duration: "45 min", status: "Marked",  students: 36 },
+  { id: "SES-001", class: "10-A", grade: "Grade 10", subject: "Mathematics", teacher: "Priya Rathnayake",       time: "08:00", duration: "45 min", status: "Pending", students: 38 },
+  { id: "SES-002", class: "10-B", grade: "Grade 10", subject: "English",     teacher: "Suresh Dissanayake",     time: "08:55", duration: "45 min", status: "Pending", students: 35 },
+  { id: "SES-003", class: "11-A", grade: "Grade 11", subject: "Science",     teacher: "Priya Rathnayake",       time: "09:50", duration: "45 min", status: "Marked",  students: 36 },
   { id: "SES-004", class: "9-A",  grade: "Grade 9",  subject: "History",     teacher: "Chamari Wickramasinghe", time: "10:45", duration: "45 min", status: "Pending", students: 42 },
-  { id: "SES-005", class: "8-A",  grade: "Grade 8",  subject: "Sinhala",     teacher: "Nimal Jayasuriya",   time: "11:40", duration: "45 min", status: "Pending", students: 44 },
+  { id: "SES-005", class: "8-A",  grade: "Grade 8",  subject: "Sinhala",     teacher: "Nimal Jayasuriya",       time: "11:40", duration: "45 min", status: "Pending", students: 44 },
 ];
 
 const marked  = SESSIONS.filter(s => s.status === "Marked").length;
@@ -19,8 +19,8 @@ const pending = SESSIONS.filter(s => s.status === "Pending").length;
 
 type StatusType = "Pending" | "Marked";
 const STATUS_CONFIG: Record<StatusType, { label: string; tagType: "blue" | "gray"; Icon: React.FC<{ size?: number; style?: React.CSSProperties }> }> = {
-  Marked:  { label: "Marked",  tagType: "blue",  Icon: CheckmarkFilled },
-  Pending: { label: "Pending", tagType: "gray",  Icon: Time },
+  Marked:  { label: "Marked",  tagType: "blue", Icon: CheckmarkFilled },
+  Pending: { label: "Pending", tagType: "gray", Icon: Time },
 };
 
 export default function Attendance() {
@@ -97,22 +97,11 @@ export default function Attendance() {
                   </td>
                   <td>
                     {s.status === "Pending" ? (
-                      <Button
-                        kind="primary"
-                        size="sm"
-                        as={Link}
-                        to={`/attendance/sessions/${s.id}/mark`}
-                      >
+                      <Button kind="primary" size="sm" as={Link} to={`/attendance/sessions/${s.id}/mark`}>
                         Mark
                       </Button>
                     ) : (
-                      <Button
-                        kind="ghost"
-                        size="sm"
-                        as={Link}
-                        to={`/attendance/sessions/${s.id}/mark`}
-                        style={{ color: "#406AAF" }}
-                      >
+                      <Button kind="ghost" size="sm" as={Link} to={`/attendance/sessions/${s.id}/mark`} style={{ color: "#406AAF" }}>
                         View
                       </Button>
                     )}

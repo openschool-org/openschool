@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useThunderID } from "@thunderid/react";
 
 type Role = "admin" | "teacher" | "student" | "parent";
@@ -13,26 +13,45 @@ function parseJwt(token: string): Record<string, unknown> | null {
 
 export function useRole(): { role: Role; loading: boolean } {
   const { getAccessToken, isSignedIn, isLoading } = useThunderID();
+  const getAccessTokenRef = useRef(getAccessToken);
   const [role, setRole] = useState<Role>("admin");
-  const [loading, setLoading] = useState(true);
+  const [roleResolved, setRoleResolved] = useState(false);
+
+  useEffect(() => {
+    getAccessTokenRef.current = getAccessToken;
+  });
 
   useEffect(() => {
     if (isLoading) return;
-    if (!isSignedIn) { setLoading(false); return; }
 
-    getAccessToken().then(token => {
+    if (!isSignedIn) {
+      setRoleResolved(true);
+      return;
+    }
+
+    let cancelled = false;
+
+    getAccessTokenRef.current().then((token) => {
+      if (cancelled) return;
+
       if (token) {
         const payload = parseJwt(token);
-        // ThunderID puts the role under `role` or `roles` claim
         const raw =
-          (payload?.role as string) ??
-          (Array.isArray(payload?.roles) ? (payload.roles as string[])[0] : null) ??
-          "admin";
+          (Array.isArray(payload?.roles)
+            ? (payload.roles as string[]).find((r) =>
+                ["admin", "teacher", "student", "parent"].includes(r),
+              )
+            : null) ?? "admin";
         setRole(raw as Role);
       }
-      setLoading(false);
-    });
-  }, [isLoading, isSignedIn, getAccessToken]);
 
-  return { role, loading };
+      setRoleResolved(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoading, isSignedIn]);
+
+  return { role, loading: isLoading || !roleResolved };
 }

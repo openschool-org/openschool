@@ -6,7 +6,6 @@ import {
   Search, UserMultiple, Warning,
 } from "@carbon/icons-react";
 
-// ─── Mock session data ────────────────────────────────────────────────────────
 const SESSIONS: Record<string, {
   class: string; grade: string; subject: string;
   teacher: string; time: string; date: string; room: string;
@@ -18,26 +17,25 @@ const SESSIONS: Record<string, {
   "SES-005": { class: "8-A",  grade: "Grade 8",  subject: "Sinhala",     teacher: "Nimal Jayasuriya",       time: "11:40", date: "2026-06-26", room: "Room 216" },
 };
 
-// ─── Mock student roster ──────────────────────────────────────────────────────
 const STUDENTS = [
-  { id: "S-0001", name: "Kavinda Perera",       admNo: "ADM-2020-0145" },
-  { id: "S-0002", name: "Nimasha Silva",         admNo: "ADM-2020-0162" },
-  { id: "S-0003", name: "Dulith Fernando",       admNo: "ADM-2021-0031" },
-  { id: "S-0004", name: "Thilini Jayawardena",   admNo: "ADM-2020-0178" },
-  { id: "S-0005", name: "Ashan Bandara",         admNo: "ADM-2021-0055" },
-  { id: "S-0006", name: "Sachini Rajapaksa",     admNo: "ADM-2020-0193" },
-  { id: "S-0007", name: "Ravindu Madushanka",    admNo: "ADM-2021-0067" },
-  { id: "S-0008", name: "Dilini Kumari",         admNo: "ADM-2020-0211" },
-  { id: "S-0009", name: "Pasindu Herath",        admNo: "ADM-2021-0082" },
-  { id: "S-0010", name: "Senali Wickrama",       admNo: "ADM-2020-0228" },
-  { id: "S-0011", name: "Lahiru Dissanayake",    admNo: "ADM-2021-0094" },
-  { id: "S-0012", name: "Hasini Peris",          admNo: "ADM-2020-0247" },
-  { id: "S-0013", name: "Chathura Gunasekara",   admNo: "ADM-2021-0103" },
-  { id: "S-0014", name: "Imesha Rathnayake",     admNo: "ADM-2020-0265" },
-  { id: "S-0015", name: "Sanuji Mendis",         admNo: "ADM-2021-0119" },
-  { id: "S-0016", name: "Kasun Gamage",          admNo: "ADM-2020-0281" },
-  { id: "S-0017", name: "Tharuka Senanayake",    admNo: "ADM-2021-0134" },
-  { id: "S-0018", name: "Piyumi Karunathilaka",  admNo: "ADM-2020-0302" },
+  { id: "S-0001", name: "Kavinda Perera",      admNo: "ADM-2020-0145" },
+  { id: "S-0002", name: "Nimasha Silva",        admNo: "ADM-2020-0162" },
+  { id: "S-0003", name: "Dulith Fernando",      admNo: "ADM-2021-0031" },
+  { id: "S-0004", name: "Thilini Jayawardena",  admNo: "ADM-2020-0178" },
+  { id: "S-0005", name: "Ashan Bandara",        admNo: "ADM-2021-0055" },
+  { id: "S-0006", name: "Sachini Rajapaksa",    admNo: "ADM-2020-0193" },
+  { id: "S-0007", name: "Ravindu Madushanka",   admNo: "ADM-2021-0067" },
+  { id: "S-0008", name: "Dilini Kumari",        admNo: "ADM-2020-0211" },
+  { id: "S-0009", name: "Pasindu Herath",       admNo: "ADM-2021-0082" },
+  { id: "S-0010", name: "Senali Wickrama",      admNo: "ADM-2020-0228" },
+  { id: "S-0011", name: "Lahiru Dissanayake",   admNo: "ADM-2021-0094" },
+  { id: "S-0012", name: "Hasini Peris",         admNo: "ADM-2020-0247" },
+  { id: "S-0013", name: "Chathura Gunasekara",  admNo: "ADM-2021-0103" },
+  { id: "S-0014", name: "Imesha Rathnayake",    admNo: "ADM-2020-0265" },
+  { id: "S-0015", name: "Sanuji Mendis",        admNo: "ADM-2021-0119" },
+  { id: "S-0016", name: "Kasun Gamage",         admNo: "ADM-2020-0281" },
+  { id: "S-0017", name: "Tharuka Senanayake",   admNo: "ADM-2021-0134" },
+  { id: "S-0018", name: "Piyumi Karunathilaka", admNo: "ADM-2020-0302" },
 ];
 
 type AttendanceStatus = "present" | "absent" | "late" | null;
@@ -105,9 +103,9 @@ export default function AttendanceMark() {
     ), [search]);
 
   const summary = useMemo(() => ({
-    present: Object.values(statuses).filter(v => v === "present").length,
-    absent:  Object.values(statuses).filter(v => v === "absent").length,
-    late:    Object.values(statuses).filter(v => v === "late").length,
+    present:  Object.values(statuses).filter(v => v === "present").length,
+    absent:   Object.values(statuses).filter(v => v === "absent").length,
+    late:     Object.values(statuses).filter(v => v === "late").length,
     unmarked: STUDENTS.length - Object.values(statuses).filter(Boolean).length,
   }), [statuses]);
 
@@ -151,12 +149,12 @@ export default function AttendanceMark() {
         {/* Summary bar */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem", marginBottom: "1.5rem" }}>
           {[
-            { label: "Present", count: summary.present, color: "#24a148" },
-            { label: "Absent",  count: summary.absent,  color: "#da1e28" },
-            { label: "Late",    count: summary.late,    color: "#7d5a00" },
-            { label: "Unmarked",count: summary.unmarked,color: "#525252" },
+            { label: "Present",  count: summary.present,  color: "#24a148" },
+            { label: "Absent",   count: summary.absent,   color: "#da1e28" },
+            { label: "Late",     count: summary.late,     color: "#7d5a00" },
+            { label: "Unmarked", count: summary.unmarked, color: "#525252" },
           ].map(({ label, count, color }) => (
-            <div key={label} style={{ background: "#ffffff", border: `1px solid #e0e0e0`, borderTop: `3px solid ${color}`, padding: "0.875rem 1rem" }}>
+            <div key={label} style={{ background: "#ffffff", border: "1px solid #e0e0e0", borderTop: `3px solid ${color}`, padding: "0.875rem 1rem" }}>
               <p style={{ margin: "0 0 0.25rem", fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", color: "#525252" }}>{label}</p>
               <p style={{ margin: 0, fontSize: "1.75rem", fontWeight: 300, color: "#161616" }}>{count}</p>
             </div>
@@ -166,8 +164,6 @@ export default function AttendanceMark() {
         {/* Toolbar */}
         <div className="os-section">
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.875rem 1.5rem", borderBottom: "1px solid #e0e0e0", flexWrap: "wrap" }}>
-
-            {/* Search */}
             <div className="os-search" style={{ maxWidth: "280px" }}>
               <Search size={16} className="os-search__icon" />
               <input
@@ -177,27 +173,15 @@ export default function AttendanceMark() {
                 onChange={e => setSearch(e.target.value)}
               />
             </div>
-
             <div style={{ flex: 1 }} />
-
-            {/* Bulk mark buttons */}
             <span style={{ fontSize: "0.75rem", color: "#525252", whiteSpace: "nowrap" }}>Mark all:</span>
-            <button
-              onClick={() => markAll("present")}
-              style={{ padding: "0.375rem 0.875rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", border: "1px solid #24a148", background: "#defbe6", color: "#0e6027", fontFamily: "inherit", borderRadius: "2px" }}
-            >
+            <button onClick={() => markAll("present")} style={{ padding: "0.375rem 0.875rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", border: "1px solid #24a148", background: "#defbe6", color: "#0e6027", fontFamily: "inherit", borderRadius: "2px" }}>
               ✓ Present
             </button>
-            <button
-              onClick={() => markAll("absent")}
-              style={{ padding: "0.375rem 0.875rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", border: "1px solid #da1e28", background: "#fff1f1", color: "#a2191f", fontFamily: "inherit", borderRadius: "2px" }}
-            >
+            <button onClick={() => markAll("absent")} style={{ padding: "0.375rem 0.875rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", border: "1px solid #da1e28", background: "#fff1f1", color: "#a2191f", fontFamily: "inherit", borderRadius: "2px" }}>
               ✕ Absent
             </button>
-            <button
-              onClick={() => setStatuses({})}
-              style={{ padding: "0.375rem 0.875rem", fontSize: "0.75rem", cursor: "pointer", border: "1px solid #e0e0e0", background: "#ffffff", color: "#525252", fontFamily: "inherit", borderRadius: "2px" }}
-            >
+            <button onClick={() => setStatuses({})} style={{ padding: "0.375rem 0.875rem", fontSize: "0.75rem", cursor: "pointer", border: "1px solid #e0e0e0", background: "#ffffff", color: "#525252", fontFamily: "inherit", borderRadius: "2px" }}>
               Clear
             </button>
           </div>
@@ -217,14 +201,7 @@ export default function AttendanceMark() {
               {filtered.map((student, idx) => {
                 const status = statuses[student.id] ?? null;
                 return (
-                  <tr
-                    key={student.id}
-                    style={{
-                      background: status
-                        ? STATUS_STYLES[status].bg + "66"  // translucent tint
-                        : "transparent",
-                    }}
-                  >
+                  <tr key={student.id} style={{ background: status ? STATUS_STYLES[status].bg + "66" : "transparent" }}>
                     <td style={{ color: "#8d8d8d", fontFamily: "IBM Plex Mono, monospace", fontSize: "0.75rem" }}>
                       {idx + 1}
                     </td>
@@ -248,12 +225,7 @@ export default function AttendanceMark() {
                     <td>
                       <div style={{ display: "flex", gap: "0.375rem" }}>
                         {(["present", "absent", "late"] as NonNullable<AttendanceStatus>[]).map(s => (
-                          <StatusButton
-                            key={s}
-                            value={s}
-                            selected={status === s}
-                            onClick={() => mark(student.id, s)}
-                          />
+                          <StatusButton key={s} value={s} selected={status === s} onClick={() => mark(student.id, s)} />
                         ))}
                       </div>
                     </td>
@@ -261,14 +233,7 @@ export default function AttendanceMark() {
                       {status === "absent" || status === "late" ? (
                         <input
                           placeholder="Optional note…"
-                          style={{
-                            padding: "0.25rem 0.5rem",
-                            fontSize: "0.75rem",
-                            fontFamily: "inherit",
-                            border: "1px solid #e0e0e0",
-                            outline: "none",
-                            width: "140px",
-                          }}
+                          style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontFamily: "inherit", border: "1px solid #e0e0e0", outline: "none", width: "140px" }}
                         />
                       ) : (
                         <span style={{ color: "#c6c6c6", fontSize: "0.75rem" }}>—</span>

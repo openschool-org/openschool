@@ -9,12 +9,12 @@ const GRADES = [
 ];
 
 const CODE_HINTS = [
-  { prefix: "GEN-",    example: "GEN-M01",    label: "Grades 6–9 (General)" },
-  { prefix: "OL-M",    example: "OL-M04",     label: "Grades 10–11 Compulsory" },
-  { prefix: "OL-B1-",  example: "OL-B1-01",   label: "Grades 10–11 Basket 1" },
-  { prefix: "OL-B2-",  example: "OL-B2-01",   label: "Grades 10–11 Basket 2" },
-  { prefix: "OL-B3-",  example: "OL-B3-01",   label: "Grades 10–11 Basket 3" },
-  { prefix: "AL-",     example: "AL-01",       label: "Grades 12–13 (A/L)" },
+  { prefix: "GEN-",   example: "GEN-M01",  label: "Grades 6–9 (General)" },
+  { prefix: "OL-M",   example: "OL-M04",   label: "Grades 10–11 Compulsory" },
+  { prefix: "OL-B1-", example: "OL-B1-01", label: "Grades 10–11 Basket 1" },
+  { prefix: "OL-B2-", example: "OL-B2-01", label: "Grades 10–11 Basket 2" },
+  { prefix: "OL-B3-", example: "OL-B3-01", label: "Grades 10–11 Basket 3" },
+  { prefix: "AL-",    example: "AL-01",     label: "Grades 12–13 (A/L)" },
 ];
 
 export default function AddSubject() {
@@ -81,13 +81,7 @@ export default function AddSubject() {
                 {CODE_HINTS.map(h => (
                   <span
                     key={h.prefix}
-                    style={{
-                      padding: "0.25rem 0.5rem",
-                      background: "#e0e0e0",
-                      borderRadius: "2px",
-                      fontSize: "0.75rem",
-                      fontFamily: "monospace",
-                    }}
+                    style={{ padding: "0.25rem 0.5rem", background: "#e0e0e0", borderRadius: "2px", fontSize: "0.75rem", fontFamily: "monospace" }}
                   >
                     <strong>{h.example}</strong> — {h.label}
                   </span>
@@ -119,7 +113,7 @@ export default function AddSubject() {
           </div>
         </div>
 
-        {!name || !code ? (
+        {(!name || !code) && (
           <InlineNotification
             kind="info"
             title="Required fields"
@@ -127,15 +121,10 @@ export default function AddSubject() {
             lowContrast
             hideCloseButton
           />
-        ) : null}
+        )}
 
         <div className="os-form__actions">
-          <Button
-            renderIcon={Save}
-            kind="primary"
-            disabled={!name || !code}
-            onClick={() => navigate("/subjects")}
-          >
+          <Button renderIcon={Save} kind="primary" disabled={!name || !code} onClick={() => navigate("/subjects")}>
             Save Subject
           </Button>
           <Button kind="secondary" as={Link} to="/subjects">Cancel</Button>

@@ -181,8 +181,12 @@ html, body, #root {
 .os-stat-card {
   background: #ffffff;
   border: 1px solid #e0e0e0;
-  border-top: 3px solid $os-accent;
   padding: 1.25rem 1.5rem;
+  transition: border-color 0.2s ease;
+
+  &:hover {
+    border-color: #a8a8a8;
+  }
 
   &__label {
     font-size: 0.6875rem;
@@ -202,12 +206,6 @@ html, body, #root {
     color: #161616;
     line-height: 1;
     margin: 0;
-  }
-
-  &__meta {
-    font-size: 0.6875rem;
-    color: #8d8d8d;
-    margin: 0.4rem 0 0;
   }
 }
 

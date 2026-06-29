@@ -1,22 +1,19 @@
 import { useThunderID } from "@thunderid/react";
-import { useEffect, useRef } from "react";
+import { Navigate, useLocation } from "react-router";
 
 export default function ProtectedRoute({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { isSignedIn, isLoading, signIn } = useThunderID();
-  const signingIn = useRef(false);
+  const { isSignedIn, isLoading } = useThunderID();
+  const location = useLocation();
 
-  useEffect(() => {
-    if (!isLoading && !isSignedIn && !signingIn.current) {
-      signingIn.current = true;
-      signIn();
-    }
-  }, [isLoading, isSignedIn, signIn]);
+  if (isLoading) return <div style={{ minHeight: "100vh" }} />;
 
-  if (isLoading || !isSignedIn) return <div style={{ minHeight: "100vh" }} />;
+  if (!isSignedIn) {
+    return <Navigate to="/signin" replace state={{ from: location }} />;
+  }
 
   return <>{children}</>;
 }
