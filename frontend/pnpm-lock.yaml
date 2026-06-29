@@ -21,8 +21,8 @@ importers:
         specifier: ^5.101.0
         version: 5.101.0(@tanstack/react-query@5.101.0(react@19.2.7))(react@19.2.7)
       '@thunderid/react':
-        specifier: ^0.3.0
-        version: 0.3.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: ^0.3.3
+        version: 0.3.3(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react:
         specifier: ^19.2.6
         version: 19.2.7
@@ -575,14 +575,14 @@ packages:
     peerDependencies:
       react: ^18 || ^19
 
-  '@thunderid/browser@0.3.0':
-    resolution: {integrity: sha512-8+kJehZ5Mn0E3jZYY3SThoyoW+2n2QzQwnkwc2eRlKAj7EQf+akqfwo0uVzbl/O6+rQZjGR8GC6BCKxEkTnnhw==}
+  '@thunderid/browser@0.3.1':
+    resolution: {integrity: sha512-PbpYo/NCIPfjNN8z5jIYDvzRJXt7DnsroNYSl6SV5tjJTSIwwLPz1JQOvMT3VGnvBGsTWx83Ty/fgYtkaYzt3A==}
 
-  '@thunderid/javascript@0.3.0':
-    resolution: {integrity: sha512-RTR2hYeVBd2U0R5F7JLTra/pER+jtQt7xLcPx6fib1TTiN1E0/DpE5CUetgiugQwjd+lpskdeAS0hGv2dKmRPw==}
+  '@thunderid/javascript@0.3.6':
+    resolution: {integrity: sha512-A/1d6uifWZ14LxF4yMFCdwT1H9COey4sg7T6JV+p95sLcjpOO5f+QoEGdMwe29Sa5+MJ7c0qjzlw7bnnoEWMhg==}
 
-  '@thunderid/react@0.3.0':
-    resolution: {integrity: sha512-SYPuwsGk7/AqJFhePzxGMzJU/QGWvzCrBxe05X5RgIDYrLmhMl9tco6BwFvyNuWssiIaCOJGBzXLdRV1PmJtKQ==}
+  '@thunderid/react@0.3.3':
+    resolution: {integrity: sha512-Mx5keYO4kxTo4ALMPuMOoQTaUSNpzP1JqUV2CZM0ouFwdrsGylGN+I3B2Zb9AHqSWOu8lsc89cZGM6c333OLjQ==}
     peerDependencies:
       '@types/react': '>=16.8.0'
       react: '>=16.8.0'
@@ -810,8 +810,8 @@ packages:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
 
-  dompurify@3.4.9:
-    resolution: {integrity: sha512-4dPSRMRDqHvs0V4YDFCsaIZo4if5u0xM+llyxiM2fwuZFdKArUBAF3VtI2+n8NKg9P870WMdYk0UhqQNoWXbfQ==}
+  dompurify@3.4.11:
+    resolution: {integrity: sha512-zhlUV12GsaRzMsf9q5M254YhA4+VuF0fG+QFqu6aYpoGlKtz+w8//jBcGVYBgQkR5GHjUomejY84AV+/uPbWdw==}
 
   downshift@9.0.10:
     resolution: {integrity: sha512-TP/iqV6bBok6eGD5tZ8boM8Xt7/+DZvnVNr8cNIhbAm2oUBd79Tudiccs2hbcV9p7xAgS/ozE7Hxy3a9QqS6Mw==}
@@ -2143,9 +2143,9 @@ snapshots:
       '@tanstack/query-core': 5.101.0
       react: 19.2.7
 
-  '@thunderid/browser@0.3.0':
+  '@thunderid/browser@0.3.1':
     dependencies:
-      '@thunderid/javascript': 0.3.0
+      '@thunderid/javascript': 0.3.6
       base64url: 3.0.1
       buffer: 6.0.3
       core-js: 3.42.0
@@ -2156,18 +2156,18 @@ snapshots:
       stream-browserify: 3.0.0
       tslib: 2.8.1
 
-  '@thunderid/javascript@0.3.0':
+  '@thunderid/javascript@0.3.6':
     dependencies:
       jose: 5.2.0
       tslib: 2.8.1
 
-  '@thunderid/react@0.3.0(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
+  '@thunderid/react@0.3.3(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       '@emotion/css': 11.13.5
       '@floating-ui/react': 0.27.12(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      '@thunderid/browser': 0.3.0
+      '@thunderid/browser': 0.3.1
       '@types/react': 19.2.17
-      dompurify: 3.4.9
+      dompurify: 3.4.11
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
       tslib: 2.8.1
@@ -2408,7 +2408,7 @@ snapshots:
 
   detect-libc@2.1.2: {}
 
-  dompurify@3.4.9:
+  dompurify@3.4.11:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 

@@ -1,53 +1,487 @@
 @use "@carbon/react";
+@use "sass:color";
 
-html,
-body,
-#root {
-    height: 100%;
-    margin: 0;
-    padding: 0;
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+// ─── Design tokens ───────────────────────────────────────────────────────────
+// Primary palette built from #406AAF
+$os-accent:        #406AAF;   // brand — interactive, borders, icons
+$os-accent-dark:   #2d5190;   // button hover, darker states
+$os-accent-deeper: #1f3a6e;   // header background
+$os-accent-mid:    #6a93c8;   // lighter icon / disabled
+$os-accent-light:  #edf2fa;   // hover / active bg
+$os-accent-border: #9ab5d9;   // light border accent
+$os-sidebar-w:     13rem;
+
+// ─── Global font ────────────────────────────────────────────────────────────
+* { font-family: 'IBM Plex Sans', sans-serif; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
+// ─── ThunderID sign-in ───────────────────────────────────────────────────────
 .thunderid-signin-wrapper {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f4f4f4;
+}
+.thunderid-signin-card { width: 100%; max-width: 480px; }
+.thunderid-signin { padding: 2rem !important; }
+
+// ─── Header ─────────────────────────────────────────────────────────────────
+.cds--header {
+  background-color: $os-accent-deeper;
+  border-bottom: 1px solid color.adjust($os-accent-deeper, $lightness: -5%);
+}
+
+.cds--header__name {
+  color: #ffffff !important;
+  font-weight: 500;
+  font-size: 1.25rem !important;
+  letter-spacing: 0.01em;
+  &:hover { background-color: rgba(255,255,255,0.08); }
+}
+
+.cds--header__global {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-right: 0.75rem;
+}
+
+.cds--header__global .cds--header__action {
+  color: #ffffff;
+  // allow action to be wider than the default 3rem square for text labels
+  width: auto;
+  min-width: 3rem;
+  padding: 0 0.75rem;
+  &:hover { background-color: rgba(255,255,255,0.1); color: #ffffff; }
+  &:focus { border-color: rgba(255,255,255,0.5); }
+}
+
+.cds--header__global button { color: #ffffff; }
+
+// ─── Sidebar ────────────────────────────────────────────────────────────────
+.cds--side-nav {
+  width: $os-sidebar-w !important;  // keep Carbon's fixed-nav width in sync with our layout
+  background-color: #ffffff;
+  border-right: 1px solid #e0e0e0;
+  top: 3rem;
+}
+
+.cds--side-nav__link {
+  color: #161616;
+  font-size: 0.875rem;
+
+  &:hover {
+    background-color: $os-accent-light;
+    color: $os-accent-dark;
+    .cds--side-nav__link-text { color: $os-accent-dark; }
+    svg { fill: $os-accent; }
+  }
+
+  &[aria-current='page'] {
+    background-color: $os-accent-light;
+    border-left: 3px solid $os-accent;
+    .cds--side-nav__link-text { color: $os-accent-dark; font-weight: 600; }
+    svg { fill: $os-accent; }
+  }
+}
+
+.cds--side-nav__icon { fill: #525252; }
+
+// ─── Page layout ────────────────────────────────────────────────────────────
+.os-layout {
+  display: flex;
+  min-height: 100vh;
+  padding-top: 3rem;
+
+  &__sidebar {
+    width: $os-sidebar-w;
+    flex-shrink: 0;
+    position: fixed;
+    top: 3rem;
+    left: 0;
+    bottom: 0;
+    overflow-y: auto;
+    background-color: #ffffff;
+    border-right: 1px solid #e0e0e0;
+    z-index: 999;
+  }
+
+  &__content {
+    flex: 1;
+    margin-left: $os-sidebar-w;
     background-color: #f4f4f4;
+    min-height: calc(100vh - 3rem);
+    // prevent content from overflowing on narrow viewports
+    min-width: 0;
+  }
 }
 
-.thunderid-signin-card {
-    width: 100%;
-    max-width: 480px;
-}
+// ─── Page chrome ────────────────────────────────────────────────────────────
+.os-page {
+  padding: 1.5rem 2rem;
 
-.thunderid-signin {
-    padding: 2rem !important;
-}
-
-.home-hero {
-    height: calc(100vh - 3rem);
+  &__header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e0e0e0;
     display: flex;
-    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  &__header-left { flex: 1; min-width: 0; }
+
+  &__title {
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: #161616;
+    margin: 0 0 0.2rem;
+  }
+
+  &__subtitle {
+    font-size: 0.8125rem;
+    color: #525252;
+    margin: 0;
+  }
+
+  &__breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.75rem;
+    color: #525252;
+    margin-bottom: 0.5rem;
+    a { color: $os-accent; text-decoration: none; &:hover { text-decoration: underline; } }
+    span { color: #8d8d8d; }
+  }
+}
+
+// ─── Stat cards ─────────────────────────────────────────────────────────────
+.os-stat-grid {
+  display: grid;
+  // 4 columns on wide screens, gracefully wraps as viewport narrows
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+
+  @media (max-width: 1100px) { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 640px)  { grid-template-columns: 1fr; }
+}
+
+.os-stat-card {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-top: 3px solid $os-accent;
+  padding: 1.25rem 1.5rem;
+
+  &__label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #525252;
+    margin: 0 0 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  &__value {
+    font-size: 2.25rem;
+    font-weight: 300;
+    color: #161616;
+    line-height: 1;
+    margin: 0;
+  }
+
+  &__meta {
+    font-size: 0.6875rem;
+    color: #8d8d8d;
+    margin: 0.4rem 0 0;
+  }
+}
+
+// ─── Quick action cards ───────────────────────────────────────────────────────
+.os-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+
+  @media (max-width: 1100px) { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 640px)  { grid-template-columns: 1fr; }
+}
+
+// ─── Section card ────────────────────────────────────────────────────────────
+.os-section {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  margin-bottom: 1.5rem;
+
+  &__header {
+    padding: 0.875rem 1.5rem;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #161616;
+    margin: 0;
+  }
+
+  &__body { padding: 1.5rem; }
+}
+
+// ─── Data table ──────────────────────────────────────────────────────────────
+.os-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th {
+    padding: 0.625rem 1.5rem;
+    text-align: left;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #525252;
+    background-color: #f4f4f4;
+    border-bottom: 2px solid #e0e0e0;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    color: #161616;
+    border-bottom: 1px solid #e0e0e0;
+    vertical-align: middle;
+  }
+
+  tbody tr {
+    cursor: pointer;
+    transition: background-color 0.1s;
+    &:hover { background-color: $os-accent-light; }
+    &:last-child td { border-bottom: none; }
+  }
+
+  .os-table__link  { color: $os-accent; font-weight: 500; text-decoration: none; &:hover { text-decoration: underline; } }
+  .os-table__muted { color: #525252; }
+  .os-table__mono  { font-family: 'IBM Plex Mono', monospace; font-size: 0.8125rem; color: #525252; }
+}
+
+// ─── Form layout ────────────────────────────────────────────────────────────
+.os-form {
+  max-width: 720px;
+
+  &__section {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    margin-bottom: 1.5rem;
+  }
+
+  &__section-header {
+    padding: 0.875rem 1.5rem;
+    border-bottom: 1px solid #e0e0e0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #161616;
+    background-color: #f9f9f9;
+  }
+
+  &__section-body {
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    &--full  { grid-template-columns: 1fr; }
+    &--three { grid-template-columns: 1fr 1fr 1fr; }
+  }
+
+  &__full-col { grid-column: 1 / -1; }
+
+  &__actions {
+    display: flex;
+    gap: 0.75rem;
+    padding-top: 0.5rem;
+    flex-wrap: wrap;
+  }
+}
+
+// ─── Profile / detail ────────────────────────────────────────────────────────
+.os-profile {
+  &__banner {
+    background: #ffffff;
+    border-bottom: 1px solid #e0e0e0;
+    border-top: 3px solid $os-accent;
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  &__avatar {
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 50%;
+    background-color: $os-accent;
+    display: flex;
     align-items: center;
     justify-content: center;
-    text-align: center;
-    padding: 0 1rem;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 0.02em;
+  }
 
-    &__title {
-        font-family: 'IBM Plex Sans', sans-serif;
-        font-size: 4.5rem;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        margin: 0 0 1.5rem;
-        line-height: 1.1;
-    }
-
-    &__subtitle {
-        font-family: 'IBM Plex Sans', sans-serif;
-        font-size: 1.25rem;
-        font-weight: 400;
-        color: #525252;
-        margin: 1.5rem 0 0;
-    }
+  &__name { font-size: 1.25rem; font-weight: 600; color: #161616; margin: 0 0 0.2rem; }
+  &__meta { font-size: 0.8125rem; color: #525252; margin: 0; }
+  &__actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 }
+
+.os-kv-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  &--three { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+.os-kv-item {
+  padding: 0.875rem 1.5rem;
+  border-bottom: 1px solid #f4f4f4;
+  border-right: 1px solid #f4f4f4;
+  &__label { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #8d8d8d; margin: 0 0 0.2rem; }
+  &__value  { font-size: 0.875rem; color: #161616; margin: 0; }
+}
+
+// ─── Search / toolbar ────────────────────────────────────────────────────────
+.os-search {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+
+  &__icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    fill: #525252;
+    pointer-events: none;
+  }
+
+  &__input {
+    width: 100%;
+    padding: 0.5625rem 0.75rem 0.5625rem 2.25rem;
+    border: 1px solid #e0e0e0;
+    font-size: 0.875rem;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+    background: #ffffff;
+    &:focus { border-color: $os-accent; outline: 2px solid $os-accent; outline-offset: -2px; }
+  }
+}
+
+.os-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.5rem;
+  border-bottom: 1px solid #e0e0e0;
+  background: #ffffff;
+  flex-wrap: wrap;
+}
+
+// ─── Placeholder state ────────────────────────────────────────────────────────
+.os-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3.5rem 2rem;
+  color: #8d8d8d;
+  text-align: center;
+  svg { fill: #c6c6c6; margin-bottom: 1rem; }
+  p { margin: 0; font-size: 0.875rem; }
+}
+
+// ─── Carbon overrides ─────────────────────────────────────────────────────────
+.cds--btn--primary {
+  background-color: $os-accent !important;
+  border-color: $os-accent !important;
+  &:hover { background-color: $os-accent-dark !important; }
+  &:active { background-color: $os-accent-deeper !important; }
+}
+
+// Carbon tab indicator
+.cds--tabs__nav-item--selected .cds--tabs__nav-link {
+  border-bottom-color: $os-accent !important;
+  color: $os-accent-dark !important;
+}
+
+// Carbon tag blue → remap to our accent
+.cds--tag--blue {
+  background-color: color.adjust($os-accent, $lightness: 38%) !important;
+  color: $os-accent-dark !important;
+}
+
+// ─── Teacher layout (top-nav only, no sidebar) ───────────────────────────────
+.os-teacher-content {
+  padding-top: 3rem;
+  background-color: #f4f4f4;
+  min-height: 100vh;
+}
+
+// Header top nav — override Carbon's white theme background on nav + ul
+.cds--header__nav,
+.cds--header > nav {
+  background-color: $os-accent-deeper !important;
+  background: $os-accent-deeper !important;
+  // override Carbon CSS variable that sets the white background
+  --cds-background: #{$os-accent-deeper};
+  --cds-layer-01: #{$os-accent-deeper};
+}
+
+.cds--header__menu-bar,
+.cds--header__nav ul,
+.cds--header > nav ul {
+  background-color: $os-accent-deeper !important;
+  background: $os-accent-deeper !important;
+}
+
+// Nav item text + hover + active
+.cds--header__menu-item {
+  color: rgba(255, 255, 255, 0.75) !important;
+  font-size: 0.875rem;
+  font-weight: 400;
+  background-color: transparent !important;
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+  }
+
+  &.os-header-nav--active {
+    color: #ffffff !important;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.85);
+    background-color: rgba(255, 255, 255, 0.08) !important;
+  }
+}
+
+// Remove Carbon's before pseudo-element left divider on nav items
+.cds--header__menu-item::before { display: none; }

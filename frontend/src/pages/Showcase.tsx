@@ -215,14 +215,14 @@ export default function Showcase() {
                   <RadioButton labelText="Hybrid" value="hybrid" id="hybrid" />
                 </RadioButtonGroup>
 
-                <Accordion style={{ marginTop: "2rem" }}>
+                <div style={{ marginTop: "2rem" }}><Accordion>
                   <AccordionItem title="Account details">
                     <p>Update your personal information and credentials.</p>
                   </AccordionItem>
                   <AccordionItem title="Privacy settings">
                     <p>Manage what data is shared with instructors.</p>
                   </AccordionItem>
-                </Accordion>
+                </Accordion></div>
               </TabPanel>
             </TabPanels>
           </Tabs>

@@ -28,3 +28,22 @@ type CreateAcademicYearRequest struct {
 type SetCurrentAcademicYearRequest struct {
 	AcademicYearID string `json:"academic_year_id" binding:"required"`
 }
+
+type SchoolResponse struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Address   string `json:"address"`
+	Phone     string `json:"phone"`
+	Email     string `json:"email"`
+	LogoURL   string `json:"logo_url"`
+	CreatedAt string `json:"created_at"`
+}
+
+type AcademicYearResponse struct {
+	ID        string `json:"id"`
+	Label     string `json:"label"`
+	StartDate string `json:"start_date"`
+	EndDate   string `json:"end_date"`
+	IsCurrent bool   `json:"is_current"`
+	CreatedAt string `json:"created_at"`
+}

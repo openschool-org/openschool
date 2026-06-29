@@ -69,3 +69,7 @@ WHERE c.form_teacher_id = $1
   AND c.academic_year_id = (
       SELECT id FROM academic_years WHERE is_current = TRUE LIMIT 1
   );
+
+-- name: DeleteTeacher :exec
+DELETE FROM teacher_profiles
+WHERE id = $1;
