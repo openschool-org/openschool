@@ -16,9 +16,9 @@ func RegisterStudentRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGro
 	handler := handlers.NewStudentHandler(service)
 
 	admin.POST("/students", handler.Create)
-	admin.GET("/students", handler.List)
-	admin.GET("/students/:id", handler.GetByID)
-	admin.GET("/students/:id/class", handler.GetWithClass)
+	teacherOrAdmin.GET("/students", handler.List)
+	teacherOrAdmin.GET("/students/:id", handler.GetByID)
+	teacherOrAdmin.GET("/students/:id/class", handler.GetWithClass)
 	admin.PUT("/students/:id", handler.Update)
 	admin.DELETE("/students/:id", handler.Delete)
 
@@ -30,7 +30,6 @@ func RegisterStudentRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGro
 	selHandler := handlers.NewStudentSubjectSelectionHandler(selService)
 
 	admin.POST("/students/:id/selections", selHandler.UpsertSelection)
-	admin.GET("/students/:id/selections", selHandler.ListSelections)
+	teacherOrAdmin.GET("/students/:id/selections", selHandler.ListSelections)
 	admin.DELETE("/students/:id/selections/:bucket_id", selHandler.DeleteSelection)
-
 }

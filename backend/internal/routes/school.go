@@ -8,18 +8,18 @@ import (
 	"github.com/openschool-org/openschool/internal/services"
 )
 
-func RegisterSchoolRoutes(r *gin.RouterGroup, pool *pgxpool.Pool) {
+func RegisterSchoolRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewSchoolRepository(pool)
 	service := services.NewSchoolService(repo)
 	handler := handlers.NewSchoolHandler(service)
 
-	r.POST("/school", handler.Create)
-	r.GET("/school", handler.Get)
-	r.PUT("/school/:id", handler.Update)
+	admin.POST("/school", handler.Create)
+	teacherOrAdmin.GET("/school", handler.Get)
+	admin.PUT("/school/:id", handler.Update)
 
-	r.POST("/academic-years", handler.CreateAcademicYear)
-	r.GET("/academic-years", handler.ListAcademicYears)
-	r.GET("/academic-years/current", handler.GetCurrentAcademicYear)
-	r.PUT("/academic-years/:id/set-current", handler.SetCurrentAcademicYear)
-	r.DELETE("/academic-years/:id", handler.DeleteAcademicYear)
+	admin.POST("/academic-years", handler.CreateAcademicYear)
+	teacherOrAdmin.GET("/academic-years", handler.ListAcademicYears)
+	teacherOrAdmin.GET("/academic-years/current", handler.GetCurrentAcademicYear)
+	admin.PUT("/academic-years/:id/set-current", handler.SetCurrentAcademicYear)
+	admin.DELETE("/academic-years/:id", handler.DeleteAcademicYear)
 }

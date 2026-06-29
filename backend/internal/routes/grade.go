@@ -8,14 +8,14 @@ import (
 	"github.com/openschool-org/openschool/internal/services"
 )
 
-func RegisterGradeRoutes(r *gin.RouterGroup, pool *pgxpool.Pool) {
+func RegisterGradeRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewGradeRepository(pool)
 	service := services.NewGradeService(repo)
 	handler := handlers.NewGradeHandler(service)
 
-	r.POST("/grades", handler.Create)
-	r.GET("/grades", handler.List)
-	r.GET("/grades/:id", handler.GetByID)
-	r.PUT("/grades/:id", handler.Update)
-	r.DELETE("/grades/:id", handler.Delete)
+	admin.POST("/grades", handler.Create)
+	teacherOrAdmin.GET("/grades", handler.List)
+	teacherOrAdmin.GET("/grades/:id", handler.GetByID)
+	admin.PUT("/grades/:id", handler.Update)
+	admin.DELETE("/grades/:id", handler.Delete)
 }

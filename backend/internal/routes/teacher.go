@@ -9,18 +9,18 @@ import (
 	"github.com/openschool-org/openschool/internal/thunderid"
 )
 
-func RegisterTeacherRoutes(r *gin.RouterGroup, pool *pgxpool.Pool) {
+func RegisterTeacherRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewTeacherRepository(pool)
 	thunderIDClient := thunderid.NewClient()
 	service := services.NewTeacherService(repo, thunderIDClient)
 	handler := handlers.NewTeacherHandler(service)
 
-	r.POST("/teachers", handler.Create)
-	r.GET("/teachers", handler.List)
-	r.GET("/teachers/:id", handler.GetByID)
-	r.PUT("/teachers/:id", handler.Update)
-	r.DELETE("/teachers/:id", handler.Delete)
-	r.POST("/teachers/:id/subjects", handler.AssignSubject)
-	r.DELETE("/teachers/:id/subjects/:subject_id", handler.RemoveSubject)
-	r.GET("/teachers/:id/subjects", handler.ListSubjects)
+	admin.POST("/teachers", handler.Create)
+	teacherOrAdmin.GET("/teachers", handler.List)
+	teacherOrAdmin.GET("/teachers/:id", handler.GetByID)
+	admin.PUT("/teachers/:id", handler.Update)
+	admin.DELETE("/teachers/:id", handler.Delete)
+	admin.POST("/teachers/:id/subjects", handler.AssignSubject)
+	admin.DELETE("/teachers/:id/subjects/:subject_id", handler.RemoveSubject)
+	teacherOrAdmin.GET("/teachers/:id/subjects", handler.ListSubjects)
 }

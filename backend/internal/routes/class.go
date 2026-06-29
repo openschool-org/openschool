@@ -14,14 +14,14 @@ func RegisterClassRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup
 	handler := handlers.NewClassHandler(service)
 
 	admin.POST("/classes", handler.Create)
-	admin.GET("/classes/current", handler.ListCurrent)
-	admin.GET("/classes/:id", handler.GetByID)
+	teacherOrAdmin.GET("/classes/current", handler.ListCurrent)
+	teacherOrAdmin.GET("/classes/:id", handler.GetByID)
 	admin.PUT("/classes/:id", handler.Update)
 	admin.DELETE("/classes/:id", handler.Delete)
 	admin.PUT("/classes/:id/form-teacher", handler.AssignFormTeacher)
 	admin.POST("/classes/:id/subject-teachers", handler.AssignSubjectTeacher)
 	admin.GET("/classes/:id/subject-teachers", handler.ListSubjectTeachers)
-	admin.GET("/academic-years/:academic_year_id/classes", handler.ListByAcademicYear)
+	teacherOrAdmin.GET("/academic-years/:academic_year_id/classes", handler.ListByAcademicYear)
 
 	teacherOrAdmin.POST("/classes/:id/students/:student_id/enroll", handler.EnrollStudent)
 	teacherOrAdmin.DELETE("/classes/:id/students/:student_id/unenroll", handler.UnenrollStudent)

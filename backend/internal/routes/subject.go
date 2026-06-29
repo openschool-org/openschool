@@ -8,14 +8,14 @@ import (
 	"github.com/openschool-org/openschool/internal/services"
 )
 
-func RegisterSubjectRoutes(r *gin.RouterGroup, pool *pgxpool.Pool) {
+func RegisterSubjectRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewSubjectRepository(pool)
 	service := services.NewSubjectService(repo)
 	handler := handlers.NewSubjectHandler(service)
 
-	r.POST("/subjects", handler.Create)
-	r.GET("/subjects", handler.List)
-	r.GET("/subjects/:id", handler.GetByID)
-	r.PUT("/subjects/:id", handler.Update)
-	r.DELETE("/subjects/:id", handler.Delete)
+	admin.POST("/subjects", handler.Create)
+	teacherOrAdmin.GET("/subjects", handler.List)
+	teacherOrAdmin.GET("/subjects/:id", handler.GetByID)
+	admin.PUT("/subjects/:id", handler.Update)
+	admin.DELETE("/subjects/:id", handler.Delete)
 }
