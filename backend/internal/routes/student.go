@@ -33,5 +33,4 @@ func RegisterStudentRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGro
 	admin.GET("/students/:id/selections", selHandler.ListSelections)
 	admin.DELETE("/students/:id/selections/:bucket_id", selHandler.DeleteSelection)
 
-	teacherOrAdmin.GET("/students/:id/selections", selHandler.ListSelections)
 }
