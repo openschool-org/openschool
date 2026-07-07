@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import "./index.scss";
 import App from "./App.tsx";
-import { ThunderIDProvider } from "@thunderid/react";
+import { AsgardeoProvider } from "@asgardeo/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const queryClient = new QueryClient({
@@ -17,18 +17,16 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThunderIDProvider
-      clientId="Yk-roYC3mJrf1SB_oXm_aQ"
-      baseUrl="https://localhost:8090"
-      afterSignInUrl="http://localhost:5173"
-      afterSignOutUrl="http://localhost:5173"
-      organizationHandle="default"
+    <AsgardeoProvider
+      clientId={import.meta.env.VITE_ASGARDEO_CLIENT_ID}
+      baseUrl={import.meta.env.VITE_ASGARDEO_BASE_URL}
+      scopes={import.meta.env.VITE_ASGARDEO_SCOPES}
     >
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <App />
         </BrowserRouter>
       </QueryClientProvider>
-    </ThunderIDProvider>
+    </AsgardeoProvider>
   </StrictMode>,
 );

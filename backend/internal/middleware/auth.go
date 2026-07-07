@@ -1,9 +1,14 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
+	"io"
+	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/MicahParks/keyfunc/v3"
@@ -11,23 +16,82 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+type StringOrSlice []string
+
+func (s *StringOrSlice) UnmarshalJSON(data []byte) error {
+	var single string
+	if err := json.Unmarshal(data, &single); err == nil {
+		*s = []string{single}
+		return nil
+	}
+
+	var multiple []string
+	if err := json.Unmarshal(data, &multiple); err != nil {
+		return err
+	}
+	*s = multiple
+	return nil
+}
+
 type Claims struct {
-	Sub         string   `json:"sub"`
-	Email       string   `json:"email"`
-	Username    string   `json:"username"`
-	GivenName   string   `json:"given_name"`
-	FamilyName  string   `json:"family_name"`
-	PhoneNumber string   `json:"phone_number"`
-	Roles       []string `json:"roles"`
+	Sub         string        `json:"sub"`
+	Email       string        `json:"email"`
+	Username    string        `json:"username"`
+	GivenName   string        `json:"given_name"`
+	FamilyName  string        `json:"family_name"`
+	PhoneNumber string        `json:"phone_number"`
+	Roles       StringOrSlice `json:"roles"`
 	jwt.RegisteredClaims
 }
 
 var jwks keyfunc.Keyfunc
 
+type stripX5CTransport struct {
+	base http.RoundTripper
+}
+
+func (t *stripX5CTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := t.base.RoundTrip(req)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return resp, err
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	var jwks struct {
+		Keys []map[string]interface{} `json:"keys"`
+	}
+	if err := json.Unmarshal(body, &jwks); err != nil {
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+		return resp, nil
+	}
+
+	for _, key := range jwks.Keys {
+		delete(key, "x5c")
+	}
+
+	cleaned, err := json.Marshal(jwks)
+	if err != nil {
+		resp.Body = io.NopCloser(bytes.NewReader(body))
+		return resp, nil
+	}
+
+	resp.Body = io.NopCloser(bytes.NewReader(cleaned))
+	resp.ContentLength = int64(len(cleaned))
+	resp.Header.Set("Content-Length", strconv.Itoa(len(cleaned)))
+	return resp, nil
+}
+
 func InitJWKS(jwksURL string) error {
 	insecureClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		Transport: &stripX5CTransport{
+			base: &http.Transport{
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			},
 		},
 	}
 
@@ -66,6 +130,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		claims := &Claims{}
 		token, err := jwt.ParseWithClaims(tokenStr, claims, jwks.Keyfunc)
 		if err != nil || !token.Valid {
+			log.Printf("auth: token validation failed: %v", err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "invalid or expired token",
 			})
@@ -78,7 +143,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		c.Set("given_name", claims.GivenName)
 		c.Set("family_name", claims.FamilyName)
 		c.Set("phone_number", claims.PhoneNumber)
-		c.Set("roles", claims.Roles)
+		c.Set("roles", []string(claims.Roles))
 
 		c.Next()
 	}

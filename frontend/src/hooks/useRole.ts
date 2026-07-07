@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useThunderID } from "@thunderid/react";
+import { useAsgardeo } from "@asgardeo/react";
 
 type Role = "admin" | "teacher" | "student" | "parent";
 
@@ -12,7 +12,7 @@ function parseJwt(token: string): Record<string, unknown> | null {
 }
 
 export function useRole(): { role: Role; loading: boolean } {
-  const { getAccessToken, isSignedIn, isLoading } = useThunderID();
+  const { getAccessToken, isSignedIn, isLoading } = useAsgardeo();
   const getAccessTokenRef = useRef(getAccessToken);
   const [role, setRole] = useState<Role>("admin");
   const [roleResolved, setRoleResolved] = useState(false);
@@ -36,13 +36,17 @@ export function useRole(): { role: Role; loading: boolean } {
 
       if (token) {
         const payload = parseJwt(token);
-        const raw =
-          (Array.isArray(payload?.roles)
-            ? (payload.roles as string[]).find((r) =>
-                ["admin", "teacher", "student", "parent"].includes(r),
-              )
-            : null) ?? "admin";
-        setRole(raw as Role);
+        const rawRoles = payload?.roles;
+        const roles = Array.isArray(rawRoles)
+          ? (rawRoles as string[])
+          : typeof rawRoles === "string"
+            ? [rawRoles]
+            : [];
+
+        const priority: Role[] = ["admin", "teacher", "student", "parent"];
+        const resolved =
+          priority.find((r) => roles.includes(r)) ?? "admin";
+        setRole(resolved);
       }
 
       setRoleResolved(true);

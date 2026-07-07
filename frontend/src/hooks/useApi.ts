@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
-import { useThunderID } from "@thunderid/react";
+import { useAsgardeo } from "@asgardeo/react";
 import api from "../lib/api";
 
 export function useApi() {
-  const { getAccessToken } = useThunderID();
+  const { getAccessToken } = useAsgardeo();
   const interceptorRef = useRef<number | null>(null);
   const getAccessTokenRef = useRef(getAccessToken);
 

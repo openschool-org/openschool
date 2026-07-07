@@ -8,18 +8,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/openschool-org/openschool/db/sqlc"
+	"github.com/openschool-org/openschool/internal/asgardeo"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
-	"github.com/openschool-org/openschool/internal/thunderid"
 )
 
 type TeacherService struct {
-	repo            *repositories.TeacherRepository
-	thunderIDClient *thunderid.Client
+	repo           *repositories.TeacherRepository
+	asgardeoClient *asgardeo.Client
 }
 
-func NewTeacherService(repo *repositories.TeacherRepository, thunderIDClient *thunderid.Client) *TeacherService {
-	return &TeacherService{repo: repo, thunderIDClient: thunderIDClient}
+func NewTeacherService(repo *repositories.TeacherRepository, asgardeoClient *asgardeo.Client) *TeacherService {
+	return &TeacherService{repo: repo, asgardeoClient: asgardeoClient}
 }
 
 func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTeacherRequest) (db.TeacherProfile, error) {
@@ -29,9 +29,8 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		return db.TeacherProfile{}, fmt.Errorf("employee number already exists")
 	}
 
-	// create user in ThunderID — employee number is the username
-	thunderUser, err := s.thunderIDClient.CreateUser(ctx, "teacher", map[string]interface{}{
-		"username":        req.EmployeeNumber,
+	asgardeoUser, err := s.asgardeoClient.CreateUser(ctx, "teacher", map[string]interface{}{
+		"username":        req.Email,
 		"email":           req.Email,
 		"given_name":      req.GivenName,
 		"family_name":     req.FamilyName,
@@ -40,12 +39,12 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		"password":        req.Password,
 	})
 	if err != nil {
-		return db.TeacherProfile{}, fmt.Errorf("failed to create ThunderID user: %w", err)
+		return db.TeacherProfile{}, fmt.Errorf("failed to create Asgardeo user: %w", err)
 	}
 
-	userID, err := uuid.Parse(thunderUser.ID)
+	userID, err := uuid.Parse(asgardeoUser.ID)
 	if err != nil {
-		return db.TeacherProfile{}, fmt.Errorf("invalid ThunderID user ID: %w", err)
+		return db.TeacherProfile{}, fmt.Errorf("invalid Asgardeo user ID: %w", err)
 	}
 
 	fullName := req.GivenName + " " + req.FamilyName
@@ -58,12 +57,12 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		Role:     "teacher",
 	})
 	if err != nil {
-		_ = s.thunderIDClient.DeleteUser(ctx, thunderUser.ID)
+		_ = s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID)
 		return db.TeacherProfile{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
-	// assign teacher role in ThunderID
-	if err := s.thunderIDClient.AssignRole(ctx, os.Getenv("THUNDERID_ROLE_TEACHER"), thunderUser.ID); err != nil {
+	// assign teacher role in Asgardeo
+	if err := s.asgardeoClient.AssignRole(ctx, os.Getenv("ASGARDEO_ROLE_TEACHER"), asgardeoUser.ID); err != nil {
 		fmt.Printf("warning: failed to assign teacher role: %v\n", err)
 	}
 
@@ -76,7 +75,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
 	})
 	if err != nil {
-		_ = s.thunderIDClient.DeleteUser(ctx, thunderUser.ID)
+		_ = s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID)
 		return db.TeacherProfile{}, fmt.Errorf("failed to create teacher profile: %w", err)
 	}
 
@@ -105,8 +104,8 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 		return db.TeacherProfile{}, fmt.Errorf("user not found")
 	}
 
-	err = s.thunderIDClient.UpdateUser(ctx, userID, "teacher", map[string]interface{}{
-		"username":        teacher.EmployeeNumber,
+	err = s.asgardeoClient.UpdateUser(ctx, userID, "teacher", map[string]interface{}{
+		"username":        user.Email,
 		"email":           user.Email,
 		"given_name":      req.GivenName,
 		"family_name":     req.FamilyName,
@@ -114,7 +113,7 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 		"employee_number": req.EmployeeNumber,
 	})
 	if err != nil {
-		fmt.Printf("warning: failed to update ThunderID user: %v\n", err)
+		fmt.Printf("warning: failed to update Asgardeo user: %v\n", err)
 	}
 
 	return s.repo.Update(ctx, db.UpdateTeacherProfileParams{
@@ -141,8 +140,8 @@ func (s *TeacherService) DeleteTeacher(ctx context.Context, id uuid.UUID) error 
 		return fmt.Errorf("failed to delete user record: %w", err)
 	}
 
-	if err := s.thunderIDClient.DeleteUser(ctx, userID.String()); err != nil {
-		fmt.Printf("warning: failed to delete ThunderID user: %v\n", err)
+	if err := s.asgardeoClient.DeleteUser(ctx, userID.String()); err != nil {
+		fmt.Printf("warning: failed to delete Asgardeo user: %v\n", err)
 	}
 
 	return nil

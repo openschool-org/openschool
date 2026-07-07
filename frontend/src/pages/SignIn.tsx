@@ -1,4 +1,4 @@
-import { SignInButton } from "@thunderid/react";
+import { SignInButton } from "@asgardeo/react";
 import { Button } from "@carbon/react";
 
 export default function SignIn() {

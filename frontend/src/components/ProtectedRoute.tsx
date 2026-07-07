@@ -1,4 +1,4 @@
-import { useThunderID } from "@thunderid/react";
+import { useAsgardeo } from "@asgardeo/react";
 import { Navigate, useLocation } from "react-router";
 
 export default function ProtectedRoute({
@@ -6,7 +6,7 @@ export default function ProtectedRoute({
 }: {
   children: React.ReactNode;
 }) {
-  const { isSignedIn, isLoading } = useThunderID();
+  const { isSignedIn, isLoading } = useAsgardeo();
   const location = useLocation();
 
   if (isLoading) return <div style={{ minHeight: "100vh" }} />;

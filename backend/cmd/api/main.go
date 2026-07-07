@@ -44,7 +44,7 @@ func main() {
 	log.Println("database connected")
 
 	// init JWKS for JWT validation
-	jwksURL := os.Getenv("THUNDERID_JWKS_URL")
+	jwksURL := os.Getenv("ASGARDEO_JWKS_URL")
 	if err := middleware.InitJWKS(jwksURL); err != nil {
 		log.Fatalf("failed to init JWKS: %v", err)
 	}

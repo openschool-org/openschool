@@ -20,7 +20,7 @@ import {
   Calendar,
   Notification,
 } from "@carbon/icons-react";
-import { UserDropdown, useThunderID } from "@thunderid/react";
+import { UserDropdown, useAsgardeo } from "@asgardeo/react";
 
 const NAV_ITEMS = [
   { path: "/", label: "Dashboard", Icon: Dashboard },
@@ -35,7 +35,7 @@ const NAV_ITEMS = [
 ];
 
 export default function RootLayout() {
-  const { getAccessToken } = useThunderID();
+  const { getAccessToken } = useAsgardeo();
   const location = useLocation();
 
   const copyToken = async () => {
