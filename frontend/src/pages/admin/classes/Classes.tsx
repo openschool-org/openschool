@@ -1,32 +1,67 @@
+import { useState } from "react";
 import { Link } from "react-router";
-import { Building, Add, ChevronRight, UserMultiple } from "@carbon/icons-react";
-import { Button, Tag } from "@carbon/react";
+import { Building, Add, ChevronRight } from "@carbon/icons-react";
+import { Button, Tag, InlineNotification } from "@carbon/react";
+import { AxiosError } from "axios";
+import {
+  useCurrentClasses,
+  useDeleteClass,
+  useStreams,
+} from "../../../queries/useClasses";
+import { useTeachers } from "../../../queries/useTeachers";
+import type { ClassWithDetails } from "../../../services/class";
+import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import ErrorMessage from "../../../components/common/ErrorMessage";
+import EmptyState from "../../../components/common/EmptyState";
+import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 
-const SAMPLE_CLASSES = [
-  { id: "CL-001", name: "10-A", grade: "Grade 10", stream: "Science", students: 38, teacher: "Priya Rathnayake" },
-  { id: "CL-002", name: "10-B", grade: "Grade 10", stream: "Arts", students: 35, teacher: "Chamari Wickramasinghe" },
-  { id: "CL-003", name: "11-A", grade: "Grade 11", stream: "Science", students: 36, teacher: "Suresh Dissanayake" },
-  { id: "CL-004", name: "11-B", grade: "Grade 11", stream: "Commerce", students: 40, teacher: "Nimal Jayasuriya" },
-  { id: "CL-005", name: "9-A", grade: "Grade 9", stream: "General", students: 42, teacher: "Anoma de Silva" },
-  { id: "CL-006", name: "8-A", grade: "Grade 8", stream: "General", students: 44, teacher: "Priya Rathnayake" },
-];
-
-const STREAM_COLORS: Record<string, "blue" | "purple" | "teal" | "green"> = {
-  Science: "blue",
-  Arts: "purple",
-  Commerce: "teal",
-  General: "green",
-};
+function apiError(e: unknown, fallback: string) {
+  return (e as AxiosError<{ error: string }>)?.response?.data?.error ?? fallback;
+}
 
 export default function Classes() {
+  const { data: classes, isLoading, isError, refetch } = useCurrentClasses();
+  const { data: streams } = useStreams();
+  const { data: teachers } = useTeachers();
+  const deleteClass = useDeleteClass();
+
+  const [toDelete, setToDelete] = useState<ClassWithDetails | null>(null);
+
+  // the list endpoint returns ids for stream and form teacher, so resolve the
+  // names from the lists we already hold rather than a request per row
+  const streamName = (id: string | null) =>
+    id ? (streams?.find((s) => s.id === id)?.name ?? null) : null;
+  const teacherName = (id: string | null) =>
+    id ? (teachers?.find((t) => t.id === id)?.full_name ?? null) : null;
+
+  const handleDelete = () => {
+    if (!toDelete) return;
+    deleteClass.mutate(toDelete.id, { onSettled: () => setToDelete(null) });
+  };
+
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
+      <div
+        className="os-page__header"
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
           <h1 className="os-page__title">Classes</h1>
-          <p className="os-page__subtitle">Grades, streams and class groups for the current academic year</p>
+          <p className="os-page__subtitle">
+            Classes for the current academic year
+          </p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/classes/new">
+        <Button
+          renderIcon={Add}
+          kind="primary"
+          size="md"
+          as={Link}
+          to="/classes/new"
+        >
           Add Class
         </Button>
       </div>
@@ -34,52 +69,122 @@ export default function Classes() {
       <div className="os-section">
         <div className="os-section__header">
           <h2 className="os-section__title">All Classes</h2>
-          <span style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>{SAMPLE_CLASSES.length} classes (sample)</span>
+          {classes && (
+            <span style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>
+              {classes.length} total
+            </span>
+          )}
         </div>
 
-        <table className="os-table">
-          <thead>
-            <tr>
-              <th>Class</th>
-              <th>Grade</th>
-              <th>Stream</th>
-              <th>Class Teacher</th>
-              <th>Students</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {SAMPLE_CLASSES.map(c => (
-              <tr key={c.id}>
-                <td>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <Building size={16} style={{ fill: "#406AAF", flexShrink: 0 }} />
-                    <Link to={`/classes/${c.id}`} className="os-table__link">{c.name}</Link>
-                  </div>
-                </td>
-                <td><span className="os-table__muted">{c.grade}</span></td>
-                <td>
-                  <Tag type={STREAM_COLORS[c.stream] ?? "gray"} size="sm">{c.stream}</Tag>
-                </td>
-                <td>
-                  <Link to="/teachers" className="os-table__muted" style={{ textDecoration: "none" }}>
-                    {c.teacher}
-                  </Link>
-                </td>
-                <td>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                    <UserMultiple size={14} style={{ fill: "#8d8d8d" }} />
-                    <span>{c.students}</span>
-                  </div>
-                </td>
-                <td style={{ width: "2rem" }}>
-                  <ChevronRight size={16} style={{ fill: "#8d8d8d" }} />
-                </td>
-              </tr>
+        {isLoading && <LoadingSpinner />}
+        {isError && (
+          <ErrorMessage message="Could not load classes." onRetry={refetch} />
+        )}
+
+        {deleteClass.isError && (
+          <InlineNotification
+            kind="error"
+            title="Could not delete class"
+            subtitle={apiError(
+              deleteClass.error,
+              "The class may still have students enrolled.",
+            )}
+            lowContrast
+            onClose={() => deleteClass.reset()}
+            style={{ maxWidth: "100%", margin: "0 1.5rem 1rem" }}
+          />
+        )}
+
+        {!isLoading && !isError && classes?.length === 0 && (
+          <EmptyState
+            title="No classes yet"
+            description="Create a class for the current academic year. If nothing appears after creating one, check that an academic year is marked current."
+            action={
+              <Button renderIcon={Add} kind="primary" as={Link} to="/classes/new">
+                Add Class
+              </Button>
+            }
+          />
+        )}
+
+        {classes && classes.length > 0 && (
+          <div>
+            {classes.map((c, i) => (
+              <div
+                key={c.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "1.25rem 1.5rem",
+                  borderBottom:
+                    i < classes.length - 1 ? "1px solid #e0e0e0" : "none",
+                  gap: "1rem",
+                }}
+              >
+                <Building size={20} style={{ fill: "#406AAF", flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <p
+                    style={{
+                      margin: "0 0 0.125rem",
+                      fontWeight: 600,
+                      fontSize: "0.9rem",
+                      color: "#161616",
+                    }}
+                  >
+                    {c.name}
+                  </p>
+                  <p
+                    style={{ margin: 0, fontSize: "0.75rem", color: "#525252" }}
+                  >
+                    {c.grade_name}
+                    {teacherName(c.form_teacher_id)
+                      ? ` · ${teacherName(c.form_teacher_id)}`
+                      : " · No form teacher"}
+                  </p>
+                </div>
+                {streamName(c.stream_id) && (
+                  <Tag type="blue" size="sm">
+                    {streamName(c.stream_id)}
+                  </Tag>
+                )}
+                <Tag type="gray" size="sm">
+                  {c.academic_year_label}
+                </Tag>
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  renderIcon={ChevronRight}
+                  as={Link}
+                  to={`/classes/${c.id}`}
+                >
+                  View
+                </Button>
+                <Button
+                  kind="danger--ghost"
+                  size="sm"
+                  onClick={() => setToDelete(c)}
+                >
+                  Delete
+                </Button>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        )}
       </div>
+
+      <ConfirmDeleteModal
+        open={!!toDelete}
+        title="Delete class"
+        description={
+          <>
+            Delete <strong>{toDelete?.name}</strong>? This is blocked while
+            students are still enrolled in it.
+          </>
+        }
+        isPending={deleteClass.isPending}
+        onClose={() => setToDelete(null)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

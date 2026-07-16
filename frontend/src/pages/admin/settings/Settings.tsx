@@ -1,15 +1,40 @@
 import { useState, useEffect } from "react";
-import { Button, Select, SelectItem, Toggle } from "@carbon/react";
+import { Button, NumberInput, Select, SelectItem, Toggle } from "@carbon/react";
 import { Save, Edit, Settings as SettingsIcon } from "@carbon/icons-react";
 import SchoolInfoCard, { type SchoolFormValues } from "../../../components/school/SchoolInfoCard";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import { useSchool, useUpdateSchool } from "../../../queries/useSchool";
+import type { School } from "../../../services/school";
 
-const EMPTY_FORM: SchoolFormValues = { name: "", address: "", phone: "", email: "", logo_url: "" };
+// The grade range lives alongside the school fields so a save carries every
+// value in one object — PUT /school replaces the whole record.
+type SettingsForm = SchoolFormValues & {
+  grade_from: number | "";
+  grade_to: number | "";
+};
 
-function schoolToForm(s: { name: string; address: string; phone: string; email: string; logo_url: string }): SchoolFormValues {
-  return { name: s.name, address: s.address, phone: s.phone, email: s.email, logo_url: s.logo_url };
+const EMPTY_FORM: SettingsForm = {
+  name: "",
+  address: "",
+  phone: "",
+  email: "",
+  logo_url: "",
+  grade_from: "",
+  grade_to: "",
+};
+
+// Unset columns arrive as null; the inputs are controlled, so coalesce to "".
+function schoolToForm(s: School): SettingsForm {
+  return {
+    name: s.name,
+    address: s.address ?? "",
+    phone: s.phone ?? "",
+    email: s.email ?? "",
+    logo_url: s.logo_url ?? "",
+    grade_from: s.grade_from ?? "",
+    grade_to: s.grade_to ?? "",
+  };
 }
 
 export default function SettingsPage() {
@@ -18,7 +43,7 @@ export default function SettingsPage() {
 
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [form, setForm] = useState<SchoolFormValues>(EMPTY_FORM);
+  const [form, setForm] = useState<SettingsForm>(EMPTY_FORM);
 
   useEffect(() => {
     if (school) setForm(schoolToForm(school));
@@ -31,10 +56,26 @@ export default function SettingsPage() {
     setEditing(false);
   };
 
+  const gradeRangeInvalid =
+    form.grade_from !== "" &&
+    form.grade_to !== "" &&
+    Number(form.grade_to) < Number(form.grade_from);
+
   const handleSave = () => {
-    if (!school) return;
+    if (!school || gradeRangeInvalid) return;
     updateSchool.mutate(
-      { id: school.id, data: form },
+      {
+        id: school.id,
+        data: {
+          name: form.name,
+          address: form.address,
+          phone: form.phone,
+          email: form.email,
+          logo_url: form.logo_url,
+          grade_from: form.grade_from === "" ? null : Number(form.grade_from),
+          grade_to: form.grade_to === "" ? null : Number(form.grade_to),
+        },
+      },
       {
         onSuccess: () => {
           setSaved(true);
@@ -62,7 +103,7 @@ export default function SettingsPage() {
           {editing ? (
             <>
               <Button kind="secondary" size="md" onClick={handleCancel} disabled={updateSchool.isPending}>Cancel</Button>
-              <Button renderIcon={Save} kind="primary" size="md" onClick={handleSave} disabled={updateSchool.isPending}>
+              <Button renderIcon={Save} kind="primary" size="md" onClick={handleSave} disabled={updateSchool.isPending || gradeRangeInvalid}>
                 Save Changes
               </Button>
             </>
@@ -84,6 +125,32 @@ export default function SettingsPage() {
           <h2 className="os-section__title">Academic Settings</h2>
         </div>
         <div className="os-section__body">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", marginBottom: "1.25rem" }}>
+            <NumberInput
+              id="grade-from"
+              label="Lowest grade"
+              helperText="The first grade this school runs."
+              min={0}
+              disabled={!editing}
+              value={form.grade_from}
+              onChange={(_e, { value }) =>
+                setForm((f) => ({ ...f, grade_from: value === "" ? "" : Number(value) }))
+              }
+            />
+            <NumberInput
+              id="grade-to"
+              label="Highest grade"
+              helperText="The last grade this school runs."
+              min={0}
+              disabled={!editing}
+              invalid={gradeRangeInvalid}
+              invalidText="Highest grade must be greater than or equal to lowest grade."
+              value={form.grade_to}
+              onChange={(_e, { value }) =>
+                setForm((f) => ({ ...f, grade_to: value === "" ? "" : Number(value) }))
+              }
+            />
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
             <Select id="timezone" labelText="Time Zone" defaultValue="asia_colombo" disabled={!editing}>
               <SelectItem value="asia_colombo" text="Asia/Colombo (UTC+5:30)" />

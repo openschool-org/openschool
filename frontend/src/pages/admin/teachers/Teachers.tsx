@@ -1,13 +1,18 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Search, Add, Edit, TrashCan } from "@carbon/icons-react";
-import { Button, IconButton } from "@carbon/react";
+import { Button, IconButton, InlineNotification } from "@carbon/react";
+import { AxiosError } from "axios";
 import { useTeachers, useDeleteTeacher } from "../../../queries/useTeachers";
 import type { Teacher } from "../../../services/teacher";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+
+function apiError(e: unknown, fallback: string) {
+  return (e as AxiosError<{ error: string }>)?.response?.data?.error ?? fallback;
+}
 
 export default function Teachers() {
   const navigate = useNavigate();
@@ -55,6 +60,20 @@ export default function Teachers() {
             />
           </div>
         </div>
+
+        {deleteTeacher.isError && (
+          <InlineNotification
+            kind="error"
+            title="Could not delete teacher"
+            subtitle={apiError(
+              deleteTeacher.error,
+              "The teacher may be assigned to a class or have attendance records.",
+            )}
+            lowContrast
+            onClose={() => deleteTeacher.reset()}
+            style={{ maxWidth: "100%", margin: "0 1.5rem 1rem" }}
+          />
+        )}
 
         {isLoading ? (
           <LoadingSpinner />
@@ -119,9 +138,12 @@ export default function Teachers() {
                         </IconButton>
                         <IconButton
                           label="Delete"
-                          kind="danger--ghost"
+                          kind="ghost"
                           size="sm"
-                          onClick={() => setToDelete(t)}
+                          onClick={() => {
+                            deleteTeacher.reset();
+                            setToDelete(t);
+                          }}
                         >
                           <TrashCan />
                         </IconButton>

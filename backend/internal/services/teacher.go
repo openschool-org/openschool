@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -11,6 +12,11 @@ import (
 	"github.com/openschool-org/openschool/internal/asgardeo"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
+)
+
+var (
+	ErrTeacherNotFound = errors.New("teacher not found")
+	ErrTeacherInUse    = errors.New("teacher is assigned to teach a class subject or has taken attendance sessions, and cannot be deleted")
 )
 
 type TeacherService struct {
@@ -127,13 +133,17 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 func (s *TeacherService) DeleteTeacher(ctx context.Context, id uuid.UUID) error {
 	teacher, err := s.repo.GetByID(ctx, id)
 	if err != nil {
-		return fmt.Errorf("teacher not found")
+		return ErrTeacherNotFound
 	}
 
 	userID := teacher.UserID // uuid.UUID directly
 
-	if err := s.repo.Delete(ctx, id); err != nil {
+	rows, err := s.repo.Delete(ctx, id)
+	if err != nil {
 		return fmt.Errorf("failed to delete teacher profile: %w", err)
+	}
+	if rows == 0 {
+		return ErrTeacherInUse
 	}
 
 	if err := s.repo.DeleteUser(ctx, userID); err != nil {

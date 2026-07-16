@@ -143,7 +143,10 @@ export default function TeacherDetail() {
                 renderIcon={TrashCan}
                 kind="danger--ghost"
                 size="sm"
-                onClick={() => setConfirmOpen(true)}
+                onClick={() => {
+                  deleteTeacher.reset();
+                  setConfirmOpen(true);
+                }}
               >
                 Delete
               </Button>
@@ -162,6 +165,20 @@ export default function TeacherDetail() {
       />
 
       <div style={{ padding: "1.5rem 2rem" }}>
+        {deleteTeacher.isError && (
+          <InlineNotification
+            kind="error"
+            title="Could not delete teacher"
+            subtitle={
+              (deleteTeacher.error as AxiosError<{ error: string }>).response?.data
+                ?.error ?? "The teacher may be assigned to a class or have attendance records."
+            }
+            lowContrast
+            onClose={() => deleteTeacher.reset()}
+            style={{ maxWidth: "100%", marginBottom: "1rem" }}
+          />
+        )}
+
         <div className="os-section">
           <div className="os-section__header">
             <h2 className="os-section__title">Profile</h2>

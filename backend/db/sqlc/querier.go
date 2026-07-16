@@ -12,35 +12,52 @@ import (
 )
 
 type Querier interface {
-	AddSubjectToBucket(ctx context.Context, arg AddSubjectToBucketParams) error
+	// ── group subjects ──────────────────────────────────────────────────────────
+	AddGroupSubject(ctx context.Context, arg AddGroupSubjectParams) (GroupSubject, error)
 	AssignFormTeacher(ctx context.Context, arg AssignFormTeacherParams) (Class, error)
 	AssignSubjectTeacherToClass(ctx context.Context, arg AssignSubjectTeacherToClassParams) error
-	AssignSubjectToGrade(ctx context.Context, arg AssignSubjectToGradeParams) error
 	AssignSubjectToTeacher(ctx context.Context, arg AssignSubjectToTeacherParams) error
+	CountGroupSubjects(ctx context.Context, groupID uuid.UUID) (int64, error)
 	CreateAcademicYear(ctx context.Context, arg CreateAcademicYearParams) (AcademicYear, error)
 	CreateAttendanceSession(ctx context.Context, arg CreateAttendanceSessionParams) (AttendanceSession, error)
 	CreateClass(ctx context.Context, arg CreateClassParams) (Class, error)
 	CreateGrade(ctx context.Context, arg CreateGradeParams) (Grade, error)
 	CreateGuardian(ctx context.Context, arg CreateGuardianParams) (Guardian, error)
+	// ── levels ──────────────────────────────────────────────────────────────────
+	CreateLevel(ctx context.Context, arg CreateLevelParams) (Level, error)
+	// ── mediums ─────────────────────────────────────────────────────────────────
+	CreateMedium(ctx context.Context, name string) (Medium, error)
 	CreateSchool(ctx context.Context, arg CreateSchoolParams) (School, error)
+	// ── selection groups ────────────────────────────────────────────────────────
+	CreateSelectionGroup(ctx context.Context, arg CreateSelectionGroupParams) (SelectionGroup, error)
 	CreateStream(ctx context.Context, name string) (Stream, error)
 	CreateStreamGroup(ctx context.Context, arg CreateStreamGroupParams) (StreamGroup, error)
 	CreateStudentProfile(ctx context.Context, arg CreateStudentProfileParams) (StudentProfile, error)
-	CreateStudentSubjectSelection(ctx context.Context, arg CreateStudentSubjectSelectionParams) (StudentSubjectSelection, error)
+	CreateStudentSubjectEnrollment(ctx context.Context, arg CreateStudentSubjectEnrollmentParams) (StudentSubjectEnrollment, error)
 	CreateSubject(ctx context.Context, arg CreateSubjectParams) (Subject, error)
-	CreateSubjectBucket(ctx context.Context, arg CreateSubjectBucketParams) (SubjectBucket, error)
 	CreateTeacherProfile(ctx context.Context, arg CreateTeacherProfileParams) (TeacherProfile, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeactivateUser(ctx context.Context, id uuid.UUID) (User, error)
 	DeleteAcademicYear(ctx context.Context, id uuid.UUID) error
+	// attendance_records cascade with the session
+	DeleteAttendanceSession(ctx context.Context, id uuid.UUID) error
 	DeleteClass(ctx context.Context, id uuid.UUID) error
 	DeleteGrade(ctx context.Context, id uuid.UUID) (int64, error)
+	// blocked while any of its groups still carry enrollments
+	DeleteLevel(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteMedium(ctx context.Context, id uuid.UUID) (int64, error)
+	// blocked while enrollments reference it
+	DeleteSelectionGroup(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStream(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStreamGroup(ctx context.Context, id uuid.UUID) (int64, error)
+	// clears a student's picks for one level/year so a re-submit replaces them
+	DeleteStudentEnrollmentsForLevel(ctx context.Context, arg DeleteStudentEnrollmentsForLevelParams) error
 	DeleteStudentProfile(ctx context.Context, id uuid.UUID) error
-	DeleteStudentSubjectSelection(ctx context.Context, arg DeleteStudentSubjectSelectionParams) error
+	DeleteStudentSubjectEnrollment(ctx context.Context, arg DeleteStudentSubjectEnrollmentParams) error
 	DeleteSubject(ctx context.Context, id uuid.UUID) (int64, error)
-	DeleteTeacher(ctx context.Context, id uuid.UUID) error
+	// blocked while the teacher is assigned to teach a class subject, or has
+	// taken an attendance session (both ON DELETE RESTRICT)
+	DeleteTeacher(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	EnrollStudentInClass(ctx context.Context, arg EnrollStudentInClassParams) error
 	GetAcademicYearByID(ctx context.Context, id uuid.UUID) (AcademicYear, error)
@@ -51,11 +68,18 @@ type Querier interface {
 	GetClassByID(ctx context.Context, id uuid.UUID) (Class, error)
 	GetClassStudentCount(ctx context.Context, classID uuid.UUID) (int64, error)
 	GetCurrentAcademicYear(ctx context.Context) (AcademicYear, error)
+	// ── curriculum tree ─────────────────────────────────────────────────────────
+	// every group of a level with its subjects flattened alongside it.
+	// LEFT JOIN so a group with no subjects yet still comes back.
+	GetCurriculumTreeByLevel(ctx context.Context, levelID uuid.UUID) ([]GetCurriculumTreeByLevelRow, error)
 	GetFormTeacherClass(ctx context.Context, formTeacherID pgtype.UUID) (Class, error)
 	GetGradeByID(ctx context.Context, id uuid.UUID) (Grade, error)
 	GetGuardianByID(ctx context.Context, id uuid.UUID) (Guardian, error)
+	GetLevelByID(ctx context.Context, id uuid.UUID) (Level, error)
+	GetMediumByID(ctx context.Context, id uuid.UUID) (Medium, error)
 	GetPrimaryGuardian(ctx context.Context, studentID uuid.UUID) (Guardian, error)
 	GetSchool(ctx context.Context) (School, error)
+	GetSelectionGroupByID(ctx context.Context, id uuid.UUID) (SelectionGroup, error)
 	GetStreamByID(ctx context.Context, id uuid.UUID) (Stream, error)
 	GetStreamGroupByID(ctx context.Context, id uuid.UUID) (StreamGroup, error)
 	GetStudentByID(ctx context.Context, id uuid.UUID) (StudentProfile, error)
@@ -75,27 +99,38 @@ type Querier interface {
 	ListAttendanceBySession(ctx context.Context, sessionID uuid.UUID) ([]ListAttendanceBySessionRow, error)
 	ListAttendanceByStudent(ctx context.Context, studentID uuid.UUID) ([]ListAttendanceByStudentRow, error)
 	ListAttendanceSessionsByClass(ctx context.Context, classID uuid.UUID) ([]AttendanceSession, error)
+	// the cross-class daily dashboard: every session on one date, with the class,
+	// grade and teacher resolved, plus enough counts to show marked/pending and
+	// how many of the enrolled students have a record so far
+	ListAttendanceSessionsByDate(ctx context.Context, date pgtype.Date) ([]ListAttendanceSessionsByDateRow, error)
 	ListClassesByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]ListClassesByAcademicYearRow, error)
 	ListCurrentClasses(ctx context.Context) ([]ListCurrentClassesRow, error)
 	ListGrades(ctx context.Context) ([]Grade, error)
+	ListGroupSubjects(ctx context.Context, groupID uuid.UUID) ([]ListGroupSubjectsRow, error)
 	ListGuardiansByStudent(ctx context.Context, studentID uuid.UUID) ([]ListGuardiansByStudentRow, error)
+	ListLevels(ctx context.Context) ([]Level, error)
+	ListLevelsByGrade(ctx context.Context, gradeID pgtype.UUID) ([]Level, error)
+	ListMediums(ctx context.Context) ([]Medium, error)
+	ListSelectionGroupsByLevel(ctx context.Context, levelID uuid.UUID) ([]SelectionGroup, error)
+	// everything needed to validate a set of picks against a level in one round trip
+	ListSelectionGroupsWithSubjectIDsByLevel(ctx context.Context, levelID uuid.UUID) ([]ListSelectionGroupsWithSubjectIDsByLevelRow, error)
 	ListStreamGroupsByStream(ctx context.Context, streamID uuid.UUID) ([]StreamGroup, error)
 	ListStreams(ctx context.Context) ([]Stream, error)
-	ListStudentSubjectSelections(ctx context.Context, studentID uuid.UUID) ([]ListStudentSubjectSelectionsRow, error)
+	ListStudentEnrollments(ctx context.Context, arg ListStudentEnrollmentsParams) ([]ListStudentEnrollmentsRow, error)
+	ListStudentEnrollmentsByLevel(ctx context.Context, arg ListStudentEnrollmentsByLevelParams) ([]ListStudentEnrollmentsByLevelRow, error)
 	ListStudents(ctx context.Context) ([]StudentProfile, error)
 	ListStudentsByClass(ctx context.Context, classID uuid.UUID) ([]StudentProfile, error)
-	ListSubjectBucketOptions(ctx context.Context, bucketID uuid.UUID) ([]Subject, error)
-	ListSubjectBucketsByGrade(ctx context.Context, gradeID uuid.UUID) ([]SubjectBucket, error)
+	ListStudentsByGroup(ctx context.Context, arg ListStudentsByGroupParams) ([]ListStudentsByGroupRow, error)
+	ListStudentsBySubject(ctx context.Context, arg ListStudentsBySubjectParams) ([]ListStudentsBySubjectRow, error)
 	ListSubjectTeachersByClass(ctx context.Context, classID uuid.UUID) ([]ListSubjectTeachersByClassRow, error)
 	ListSubjects(ctx context.Context) ([]Subject, error)
-	ListSubjectsByGrade(ctx context.Context, gradeID uuid.UUID) ([]Subject, error)
 	ListSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID) ([]Subject, error)
 	ListTeachers(ctx context.Context) ([]TeacherProfile, error)
 	ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID) ([]TeacherProfile, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListUsersByRole(ctx context.Context, role string) ([]User, error)
 	MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error)
-	RemoveSubjectFromGrade(ctx context.Context, arg RemoveSubjectFromGradeParams) error
+	RemoveGroupSubject(ctx context.Context, arg RemoveGroupSubjectParams) error
 	RemoveSubjectFromTeacher(ctx context.Context, arg RemoveSubjectFromTeacherParams) error
 	SetCurrentAcademicYear(ctx context.Context, id uuid.UUID) error
 	SetPrimaryContact(ctx context.Context, arg SetPrimaryContactParams) error
@@ -104,7 +139,10 @@ type Querier interface {
 	UpdateClass(ctx context.Context, arg UpdateClassParams) (Class, error)
 	UpdateGrade(ctx context.Context, arg UpdateGradeParams) (Grade, error)
 	UpdateGuardian(ctx context.Context, arg UpdateGuardianParams) (Guardian, error)
+	UpdateLevel(ctx context.Context, arg UpdateLevelParams) (Level, error)
+	UpdateMedium(ctx context.Context, arg UpdateMediumParams) (Medium, error)
 	UpdateSchool(ctx context.Context, arg UpdateSchoolParams) (School, error)
+	UpdateSelectionGroup(ctx context.Context, arg UpdateSelectionGroupParams) (SelectionGroup, error)
 	UpdateStream(ctx context.Context, arg UpdateStreamParams) (Stream, error)
 	UpdateStreamGroup(ctx context.Context, arg UpdateStreamGroupParams) (StreamGroup, error)
 	UpdateStudentProfile(ctx context.Context, arg UpdateStudentProfileParams) (StudentProfile, error)

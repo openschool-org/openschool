@@ -18,6 +18,10 @@ import Classes from "./pages/admin/classes/Classes";
 import AddClass from "./pages/admin/classes/AddClass";
 import Subjects from "./pages/admin/subjects/Subjects";
 import AddSubject from "./pages/admin/subjects/AddSubject";
+import Grades from "./pages/admin/grades/Grades";
+import Curriculum from "./pages/admin/curriculum/Curriculum";
+import LevelDetail from "./pages/admin/curriculum/LevelDetail";
+import Mediums from "./pages/admin/curriculum/Mediums";
 import ClassDetail from "./pages/admin/classes/ClassDetail";
 import Attendance from "./pages/admin/attendance/Attendance";
 import AttendanceMark from "./pages/admin/attendance/AttendanceMark";
@@ -89,6 +93,10 @@ function App() {
           <Route path="/classes/:id" element={<ClassDetail />} />
           <Route path="/subjects" element={<Subjects />} />
           <Route path="/subjects/new" element={<AddSubject />} />
+          <Route path="/grades" element={<Grades />} />
+          <Route path="/curriculum" element={<Curriculum />} />
+          <Route path="/curriculum/:id" element={<LevelDetail />} />
+          <Route path="/mediums" element={<Mediums />} />
           <Route path="/attendance" element={<Attendance />} />
           <Route
             path="/attendance/sessions/:id/mark"

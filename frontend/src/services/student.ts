@@ -1,6 +1,5 @@
 import api from "../lib/api";
 
-// Matches db.StudentProfile JSON shape returned by the backend
 export interface Student {
   id: string;
   user_id: string | null;
@@ -10,18 +9,17 @@ export interface Student {
   phone: string | null;
   whatsapp: string | null;
   special_remarks: string | null;
+  gender: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
 
-// Matches db.GetStudentWithClassRow
 export interface StudentWithClass extends Student {
   class_name: string | null;
   grade_name: string | null;
   academic_year: string | null;
 }
 
-// Matches models.CreateStudentRequest
 export interface CreateStudentRequest {
   email: string;
   given_name: string;
@@ -32,9 +30,9 @@ export interface CreateStudentRequest {
   address?: string;
   whatsapp?: string;
   special_remarks?: string;
+  gender?: "male" | "female";
 }
 
-// Matches models.UpdateStudentRequest
 export interface UpdateStudentRequest {
   given_name: string;
   family_name: string;
@@ -42,6 +40,7 @@ export interface UpdateStudentRequest {
   address?: string;
   whatsapp?: string;
   special_remarks?: string;
+  gender?: "male" | "female";
 }
 
 export const studentApi = {

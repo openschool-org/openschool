@@ -117,7 +117,7 @@ export default function Students() {
                         </IconButton>
                         <IconButton
                           label="Delete"
-                          kind="danger--ghost"
+                          kind="ghost"
                           size="sm"
                           onClick={() => setToDelete(s)}
                         >

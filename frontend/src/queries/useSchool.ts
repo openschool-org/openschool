@@ -4,7 +4,6 @@ import type { CreateSchoolRequest } from "../services/school";
 
 export const SCHOOL_KEY = ["school"];
 
-// School queries
 export const useSchool = () =>
   useQuery({
     queryKey: SCHOOL_KEY,

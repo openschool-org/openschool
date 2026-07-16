@@ -13,6 +13,8 @@ type CreateStudentRequest struct {
 	Address        string `json:"address"`
 	WhatsApp       string `json:"whatsapp"`
 	SpecialRemarks string `json:"special_remarks"`
+	// Gender is optional; when set it must be one of the DB's allowed values.
+	Gender string `json:"gender" binding:"omitempty,oneof=male female"`
 }
 
 type UpdateStudentRequest struct {
@@ -22,6 +24,7 @@ type UpdateStudentRequest struct {
 	Address        string `json:"address"`
 	WhatsApp       string `json:"whatsapp"`
 	SpecialRemarks string `json:"special_remarks"`
+	Gender         string `json:"gender" binding:"omitempty,oneof=male female"`
 }
 
 type StudentResponse struct {
@@ -33,6 +36,7 @@ type StudentResponse struct {
 	Phone          string `json:"phone"`
 	WhatsApp       string `json:"whatsapp"`
 	SpecialRemarks string `json:"special_remarks"`
+	Gender         string `json:"gender"`
 	CreatedAt      string `json:"created_at"`
 }
 

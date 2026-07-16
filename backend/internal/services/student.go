@@ -74,6 +74,7 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
 		Whatsapp:       pgtype.Text{String: req.WhatsApp, Valid: req.WhatsApp != ""},
 		SpecialRemarks: pgtype.Text{String: req.SpecialRemarks, Valid: req.SpecialRemarks != ""},
+		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
 	})
 	if err != nil {
 		_ = s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID)
@@ -135,6 +136,7 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
 		Whatsapp:       pgtype.Text{String: req.WhatsApp, Valid: req.WhatsApp != ""},
 		SpecialRemarks: pgtype.Text{String: req.SpecialRemarks, Valid: req.SpecialRemarks != ""},
+		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
 	})
 }
 
