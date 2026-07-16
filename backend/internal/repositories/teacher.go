@@ -36,7 +36,7 @@ func (r *TeacherRepository) Update(ctx context.Context, params db.UpdateTeacherP
 	return r.queries.UpdateTeacherProfile(ctx, params)
 }
 
-func (r *TeacherRepository) Delete(ctx context.Context, id uuid.UUID) error {
+func (r *TeacherRepository) Delete(ctx context.Context, id uuid.UUID) (int64, error) {
 	return r.queries.DeleteTeacher(ctx, id)
 }
 

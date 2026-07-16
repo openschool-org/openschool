@@ -23,13 +23,4 @@ func RegisterStudentRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGro
 	admin.DELETE("/students/:id", handler.Delete)
 
 	teacherOrAdmin.GET("/classes/:id/students", handler.ListByClass)
-
-	// Subject selections
-	selRepo := repositories.NewStudentSubjectSelectionRepository(pool)
-	selService := services.NewStudentSubjectSelectionService(selRepo)
-	selHandler := handlers.NewStudentSubjectSelectionHandler(selService)
-
-	admin.POST("/students/:id/selections", selHandler.UpsertSelection)
-	teacherOrAdmin.GET("/students/:id/selections", selHandler.ListSelections)
-	admin.DELETE("/students/:id/selections/:bucket_id", selHandler.DeleteSelection)
 }

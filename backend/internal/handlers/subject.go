@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/services"
 )
@@ -16,6 +17,21 @@ type SubjectHandler struct {
 
 func NewSubjectHandler(service *services.SubjectService) *SubjectHandler {
 	return &SubjectHandler{service: service}
+}
+
+func toSubjectResponse(s db.Subject) models.SubjectResponse {
+	var subjectType *string
+	if s.Type.Valid {
+		subjectType = &s.Type.String
+	}
+
+	return models.SubjectResponse{
+		ID:        s.ID.String(),
+		Name:      s.Name,
+		Code:      s.Code,
+		Type:      subjectType,
+		CreatedAt: s.CreatedAt.Time.String(),
+	}
 }
 
 // Create godoc
@@ -42,12 +58,7 @@ func (h *SubjectHandler) Create(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, models.SubjectResponse{
-		ID:        subject.ID.String(),
-		Name:      subject.Name,
-		Code:      subject.Code,
-		CreatedAt: subject.CreatedAt.Time.String(),
-	})
+	c.JSON(http.StatusCreated, toSubjectResponse(subject))
 }
 
 // GetByID godoc
@@ -75,12 +86,7 @@ func (h *SubjectHandler) GetByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.SubjectResponse{
-		ID:        subject.ID.String(),
-		Name:      subject.Name,
-		Code:      subject.Code,
-		CreatedAt: subject.CreatedAt.Time.String(),
-	})
+	c.JSON(http.StatusOK, toSubjectResponse(subject))
 }
 
 // List godoc
@@ -101,12 +107,7 @@ func (h *SubjectHandler) List(c *gin.Context) {
 
 	resp := make([]models.SubjectResponse, len(subjects))
 	for i, s := range subjects {
-		resp[i] = models.SubjectResponse{
-			ID:        s.ID.String(),
-			Name:      s.Name,
-			Code:      s.Code,
-			CreatedAt: s.CreatedAt.Time.String(),
-		}
+		resp[i] = toSubjectResponse(s)
 	}
 
 	c.JSON(http.StatusOK, resp)
@@ -144,12 +145,7 @@ func (h *SubjectHandler) Update(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, models.SubjectResponse{
-		ID:        subject.ID.String(),
-		Name:      subject.Name,
-		Code:      subject.Code,
-		CreatedAt: subject.CreatedAt.Time.String(),
-	})
+	c.JSON(http.StatusOK, toSubjectResponse(subject))
 }
 
 // Delete godoc

@@ -27,6 +27,7 @@ func (s *SubjectService) CreateSubject(ctx context.Context, req models.CreateSub
 	return s.repo.Create(ctx, db.CreateSubjectParams{
 		Name: req.Name,
 		Code: req.Code,
+		Type: optionalText(req.Type),
 	})
 }
 
@@ -43,6 +44,7 @@ func (s *SubjectService) UpdateSubject(ctx context.Context, id uuid.UUID, req mo
 		ID:   id,
 		Name: req.Name,
 		Code: req.Code,
+		Type: optionalText(req.Type),
 	})
 }
 

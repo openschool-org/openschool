@@ -12,7 +12,7 @@ import (
 
 var (
 	ErrGradeNotFound = errors.New("grade not found")
-	ErrGradeInUse    = errors.New("grade is assigned to classes and cannot be deleted")
+	ErrGradeInUse    = errors.New("grade is used by a class or curriculum level and cannot be deleted")
 )
 
 type GradeService struct {

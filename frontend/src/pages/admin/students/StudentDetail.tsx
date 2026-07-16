@@ -5,6 +5,8 @@ import {
   Tag,
   TextInput,
   TextArea,
+  RadioButtonGroup,
+  RadioButton,
   InlineNotification,
 } from "@carbon/react";
 import { ArrowLeft, TrashCan, Edit, Save } from "@carbon/icons-react";
@@ -20,6 +22,8 @@ import ErrorMessage from "../../../components/common/ErrorMessage";
 import ProfileBanner from "../../../components/common/ProfileBanner";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 
+type Gender = "" | "male" | "female";
+
 function studentToForm(s: StudentWithClass) {
   const [given, ...rest] = s.full_name.trim().split(/\s+/);
   return {
@@ -29,6 +33,7 @@ function studentToForm(s: StudentWithClass) {
     address: s.address ?? "",
     whatsapp: s.whatsapp ?? "",
     special_remarks: s.special_remarks ?? "",
+    gender: (s.gender ?? "") as Gender,
   };
 }
 
@@ -52,6 +57,7 @@ export default function StudentDetail() {
     address: "",
     whatsapp: "",
     special_remarks: "",
+    gender: "" as Gender,
   });
 
   useEffect(() => {
@@ -82,6 +88,7 @@ export default function StudentDetail() {
           address: form.address.trim() || undefined,
           whatsapp: form.whatsapp.trim() || undefined,
           special_remarks: form.special_remarks.trim() || undefined,
+          gender: form.gender || undefined,
         },
       },
       { onSuccess: () => setEditing(false) },
@@ -231,6 +238,30 @@ export default function StudentDetail() {
                 readOnly={!editing}
                 onChange={(e) => change("address", e.target.value)}
               />
+              {editing ? (
+                <RadioButtonGroup
+                  legendText="Gender"
+                  name="gender"
+                  valueSelected={form.gender}
+                  onChange={(value) =>
+                    setForm((f) => ({ ...f, gender: value as Gender }))
+                  }
+                >
+                  <RadioButton id="gender-male" labelText="Male" value="male" />
+                  <RadioButton id="gender-female" labelText="Female" value="female" />
+                </RadioButtonGroup>
+              ) : (
+                <TextInput
+                  id="gender"
+                  labelText="Gender"
+                  value={
+                    form.gender
+                      ? form.gender[0].toUpperCase() + form.gender.slice(1)
+                      : "—"
+                  }
+                  readOnly
+                />
+              )}
               <div style={{ gridColumn: "1 / -1" }}>
                 <TextArea
                   id="special-remarks"

@@ -181,6 +181,8 @@ DELETE FROM grades AS g
 WHERE g.id = $1
 AND g.id NOT IN (
     SELECT DISTINCT grade_id FROM classes
+    UNION
+    SELECT DISTINCT grade_id FROM levels WHERE grade_id IS NOT NULL
 )
 `
 

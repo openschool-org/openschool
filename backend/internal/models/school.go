@@ -2,20 +2,26 @@ package models
 
 import "time"
 
+// GradeFrom/GradeTo bound the grades this instance runs. They drive what the
+// UI offers; no backend logic infers meaning from the numbers.
 type CreateSchoolRequest struct {
-	Name    string `json:"name" binding:"required"`
-	Address string `json:"address"`
-	Phone   string `json:"phone"`
-	Email   string `json:"email"`
-	LogoURL string `json:"logo_url"`
+	Name      string `json:"name" binding:"required"`
+	Address   string `json:"address"`
+	Phone     string `json:"phone"`
+	Email     string `json:"email"`
+	LogoURL   string `json:"logo_url"`
+	GradeFrom *int32 `json:"grade_from"`
+	GradeTo   *int32 `json:"grade_to"`
 }
 
 type UpdateSchoolRequest struct {
-	Name    string `json:"name" binding:"required"`
-	Address string `json:"address"`
-	Phone   string `json:"phone"`
-	Email   string `json:"email"`
-	LogoURL string `json:"logo_url"`
+	Name      string `json:"name" binding:"required"`
+	Address   string `json:"address"`
+	Phone     string `json:"phone"`
+	Email     string `json:"email"`
+	LogoURL   string `json:"logo_url"`
+	GradeFrom *int32 `json:"grade_from"`
+	GradeTo   *int32 `json:"grade_to"`
 }
 
 type CreateAcademicYearRequest struct {
@@ -36,6 +42,8 @@ type SchoolResponse struct {
 	Phone     string `json:"phone"`
 	Email     string `json:"email"`
 	LogoURL   string `json:"logo_url"`
+	GradeFrom *int32 `json:"grade_from"`
+	GradeTo   *int32 `json:"grade_to"`
 	CreatedAt string `json:"created_at"`
 }
 

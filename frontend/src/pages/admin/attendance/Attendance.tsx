@@ -1,128 +1,227 @@
+import { useState } from "react";
 import { Link } from "react-router";
-import { EventSchedule, Add, Calendar, CheckmarkFilled, Time, WarningFilled } from "@carbon/icons-react";
-import { Button, Tag } from "@carbon/react";
+import { EventSchedule, CheckmarkFilled, WarningFilled } from "@carbon/icons-react";
+import { Button, Tag, DatePicker, DatePickerInput, InlineNotification } from "@carbon/react";
+import { AxiosError } from "axios";
+import { useDailySessions, useDeleteSession } from "../../../queries/useAttendance";
+import type { DailySession } from "../../../services/attendance";
+import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import ErrorMessage from "../../../components/common/ErrorMessage";
+import EmptyState from "../../../components/common/EmptyState";
+import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 
-const TODAY = new Date().toLocaleDateString("en-LK", {
-  weekday: "long", year: "numeric", month: "long", day: "numeric",
-});
+function apiError(e: unknown, fallback: string) {
+  return (e as AxiosError<{ error: string }>)?.response?.data?.error ?? fallback;
+}
 
-const SESSIONS = [
-  { id: "SES-001", class: "10-A", grade: "Grade 10", subject: "Mathematics", teacher: "Priya Rathnayake",       time: "08:00", duration: "45 min", status: "Pending", students: 38 },
-  { id: "SES-002", class: "10-B", grade: "Grade 10", subject: "English",     teacher: "Suresh Dissanayake",     time: "08:55", duration: "45 min", status: "Pending", students: 35 },
-  { id: "SES-003", class: "11-A", grade: "Grade 11", subject: "Science",     teacher: "Priya Rathnayake",       time: "09:50", duration: "45 min", status: "Marked",  students: 36 },
-  { id: "SES-004", class: "9-A",  grade: "Grade 9",  subject: "History",     teacher: "Chamari Wickramasinghe", time: "10:45", duration: "45 min", status: "Pending", students: 42 },
-  { id: "SES-005", class: "8-A",  grade: "Grade 8",  subject: "Sinhala",     teacher: "Nimal Jayasuriya",       time: "11:40", duration: "45 min", status: "Pending", students: 44 },
-];
+function toYmd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
-const marked  = SESSIONS.filter(s => s.status === "Marked").length;
-const pending = SESSIONS.filter(s => s.status === "Pending").length;
+const TODAY_YMD = toYmd(new Date());
 
-type StatusType = "Pending" | "Marked";
-const STATUS_CONFIG: Record<StatusType, { label: string; tagType: "blue" | "gray"; Icon: React.FC<{ size?: number; style?: React.CSSProperties }> }> = {
-  Marked:  { label: "Marked",  tagType: "blue", Icon: CheckmarkFilled },
-  Pending: { label: "Pending", tagType: "gray", Icon: Time },
-};
+function displayDate(ymd: string) {
+  // avoid the UTC-midnight-shifts-a-day-back trap: parse as local, not Date(ymd)
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-LK", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
 
 export default function Attendance() {
+  const [date, setDate] = useState(TODAY_YMD);
+  const { data: sessions, isLoading, isError, refetch } = useDailySessions(date);
+  const deleteSession = useDeleteSession();
+  const [toDelete, setToDelete] = useState<DailySession | null>(null);
+
+  const handleDelete = () => {
+    if (!toDelete) return;
+    deleteSession.mutate(toDelete.id, { onSettled: () => setToDelete(null) });
+  };
+
+  // a session is "marked" once at least one record has been written for it;
+  // partial marking still counts, since there is no per-session "done" flag
+  const marked = (sessions ?? []).filter((s) => s.marked_count > 0).length;
+  const pending = (sessions ?? []).length - marked;
+  const isToday = date === TODAY_YMD;
+
   return (
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">Attendance</h1>
-          <p className="os-page__subtitle">{TODAY}</p>
+          <p className="os-page__subtitle">{displayDate(date)}</p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md">
-          New Session
-        </Button>
-      </div>
-
-      {/* Summary strip */}
-      <div className="os-stat-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
-        <div className="os-stat-card">
-          <p className="os-stat-card__label"><EventSchedule size={14} style={{ fill: "#406AAF" }} /> Sessions Today</p>
-          <p className="os-stat-card__value">{SESSIONS.length}</p>
-          <p className="os-stat-card__meta">Scheduled</p>
-        </div>
-        <div className="os-stat-card" style={{ borderTopColor: "#24a148" }}>
-          <p className="os-stat-card__label"><CheckmarkFilled size={14} style={{ fill: "#24a148" }} /> Marked</p>
-          <p className="os-stat-card__value">{marked}</p>
-          <p className="os-stat-card__meta">Completed</p>
-        </div>
-        <div className="os-stat-card" style={{ borderTopColor: "#f1c21b" }}>
-          <p className="os-stat-card__label"><WarningFilled size={14} style={{ fill: "#f1c21b" }} /> Pending</p>
-          <p className="os-stat-card__value">{pending}</p>
-          <p className="os-stat-card__meta">Awaiting mark</p>
+        <div style={{ minWidth: "12rem" }}>
+          <DatePicker
+            datePickerType="single"
+            dateFormat="Y-m-d"
+            value={date}
+            onChange={(dates) => {
+              if (dates[0]) setDate(toYmd(dates[0]));
+            }}
+          >
+            <DatePickerInput id="attendance-date" labelText="" placeholder="YYYY-MM-DD" size="lg" />
+          </DatePicker>
         </div>
       </div>
 
-      {/* Sessions table */}
-      <div className="os-section">
-        <div className="os-section__header">
-          <h2 className="os-section__title">Today's Sessions</h2>
-          <Button renderIcon={Calendar} kind="ghost" size="sm">View Report</Button>
+      {!isToday && (
+        <div style={{ marginBottom: "1rem" }}>
+          <Button kind="ghost" size="sm" onClick={() => setDate(TODAY_YMD)}>
+            Jump to today
+          </Button>
         </div>
-        <table className="os-table">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Class</th>
-              <th>Subject</th>
-              <th>Teacher</th>
-              <th>Students</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {SESSIONS.map(s => {
-              const cfg = STATUS_CONFIG[s.status as StatusType];
-              return (
-                <tr key={s.id}>
-                  <td>
-                    <span className="os-table__mono">{s.time}</span>
-                    <span style={{ fontSize: "0.7rem", color: "#8d8d8d", marginLeft: "0.35rem" }}>{s.duration}</span>
-                  </td>
-                  <td>
-                    <span style={{ fontWeight: 600 }}>{s.class}</span>
-                    <span className="os-table__muted" style={{ fontSize: "0.75rem", marginLeft: "0.35rem" }}>{s.grade}</span>
-                  </td>
-                  <td>{s.subject}</td>
-                  <td className="os-table__muted">{s.teacher}</td>
-                  <td className="os-table__muted">{s.students}</td>
-                  <td>
-                    <Tag type={cfg.tagType} size="sm">
-                      <cfg.Icon size={12} style={{ marginRight: "4px", verticalAlign: "middle" }} />
-                      {cfg.label}
-                    </Tag>
-                  </td>
-                  <td>
-                    {s.status === "Pending" ? (
-                      <Button kind="primary" size="sm" as={Link} to={`/attendance/sessions/${s.id}/mark`}>
-                        Mark
-                      </Button>
-                    ) : (
-                      <Button kind="ghost" size="sm" as={Link} to={`/attendance/sessions/${s.id}/mark`} style={{ color: "#406AAF" }}>
-                        View
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      )}
 
-      {/* Past sessions */}
-      <div className="os-section">
-        <div className="os-section__header">
-          <h2 className="os-section__title">Previous Sessions</h2>
-        </div>
-        <div className="os-placeholder">
-          <EventSchedule size={32} />
-          <p>Past attendance sessions will appear here.</p>
-        </div>
-      </div>
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : isError ? (
+        <ErrorMessage message="Could not load sessions for this date." onRetry={refetch} />
+      ) : (
+        <>
+          {/* Summary strip */}
+          <div className="os-stat-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+            <div className="os-stat-card">
+              <p className="os-stat-card__label">
+                <EventSchedule size={14} style={{ fill: "#406AAF" }} /> Sessions
+              </p>
+              <p className="os-stat-card__value">{sessions?.length ?? 0}</p>
+              <p className="os-stat-card__meta">Created for this date</p>
+            </div>
+            <div className="os-stat-card" style={{ borderTopColor: "#24a148" }}>
+              <p className="os-stat-card__label">
+                <CheckmarkFilled size={14} style={{ fill: "#24a148" }} /> Marked
+              </p>
+              <p className="os-stat-card__value">{marked}</p>
+              <p className="os-stat-card__meta">At least one record</p>
+            </div>
+            <div className="os-stat-card" style={{ borderTopColor: "#f1c21b" }}>
+              <p className="os-stat-card__label">
+                <WarningFilled size={14} style={{ fill: "#f1c21b" }} /> Pending
+              </p>
+              <p className="os-stat-card__value">{pending}</p>
+              <p className="os-stat-card__meta">No records yet</p>
+            </div>
+          </div>
+
+          <div className="os-section">
+            <div className="os-section__header">
+              <h2 className="os-section__title">Sessions</h2>
+            </div>
+
+            {deleteSession.isError && (
+              <InlineNotification
+                kind="error"
+                title="Could not delete session"
+                subtitle={apiError(deleteSession.error, "Please try again.")}
+                lowContrast
+                onClose={() => deleteSession.reset()}
+                style={{ maxWidth: "100%", margin: "0 1.5rem 1rem" }}
+              />
+            )}
+
+            {!sessions || sessions.length === 0 ? (
+              <EmptyState
+                title="No sessions for this date"
+                description="Sessions are created from a class's Attendance tab — go to a class to start one."
+                action={
+                  <Button kind="primary" as={Link} to="/classes">
+                    Go to Classes
+                  </Button>
+                }
+              />
+            ) : (
+              <table className="os-table os-table--no-hover">
+                <thead>
+                  <tr>
+                    <th>Class</th>
+                    <th>Grade</th>
+                    <th>Teacher</th>
+                    <th>Records</th>
+                    <th>Status</th>
+                    <th style={{ width: "13rem", textAlign: "right" }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sessions.map((s) => {
+                    const isMarked = s.marked_count > 0;
+                    return (
+                      <tr key={s.id}>
+                        <td style={{ fontWeight: 600 }}>{s.class_name}</td>
+                        <td className="os-table__muted">{s.grade_name}</td>
+                        <td className="os-table__muted">{s.teacher_name}</td>
+                        <td className="os-table__muted">
+                          {s.marked_count} / {s.enrolled_count}
+                        </td>
+                        <td>
+                          <Tag type={isMarked ? "blue" : "gray"} size="sm">
+                            {isMarked ? (
+                              <CheckmarkFilled size={12} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+                            ) : (
+                              <WarningFilled size={12} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+                            )}
+                            {isMarked ? "Marked" : "Pending"}
+                          </Tag>
+                        </td>
+                        <td>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "nowrap",
+                              gap: "0.25rem",
+                              justifyContent: "flex-end",
+                            }}
+                          >
+                            <Button
+                              kind={isMarked ? "ghost" : "primary"}
+                              size="sm"
+                              as={Link}
+                              to={`/attendance/sessions/${s.id}/mark`}
+                              style={{
+                                whiteSpace: "nowrap",
+                                ...(isMarked ? { color: "#406AAF" } : {}),
+                              }}
+                            >
+                              {isMarked ? "View" : "Mark"}
+                            </Button>
+                            <Button
+                              kind="danger--ghost"
+                              size="sm"
+                              style={{ whiteSpace: "nowrap" }}
+                              onClick={() => setToDelete(s)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
+      )}
+
+      <ConfirmDeleteModal
+        open={!!toDelete}
+        title="Delete attendance session"
+        description={
+          <>
+            Delete the session for <strong>{toDelete?.class_name}</strong> on{" "}
+            <strong>{toDelete?.date}</strong>? Every attendance record already
+            marked for it is deleted too.
+          </>
+        }
+        isPending={deleteSession.isPending}
+        onClose={() => setToDelete(null)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

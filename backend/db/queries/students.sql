@@ -6,9 +6,10 @@ INSERT INTO student_profiles (
     address,
     phone,
     whatsapp,
-    special_remarks
+    special_remarks,
+    gender
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
 RETURNING *;
 
@@ -36,6 +37,7 @@ SET
     phone           = $4,
     whatsapp        = $5,
     special_remarks = $6,
+    gender          = $7,
     updated_at      = NOW()
 WHERE id = $1
 RETURNING *;

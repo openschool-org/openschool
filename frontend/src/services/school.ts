@@ -3,11 +3,14 @@ import api from "../lib/api";
 export interface School {
   id: string;
   name: string;
-  address: string;
-  phone: string;
-  email: string;
-  logo_url: string;
-  created_at: string;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  logo_url: string | null;
+  // the grade range this instance runs; null when not set
+  grade_from: number | null;
+  grade_to: number | null;
+  created_at: string | null;
 }
 
 export interface CreateSchoolRequest {
@@ -16,6 +19,8 @@ export interface CreateSchoolRequest {
   phone?: string;
   email?: string;
   logo_url?: string;
+  grade_from?: number | null;
+  grade_to?: number | null;
 }
 
 export const schoolApi = {

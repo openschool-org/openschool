@@ -1,8 +1,6 @@
 import { useState } from "react";
 import {
   Button,
-  RadioButtonGroup,
-  RadioButton,
   Select,
   SelectItem,
   TextArea,
@@ -13,7 +11,6 @@ import {
   Chat,
   MessageQueue,
   Send,
-  CheckmarkFilled,
   UserMultiple,
   Building,
   Education,
@@ -98,7 +95,7 @@ export default function Notifications() {
   const [targetType, setTargetType] = useState<TargetType>("everyone");
   const [selectedClass, setSelectedClass] = useState("");
   const [selectedGrade, setSelectedGrade] = useState("");
-  const [specificPhone, setSpecificName] = useState("");
+  const [specificPhone, setSpecificPhone] = useState("");
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
 

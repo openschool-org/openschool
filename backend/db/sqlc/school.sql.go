@@ -56,19 +56,23 @@ INSERT INTO school (
     address,
     phone,
     email,
-    logo_url
+    logo_url,
+    grade_from,
+    grade_to
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4, $5, $6, $7
 )
-RETURNING id, name, address, phone, email, logo_url, created_at
+RETURNING id, name, address, phone, email, logo_url, created_at, grade_from, grade_to
 `
 
 type CreateSchoolParams struct {
-	Name    string      `json:"name"`
-	Address pgtype.Text `json:"address"`
-	Phone   pgtype.Text `json:"phone"`
-	Email   pgtype.Text `json:"email"`
-	LogoUrl pgtype.Text `json:"logo_url"`
+	Name      string      `json:"name"`
+	Address   pgtype.Text `json:"address"`
+	Phone     pgtype.Text `json:"phone"`
+	Email     pgtype.Text `json:"email"`
+	LogoUrl   pgtype.Text `json:"logo_url"`
+	GradeFrom pgtype.Int4 `json:"grade_from"`
+	GradeTo   pgtype.Int4 `json:"grade_to"`
 }
 
 func (q *Queries) CreateSchool(ctx context.Context, arg CreateSchoolParams) (School, error) {
@@ -78,6 +82,8 @@ func (q *Queries) CreateSchool(ctx context.Context, arg CreateSchoolParams) (Sch
 		arg.Phone,
 		arg.Email,
 		arg.LogoUrl,
+		arg.GradeFrom,
+		arg.GradeTo,
 	)
 	var i School
 	err := row.Scan(
@@ -88,6 +94,8 @@ func (q *Queries) CreateSchool(ctx context.Context, arg CreateSchoolParams) (Sch
 		&i.Email,
 		&i.LogoUrl,
 		&i.CreatedAt,
+		&i.GradeFrom,
+		&i.GradeTo,
 	)
 	return i, err
 }
@@ -145,7 +153,7 @@ func (q *Queries) GetCurrentAcademicYear(ctx context.Context) (AcademicYear, err
 }
 
 const getSchool = `-- name: GetSchool :one
-SELECT id, name, address, phone, email, logo_url, created_at FROM school
+SELECT id, name, address, phone, email, logo_url, created_at, grade_from, grade_to FROM school
 LIMIT 1
 `
 
@@ -160,6 +168,8 @@ func (q *Queries) GetSchool(ctx context.Context) (School, error) {
 		&i.Email,
 		&i.LogoUrl,
 		&i.CreatedAt,
+		&i.GradeFrom,
+		&i.GradeTo,
 	)
 	return i, err
 }
@@ -209,22 +219,26 @@ func (q *Queries) SetCurrentAcademicYear(ctx context.Context, id uuid.UUID) erro
 const updateSchool = `-- name: UpdateSchool :one
 UPDATE school
 SET
-    name     = $2,
-    address  = $3,
-    phone    = $4,
-    email    = $5,
-    logo_url = $6
+    name       = $2,
+    address    = $3,
+    phone      = $4,
+    email      = $5,
+    logo_url   = $6,
+    grade_from = $7,
+    grade_to   = $8
 WHERE id = $1
-RETURNING id, name, address, phone, email, logo_url, created_at
+RETURNING id, name, address, phone, email, logo_url, created_at, grade_from, grade_to
 `
 
 type UpdateSchoolParams struct {
-	ID      uuid.UUID   `json:"id"`
-	Name    string      `json:"name"`
-	Address pgtype.Text `json:"address"`
-	Phone   pgtype.Text `json:"phone"`
-	Email   pgtype.Text `json:"email"`
-	LogoUrl pgtype.Text `json:"logo_url"`
+	ID        uuid.UUID   `json:"id"`
+	Name      string      `json:"name"`
+	Address   pgtype.Text `json:"address"`
+	Phone     pgtype.Text `json:"phone"`
+	Email     pgtype.Text `json:"email"`
+	LogoUrl   pgtype.Text `json:"logo_url"`
+	GradeFrom pgtype.Int4 `json:"grade_from"`
+	GradeTo   pgtype.Int4 `json:"grade_to"`
 }
 
 func (q *Queries) UpdateSchool(ctx context.Context, arg UpdateSchoolParams) (School, error) {
@@ -235,6 +249,8 @@ func (q *Queries) UpdateSchool(ctx context.Context, arg UpdateSchoolParams) (Sch
 		arg.Phone,
 		arg.Email,
 		arg.LogoUrl,
+		arg.GradeFrom,
+		arg.GradeTo,
 	)
 	var i School
 	err := row.Scan(
@@ -245,6 +261,8 @@ func (q *Queries) UpdateSchool(ctx context.Context, arg UpdateSchoolParams) (Sch
 		&i.Email,
 		&i.LogoUrl,
 		&i.CreatedAt,
+		&i.GradeFrom,
+		&i.GradeTo,
 	)
 	return i, err
 }
