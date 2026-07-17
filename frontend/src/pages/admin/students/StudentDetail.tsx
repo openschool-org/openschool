@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router";
 import {
   Button,
@@ -60,9 +60,11 @@ export default function StudentDetail() {
     gender: "" as Gender,
   });
 
-  useEffect(() => {
-    if (student) setForm(studentToForm(student));
-  }, [student]);
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  if (student && loadedFor !== student.id) {
+    setForm(studentToForm(student));
+    setLoadedFor(student.id);
+  }
 
   const handleDelete = () => {
     deleteStudent.mutate(id, {

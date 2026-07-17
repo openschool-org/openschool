@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router";
 import {
   Button,
@@ -50,9 +50,11 @@ export default function TeacherDetail() {
     employee_number: "",
   });
 
-  useEffect(() => {
-    if (teacher) setForm(teacherToForm(teacher));
-  }, [teacher]);
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  if (teacher && loadedFor !== teacher.id) {
+    setForm(teacherToForm(teacher));
+    setLoadedFor(teacher.id);
+  }
 
   const handleDelete = () => {
     deleteTeacher.mutate(id, {

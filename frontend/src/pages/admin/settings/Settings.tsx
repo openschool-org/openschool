@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button, NumberInput, Select, SelectItem, Toggle } from "@carbon/react";
 import { Save, Edit, Settings as SettingsIcon } from "@carbon/icons-react";
 import SchoolInfoCard, { type SchoolFormValues } from "../../../components/school/SchoolInfoCard";
@@ -44,10 +44,12 @@ export default function SettingsPage() {
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [form, setForm] = useState<SettingsForm>(EMPTY_FORM);
+  const [loadedFor, setLoadedFor] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (school) setForm(schoolToForm(school));
-  }, [school]);
+  if (school && loadedFor !== school.id) {
+    setForm(schoolToForm(school));
+    setLoadedFor(school.id);
+  }
 
   const handleEdit = () => setEditing(true);
 

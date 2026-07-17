@@ -25,7 +25,6 @@ export function useRole(): { role: Role; loading: boolean } {
     if (isLoading) return;
 
     if (!isSignedIn) {
-      setRoleResolved(true);
       return;
     }
 
@@ -57,5 +56,5 @@ export function useRole(): { role: Role; loading: boolean } {
     };
   }, [isLoading, isSignedIn]);
 
-  return { role, loading: isLoading || !roleResolved };
+  return { role, loading: isLoading || (isSignedIn && !roleResolved) };
 }
