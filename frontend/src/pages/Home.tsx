@@ -1,4 +1,4 @@
-import { SignOutButton } from "@thunderid/react";
+import { SignOutButton } from "@asgardeo/react";
 
 export default function Home() {
   return (

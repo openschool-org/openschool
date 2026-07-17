@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 OpenSchool is a self-hosted school management system. It is a monorepo with two workspaces:
+
 - `backend/` — Go REST API (Gin framework)
 - `frontend/` — React SPA (Vite, TypeScript, Carbon Design System)
 
@@ -94,6 +95,7 @@ UI uses **IBM Carbon Design System** (`@carbon/react`, `@carbon/icons-react`). D
 ## Data Model
 
 Core domain entities (from `db/sqlc/models.go`):
+
 - `User` — accounts with roles: `admin`, `teacher`, `student`, `parent`
 - `TeacherProfile` / `StudentProfile` / `Guardian` — extended profile tables linked to `User`
 - `School` — single-row table for the instance's school info

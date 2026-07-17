@@ -41,6 +41,14 @@ func (r *AttendanceRepository) ListSessionsByClass(ctx context.Context, classID 
 	return r.queries.ListAttendanceSessionsByClass(ctx, classID)
 }
 
+func (r *AttendanceRepository) ListSessionsByDate(ctx context.Context, date time.Time) ([]db.ListAttendanceSessionsByDateRow, error) {
+	return r.queries.ListAttendanceSessionsByDate(ctx, pgtype.Date{Time: date, Valid: true})
+}
+
+func (r *AttendanceRepository) DeleteSession(ctx context.Context, id uuid.UUID) error {
+	return r.queries.DeleteAttendanceSession(ctx, id)
+}
+
 func (r *AttendanceRepository) MarkAttendance(ctx context.Context, sessionID uuid.UUID, studentID uuid.UUID, status string, note string) (db.AttendanceRecord, error) {
 	return r.queries.MarkAttendance(ctx, db.MarkAttendanceParams{
 		SessionID: sessionID,

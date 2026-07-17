@@ -15,25 +15,33 @@ import {
   Education,
   Building,
   Book,
+  Grid,
+  Layers,
+  Language,
   EventSchedule,
   Settings,
   Calendar,
+  Notification,
 } from "@carbon/icons-react";
-import { UserDropdown, useThunderID } from "@thunderid/react";
+import { UserDropdown, useAsgardeo } from "@asgardeo/react";
 
 const NAV_ITEMS = [
   { path: "/", label: "Dashboard", Icon: Dashboard },
   { path: "/students", label: "Students", Icon: UserMultiple },
   { path: "/teachers", label: "Teachers", Icon: Education },
   { path: "/classes", label: "Classes", Icon: Building },
+  { path: "/grades", label: "Grades", Icon: Grid },
   { path: "/subjects", label: "Subjects", Icon: Book },
+  { path: "/curriculum", label: "Curriculum", Icon: Layers },
+  { path: "/mediums", label: "Mediums", Icon: Language },
   { path: "/attendance", label: "Attendance", Icon: EventSchedule },
   { path: "/academic-years", label: "Academic Years", Icon: Calendar },
+  { path: "/notifications", label: "Notifications", Icon: Notification },
   { path: "/settings", label: "Settings", Icon: Settings },
 ];
 
 export default function RootLayout() {
-  const { getAccessToken } = useThunderID();
+  const { getAccessToken } = useAsgardeo();
   const location = useLocation();
 
   const copyToken = async () => {

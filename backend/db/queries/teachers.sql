@@ -70,6 +70,13 @@ WHERE c.form_teacher_id = $1
       SELECT id FROM academic_years WHERE is_current = TRUE LIMIT 1
   );
 
--- name: DeleteTeacher :exec
-DELETE FROM teacher_profiles
-WHERE id = $1;
+-- name: DeleteTeacher :execrows
+-- blocked while the teacher is assigned to teach a class subject, or has
+-- taken an attendance session (both ON DELETE RESTRICT)
+DELETE FROM teacher_profiles AS tp
+WHERE tp.id = $1
+AND tp.id NOT IN (
+    SELECT DISTINCT teacher_id FROM class_subject_teachers
+    UNION
+    SELECT DISTINCT taken_by FROM attendance_sessions
+);

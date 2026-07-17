@@ -71,14 +71,24 @@ func (q *Queries) CreateTeacherProfile(ctx context.Context, arg CreateTeacherPro
 	return i, err
 }
 
-const deleteTeacher = `-- name: DeleteTeacher :exec
-DELETE FROM teacher_profiles
-WHERE id = $1
+const deleteTeacher = `-- name: DeleteTeacher :execrows
+DELETE FROM teacher_profiles AS tp
+WHERE tp.id = $1
+AND tp.id NOT IN (
+    SELECT DISTINCT teacher_id FROM class_subject_teachers
+    UNION
+    SELECT DISTINCT taken_by FROM attendance_sessions
+)
 `
 
-func (q *Queries) DeleteTeacher(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteTeacher, id)
-	return err
+// blocked while the teacher is assigned to teach a class subject, or has
+// taken an attendance session (both ON DELETE RESTRICT)
+func (q *Queries) DeleteTeacher(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteTeacher, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getFormTeacherClass = `-- name: GetFormTeacherClass :one
@@ -172,7 +182,7 @@ func (q *Queries) GetTeacherByUserID(ctx context.Context, userID uuid.UUID) (Tea
 
 const listSubjectsByTeacher = `-- name: ListSubjectsByTeacher :many
 SELECT
-    s.id, s.name, s.code, s.created_at
+    s.id, s.name, s.code, s.created_at, s.type
 FROM subjects s
 INNER JOIN teacher_subjects ts ON ts.subject_id = s.id
 WHERE ts.teacher_id = $1
@@ -193,6 +203,7 @@ func (q *Queries) ListSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID
 			&i.Name,
 			&i.Code,
 			&i.CreatedAt,
+			&i.Type,
 		); err != nil {
 			return nil, err
 		}

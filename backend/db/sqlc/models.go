@@ -64,9 +64,13 @@ type Grade struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
-type GradeSubject struct {
-	GradeID   uuid.UUID `json:"grade_id"`
-	SubjectID uuid.UUID `json:"subject_id"`
+type GroupSubject struct {
+	GroupID          uuid.UUID          `json:"group_id"`
+	SubjectID        uuid.UUID          `json:"subject_id"`
+	MediumID         pgtype.UUID        `json:"medium_id"`
+	PrerequisiteNote pgtype.Text        `json:"prerequisite_note"`
+	SortOrder        int32              `json:"sort_order"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 }
 
 type Guardian struct {
@@ -79,6 +83,20 @@ type Guardian struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
+type Level struct {
+	ID        uuid.UUID          `json:"id"`
+	Label     string             `json:"label"`
+	GradeID   pgtype.UUID        `json:"grade_id"`
+	SortOrder int32              `json:"sort_order"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type Medium struct {
+	ID        uuid.UUID          `json:"id"`
+	Name      string             `json:"name"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type School struct {
 	ID        uuid.UUID          `json:"id"`
 	Name      string             `json:"name"`
@@ -86,6 +104,18 @@ type School struct {
 	Phone     pgtype.Text        `json:"phone"`
 	Email     pgtype.Text        `json:"email"`
 	LogoUrl   pgtype.Text        `json:"logo_url"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	GradeFrom pgtype.Int4        `json:"grade_from"`
+	GradeTo   pgtype.Int4        `json:"grade_to"`
+}
+
+type SelectionGroup struct {
+	ID        uuid.UUID          `json:"id"`
+	LevelID   uuid.UUID          `json:"level_id"`
+	Label     string             `json:"label"`
+	MinSelect int32              `json:"min_select"`
+	MaxSelect int32              `json:"max_select"`
+	SortOrder int32              `json:"sort_order"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
@@ -119,6 +149,7 @@ type StudentProfile struct {
 	SpecialRemarks pgtype.Text        `json:"special_remarks"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	Gender         pgtype.Text        `json:"gender"`
 }
 
 type StudentSibling struct {
@@ -126,10 +157,13 @@ type StudentSibling struct {
 	StudentID2 uuid.UUID `json:"student_id_2"`
 }
 
-type StudentSubjectSelection struct {
-	StudentID uuid.UUID `json:"student_id"`
-	BucketID  uuid.UUID `json:"bucket_id"`
-	SubjectID uuid.UUID `json:"subject_id"`
+type StudentSubjectEnrollment struct {
+	StudentID      uuid.UUID          `json:"student_id"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	GroupID        uuid.UUID          `json:"group_id"`
+	SubjectID      uuid.UUID          `json:"subject_id"`
+	MediumID       pgtype.UUID        `json:"medium_id"`
+	EnrolledAt     pgtype.Timestamptz `json:"enrolled_at"`
 }
 
 type Subject struct {
@@ -137,18 +171,7 @@ type Subject struct {
 	Name      string             `json:"name"`
 	Code      string             `json:"code"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
-}
-
-type SubjectBucket struct {
-	ID        uuid.UUID          `json:"id"`
-	GradeID   uuid.UUID          `json:"grade_id"`
-	Name      string             `json:"name"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-}
-
-type SubjectBucketOption struct {
-	BucketID  uuid.UUID `json:"bucket_id"`
-	SubjectID uuid.UUID `json:"subject_id"`
+	Type      pgtype.Text        `json:"type"`
 }
 
 type TeacherProfile struct {

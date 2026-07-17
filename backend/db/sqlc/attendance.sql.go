@@ -37,6 +37,17 @@ func (q *Queries) CreateAttendanceSession(ctx context.Context, arg CreateAttenda
 	return i, err
 }
 
+const deleteAttendanceSession = `-- name: DeleteAttendanceSession :exec
+DELETE FROM attendance_sessions
+WHERE id = $1
+`
+
+// attendance_records cascade with the session
+func (q *Queries) DeleteAttendanceSession(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAttendanceSession, id)
+	return err
+}
+
 const getAttendanceRecord = `-- name: GetAttendanceRecord :one
 SELECT id, session_id, student_id, status, note FROM attendance_records
 WHERE session_id = $1 AND student_id = $2
@@ -260,6 +271,73 @@ func (q *Queries) ListAttendanceSessionsByClass(ctx context.Context, classID uui
 			&i.TakenBy,
 			&i.Date,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAttendanceSessionsByDate = `-- name: ListAttendanceSessionsByDate :many
+SELECT
+    ats.id,
+    ats.class_id,
+    ats.taken_by,
+    ats.date,
+    ats.created_at,
+    c.name                                    AS class_name,
+    g.name                                     AS grade_name,
+    tp.full_name                               AS teacher_name,
+    (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.id) AS enrolled_count,
+    (SELECT COUNT(*) FROM attendance_records ar WHERE ar.session_id = ats.id) AS marked_count
+FROM attendance_sessions ats
+INNER JOIN classes         c  ON c.id  = ats.class_id
+INNER JOIN grades          g  ON g.id  = c.grade_id
+INNER JOIN teacher_profiles tp ON tp.id = ats.taken_by
+WHERE ats.date = $1
+ORDER BY g.sort_order ASC, c.name ASC
+`
+
+type ListAttendanceSessionsByDateRow struct {
+	ID            uuid.UUID          `json:"id"`
+	ClassID       uuid.UUID          `json:"class_id"`
+	TakenBy       uuid.UUID          `json:"taken_by"`
+	Date          pgtype.Date        `json:"date"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	ClassName     string             `json:"class_name"`
+	GradeName     string             `json:"grade_name"`
+	TeacherName   string             `json:"teacher_name"`
+	EnrolledCount int64              `json:"enrolled_count"`
+	MarkedCount   int64              `json:"marked_count"`
+}
+
+// the cross-class daily dashboard: every session on one date, with the class,
+// grade and teacher resolved, plus enough counts to show marked/pending and
+// how many of the enrolled students have a record so far
+func (q *Queries) ListAttendanceSessionsByDate(ctx context.Context, date pgtype.Date) ([]ListAttendanceSessionsByDateRow, error) {
+	rows, err := q.db.Query(ctx, listAttendanceSessionsByDate, date)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAttendanceSessionsByDateRow{}
+	for rows.Next() {
+		var i ListAttendanceSessionsByDateRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ClassID,
+			&i.TakenBy,
+			&i.Date,
+			&i.CreatedAt,
+			&i.ClassName,
+			&i.GradeName,
+			&i.TeacherName,
+			&i.EnrolledCount,
+			&i.MarkedCount,
 		); err != nil {
 			return nil, err
 		}

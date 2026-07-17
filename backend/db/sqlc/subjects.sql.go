@@ -9,131 +9,43 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const addSubjectToBucket = `-- name: AddSubjectToBucket :exec
-INSERT INTO subject_bucket_options (bucket_id, subject_id)
-VALUES ($1, $2)
-ON CONFLICT DO NOTHING
-`
-
-type AddSubjectToBucketParams struct {
-	BucketID  uuid.UUID `json:"bucket_id"`
-	SubjectID uuid.UUID `json:"subject_id"`
-}
-
-func (q *Queries) AddSubjectToBucket(ctx context.Context, arg AddSubjectToBucketParams) error {
-	_, err := q.db.Exec(ctx, addSubjectToBucket, arg.BucketID, arg.SubjectID)
-	return err
-}
-
-const assignSubjectToGrade = `-- name: AssignSubjectToGrade :exec
-INSERT INTO grade_subjects (grade_id, subject_id)
-VALUES ($1, $2)
-ON CONFLICT DO NOTHING
-`
-
-type AssignSubjectToGradeParams struct {
-	GradeID   uuid.UUID `json:"grade_id"`
-	SubjectID uuid.UUID `json:"subject_id"`
-}
-
-func (q *Queries) AssignSubjectToGrade(ctx context.Context, arg AssignSubjectToGradeParams) error {
-	_, err := q.db.Exec(ctx, assignSubjectToGrade, arg.GradeID, arg.SubjectID)
-	return err
-}
-
-const createStudentSubjectSelection = `-- name: CreateStudentSubjectSelection :one
-INSERT INTO student_subject_selections (student_id, bucket_id, subject_id)
-VALUES ($1, $2, $3)
-ON CONFLICT (student_id, bucket_id) DO UPDATE
-SET subject_id = EXCLUDED.subject_id
-RETURNING student_id, bucket_id, subject_id
-`
-
-type CreateStudentSubjectSelectionParams struct {
-	StudentID uuid.UUID `json:"student_id"`
-	BucketID  uuid.UUID `json:"bucket_id"`
-	SubjectID uuid.UUID `json:"subject_id"`
-}
-
-func (q *Queries) CreateStudentSubjectSelection(ctx context.Context, arg CreateStudentSubjectSelectionParams) (StudentSubjectSelection, error) {
-	row := q.db.QueryRow(ctx, createStudentSubjectSelection, arg.StudentID, arg.BucketID, arg.SubjectID)
-	var i StudentSubjectSelection
-	err := row.Scan(&i.StudentID, &i.BucketID, &i.SubjectID)
-	return i, err
-}
-
 const createSubject = `-- name: CreateSubject :one
-INSERT INTO subjects (name, code)
-VALUES ($1, $2)
-RETURNING id, name, code, created_at
+INSERT INTO subjects (name, code, type)
+VALUES ($1, $2, $3)
+RETURNING id, name, code, created_at, type
 `
 
 type CreateSubjectParams struct {
-	Name string `json:"name"`
-	Code string `json:"code"`
+	Name string      `json:"name"`
+	Code string      `json:"code"`
+	Type pgtype.Text `json:"type"`
 }
 
 func (q *Queries) CreateSubject(ctx context.Context, arg CreateSubjectParams) (Subject, error) {
-	row := q.db.QueryRow(ctx, createSubject, arg.Name, arg.Code)
+	row := q.db.QueryRow(ctx, createSubject, arg.Name, arg.Code, arg.Type)
 	var i Subject
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Code,
 		&i.CreatedAt,
+		&i.Type,
 	)
 	return i, err
-}
-
-const createSubjectBucket = `-- name: CreateSubjectBucket :one
-INSERT INTO subject_buckets (grade_id, name)
-VALUES ($1, $2)
-RETURNING id, grade_id, name, created_at
-`
-
-type CreateSubjectBucketParams struct {
-	GradeID uuid.UUID `json:"grade_id"`
-	Name    string    `json:"name"`
-}
-
-func (q *Queries) CreateSubjectBucket(ctx context.Context, arg CreateSubjectBucketParams) (SubjectBucket, error) {
-	row := q.db.QueryRow(ctx, createSubjectBucket, arg.GradeID, arg.Name)
-	var i SubjectBucket
-	err := row.Scan(
-		&i.ID,
-		&i.GradeID,
-		&i.Name,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const deleteStudentSubjectSelection = `-- name: DeleteStudentSubjectSelection :exec
-DELETE FROM student_subject_selections
-WHERE student_id = $1 AND bucket_id = $2
-`
-
-type DeleteStudentSubjectSelectionParams struct {
-	StudentID uuid.UUID `json:"student_id"`
-	BucketID  uuid.UUID `json:"bucket_id"`
-}
-
-func (q *Queries) DeleteStudentSubjectSelection(ctx context.Context, arg DeleteStudentSubjectSelectionParams) error {
-	_, err := q.db.Exec(ctx, deleteStudentSubjectSelection, arg.StudentID, arg.BucketID)
-	return err
 }
 
 const deleteSubject = `-- name: DeleteSubject :execrows
 DELETE FROM subjects AS s
 WHERE s.id = $1
 AND s.id NOT IN (
-    SELECT DISTINCT subject_id FROM grade_subjects
+    SELECT DISTINCT subject_id FROM group_subjects
     UNION
     SELECT DISTINCT subject_id FROM class_subject_teachers
     UNION
-    SELECT DISTINCT subject_id FROM student_subject_selections
+    SELECT DISTINCT subject_id FROM student_subject_enrollments
 )
 `
 
@@ -146,7 +58,7 @@ func (q *Queries) DeleteSubject(ctx context.Context, id uuid.UUID) (int64, error
 }
 
 const getSubjectByCode = `-- name: GetSubjectByCode :one
-SELECT id, name, code, created_at FROM subjects
+SELECT id, name, code, created_at, type FROM subjects
 WHERE code = $1
 `
 
@@ -158,12 +70,13 @@ func (q *Queries) GetSubjectByCode(ctx context.Context, code string) (Subject, e
 		&i.Name,
 		&i.Code,
 		&i.CreatedAt,
+		&i.Type,
 	)
 	return i, err
 }
 
 const getSubjectByID = `-- name: GetSubjectByID :one
-SELECT id, name, code, created_at FROM subjects
+SELECT id, name, code, created_at, type FROM subjects
 WHERE id = $1
 `
 
@@ -175,125 +88,13 @@ func (q *Queries) GetSubjectByID(ctx context.Context, id uuid.UUID) (Subject, er
 		&i.Name,
 		&i.Code,
 		&i.CreatedAt,
+		&i.Type,
 	)
 	return i, err
 }
 
-const listStudentSubjectSelections = `-- name: ListStudentSubjectSelections :many
-SELECT
-    sb.id         AS bucket_id,
-    sb.name       AS bucket_name,
-    s.id          AS subject_id,
-    s.name        AS subject_name,
-    s.code        AS subject_code
-FROM student_subject_selections sss
-INNER JOIN subject_buckets sb ON sb.id  = sss.bucket_id
-INNER JOIN subjects        s  ON s.id   = sss.subject_id
-WHERE sss.student_id = $1
-ORDER BY sb.name ASC
-`
-
-type ListStudentSubjectSelectionsRow struct {
-	BucketID    uuid.UUID `json:"bucket_id"`
-	BucketName  string    `json:"bucket_name"`
-	SubjectID   uuid.UUID `json:"subject_id"`
-	SubjectName string    `json:"subject_name"`
-	SubjectCode string    `json:"subject_code"`
-}
-
-func (q *Queries) ListStudentSubjectSelections(ctx context.Context, studentID uuid.UUID) ([]ListStudentSubjectSelectionsRow, error) {
-	rows, err := q.db.Query(ctx, listStudentSubjectSelections, studentID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListStudentSubjectSelectionsRow{}
-	for rows.Next() {
-		var i ListStudentSubjectSelectionsRow
-		if err := rows.Scan(
-			&i.BucketID,
-			&i.BucketName,
-			&i.SubjectID,
-			&i.SubjectName,
-			&i.SubjectCode,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listSubjectBucketOptions = `-- name: ListSubjectBucketOptions :many
-SELECT
-    s.id, s.name, s.code, s.created_at
-FROM subjects s
-INNER JOIN subject_bucket_options sbo ON sbo.subject_id = s.id
-WHERE sbo.bucket_id = $1
-ORDER BY s.name ASC
-`
-
-func (q *Queries) ListSubjectBucketOptions(ctx context.Context, bucketID uuid.UUID) ([]Subject, error) {
-	rows, err := q.db.Query(ctx, listSubjectBucketOptions, bucketID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Subject{}
-	for rows.Next() {
-		var i Subject
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Code,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listSubjectBucketsByGrade = `-- name: ListSubjectBucketsByGrade :many
-SELECT id, grade_id, name, created_at FROM subject_buckets
-WHERE grade_id = $1
-ORDER BY name ASC
-`
-
-func (q *Queries) ListSubjectBucketsByGrade(ctx context.Context, gradeID uuid.UUID) ([]SubjectBucket, error) {
-	rows, err := q.db.Query(ctx, listSubjectBucketsByGrade, gradeID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []SubjectBucket{}
-	for rows.Next() {
-		var i SubjectBucket
-		if err := rows.Scan(
-			&i.ID,
-			&i.GradeID,
-			&i.Name,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listSubjects = `-- name: ListSubjects :many
-SELECT id, name, code, created_at FROM subjects
+SELECT id, name, code, created_at, type FROM subjects
 ORDER BY name ASC
 `
 
@@ -311,6 +112,7 @@ func (q *Queries) ListSubjects(ctx context.Context) ([]Subject, error) {
 			&i.Name,
 			&i.Code,
 			&i.CreatedAt,
+			&i.Type,
 		); err != nil {
 			return nil, err
 		}
@@ -320,80 +122,39 @@ func (q *Queries) ListSubjects(ctx context.Context) ([]Subject, error) {
 		return nil, err
 	}
 	return items, nil
-}
-
-const listSubjectsByGrade = `-- name: ListSubjectsByGrade :many
-SELECT
-    s.id, s.name, s.code, s.created_at
-FROM subjects s
-INNER JOIN grade_subjects gs ON gs.subject_id = s.id
-WHERE gs.grade_id = $1
-ORDER BY s.name ASC
-`
-
-func (q *Queries) ListSubjectsByGrade(ctx context.Context, gradeID uuid.UUID) ([]Subject, error) {
-	rows, err := q.db.Query(ctx, listSubjectsByGrade, gradeID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Subject{}
-	for rows.Next() {
-		var i Subject
-		if err := rows.Scan(
-			&i.ID,
-			&i.Name,
-			&i.Code,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const removeSubjectFromGrade = `-- name: RemoveSubjectFromGrade :exec
-DELETE FROM grade_subjects
-WHERE grade_id = $1 AND subject_id = $2
-`
-
-type RemoveSubjectFromGradeParams struct {
-	GradeID   uuid.UUID `json:"grade_id"`
-	SubjectID uuid.UUID `json:"subject_id"`
-}
-
-func (q *Queries) RemoveSubjectFromGrade(ctx context.Context, arg RemoveSubjectFromGradeParams) error {
-	_, err := q.db.Exec(ctx, removeSubjectFromGrade, arg.GradeID, arg.SubjectID)
-	return err
 }
 
 const updateSubject = `-- name: UpdateSubject :one
 UPDATE subjects
 SET
     name = $2,
-    code = $3
+    code = $3,
+    type = $4
 WHERE id = $1
-RETURNING id, name, code, created_at
+RETURNING id, name, code, created_at, type
 `
 
 type UpdateSubjectParams struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
-	Code string    `json:"code"`
+	ID   uuid.UUID   `json:"id"`
+	Name string      `json:"name"`
+	Code string      `json:"code"`
+	Type pgtype.Text `json:"type"`
 }
 
 func (q *Queries) UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error) {
-	row := q.db.QueryRow(ctx, updateSubject, arg.ID, arg.Name, arg.Code)
+	row := q.db.QueryRow(ctx, updateSubject,
+		arg.ID,
+		arg.Name,
+		arg.Code,
+		arg.Type,
+	)
 	var i Subject
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Code,
 		&i.CreatedAt,
+		&i.Type,
 	)
 	return i, err
 }

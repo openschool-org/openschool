@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -30,7 +29,6 @@ func NewAttendanceHandler(service *services.AttendanceService) *AttendanceHandle
 // @Security     BearerAuth
 // @Router       /attendance/sessions [post]
 func (h *AttendanceHandler) CreateSession(c *gin.Context) {
-	fmt.Printf("DEBUG userID: %s\n", c.GetString("userID"))
 	var req models.CreateAttendanceSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -43,7 +41,19 @@ func (h *AttendanceHandler) CreateSession(c *gin.Context) {
 		return
 	}
 
-	session, err := h.service.CreateSession(c.Request.Context(), takenByID, req)
+	isAdmin := false
+	if roles, ok := c.Get("roles"); ok {
+		if roleList, ok := roles.([]string); ok {
+			for _, r := range roleList {
+				if r == "admin" {
+					isAdmin = true
+					break
+				}
+			}
+		}
+	}
+
+	session, err := h.service.CreateSession(c.Request.Context(), takenByID, isAdmin, req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -78,6 +88,31 @@ func (h *AttendanceHandler) GetSession(c *gin.Context) {
 	c.JSON(http.StatusOK, session)
 }
 
+// DeleteSession godoc
+// @Summary      Delete attendance session
+// @Description  Delete a session and every attendance record already written for it
+// @Tags         attendance
+// @Produce      json
+// @Param        id path string true "Session ID"
+// @Success      200 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /attendance/sessions/{id} [delete]
+func (h *AttendanceHandler) DeleteSession(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	if err := h.service.DeleteSession(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "attendance session deleted"})
+}
+
 // ListSessionsByClass godoc
 // @Summary      List attendance sessions by class
 // @Description  Get all attendance sessions for a specific class
@@ -98,6 +133,32 @@ func (h *AttendanceHandler) ListSessionsByClass(c *gin.Context) {
 	sessions, err := h.service.ListSessionsByClass(c.Request.Context(), classID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, sessions)
+}
+
+// ListSessionsByDate godoc
+// @Summary      List sessions for a date
+// @Description  Cross-class attendance dashboard: every session on one date, with class/grade/teacher resolved and marked/enrolled counts
+// @Tags         attendance
+// @Produce      json
+// @Param        date query string true "Date, YYYY-MM-DD"
+// @Success      200 {array} models.AttendanceSessionResponse
+// @Failure      400 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /attendance/sessions [get]
+func (h *AttendanceHandler) ListSessionsByDate(c *gin.Context) {
+	date := c.Query("date")
+	if date == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "date query parameter is required"})
+		return
+	}
+
+	sessions, err := h.service.ListSessionsByDate(c.Request.Context(), date)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 

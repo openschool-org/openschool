@@ -7,7 +7,7 @@
 // Primary palette built from #406AAF
 $os-accent:        #406AAF;   // brand — interactive, borders, icons
 $os-accent-dark:   #2d5190;   // button hover, darker states
-$os-accent-deeper: #1f3a6e;   // header background
+$os-accent-deeper: $os-accent; // header background — matches the avatar/accent blue
 $os-accent-mid:    #6a93c8;   // lighter icon / disabled
 $os-accent-light:  #edf2fa;   // hover / active bg
 $os-accent-border: #9ab5d9;   // light border accent
@@ -181,8 +181,12 @@ html, body, #root {
 .os-stat-card {
   background: #ffffff;
   border: 1px solid #e0e0e0;
-  border-top: 3px solid $os-accent;
   padding: 1.25rem 1.5rem;
+  transition: border-color 0.2s ease;
+
+  &:hover {
+    border-color: #a8a8a8;
+  }
 
   &__label {
     font-size: 0.6875rem;
@@ -202,12 +206,6 @@ html, body, #root {
     color: #161616;
     line-height: 1;
     margin: 0;
-  }
-
-  &__meta {
-    font-size: 0.6875rem;
-    color: #8d8d8d;
-    margin: 0.4rem 0 0;
   }
 }
 
@@ -278,6 +276,13 @@ html, body, #root {
     &:last-child td { border-bottom: none; }
   }
 
+  // rows that aren't themselves clickable (only their action buttons are) —
+  // the pointer/highlight otherwise implies the whole row does something
+  &--no-hover tbody tr {
+    cursor: default;
+    &:hover { background-color: transparent; }
+  }
+
   .os-table__link  { color: $os-accent; font-weight: 500; text-decoration: none; &:hover { text-decoration: underline; } }
   .os-table__muted { color: #525252; }
   .os-table__mono  { font-family: 'IBM Plex Mono', monospace; font-size: 0.8125rem; color: #525252; }
@@ -326,7 +331,6 @@ html, body, #root {
   &__banner {
     background: #ffffff;
     border-bottom: 1px solid #e0e0e0;
-    border-top: 3px solid $os-accent;
     padding: 1.5rem 2rem;
     display: flex;
     align-items: center;
@@ -485,3 +489,20 @@ html, body, #root {
 
 // Remove Carbon's before pseudo-element left divider on nav items
 .cds--header__menu-item::before { display: none; }
+
+// ─── Compact inline DatePicker (e.g. attendance session filter) ──────────────
+// Carbon's DatePicker doesn't shrink its internal elements to fit a
+// constrained parent width on its own — without this, the calendar icon can
+// render past the intended box and overlap whatever sits next to it in a flex
+// row. Force every layer down to the input to actually respect the width.
+.os-session-date-filter {
+  width: 11rem;
+  overflow: hidden;
+
+  .cds--date-picker,
+  .cds--date-picker-container,
+  .cds--date-picker-input__wrapper,
+  .cds--date-picker__input {
+    width: 100%;
+  }
+}

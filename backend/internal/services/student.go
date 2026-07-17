@@ -8,18 +8,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/openschool-org/openschool/db/sqlc"
+	"github.com/openschool-org/openschool/internal/asgardeo"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
-	"github.com/openschool-org/openschool/internal/thunderid"
 )
 
 type StudentService struct {
-	repo            *repositories.StudentRepository
-	thunderIDClient *thunderid.Client
+	repo           *repositories.StudentRepository
+	asgardeoClient *asgardeo.Client
 }
 
-func NewStudentService(repo *repositories.StudentRepository, thunderIDClient *thunderid.Client) *StudentService {
-	return &StudentService{repo: repo, thunderIDClient: thunderIDClient}
+func NewStudentService(repo *repositories.StudentRepository, asgardeoClient *asgardeo.Client) *StudentService {
+	return &StudentService{repo: repo, asgardeoClient: asgardeoClient}
 }
 
 func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStudentRequest) (db.StudentProfile, error) {
@@ -29,9 +29,8 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		return db.StudentProfile{}, fmt.Errorf("index number already exists")
 	}
 
-	// create user in ThunderID
-	thunderUser, err := s.thunderIDClient.CreateUser(ctx, "student", map[string]interface{}{
-		"username":     req.IndexNumber,
+	asgardeoUser, err := s.asgardeoClient.CreateUser(ctx, "student", map[string]interface{}{
+		"username":     req.Email,
 		"email":        req.Email,
 		"given_name":   req.GivenName,
 		"family_name":  req.FamilyName,
@@ -39,12 +38,12 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		"password":     req.Password,
 	})
 	if err != nil {
-		return db.StudentProfile{}, fmt.Errorf("failed to create ThunderID user: %w", err)
+		return db.StudentProfile{}, fmt.Errorf("failed to create Asgardeo user: %w", err)
 	}
 
-	userID, err := uuid.Parse(thunderUser.ID)
+	userID, err := uuid.Parse(asgardeoUser.ID)
 	if err != nil {
-		return db.StudentProfile{}, fmt.Errorf("invalid ThunderID user ID: %w", err)
+		return db.StudentProfile{}, fmt.Errorf("invalid Asgardeo user ID: %w", err)
 	}
 
 	fullName := req.GivenName + " " + req.FamilyName
@@ -57,12 +56,12 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		Role:     "student",
 	})
 	if err != nil {
-		_ = s.thunderIDClient.DeleteUser(ctx, thunderUser.ID)
+		_ = s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID)
 		return db.StudentProfile{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
-	// assign student role in ThunderID
-	if err := s.thunderIDClient.AssignRole(ctx, os.Getenv("THUNDERID_ROLE_STUDENT"), thunderUser.ID); err != nil {
+	// assign student role in Asgardeo
+	if err := s.asgardeoClient.AssignRole(ctx, os.Getenv("ASGARDEO_ROLE_STUDENT"), asgardeoUser.ID); err != nil {
 		fmt.Printf("warning: failed to assign student role: %v\n", err)
 	}
 
@@ -75,9 +74,10 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
 		Whatsapp:       pgtype.Text{String: req.WhatsApp, Valid: req.WhatsApp != ""},
 		SpecialRemarks: pgtype.Text{String: req.SpecialRemarks, Valid: req.SpecialRemarks != ""},
+		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
 	})
 	if err != nil {
-		_ = s.thunderIDClient.DeleteUser(ctx, thunderUser.ID)
+		_ = s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID)
 		return db.StudentProfile{}, fmt.Errorf("failed to create student profile: %w", err)
 	}
 
@@ -116,16 +116,16 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 		return db.StudentProfile{}, fmt.Errorf("user not found")
 	}
 
-	// update ThunderID user with all required fields
-	err = s.thunderIDClient.UpdateUser(ctx, userID, "student", map[string]interface{}{
-		"username":     student.IndexNumber,
+	// update Asgardeo user with all required fields
+	err = s.asgardeoClient.UpdateUser(ctx, userID, "student", map[string]interface{}{
+		"username":     user.Email,
 		"email":        user.Email,
 		"given_name":   req.GivenName,
 		"family_name":  req.FamilyName,
 		"phone_number": req.PhoneNumber,
 	})
 	if err != nil {
-		fmt.Printf("warning: failed to update ThunderID user: %v\n", err)
+		fmt.Printf("warning: failed to update Asgardeo user: %v\n", err)
 	}
 
 	// update DB profile
@@ -136,6 +136,7 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
 		Whatsapp:       pgtype.Text{String: req.WhatsApp, Valid: req.WhatsApp != ""},
 		SpecialRemarks: pgtype.Text{String: req.SpecialRemarks, Valid: req.SpecialRemarks != ""},
+		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
 	})
 }
 
@@ -156,9 +157,9 @@ func (s *StudentService) DeleteStudent(ctx context.Context, id uuid.UUID) error 
 		return fmt.Errorf("failed to delete user record: %w", err)
 	}
 
-	// delete from ThunderID
-	if err := s.thunderIDClient.DeleteUser(ctx, userID.String()); err != nil {
-		fmt.Printf("warning: failed to delete ThunderID user: %v\n", err)
+	// delete from Asgardeo
+	if err := s.asgardeoClient.DeleteUser(ctx, userID.String()); err != nil {
+		fmt.Printf("warning: failed to delete Asgardeo user: %v\n", err)
 	}
 
 	return nil
