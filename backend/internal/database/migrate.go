@@ -5,13 +5,19 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/openschool-org/openschool/db/migrations"
 )
 
 func RunMigrations(dbURL string) error {
 	migrationURL := "pgx5://" + dbURL[len("postgres://"):]
 
-	m, err := migrate.New("file://db/migrations", migrationURL)
+	source, err := iofs.New(migrations.FS, ".")
+	if err != nil {
+		return fmt.Errorf("failed to load embedded migrations: %w", err)
+	}
+
+	m, err := migrate.NewWithSourceInstance("iofs", source, migrationURL)
 	if err != nil {
 		return fmt.Errorf("failed to create migrator: %w", err)
 	}

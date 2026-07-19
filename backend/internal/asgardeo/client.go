@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 )
 
 type Client struct {
@@ -20,7 +21,7 @@ type Client struct {
 func NewClient() *Client {
 	return &Client{
 		baseUrl:    os.Getenv("ASGARDEO_BASE_URL"),
-		httpClient: &http.Client{},
+		httpClient: &http.Client{Timeout: 10 * time.Second},
 	}
 }
 
@@ -74,7 +75,7 @@ func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 // buildUserPayload maps the same attrs shape used by the ThunderID client
 // (username, email, given_name, family_name, phone_number, password, ...)
 // into a SCIM2 User resource.
-func buildUserPayload(attrs map[string]interface{}) map[string]interface{} {
+func buildUserPayload(attrs map[string]any) map[string]any {
 	username, _ := attrs["username"].(string)
 	// Asgardeo's SCIM2 API resolves the wrong (read-only) user store
 	// resolver when "userName" has no domain prefix, so the primary
@@ -83,20 +84,20 @@ func buildUserPayload(attrs map[string]interface{}) map[string]interface{} {
 		username = "DEFAULT/" + username
 	}
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"schemas":  []string{"urn:ietf:params:scim:schemas:core:2.0:User"},
 		"userName": username,
-		"name": map[string]interface{}{
+		"name": map[string]any{
 			"givenName":  attrs["given_name"],
 			"familyName": attrs["family_name"],
 		},
-		"emails": []map[string]interface{}{
+		"emails": []map[string]any{
 			{"value": attrs["email"], "primary": true},
 		},
 	}
 
 	if phone, ok := attrs["phone_number"]; ok && phone != "" {
-		body["phoneNumbers"] = []map[string]interface{}{
+		body["phoneNumbers"] = []map[string]any{
 			{"value": phone, "type": "mobile"},
 		}
 	}
@@ -108,7 +109,7 @@ func buildUserPayload(attrs map[string]interface{}) map[string]interface{} {
 	return body
 }
 
-func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[string]interface{}) (*User, error) {
+func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[string]any) (*User, error) {
 	token, err := c.getAccessToken(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Asgardeo token: %w", err)
@@ -149,7 +150,7 @@ func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[stri
 	return &user, nil
 }
 
-func (c *Client) UpdateUser(ctx context.Context, userID string, userType string, attrs map[string]interface{}) error {
+func (c *Client) UpdateUser(ctx context.Context, userID string, userType string, attrs map[string]any) error {
 	token, err := c.getAccessToken(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get Asgardeo token: %w", err)
@@ -225,13 +226,13 @@ func (c *Client) AssignRole(ctx context.Context, roleID string, userID string) e
 		return fmt.Errorf("failed to get Asgardeo token: %w", err)
 	}
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"schemas": []string{"urn:ietf:params:scim:api:messages:2.0:PatchOp"},
-		"Operations": []map[string]interface{}{
+		"Operations": []map[string]any{
 			{
 				"op":   "add",
 				"path": "users",
-				"value": []map[string]interface{}{
+				"value": []map[string]any{
 					{"value": userID},
 				},
 			},

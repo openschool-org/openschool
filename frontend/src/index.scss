@@ -22,16 +22,16 @@ html, body, #root {
   padding: 0;
 }
 
-// ─── ThunderID sign-in ───────────────────────────────────────────────────────
-.thunderid-signin-wrapper {
+// ─── Sign-in ────────────────────────────────────────────────────────────────
+.os-signin-wrapper {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: #f4f4f4;
 }
-.thunderid-signin-card { width: 100%; max-width: 480px; }
-.thunderid-signin { padding: 2rem !important; }
+.os-signin-card { width: 100%; max-width: 480px; }
+.os-signin { padding: 2rem !important; }
 
 // ─── Header ─────────────────────────────────────────────────────────────────
 .cds--header {

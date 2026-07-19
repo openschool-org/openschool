@@ -1,5 +1,6 @@
 import { Routes, Route } from "react-router";
 import SignIn from "./pages/SignIn";
+import AccessRestricted from "./pages/AccessRestricted";
 import { useRole } from "./hooks/useRole";
 import { useApi } from "./hooks/useApi";
 import RootLayout from "./layouts/RootLayout";
@@ -72,7 +73,7 @@ function App() {
           />
           <Route path="*" element={<NotFound />} />
         </Route>
-      ) : (
+      ) : role === "admin" ? (
         /* Admin routes */
         <Route
           element={
@@ -106,6 +107,18 @@ function App() {
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
+        </Route>
+      ) : (
+        /* student / parent / unrecognized roles: no portal built yet — never
+           fall through to admin or teacher routes */
+        <Route
+          element={
+            <ProtectedRoute>
+              <AccessRestricted />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="*" element={<AccessRestricted />} />
         </Route>
       )}
     </Routes>

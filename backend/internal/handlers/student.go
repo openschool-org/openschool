@@ -168,7 +168,7 @@ func (h *StudentHandler) Update(c *gin.Context) {
 
 // Delete godoc
 // @Summary      Delete student
-// @Description  Delete a student profile and ThunderID user account
+// @Description  Delete a student profile and Asgardeo user account
 // @Tags         students
 // @Produce      json
 // @Param        id path string true "Student ID"

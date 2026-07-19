@@ -55,9 +55,10 @@ ORDER BY start_date DESC;
 
 -- name: SetCurrentAcademicYear :exec
 UPDATE academic_years
-SET is_current = (id = $1);
+SET is_current = (id = $1)
+WHERE id = $1 OR is_current = true;
 
--- name: DeleteAcademicYear :exec
+-- name: DeleteAcademicYear :execrows
 DELETE FROM academic_years AS ay
 WHERE ay.id = $1
 AND ay.id NOT IN (

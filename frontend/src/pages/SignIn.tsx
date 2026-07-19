@@ -3,8 +3,8 @@ import { Button } from "@carbon/react";
 
 export default function SignIn() {
   return (
-    <div className="thunderid-signin-wrapper">
-      <div className="thunderid-signin-card">
+    <div className="os-signin-wrapper">
+      <div className="os-signin-card">
         <h1 style={{ fontSize: "1.75rem", fontWeight: 500, marginBottom: "0.5rem" }}>
           OpenSchool
         </h1>

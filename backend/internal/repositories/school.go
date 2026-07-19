@@ -36,6 +36,10 @@ func (r *SchoolRepository) GetCurrentAcademicYear(ctx context.Context) (db.Acade
 	return r.queries.GetCurrentAcademicYear(ctx)
 }
 
+func (r *SchoolRepository) GetAcademicYearByID(ctx context.Context, id uuid.UUID) (db.AcademicYear, error) {
+	return r.queries.GetAcademicYearByID(ctx, id)
+}
+
 func (r *SchoolRepository) ListAcademicYears(ctx context.Context) ([]db.AcademicYear, error) {
 	return r.queries.ListAcademicYears(ctx)
 }
@@ -44,6 +48,6 @@ func (r *SchoolRepository) SetCurrentAcademicYear(ctx context.Context, id uuid.U
 	return r.queries.SetCurrentAcademicYear(ctx, id)
 }
 
-func (r *SchoolRepository) DeleteAcademicYear(ctx context.Context, id uuid.UUID) error {
+func (r *SchoolRepository) DeleteAcademicYear(ctx context.Context, id uuid.UUID) (int64, error) {
 	return r.queries.DeleteAcademicYear(ctx, id)
 }

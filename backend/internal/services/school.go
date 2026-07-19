@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -9,6 +10,11 @@ import (
 	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
+)
+
+var (
+	ErrAcademicYearNotFound = errors.New("academic year not found")
+	ErrAcademicYearInUse    = errors.New("academic year is used by a class and cannot be deleted")
 )
 
 type SchoolService struct {
@@ -72,9 +78,22 @@ func (s *SchoolService) ListAcademicYears(ctx context.Context) ([]db.AcademicYea
 }
 
 func (s *SchoolService) SetCurrentAcademicYear(ctx context.Context, id uuid.UUID) error {
+	if _, err := s.repo.GetAcademicYearByID(ctx, id); err != nil {
+		return ErrAcademicYearNotFound
+	}
 	return s.repo.SetCurrentAcademicYear(ctx, id)
 }
 
 func (s *SchoolService) DeleteAcademicYear(ctx context.Context, id uuid.UUID) error {
-	return s.repo.DeleteAcademicYear(ctx, id)
+	rows, err := s.repo.DeleteAcademicYear(ctx, id)
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		if _, err := s.repo.GetAcademicYearByID(ctx, id); err != nil {
+			return ErrAcademicYearNotFound
+		}
+		return ErrAcademicYearInUse
+	}
+	return nil
 }

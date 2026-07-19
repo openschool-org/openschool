@@ -38,7 +38,7 @@ type Querier interface {
 	CreateTeacherProfile(ctx context.Context, arg CreateTeacherProfileParams) (TeacherProfile, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeactivateUser(ctx context.Context, id uuid.UUID) (User, error)
-	DeleteAcademicYear(ctx context.Context, id uuid.UUID) error
+	DeleteAcademicYear(ctx context.Context, id uuid.UUID) (int64, error)
 	// attendance_records cascade with the session
 	DeleteAttendanceSession(ctx context.Context, id uuid.UUID) error
 	DeleteClass(ctx context.Context, id uuid.UUID) error
