@@ -50,16 +50,20 @@ Never edit files in `db/sqlc/` directly — they are generated. Schema is inferr
 
 ### Architecture
 
-- `cmd/api/main.go` — entry point: loads env, runs migrations, connects DB, starts Gin router
+- `cmd/api/main.go` — entry point: loads env, runs migrations, connects DB, inits JWKS, starts Gin router
 - `internal/config/` — loads `.env` via `godotenv`
 - `internal/database/` — DSN builder, pgxpool connection, `golang-migrate` runner
+- `internal/middleware/` — `AuthMiddleware` (validates Asgardeo-issued JWTs against JWKS) and `RequireRole` (per-route role gating)
+- `internal/asgardeo/` — SCIM2 client used to provision/update/delete users and assign roles in Asgardeo
 - `db/migrations/` — numbered up/down SQL migrations (golang-migrate format)
 - `db/queries/` — raw SQL queries annotated for sqlc
 - `db/sqlc/` — generated type-safe query code (do not edit)
 
 ### Environment Variables
 
-See `.env.example`. Key vars: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSLMODE`, `PORT`.
+See `.env.example`. Key vars: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSLMODE`, `PORT`, plus the `ASGARDEO_*` vars (base/token/JWKS/issuer URLs, client credentials, role IDs) used for JWT validation and SCIM user management.
+
+> `internal/thunderid/` and the `THUNDERID_*` env vars are leftover from the previous identity provider and are no longer wired into `main.go` or any route/service/handler — treat them as dead code pending removal, not as active configuration.
 
 ## Frontend
 
@@ -82,9 +86,9 @@ pnpm preview  # preview production build
 
 ### Architecture
 
-Authentication is handled by **ThunderID** (`@thunderid/react`). The provider is configured in `main.tsx` pointing to `https://localhost:8090`. All routes except `/signin` are wrapped in `ProtectedRoute`, which redirects unauthenticated users to `/signin`.
+Authentication is handled by **WSO2 Asgardeo** (`@asgardeo/react`). The provider is configured in `main.tsx` via `VITE_ASGARDEO_CLIENT_ID`, `VITE_ASGARDEO_BASE_URL`, and `VITE_ASGARDEO_SCOPES` (see `frontend/.env.example`). All routes except `/signin` are wrapped in `ProtectedRoute`, which redirects unauthenticated users to `/signin`. Role (`admin`/`teacher`/`student`/`parent`) is read from the `roles` claim of the Asgardeo access token via the `useRole` hook.
 
-- `main.tsx` — root: `ThunderIDProvider` → `BrowserRouter` → `App`
+- `main.tsx` — root: `AsgardeoProvider` → `QueryClientProvider` → `BrowserRouter` → `App`
 - `App.tsx` — route definitions; `ProtectedRoute` guards the root layout
 - `src/layouts/RootLayout.tsx` — Carbon `Header` with nav; `<Outlet>` for page content
 - `src/pages/` — route-level page components

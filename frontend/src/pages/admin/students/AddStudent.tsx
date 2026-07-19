@@ -7,10 +7,23 @@ import {
   RadioButtonGroup,
   RadioButton,
   InlineNotification,
+  Modal,
+  CopyButton,
 } from "@carbon/react";
 import { ArrowLeft, Save } from "@carbon/icons-react";
 import { useCreateStudent } from "../../../queries/useStudents";
 import { AxiosError } from "axios";
+
+// Index numbers are printed on ID cards and are often sequential, so they
+// must never double as a login credential. Generate an unrelated one-time
+// password instead and hand it to the admin to pass along out-of-band.
+function generateTempPassword(): string {
+  const alphabet =
+    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  const bytes = new Uint32Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+}
 
 export default function AddStudent() {
   const navigate = useNavigate();
@@ -25,23 +38,24 @@ export default function AddStudent() {
   const [whatsapp, setWhatsapp] = useState("");
   const [specialRemarks, setSpecialRemarks] = useState("");
   const [gender, setGender] = useState<"" | "male" | "female">("");
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
 
   const handleSubmit = () => {
+    const password = generateTempPassword();
     createStudent.mutate(
       {
         given_name: givenName.trim(),
         family_name: familyName.trim(),
         email: email.trim(),
         phone_number: phone.trim() || undefined,
-        // initial password is the index number; the student changes it later
-        password: indexNumber.trim(),
+        password,
         index_number: indexNumber.trim(),
         address: address.trim() || undefined,
         whatsapp: whatsapp.trim() || undefined,
         special_remarks: specialRemarks.trim() || undefined,
         gender: gender || undefined,
       },
-      { onSuccess: () => navigate("/students") },
+      { onSuccess: () => setTempPassword(password) },
     );
   };
 
@@ -74,7 +88,7 @@ export default function AddStudent() {
         <InlineNotification
           kind="info"
           title="Initial password"
-          subtitle="The student signs in with their index number as the password, and should change it on first login."
+          subtitle="A one-time password is generated on save. It is never the student's index number — share it with them out-of-band and have them change it on first login."
           lowContrast
           hideCloseButton
           // .os-form has no gap — sections carry their own margin, so match it
@@ -132,7 +146,6 @@ export default function AddStudent() {
               id="index-number"
               labelText="Index Number"
               placeholder="e.g. 2026/0145"
-              helperText="Also used as the student's initial password."
               value={indexNumber}
               onChange={(e) => setIndexNumber(e.target.value)}
             />
@@ -188,6 +201,40 @@ export default function AddStudent() {
           </Button>
         </div>
       </div>
+
+      <Modal
+        open={tempPassword !== null}
+        modalHeading="Student enrolled"
+        primaryButtonText="Done"
+        onRequestSubmit={() => navigate("/students")}
+        onRequestClose={() => navigate("/students")}
+        passiveModal={false}
+      >
+        <p style={{ marginBottom: "1rem" }}>
+          Share this one-time password with the student through a secure,
+          out-of-band channel (not email/SMS in the clear). It will not be
+          shown again — the student should change it after signing in.
+        </p>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "0.75rem 1rem",
+            background: "#f4f4f4",
+            fontFamily: "monospace",
+            fontSize: "1rem",
+          }}
+        >
+          <span style={{ flex: 1 }}>{tempPassword}</span>
+          {tempPassword && (
+            <CopyButton
+              onClick={() => navigator.clipboard.writeText(tempPassword)}
+              feedback="Copied!"
+            />
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

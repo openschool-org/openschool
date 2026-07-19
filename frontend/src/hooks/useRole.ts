@@ -11,10 +11,12 @@ function parseJwt(token: string): Record<string, unknown> | null {
   }
 }
 
-export function useRole(): { role: Role; loading: boolean } {
+export function useRole(): { role: Role | null; loading: boolean } {
   const { getAccessToken, isSignedIn, isLoading } = useAsgardeo();
   const getAccessTokenRef = useRef(getAccessToken);
-  const [role, setRole] = useState<Role>("admin");
+  // Start with no privilege. Never default to "admin" — an unresolved or
+  // unrecognized role must never be treated as an authorized role.
+  const [role, setRole] = useState<Role | null>(null);
   const [roleResolved, setRoleResolved] = useState(false);
 
   useEffect(() => {
@@ -43,8 +45,7 @@ export function useRole(): { role: Role; loading: boolean } {
             : [];
 
         const priority: Role[] = ["admin", "teacher", "student", "parent"];
-        const resolved =
-          priority.find((r) => roles.includes(r)) ?? "admin";
+        const resolved = priority.find((r) => roles.includes(r)) ?? null;
         setRole(resolved);
       }
 

@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/google/uuid"
@@ -56,13 +57,15 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		Role:     "student",
 	})
 	if err != nil {
-		_ = s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID)
+		if delErr := s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
+			log.Printf("CreateStudent: failed to roll back Asgardeo user %s after error: %v (Asgardeo account now orphaned)", asgardeoUser.ID, delErr)
+		}
 		return db.StudentProfile{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
 	// assign student role in Asgardeo
 	if err := s.asgardeoClient.AssignRole(ctx, os.Getenv("ASGARDEO_ROLE_STUDENT"), asgardeoUser.ID); err != nil {
-		fmt.Printf("warning: failed to assign student role: %v\n", err)
+		log.Printf("CreateStudent: failed to assign student role to %s: %v", asgardeoUser.ID, err)
 	}
 
 	// create student profile
@@ -77,7 +80,9 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
 	})
 	if err != nil {
-		_ = s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID)
+		if delErr := s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
+			log.Printf("CreateStudent: failed to roll back Asgardeo user %s after error: %v (Asgardeo account now orphaned)", asgardeoUser.ID, delErr)
+		}
 		return db.StudentProfile{}, fmt.Errorf("failed to create student profile: %w", err)
 	}
 
@@ -148,18 +153,21 @@ func (s *StudentService) DeleteStudent(ctx context.Context, id uuid.UUID) error 
 
 	userID := uuid.UUID(student.UserID.Bytes)
 
-	// delete from DB first
+	// Delete the Asgardeo account first and abort on failure: if this were
+	// deleted last and failed, the local records would already be gone while
+	// the IdP account stayed live and sign-in-able — an orphaned account
+	// that can still authenticate. Deleting it first keeps local state
+	// untouched (and the operation retryable) on failure.
+	if err := s.asgardeoClient.DeleteUser(ctx, userID.String()); err != nil {
+		return fmt.Errorf("failed to delete Asgardeo user: %w", err)
+	}
+
 	if err := s.repo.DeleteStudent(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete student profile: %w", err)
 	}
 
 	if err := s.repo.DeleteUser(ctx, userID); err != nil {
 		return fmt.Errorf("failed to delete user record: %w", err)
-	}
-
-	// delete from Asgardeo
-	if err := s.asgardeoClient.DeleteUser(ctx, userID.String()); err != nil {
-		fmt.Printf("warning: failed to delete Asgardeo user: %v\n", err)
 	}
 
 	return nil

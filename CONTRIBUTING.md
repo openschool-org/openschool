@@ -52,105 +52,44 @@ This starts a PostgreSQL 17 instance on port `5432`.
 
 ---
 
-## 3. Set Up ThunderID
+## 3. Set Up Asgardeo
 
-OpenSchool uses [ThunderID](https://thunderid.dev) as its identity provider. Start it with Docker:
+OpenSchool uses [WSO2 Asgardeo](https://wso2.com/asgardeo/) as its identity provider. Asgardeo is a hosted (SaaS) IdP, so there's nothing to run locally — create a free organization at [console.asgardeo.io](https://console.asgardeo.io) and configure it as below.
 
-```bash
-docker compose -f oci://ghcr.io/thunder-id/thunderid-quick-start:latest up -d
-```
+### 3.1 Create Roles
 
-This command automatically initializes the database for ThunderID, runs the setup process, and starts the ThunderID server.
-
-Access the ThunderID console at `https://localhost:8090/console` using the default credentials:
-
-- Username: `admin`
-- Password: `admin`
-
-### 3.1 Create User Types
-
-Go to **User Types** in the left sidebar and create the following two user types. Self-registration should be disabled for both.
-
-**Student user type**
-
-- Name: `student`
-- Organization Unit: Default
-- Self-Registration: Disabled
-- Attributes:
-
-| Property Name | Display Name  | Type   | Required | Unique | Credential |
-| ------------- | ------------- | ------ | -------- | ------ | ---------- |
-| username      | Username      | String | Yes      | Yes    | No         |
-| email         | Email Address | String | Yes      | Yes    | No         |
-| given_name    | First Name    | String | Yes      | No     | No         |
-| family_name   | Last Name     | String | Yes      | No     | No         |
-| phone_number  | Phone Number  | String | No       | No     | No         |
-| password      | Password      | String | Yes      | No     | Yes        |
-
-**Teacher user type**
-
-Same as student but also add:
-
-| Property Name   | Display Name    | Type   | Required | Unique | Credential |
-| --------------- | --------------- | ------ | -------- | ------ | ---------- |
-| employee_number | Employee Number | String | Yes      | Yes    | No         |
-
-### 3.2 Create Roles
-
-Go to **Roles** in the left sidebar and create these roles:
+In the Asgardeo console, go to **User Management > Roles** and create these application-audience roles:
 
 - `admin`
 - `teacher`
 - `student`
-- `guardian`
+- `parent`
 
-### 3.3 Create the Frontend Application
+Note down each role's ID (used for `ASGARDEO_ROLE_*` env vars below).
 
-Go to **Applications** and create a new application for the React frontend.
+### 3.2 Create the Frontend Application (SPA)
 
-- Choose any web application type
-- Note down the **Application ID**
-- Set the Application URL to `http://localhost:5173`
-- Set the redirect URI to `http://localhost:5173/signin`
+Go to **Applications** and create a new **Single-Page Application**.
 
-Go to **Token Attributes and Response** for this application and add the following attributes to the Access Token:
+- Note down the **Client ID**
+- Set the Authorized redirect URL to `http://localhost:5173`
+- Under **Protocol > Access Token**, ensure the `roles` claim (and `email`, `given_name`, `family_name`, `username`, `phone_number` if you use them) is included in the token
+- Under **User Attributes**, enable the `roles` attribute and activate the `openid`, `profile`, `email`, `roles` scopes
 
-- `email`
-- `given_name`
-- `family_name`
-- `username`
-- `phone_number`
-- `roles`
+### 3.3 Create the Backend Service Application (M2M)
 
-Go to **Available Scopes** and activate: `phone`, `roles`
-
-Go to **Flows** and assign the default authentication flow to the application.
-
-### 3.4 Create the Backend Service Application
-
-Go to **Applications** and create a new **Backend Service** application.
+Go to **Applications** and create a new **M2M Application**.
 
 - Name: `OpenSchool Backend`
 - Grant Type: `client_credentials`
-- Token Endpoint Auth Method: `client_secret_post`
 - Note down the **Client ID** and **Client Secret**
+- Under **API Authorization**, authorize the **SCIM2 Users API** and **SCIM2 Roles API**, granting the `internal_user_mgt_create`, `internal_user_mgt_update`, `internal_user_mgt_delete`, `internal_user_mgt_list`, `internal_user_mgt_view`, `internal_org_role_mgt_view`, and `internal_org_role_mgt_users_update` scopes
 
-Go to **Available Scopes** and add `system` as a custom scope and activate it.
+This allows the backend to create and manage users and role assignments in Asgardeo programmatically via SCIM2 (see `backend/internal/asgardeo/client.go`).
 
-### 3.5 Assign Administrator Role to the Backend Application
+### 3.4 Create a Test Admin User
 
-Go to **Roles** in the left sidebar, open the **Administrator** role, go to the **Assignments** tab, and assign the **OpenSchool Backend** application to it.
-
-This allows the backend to create and manage users in ThunderID programmatically.
-
-### 3.6 Create a Test Admin User
-
-Go to **Users** and create a new user with the default **Person** user type:
-
-- Username: any
-- Email: any
-- Password: any
-- Assign the `admin`and `Administrator` role to this user
+Go to **User Management > Users**, create a test user, and assign it the `admin` role created in step 3.1.
 
 ---
 
@@ -180,21 +119,20 @@ DB_USER=postgres
 DB_PASSWORD=postgres
 DB_SSLMODE=disable
 
-THUNDERID_BASE_URL=https://localhost:8090
-THUNDERID_OU_ID=<organization_unit_id_from_thunderid_console>
-THUNDERID_CLIENT_ID=<backend_service_client_id>
-THUNDERID_CLIENT_SECRET=<backend_service_client_secret>
-THUNDERID_TOKEN_URL=https://localhost:8090/oauth2/token
-THUNDERID_JWKS_URL=https://localhost:8090/oauth2/jwks
-THUNDERID_ISSUER=https://localhost:8090
+ASGARDEO_BASE_URL=https://api.asgardeo.io/t/<org-name>
+ASGARDEO_TOKEN_URL=https://api.asgardeo.io/t/<org-name>/oauth2/token
+ASGARDEO_JWKS_URL=https://api.asgardeo.io/t/<org-name>/oauth2/jwks
+ASGARDEO_ISSUER=https://api.asgardeo.io/t/<org-name>/oauth2/token
+ASGARDEO_CLIENT_ID=<backend_service_client_id>
+ASGARDEO_CLIENT_SECRET=<backend_service_client_secret>
 
-# role ids from thunderid
-THUNDERID_ROLE_STUDENT=
-THUNDERID_ROLE_TEACHER=
-THUNDERID_ROLE_ADMIN=
+# role ids from Asgardeo (step 3.1)
+ASGARDEO_ROLE_STUDENT=
+ASGARDEO_ROLE_TEACHER=
+ASGARDEO_ROLE_ADMIN=
 ```
 
-Get the Organization Unit ID from **Organization Units** in the ThunderID console.
+Get `<org-name>` from your Asgardeo organization's console URL. The `ASGARDEO_BASE_URL`/`ASGARDEO_TOKEN_URL`/`ASGARDEO_JWKS_URL` values shown here are the standard Asgardeo endpoint shapes for that org — you shouldn't need to look them up individually.
 
 ### Run Database Migrations
 
@@ -241,19 +179,20 @@ The backend runs on `http://localhost:8080`. Swagger UI is available at `http://
 ```bash
 cd frontend
 pnpm install
+cp .env.example .env
 ```
 
-Open `frontend/src/main.tsx` and update the ThunderID configuration with the values from your frontend application:
+Fill in your `.env` file with the values from your frontend (SPA) application (step 3.2):
 
-```tsx
-<ThunderIDProvider
-  applicationId="YOUR_APPLICATION_ID"
-  baseUrl="https://localhost:8090"
-  afterSignInUrl="/"
-  afterSignOutUrl="/signin"
-  ...
->
+```env
+VITE_API_URL=http://localhost:8080/api/v1
+
+VITE_ASGARDEO_CLIENT_ID=<spa_client_id>
+VITE_ASGARDEO_BASE_URL=https://api.asgardeo.io/t/<org-name>
+VITE_ASGARDEO_SCOPES="openid profile email roles"
 ```
+
+These are read by `AsgardeoProvider` in `frontend/src/main.tsx`.
 
 Start the frontend:
 
@@ -267,13 +206,13 @@ The frontend runs on `http://localhost:5173`.
 
 ## 6. Verify Everything is Running
 
-| Service           | URL                                      |
-| ----------------- | ---------------------------------------- |
-| Frontend          | http://localhost:5173                    |
-| Backend           | http://localhost:8080                    |
-| Swagger UI        | http://localhost:8080/swagger/index.html |
-| ThunderID Console | https://localhost:8090/console           |
-| PostgreSQL        | localhost:5432                           |
+| Service          | URL                                                       |
+| ---------------- | ---------------------------------------------------------- |
+| Frontend         | http://localhost:5173                                      |
+| Backend          | http://localhost:8080                                      |
+| Swagger UI       | http://localhost:8080/swagger/index.html                   |
+| Asgardeo Console | https://console.asgardeo.io/t/\<org-name\>                 |
+| PostgreSQL       | localhost:5432                                              |
 
 ---
 
@@ -281,7 +220,7 @@ The frontend runs on `http://localhost:5173`.
 
 1. Go to `http://localhost:5173`
 2. You will be redirected to the sign-in page
-3. Sign in with the test admin user you created in step 3.6
+3. Sign in with the test admin user you created in step 3.4
 4. You should be redirected to the home page after successful sign-in
 
 ---

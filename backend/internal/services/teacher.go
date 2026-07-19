@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/google/uuid"
@@ -63,13 +64,15 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		Role:     "teacher",
 	})
 	if err != nil {
-		_ = s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID)
+		if delErr := s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
+			log.Printf("CreateTeacher: failed to roll back Asgardeo user %s after error: %v (Asgardeo account now orphaned)", asgardeoUser.ID, delErr)
+		}
 		return db.TeacherProfile{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
 	// assign teacher role in Asgardeo
 	if err := s.asgardeoClient.AssignRole(ctx, os.Getenv("ASGARDEO_ROLE_TEACHER"), asgardeoUser.ID); err != nil {
-		fmt.Printf("warning: failed to assign teacher role: %v\n", err)
+		log.Printf("CreateTeacher: failed to assign teacher role to %s: %v", asgardeoUser.ID, err)
 	}
 
 	// create teacher profile
@@ -81,7 +84,9 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
 	})
 	if err != nil {
-		_ = s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID)
+		if delErr := s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
+			log.Printf("CreateTeacher: failed to roll back Asgardeo user %s after error: %v (Asgardeo account now orphaned)", asgardeoUser.ID, delErr)
+		}
 		return db.TeacherProfile{}, fmt.Errorf("failed to create teacher profile: %w", err)
 	}
 
@@ -150,8 +155,13 @@ func (s *TeacherService) DeleteTeacher(ctx context.Context, id uuid.UUID) error 
 		return fmt.Errorf("failed to delete user record: %w", err)
 	}
 
+	// The teacher profile row enforces the "in use" check (blocked while
+	// assigned to a class/attendance session), so it must be deleted first;
+	// that means a failure here can't be silently swallowed — the teacher's
+	// local records are already gone, so a still-live Asgardeo account is a
+	// real orphaned account that must be surfaced, not just logged.
 	if err := s.asgardeoClient.DeleteUser(ctx, userID.String()); err != nil {
-		fmt.Printf("warning: failed to delete Asgardeo user: %v\n", err)
+		return fmt.Errorf("teacher profile deleted locally but failed to delete Asgardeo user (account is now orphaned and must be removed manually): %w", err)
 	}
 
 	return nil

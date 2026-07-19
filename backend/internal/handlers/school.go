@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -184,7 +185,11 @@ func (h *SchoolHandler) SetCurrentAcademicYear(c *gin.Context) {
 	}
 
 	if err := h.service.SetCurrentAcademicYear(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if errors.Is(err, services.ErrAcademicYearNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 
@@ -210,7 +215,11 @@ func (h *SchoolHandler) DeleteAcademicYear(c *gin.Context) {
 	}
 
 	if err := h.service.DeleteAcademicYear(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if errors.Is(err, services.ErrAcademicYearNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		} else {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		}
 		return
 	}
 

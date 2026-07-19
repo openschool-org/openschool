@@ -3,12 +3,12 @@ package models
 import "time"
 
 type CreateTeacherRequest struct {
-	// ThunderID fields
-	Email       string `json:"email" binding:"required"`
+	// Asgardeo account fields
+	Email       string `json:"email" binding:"required,email"`
 	GivenName   string `json:"given_name" binding:"required"`
 	FamilyName  string `json:"family_name" binding:"required"`
 	PhoneNumber string `json:"phone_number"`
-	Password    string `json:"password" binding:"required"`
+	Password    string `json:"password" binding:"required,min=8"`
 
 	// Teacher profile fields
 	EmployeeNumber string    `json:"employee_number" binding:"required"`

@@ -100,7 +100,7 @@ func (q *Queries) CreateSchool(ctx context.Context, arg CreateSchoolParams) (Sch
 	return i, err
 }
 
-const deleteAcademicYear = `-- name: DeleteAcademicYear :exec
+const deleteAcademicYear = `-- name: DeleteAcademicYear :execrows
 DELETE FROM academic_years AS ay
 WHERE ay.id = $1
 AND ay.id NOT IN (
@@ -108,9 +108,12 @@ AND ay.id NOT IN (
 )
 `
 
-func (q *Queries) DeleteAcademicYear(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteAcademicYear, id)
-	return err
+func (q *Queries) DeleteAcademicYear(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteAcademicYear, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getAcademicYearByID = `-- name: GetAcademicYearByID :one
@@ -209,6 +212,7 @@ func (q *Queries) ListAcademicYears(ctx context.Context) ([]AcademicYear, error)
 const setCurrentAcademicYear = `-- name: SetCurrentAcademicYear :exec
 UPDATE academic_years
 SET is_current = (id = $1)
+WHERE id = $1 OR is_current = true
 `
 
 func (q *Queries) SetCurrentAcademicYear(ctx context.Context, id uuid.UUID) error {

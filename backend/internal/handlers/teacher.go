@@ -20,7 +20,7 @@ func NewTeacherHandler(service *services.TeacherService) *TeacherHandler {
 
 // Create godoc
 // @Summary      Create teacher
-// @Description  Onboard a new teacher - creates ThunderID user and teacher profile
+// @Description  Onboard a new teacher - creates Asgardeo user and teacher profile
 // @Tags         teachers
 // @Accept       json
 // @Produce      json
@@ -127,7 +127,7 @@ func (h *TeacherHandler) Update(c *gin.Context) {
 
 // Delete godoc
 // @Summary      Delete teacher
-// @Description  Delete a teacher profile and ThunderID user account
+// @Description  Delete a teacher profile and Asgardeo user account
 // @Tags         teachers
 // @Produce      json
 // @Param        id path string true "Teacher ID"

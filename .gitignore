@@ -1,0 +1,15 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.swp
+*.swo
+
+# Env files (per-workspace .gitignore also covers these; kept here as a backstop)
+.env
+.env.local
+.env.*.local
