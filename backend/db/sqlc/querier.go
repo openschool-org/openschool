@@ -23,6 +23,7 @@ type Querier interface {
 	CreateClass(ctx context.Context, arg CreateClassParams) (Class, error)
 	CreateGrade(ctx context.Context, arg CreateGradeParams) (Grade, error)
 	CreateGuardian(ctx context.Context, arg CreateGuardianParams) (Guardian, error)
+	CreateHouse(ctx context.Context, arg CreateHouseParams) (House, error)
 	// ── levels ──────────────────────────────────────────────────────────────────
 	CreateLevel(ctx context.Context, arg CreateLevelParams) (Level, error)
 	// ── mediums ─────────────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ type Querier interface {
 	DeleteAttendanceSession(ctx context.Context, id uuid.UUID) error
 	DeleteClass(ctx context.Context, id uuid.UUID) error
 	DeleteGrade(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteHouse(ctx context.Context, id uuid.UUID) (int64, error)
 	// blocked while any of its groups still carry enrollments
 	DeleteLevel(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteMedium(ctx context.Context, id uuid.UUID) (int64, error)
@@ -75,6 +77,7 @@ type Querier interface {
 	GetFormTeacherClass(ctx context.Context, formTeacherID pgtype.UUID) (Class, error)
 	GetGradeByID(ctx context.Context, id uuid.UUID) (Grade, error)
 	GetGuardianByID(ctx context.Context, id uuid.UUID) (Guardian, error)
+	GetHouseByID(ctx context.Context, id uuid.UUID) (House, error)
 	GetLevelByID(ctx context.Context, id uuid.UUID) (Level, error)
 	GetMediumByID(ctx context.Context, id uuid.UUID) (Medium, error)
 	GetPrimaryGuardian(ctx context.Context, studentID uuid.UUID) (Guardian, error)
@@ -108,6 +111,7 @@ type Querier interface {
 	ListGrades(ctx context.Context) ([]Grade, error)
 	ListGroupSubjects(ctx context.Context, groupID uuid.UUID) ([]ListGroupSubjectsRow, error)
 	ListGuardiansByStudent(ctx context.Context, studentID uuid.UUID) ([]ListGuardiansByStudentRow, error)
+	ListHouses(ctx context.Context) ([]House, error)
 	ListLevels(ctx context.Context) ([]Level, error)
 	ListLevelsByGrade(ctx context.Context, gradeID pgtype.UUID) ([]Level, error)
 	ListMediums(ctx context.Context) ([]Medium, error)
@@ -122,6 +126,7 @@ type Querier interface {
 	ListStudentsByClass(ctx context.Context, classID uuid.UUID) ([]StudentProfile, error)
 	ListStudentsByGroup(ctx context.Context, arg ListStudentsByGroupParams) ([]ListStudentsByGroupRow, error)
 	ListStudentsBySubject(ctx context.Context, arg ListStudentsBySubjectParams) ([]ListStudentsBySubjectRow, error)
+	ListStudentsMissingHouse(ctx context.Context) ([]StudentProfile, error)
 	ListSubjectTeachersByClass(ctx context.Context, classID uuid.UUID) ([]ListSubjectTeachersByClassRow, error)
 	ListSubjects(ctx context.Context) ([]Subject, error)
 	ListSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID) ([]Subject, error)
@@ -139,12 +144,14 @@ type Querier interface {
 	UpdateClass(ctx context.Context, arg UpdateClassParams) (Class, error)
 	UpdateGrade(ctx context.Context, arg UpdateGradeParams) (Grade, error)
 	UpdateGuardian(ctx context.Context, arg UpdateGuardianParams) (Guardian, error)
+	UpdateHouse(ctx context.Context, arg UpdateHouseParams) (House, error)
 	UpdateLevel(ctx context.Context, arg UpdateLevelParams) (Level, error)
 	UpdateMedium(ctx context.Context, arg UpdateMediumParams) (Medium, error)
 	UpdateSchool(ctx context.Context, arg UpdateSchoolParams) (School, error)
 	UpdateSelectionGroup(ctx context.Context, arg UpdateSelectionGroupParams) (SelectionGroup, error)
 	UpdateStream(ctx context.Context, arg UpdateStreamParams) (Stream, error)
 	UpdateStreamGroup(ctx context.Context, arg UpdateStreamGroupParams) (StreamGroup, error)
+	UpdateStudentHouse(ctx context.Context, arg UpdateStudentHouseParams) (StudentProfile, error)
 	UpdateStudentProfile(ctx context.Context, arg UpdateStudentProfileParams) (StudentProfile, error)
 	UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error)
 	UpdateTeacherProfile(ctx context.Context, arg UpdateTeacherProfileParams) (TeacherProfile, error)

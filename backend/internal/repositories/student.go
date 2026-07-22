@@ -64,3 +64,11 @@ func (r *StudentRepository) DeleteStudent(ctx context.Context, id uuid.UUID) err
 func (r *StudentRepository) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	return r.queries.DeleteUser(ctx, id)
 }
+
+func (r *StudentRepository) ListHouses(ctx context.Context) ([]db.House, error) {
+	return r.queries.ListHouses(ctx)
+}
+
+func (r *StudentRepository) UpdateHouse(ctx context.Context, params db.UpdateStudentHouseParams) (db.StudentProfile, error) {
+	return r.queries.UpdateStudentHouse(ctx, params)
+}

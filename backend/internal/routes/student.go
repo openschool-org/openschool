@@ -20,6 +20,7 @@ func RegisterStudentRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGro
 	teacherOrAdmin.GET("/students/:id", handler.GetByID)
 	teacherOrAdmin.GET("/students/:id/class", handler.GetWithClass)
 	admin.PUT("/students/:id", handler.Update)
+	admin.PUT("/students/:id/house", handler.UpdateHouse)
 	admin.DELETE("/students/:id", handler.Delete)
 
 	teacherOrAdmin.GET("/classes/:id/students", handler.ListByClass)

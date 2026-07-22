@@ -68,6 +68,13 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		log.Printf("CreateStudent: failed to assign student role to %s: %v", asgardeoUser.ID, err)
 	}
 
+	houseID := pgtype.UUID{}
+	if houses, err := s.repo.ListHouses(ctx); err == nil {
+		if id, ok := houseForIndex(req.IndexNumber, houses); ok {
+			houseID = pgtype.UUID{Bytes: id, Valid: true}
+		}
+	}
+
 	// create student profile
 	profile, err := s.repo.Create(ctx, db.CreateStudentProfileParams{
 		UserID:         pgtype.UUID{Bytes: userID, Valid: true},
@@ -78,6 +85,7 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		Whatsapp:       pgtype.Text{String: req.WhatsApp, Valid: req.WhatsApp != ""},
 		SpecialRemarks: pgtype.Text{String: req.SpecialRemarks, Valid: req.SpecialRemarks != ""},
 		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
+		HouseID:        houseID,
 	})
 	if err != nil {
 		if delErr := s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
@@ -142,6 +150,22 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 		Whatsapp:       pgtype.Text{String: req.WhatsApp, Valid: req.WhatsApp != ""},
 		SpecialRemarks: pgtype.Text{String: req.SpecialRemarks, Valid: req.SpecialRemarks != ""},
 		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
+	})
+}
+
+func (s *StudentService) UpdateStudentHouse(ctx context.Context, id uuid.UUID, houseID string) (db.StudentProfile, error) {
+	house := pgtype.UUID{}
+	if houseID != "" {
+		parsed, err := uuid.Parse(houseID)
+		if err != nil {
+			return db.StudentProfile{}, fmt.Errorf("invalid house id")
+		}
+		house = pgtype.UUID{Bytes: parsed, Valid: true}
+	}
+
+	return s.repo.UpdateHouse(ctx, db.UpdateStudentHouseParams{
+		ID:      id,
+		HouseID: house,
 	})
 }
 
