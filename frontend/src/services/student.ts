@@ -12,6 +12,8 @@ export interface Student {
   gender: string | null;
   created_at: string | null;
   updated_at: string | null;
+  class_name: string | null;
+  grade_name: string | null;
 }
 
 export interface StudentWithClass extends Student {

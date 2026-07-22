@@ -88,7 +88,7 @@ export default function AddStudent() {
         <InlineNotification
           kind="info"
           title="Initial password"
-          subtitle="A one-time password is generated on save. It is never the student's index number — share it with them out-of-band and have them change it on first login."
+          subtitle="A one-time password is generated on save. It is never the student's index number - share it with them out-of-band and have them change it on first login."
           lowContrast
           hideCloseButton
           // .os-form has no gap — sections carry their own margin, so match it

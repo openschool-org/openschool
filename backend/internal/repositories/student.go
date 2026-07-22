@@ -33,7 +33,7 @@ func (r *StudentRepository) GetByIndexNumber(ctx context.Context, indexNumber st
 	return r.queries.GetStudentByIndexNumber(ctx, indexNumber)
 }
 
-func (r *StudentRepository) List(ctx context.Context) ([]db.StudentProfile, error) {
+func (r *StudentRepository) List(ctx context.Context) ([]db.ListStudentsRow, error) {
 	return r.queries.ListStudents(ctx)
 }
 

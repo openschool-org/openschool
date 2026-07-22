@@ -8,6 +8,11 @@ import {
   RadioButtonGroup,
   RadioButton,
   InlineNotification,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
 } from "@carbon/react";
 import { ArrowLeft, TrashCan, Edit, Save } from "@carbon/icons-react";
 import { AxiosError } from "axios";
@@ -21,6 +26,7 @@ import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import ProfileBanner from "../../../components/common/ProfileBanner";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import SubjectEnrollment from "./SubjectEnrollment";
 
 type Gender = "" | "male" | "female";
 
@@ -177,10 +183,17 @@ export default function StudentDetail() {
       />
 
       <div style={{ padding: "1.5rem 2rem" }}>
-        <div className="os-section">
-          <div className="os-section__header">
-            <h2 className="os-section__title">Profile</h2>
-          </div>
+        <Tabs>
+          <TabList aria-label="Student sections">
+            <Tab>Profile</Tab>
+            <Tab>Subject Enrollment</Tab>
+          </TabList>
+          <TabPanels>
+            <TabPanel style={{ padding: 0 }}>
+              <div className="os-section" style={{ marginTop: "1rem" }}>
+                <div className="os-section__header">
+                  <h2 className="os-section__title">Profile</h2>
+                </div>
           <div className="os-section__body">
             {updateError && (
               <InlineNotification
@@ -306,6 +319,15 @@ export default function StudentDetail() {
             )}
           </div>
         </div>
+
+            </TabPanel>
+            <TabPanel style={{ padding: 0 }}>
+              <div style={{ marginTop: "1rem" }}>
+                <SubjectEnrollment studentId={student.id} />
+              </div>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
       </div>
 
       <ConfirmDeleteModal

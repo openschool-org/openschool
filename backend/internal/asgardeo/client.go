@@ -72,14 +72,8 @@ func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 	return result.AccessToken, nil
 }
 
-// buildUserPayload maps the same attrs shape used by the ThunderID client
-// (username, email, given_name, family_name, phone_number, password, ...)
-// into a SCIM2 User resource.
 func buildUserPayload(attrs map[string]any) map[string]any {
 	username, _ := attrs["username"].(string)
-	// Asgardeo's SCIM2 API resolves the wrong (read-only) user store
-	// resolver when "userName" has no domain prefix, so the primary
-	// resident user store must be specified explicitly.
 	if username != "" && !strings.Contains(username, "/") {
 		username = "DEFAULT/" + username
 	}
@@ -202,7 +196,7 @@ func (c *Client) DeleteUser(ctx context.Context, userID string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent {
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("asgardeo error: %s", string(body))
 	}
@@ -210,16 +204,7 @@ func (c *Client) DeleteUser(ctx context.Context, userID string) error {
 	return nil
 }
 
-// AssignRole adds userID to the given role's member list via the
-// organization-scoped SCIM2 Roles V2 API ("/o/scim2/v2/Roles"). This is
-// deliberate, not a typo:
-//   - "/scim2/v3/Roles" (tenant-scoped v3) is blocked by Asgardeo's edge WAF
-//     for direct API/script clients (returns an HTML "security rules" page).
-//   - "/scim2/Roles" (tenant-scoped v1/v2) returns 500 for
-//     application-audience roles — it only understands organization-audience
-//     roles.
-//   - "/o/scim2/v2/Roles" (organization-scoped v2) is the one that actually
-//     works for application-audience roles like the ones this app uses.
+// /o/scim2/v2/Roles
 func (c *Client) AssignRole(ctx context.Context, roleID string, userID string) error {
 	token, err := c.getAccessToken(ctx)
 	if err != nil {

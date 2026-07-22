@@ -97,7 +97,7 @@ func (s *StudentService) GetStudentWithClass(ctx context.Context, id uuid.UUID) 
 	return s.repo.GetWithClass(ctx, id)
 }
 
-func (s *StudentService) ListStudents(ctx context.Context) ([]db.StudentProfile, error) {
+func (s *StudentService) ListStudents(ctx context.Context) ([]db.ListStudentsRow, error) {
 	return s.repo.List(ctx)
 }
 
@@ -151,23 +151,27 @@ func (s *StudentService) DeleteStudent(ctx context.Context, id uuid.UUID) error 
 		return fmt.Errorf("student not found")
 	}
 
-	userID := uuid.UUID(student.UserID.Bytes)
+	// Delete the Asgardeo account first and abort on failure
+	if student.UserID.Valid {
+		userID := uuid.UUID(student.UserID.Bytes)
 
-	// Delete the Asgardeo account first and abort on failure: if this were
-	// deleted last and failed, the local records would already be gone while
-	// the IdP account stayed live and sign-in-able — an orphaned account
-	// that can still authenticate. Deleting it first keeps local state
-	// untouched (and the operation retryable) on failure.
-	if err := s.asgardeoClient.DeleteUser(ctx, userID.String()); err != nil {
-		return fmt.Errorf("failed to delete Asgardeo user: %w", err)
+		if err := s.asgardeoClient.DeleteUser(ctx, userID.String()); err != nil {
+			return fmt.Errorf("failed to delete Asgardeo user: %w", err)
+		}
+
+		if err := s.repo.DeleteStudent(ctx, id); err != nil {
+			return fmt.Errorf("failed to delete student profile: %w", err)
+		}
+
+		if err := s.repo.DeleteUser(ctx, userID); err != nil {
+			return fmt.Errorf("failed to delete user record: %w", err)
+		}
+
+		return nil
 	}
 
 	if err := s.repo.DeleteStudent(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete student profile: %w", err)
-	}
-
-	if err := s.repo.DeleteUser(ctx, userID); err != nil {
-		return fmt.Errorf("failed to delete user record: %w", err)
 	}
 
 	return nil

@@ -10,6 +10,7 @@ import {
   TabPanel,
   Select,
   SelectItem,
+  TextInput,
   DatePicker,
   DatePickerInput,
   Pagination,
@@ -24,6 +25,7 @@ import { AxiosError } from "axios";
 import {
   useClass,
   useClassStudents,
+  useUpdateClass,
   useAssignFormTeacher,
   useEnrollStudent,
   useUnenrollStudent,
@@ -80,12 +82,15 @@ export default function ClassDetail() {
   const { data: years } = useAcademicYears();
   const { data: allStudents } = useStudents();
 
+  const updateClass = useUpdateClass(id);
   const assignFormTeacher = useAssignFormTeacher(id);
   const enrollStudent = useEnrollStudent(id);
   const unenrollStudent = useUnenrollStudent(id);
   const createSession = useCreateSession(id);
   const deleteSession = useDeleteSession(id);
 
+  const [editOpen, setEditOpen] = useState(false);
+  const [nameEdit, setNameEdit] = useState("");
   const [teacherModalOpen, setTeacherModalOpen] = useState(false);
   const [teacherChoice, setTeacherChoice] = useState("");
   const [enrolOpen, setEnrolOpen] = useState(false);
@@ -128,6 +133,21 @@ export default function ClassDetail() {
       ),
     [sortedSessions, sessionPage, sessionPageSize],
   );
+
+  const openEdit = () => {
+    updateClass.reset();
+    setNameEdit(cls?.name ?? "");
+    setEditOpen(true);
+  };
+
+  const handleEditSave = () => {
+    const name = nameEdit.trim();
+    if (!name) return;
+    updateClass.mutate(
+      { name, form_teacher_id: cls?.form_teacher_id ?? null },
+      { onSuccess: () => setEditOpen(false) },
+    );
+  };
 
   const openTeacherModal = () => {
     assignFormTeacher.reset();
@@ -220,7 +240,10 @@ export default function ClassDetail() {
               {streamName}
             </Tag>
           )}
-          <Button renderIcon={Edit} kind="ghost" size="sm" onClick={openTeacherModal}>
+          <Button renderIcon={Edit} kind="ghost" size="sm" onClick={openEdit}>
+            Edit
+          </Button>
+          <Button renderIcon={UserMultiple} kind="ghost" size="sm" onClick={openTeacherModal}>
             {formTeacher ? "Change Teacher" : "Assign Teacher"}
           </Button>
           <Button renderIcon={ArrowLeft} kind="secondary" size="sm" as={Link} to="/classes">
@@ -648,6 +671,41 @@ export default function ClassDetail() {
       </div>
 
       {/* Assign form teacher */}
+      <ComposedModal open={editOpen} size="sm" onClose={() => setEditOpen(false)}>
+        <ModalHeader title="Edit class" />
+        <ModalBody>
+          {updateClass.isError && (
+            <InlineNotification
+              kind="error"
+              title="Error"
+              subtitle={apiError(updateClass.error, "Failed to update class")}
+              lowContrast
+              hideCloseButton
+              style={{ marginBottom: "1rem", maxWidth: "100%" }}
+            />
+          )}
+          <TextInput
+            id="class-name-edit"
+            labelText="Class Name"
+            value={nameEdit}
+            maxLength={20}
+            onChange={(e) => setNameEdit(e.target.value)}
+          />
+        </ModalBody>
+        <ModalFooter>
+          <Button kind="secondary" onClick={() => setEditOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleEditSave}
+            disabled={!nameEdit.trim() || updateClass.isPending}
+          >
+            {updateClass.isPending ? "Saving…" : "Save"}
+          </Button>
+        </ModalFooter>
+      </ComposedModal>
+
       <ComposedModal open={teacherModalOpen} size="sm" onClose={() => setTeacherModalOpen(false)}>
         <ModalHeader title="Assign class teacher" />
         <ModalBody>

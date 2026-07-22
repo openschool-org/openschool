@@ -155,11 +155,6 @@ func (s *TeacherService) DeleteTeacher(ctx context.Context, id uuid.UUID) error 
 		return fmt.Errorf("failed to delete user record: %w", err)
 	}
 
-	// The teacher profile row enforces the "in use" check (blocked while
-	// assigned to a class/attendance session), so it must be deleted first;
-	// that means a failure here can't be silently swallowed — the teacher's
-	// local records are already gone, so a still-live Asgardeo account is a
-	// real orphaned account that must be surfaced, not just logged.
 	if err := s.asgardeoClient.DeleteUser(ctx, userID.String()); err != nil {
 		return fmt.Errorf("teacher profile deleted locally but failed to delete Asgardeo user (account is now orphaned and must be removed manually): %w", err)
 	}

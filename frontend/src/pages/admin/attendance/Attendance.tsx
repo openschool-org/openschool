@@ -4,6 +4,7 @@ import { EventSchedule, CheckmarkFilled, WarningFilled } from "@carbon/icons-rea
 import { Button, Tag, DatePicker, DatePickerInput, InlineNotification } from "@carbon/react";
 import { AxiosError } from "axios";
 import { useDailySessions, useDeleteSession } from "../../../queries/useAttendance";
+import { useRole } from "../../../hooks/useRole";
 import type { DailySession } from "../../../services/attendance";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
@@ -35,6 +36,8 @@ export default function Attendance() {
   const [date, setDate] = useState(TODAY_YMD);
   const { data: sessions, isLoading, isError, refetch } = useDailySessions(date);
   const deleteSession = useDeleteSession();
+  const { role } = useRole();
+  const readOnly = role === "admin";
   const [toDelete, setToDelete] = useState<DailySession | null>(null);
 
   const handleDelete = () => {
@@ -177,16 +180,16 @@ export default function Attendance() {
                             }}
                           >
                             <Button
-                              kind={isMarked ? "ghost" : "primary"}
+                              kind={isMarked || readOnly ? "ghost" : "primary"}
                               size="sm"
                               as={Link}
                               to={`/attendance/sessions/${s.id}/mark`}
                               style={{
                                 whiteSpace: "nowrap",
-                                ...(isMarked ? { color: "#406AAF" } : {}),
+                                ...(isMarked || readOnly ? { color: "#406AAF" } : {}),
                               }}
                             >
-                              {isMarked ? "View" : "Mark"}
+                              {readOnly ? "View" : isMarked ? "View" : "Mark"}
                             </Button>
                             <Button
                               kind="danger--ghost"
