@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { classApi } from "../services/class";
 import { streamApi } from "../services/stream";
 import { studentApi } from "../services/student";
-import type { CreateClassRequest } from "../services/class";
+import type { CreateClassRequest, UpdateClassRequest } from "../services/class";
 
 export const CLASSES_KEY = ["classes"];
 export const CURRENT_CLASSES_KEY = ["classes", "current"];
@@ -68,6 +68,18 @@ export const useClassSubjectTeachers = (id: string) =>
     queryFn: () => classApi.listSubjectTeachers(id),
     enabled: !!id,
   });
+
+export const useUpdateClass = (classId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateClassRequest) => classApi.update(classId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: classKey(classId) });
+      queryClient.invalidateQueries({ queryKey: CLASSES_KEY });
+      queryClient.invalidateQueries({ queryKey: CURRENT_CLASSES_KEY });
+    },
+  });
+};
 
 export const useAssignFormTeacher = (classId: string) => {
   const queryClient = useQueryClient();

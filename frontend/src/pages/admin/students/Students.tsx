@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Search, Add, Edit, TrashCan } from "@carbon/icons-react";
-import { Button, IconButton } from "@carbon/react";
+import { Button, IconButton, Select, SelectItem } from "@carbon/react";
 import { useStudents, useDeleteStudent } from "../../../queries/useStudents";
+import { useGrades } from "../../../queries/useGrades";
+import { useCurrentClasses } from "../../../queries/useClasses";
 import type { Student } from "../../../services/student";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
@@ -12,16 +14,33 @@ import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 export default function Students() {
   const navigate = useNavigate();
   const { data: students, isLoading, isError, refetch } = useStudents();
+  const { data: grades } = useGrades();
+  const { data: classes } = useCurrentClasses();
   const deleteStudent = useDeleteStudent();
   const [query, setQuery] = useState("");
+  const [grade, setGrade] = useState("");
+  const [cls, setCls] = useState("");
+  const [gender, setGender] = useState("");
   const [toDelete, setToDelete] = useState<Student | null>(null);
+
+  const classOptions = (classes ?? []).filter(
+    (c) => !grade || c.grade_name === grade,
+  );
+
+  const changeGrade = (value: string) => {
+    setGrade(value);
+    setCls("");
+  };
 
   const filtered = (students ?? []).filter((s) => {
     const q = query.toLowerCase();
-    return (
+    const matchesSearch =
       s.full_name.toLowerCase().includes(q) ||
-      s.index_number.toLowerCase().includes(q)
-    );
+      s.index_number.toLowerCase().includes(q);
+    const matchesGrade = !grade || s.grade_name === grade;
+    const matchesClass = !cls || s.class_name === cls;
+    const matchesGender = !gender || s.gender === gender;
+    return matchesSearch && matchesGrade && matchesClass && matchesGender;
   });
 
   const handleDelete = () => {
@@ -52,6 +71,47 @@ export default function Students() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
+          <div style={{ minWidth: "9rem" }}>
+            <Select
+              id="filter-grade"
+              labelText=""
+              size="md"
+              value={grade}
+              onChange={(e) => changeGrade(e.target.value)}
+            >
+              <SelectItem value="" text="All grades" />
+              {grades?.map((g) => (
+                <SelectItem key={g.id} value={g.name} text={g.name} />
+              ))}
+            </Select>
+          </div>
+          <div style={{ minWidth: "9rem" }}>
+            <Select
+              id="filter-class"
+              labelText=""
+              size="md"
+              value={cls}
+              onChange={(e) => setCls(e.target.value)}
+            >
+              <SelectItem value="" text="All classes" />
+              {classOptions.map((c) => (
+                <SelectItem key={c.id} value={c.name} text={c.name} />
+              ))}
+            </Select>
+          </div>
+          <div style={{ minWidth: "8rem" }}>
+            <Select
+              id="filter-gender"
+              labelText=""
+              size="md"
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+            >
+              <SelectItem value="" text="Any gender" />
+              <SelectItem value="male" text="Male" />
+              <SelectItem value="female" text="Female" />
+            </Select>
+          </div>
         </div>
 
         {isLoading ? (
@@ -77,6 +137,7 @@ export default function Students() {
                 <tr>
                   <th>Index No.</th>
                   <th>Full Name</th>
+                  <th>Class</th>
                   <th>Phone</th>
                   <th>WhatsApp</th>
                   <th style={{ width: "6rem", textAlign: "right" }}>Actions</th>
@@ -93,6 +154,7 @@ export default function Students() {
                         {s.full_name}
                       </Link>
                     </td>
+                    <td className="os-table__muted">{s.class_name ?? "—"}</td>
                     <td className="os-table__muted">{s.phone ?? "—"}</td>
                     <td className="os-table__muted">{s.whatsapp ?? "—"}</td>
                     <td>

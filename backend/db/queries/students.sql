@@ -26,8 +26,19 @@ SELECT * FROM student_profiles
 WHERE user_id = $1;
 
 -- name: ListStudents :many
-SELECT * FROM student_profiles
-ORDER BY full_name ASC;
+SELECT
+    sp.*,
+    c.name AS class_name,
+    g.name AS grade_name
+FROM student_profiles sp
+LEFT JOIN class_students cs
+    ON cs.student_id = sp.id
+   AND cs.academic_year_id = (
+       SELECT id FROM academic_years WHERE is_current = TRUE LIMIT 1
+   )
+LEFT JOIN classes c ON c.id = cs.class_id
+LEFT JOIN grades  g ON g.id = c.grade_id
+ORDER BY sp.full_name ASC;
 
 -- name: UpdateStudentProfile :one
 UPDATE student_profiles

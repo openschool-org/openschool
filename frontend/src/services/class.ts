@@ -24,6 +24,11 @@ export interface ClassRow {
   created_at: string | null;
 }
 
+export interface UpdateClassRequest {
+  name: string;
+  form_teacher_id?: string | null;
+}
+
 export interface CreateClassRequest {
   grade_id: string;
   academic_year_id: string;
@@ -54,6 +59,9 @@ export const classApi = {
 
   create: (data: CreateClassRequest) =>
     api.post<ClassWithDetails>("/classes", data).then((r) => r.data),
+
+  update: (id: string, data: UpdateClassRequest) =>
+    api.put<ClassRow>(`/classes/${id}`, data).then((r) => r.data),
 
   remove: (id: string) => api.delete(`/classes/${id}`).then((r) => r.data),
 

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -41,7 +42,31 @@ func (h *AttendanceHandler) CreateSession(c *gin.Context) {
 		return
 	}
 
-	session, err := h.service.CreateSession(c.Request.Context(), takenByID, req)
+	role := ""
+	if roles, ok := c.Get("roles"); ok {
+		if roleList, ok := roles.([]string); ok {
+			for _, candidate := range []string{"admin", "teacher", "student", "parent"} {
+				for _, r := range roleList {
+					if r == candidate {
+						role = candidate
+						break
+					}
+				}
+				if role != "" {
+					break
+				}
+			}
+		}
+	}
+
+	actor := services.Actor{
+		ID:       takenByID,
+		Email:    c.GetString("email"),
+		FullName: strings.TrimSpace(c.GetString("given_name") + " " + c.GetString("family_name")),
+		Role:     role,
+	}
+
+	session, err := h.service.CreateSession(c.Request.Context(), actor, req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

@@ -16,6 +16,7 @@ import { useSession, useSessionRecords, useMarkAttendance } from "../../../queri
 import { useClass, useClassStudents } from "../../../queries/useClasses";
 import { useGrades } from "../../../queries/useGrades";
 import { useTeachers } from "../../../queries/useTeachers";
+import { useRole } from "../../../hooks/useRole";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import type { AttendanceRecordRow } from "../../../services/attendance";
@@ -97,7 +98,11 @@ export default function AttendanceMark() {
   const { data: students, isLoading: studentsLoading } = useClassStudents(session?.class_id ?? "");
   const { data: grades } = useGrades();
   const { data: teachers } = useTeachers();
+  const { role } = useRole();
   const markAttendance = useMarkAttendance(id);
+
+  // Admins view attendance but do not mark it — teachers do the marking.
+  const readOnly = role === "admin";
 
   const [statuses, setStatuses] = useState<Record<string, Status>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -192,17 +197,17 @@ export default function AttendanceMark() {
       {/* Session banner */}
       <div
         style={{
-          background: "#2d4d62",
           padding: "1.25rem 2rem",
           display: "flex",
           alignItems: "center",
           gap: "1.5rem",
           flexWrap: "wrap",
+          borderBottom: "1px solid #e0e0e0",
         }}
       >
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
-            <span style={{ fontSize: "1.125rem", fontWeight: 600, color: "#ffffff" }}>
+            <span style={{ fontSize: "1.125rem", fontWeight: 600, color: "#161616" }}>
               Class {cls?.name ?? "…"}
             </span>
             {gradeName && (
@@ -216,14 +221,14 @@ export default function AttendanceMark() {
               ["Teacher", teacherName ?? "—"],
               ["Date", session.date],
             ].map(([label, val]) => (
-              <span key={label} style={{ fontSize: "0.8rem", color: "rgba(255,255,255,0.75)" }}>
-                <span style={{ color: "rgba(255,255,255,0.5)", marginRight: "0.3rem" }}>{label}:</span>
+              <span key={label} style={{ fontSize: "0.8rem", color: "#525252" }}>
+                <span style={{ color: "#8d8d8d", marginRight: "0.3rem" }}>{label}:</span>
                 {val}
               </span>
             ))}
           </div>
         </div>
-        <Button renderIcon={ArrowLeft} kind="ghost" size="sm" as={Link} to="/attendance" style={{ color: "#ffffff" }}>
+        <Button renderIcon={ArrowLeft} kind="ghost" size="sm" as={Link} to="/attendance">
           Back
         </Button>
       </div>
@@ -267,25 +272,29 @@ export default function AttendanceMark() {
               />
             </div>
             <div style={{ flex: 1 }} />
-            <span style={{ fontSize: "0.75rem", color: "#525252", whiteSpace: "nowrap" }}>Mark all:</span>
-            <button
-              onClick={() => markAll("present")}
-              style={{ padding: "0.375rem 0.875rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", border: "1px solid #24a148", background: "#defbe6", color: "#0e6027", fontFamily: "inherit", borderRadius: "2px" }}
-            >
-              ✓ Present
-            </button>
-            <button
-              onClick={() => markAll("absent")}
-              style={{ padding: "0.375rem 0.875rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", border: "1px solid #da1e28", background: "#fff1f1", color: "#a2191f", fontFamily: "inherit", borderRadius: "2px" }}
-            >
-              ✕ Absent
-            </button>
-            <button
-              onClick={() => setStatuses({})}
-              style={{ padding: "0.375rem 0.875rem", fontSize: "0.75rem", cursor: "pointer", border: "1px solid #e0e0e0", background: "#ffffff", color: "#525252", fontFamily: "inherit", borderRadius: "2px" }}
-            >
-              Clear
-            </button>
+            {!readOnly && (
+              <>
+                <span style={{ fontSize: "0.75rem", color: "#525252", whiteSpace: "nowrap" }}>Mark all:</span>
+                <button
+                  onClick={() => markAll("present")}
+                  style={{ padding: "0.375rem 0.875rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", border: "1px solid #24a148", background: "#defbe6", color: "#0e6027", fontFamily: "inherit", borderRadius: "2px" }}
+                >
+                  ✓ Present
+                </button>
+                <button
+                  onClick={() => markAll("absent")}
+                  style={{ padding: "0.375rem 0.875rem", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", border: "1px solid #da1e28", background: "#fff1f1", color: "#a2191f", fontFamily: "inherit", borderRadius: "2px" }}
+                >
+                  ✕ Absent
+                </button>
+                <button
+                  onClick={() => setStatuses({})}
+                  style={{ padding: "0.375rem 0.875rem", fontSize: "0.75rem", cursor: "pointer", border: "1px solid #e0e0e0", background: "#ffffff", color: "#525252", fontFamily: "inherit", borderRadius: "2px" }}
+                >
+                  Clear
+                </button>
+              </>
+            )}
           </div>
 
           {studentsLoading || recordsLoading ? (
@@ -338,19 +347,45 @@ export default function AttendanceMark() {
                         </td>
                         <td className="os-table__mono">{student.index_number}</td>
                         <td>
-                          <div style={{ display: "flex", gap: "0.375rem" }}>
-                            {(["present", "absent", "late"] as const).map((s) => (
-                              <StatusButton
-                                key={s}
-                                value={s}
-                                selected={status === s}
-                                onClick={() => mark(student.id, s)}
-                              />
-                            ))}
-                          </div>
+                          {readOnly ? (
+                            status ? (
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  padding: "0.2rem 0.6rem",
+                                  fontSize: "0.75rem",
+                                  fontWeight: 600,
+                                  border: `1px solid ${STATUS_STYLES[status].border}`,
+                                  background: STATUS_STYLES[status].bg,
+                                  color: STATUS_STYLES[status].color,
+                                  borderRadius: "2px",
+                                }}
+                              >
+                                {STATUS_STYLES[status].label}
+                              </span>
+                            ) : (
+                              <span style={{ color: "#c6c6c6", fontSize: "0.75rem" }}>Not marked</span>
+                            )
+                          ) : (
+                            <div style={{ display: "flex", gap: "0.375rem" }}>
+                              {(["present", "absent", "late"] as const).map((s) => (
+                                <StatusButton
+                                  key={s}
+                                  value={s}
+                                  selected={status === s}
+                                  onClick={() => mark(student.id, s)}
+                                />
+                              ))}
+                            </div>
+                          )}
                         </td>
                         <td>
-                          {status === "absent" || status === "late" ? (
+                          {readOnly ? (
+                            <span style={{ fontSize: "0.75rem", color: notes[student.id] ? "#525252" : "#c6c6c6" }}>
+                              {notes[student.id] || "—"}
+                            </span>
+                          ) : status === "absent" || status === "late" ? (
                             <input
                               placeholder="Optional note…"
                               value={notes[student.id] ?? ""}
@@ -384,6 +419,7 @@ export default function AttendanceMark() {
         </div>
 
         {/* Footer actions */}
+        {!readOnly && (
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "1rem 0", flexWrap: "wrap" }}>
           {summary.unmarked > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8125rem", color: "#7d5a00" }}>
@@ -413,6 +449,7 @@ export default function AttendanceMark() {
             {markAttendance.isPending ? "Saving…" : "Save Attendance"}
           </Button>
         </div>
+        )}
       </div>
     </div>
   );

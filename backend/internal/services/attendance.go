@@ -12,17 +12,23 @@ import (
 )
 
 type AttendanceService struct {
-	repo *repositories.AttendanceRepository
+	repo     *repositories.AttendanceRepository
+	userRepo *repositories.UserRepository
 }
 
-func NewAttendanceService(repo *repositories.AttendanceRepository) *AttendanceService {
-	return &AttendanceService{repo: repo}
+func NewAttendanceService(repo *repositories.AttendanceRepository, userRepo *repositories.UserRepository) *AttendanceService {
+	return &AttendanceService{repo: repo, userRepo: userRepo}
 }
 
-// CreateSession attributes the session to the acting user (taken_by now
-// references users(id), which every authenticated caller has — teacher or
-// admin alike).
-func (s *AttendanceService) CreateSession(ctx context.Context, userID uuid.UUID, req models.CreateAttendanceSessionRequest) (db.AttendanceSession, error) {
+// authenticated user creating the session (taken from jwt)
+type Actor struct {
+	ID       uuid.UUID
+	Email    string
+	FullName string
+	Role     string
+}
+
+func (s *AttendanceService) CreateSession(ctx context.Context, actor Actor, req models.CreateAttendanceSessionRequest) (db.AttendanceSession, error) {
 	classID, err := uuid.Parse(req.ClassID)
 	if err != nil {
 		return db.AttendanceSession{}, fmt.Errorf("invalid class id")
@@ -33,21 +39,54 @@ func (s *AttendanceService) CreateSession(ctx context.Context, userID uuid.UUID,
 		return db.AttendanceSession{}, fmt.Errorf("invalid date format, use YYYY-MM-DD")
 	}
 
-	// check session doesn't already exist
+	takenBy, err := s.resolveActingUser(ctx, actor)
+	if err != nil {
+		return db.AttendanceSession{}, err
+	}
+
 	_, err = s.repo.GetSessionByClassAndDate(ctx, classID, date)
 	if err == nil {
 		return db.AttendanceSession{}, fmt.Errorf("attendance session already exists for this class on this date")
 	}
 
-	return s.repo.CreateSession(ctx, classID, userID, date)
+	return s.repo.CreateSession(ctx, classID, takenBy, date)
+}
+
+func (s *AttendanceService) resolveActingUser(ctx context.Context, actor Actor) (uuid.UUID, error) {
+	if _, err := s.userRepo.GetByID(ctx, actor.ID); err == nil {
+		return actor.ID, nil
+	}
+
+	if actor.Role == "" {
+		return uuid.UUID{}, fmt.Errorf("cannot record attendance: signed-in user has no recognized role")
+	}
+
+	if existing, err := s.userRepo.GetByEmail(ctx, actor.Email); err == nil {
+		return existing.ID, nil
+	}
+
+	fullName := actor.FullName
+	if fullName == "" {
+		fullName = actor.Email
+	}
+
+	created, err := s.userRepo.Create(ctx, db.CreateUserParams{
+		ID:       actor.ID,
+		Email:    actor.Email,
+		FullName: fullName,
+		Role:     actor.Role,
+	})
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("failed to provision acting user: %w", err)
+	}
+
+	return created.ID, nil
 }
 
 func (s *AttendanceService) GetSession(ctx context.Context, id uuid.UUID) (db.AttendanceSession, error) {
 	return s.repo.GetSessionByID(ctx, id)
 }
 
-// DeleteSession removes a session and, via ON DELETE CASCADE, every
-// attendance record already written for it.
 func (s *AttendanceService) DeleteSession(ctx context.Context, id uuid.UUID) error {
 	if _, err := s.repo.GetSessionByID(ctx, id); err != nil {
 		return fmt.Errorf("attendance session not found")

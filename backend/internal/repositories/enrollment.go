@@ -40,9 +40,6 @@ func (r *EnrollmentRepository) ListStudentsByGroup(ctx context.Context, params d
 	return r.queries.ListStudentsByGroup(ctx, params)
 }
 
-// ReplaceForLevel swaps a student's picks for one level/year atomically: the
-// old rows go, the new ones land, and a failure anywhere leaves the previous
-// selection untouched.
 func (r *EnrollmentRepository) ReplaceForLevel(
 	ctx context.Context,
 	clear db.DeleteStudentEnrollmentsForLevelParams,

@@ -213,19 +213,46 @@ func (q *Queries) GetStudentWithClass(ctx context.Context, id uuid.UUID) (GetStu
 }
 
 const listStudents = `-- name: ListStudents :many
-SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender FROM student_profiles
-ORDER BY full_name ASC
+SELECT
+    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender,
+    c.name AS class_name,
+    g.name AS grade_name
+FROM student_profiles sp
+LEFT JOIN class_students cs
+    ON cs.student_id = sp.id
+   AND cs.academic_year_id = (
+       SELECT id FROM academic_years WHERE is_current = TRUE LIMIT 1
+   )
+LEFT JOIN classes c ON c.id = cs.class_id
+LEFT JOIN grades  g ON g.id = c.grade_id
+ORDER BY sp.full_name ASC
 `
 
-func (q *Queries) ListStudents(ctx context.Context) ([]StudentProfile, error) {
+type ListStudentsRow struct {
+	ID             uuid.UUID          `json:"id"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	FullName       string             `json:"full_name"`
+	IndexNumber    string             `json:"index_number"`
+	Address        pgtype.Text        `json:"address"`
+	Phone          pgtype.Text        `json:"phone"`
+	Whatsapp       pgtype.Text        `json:"whatsapp"`
+	SpecialRemarks pgtype.Text        `json:"special_remarks"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	Gender         pgtype.Text        `json:"gender"`
+	ClassName      pgtype.Text        `json:"class_name"`
+	GradeName      pgtype.Text        `json:"grade_name"`
+}
+
+func (q *Queries) ListStudents(ctx context.Context) ([]ListStudentsRow, error) {
 	rows, err := q.db.Query(ctx, listStudents)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []StudentProfile{}
+	items := []ListStudentsRow{}
 	for rows.Next() {
-		var i StudentProfile
+		var i ListStudentsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -238,6 +265,8 @@ func (q *Queries) ListStudents(ctx context.Context) ([]StudentProfile, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Gender,
+			&i.ClassName,
+			&i.GradeName,
 		); err != nil {
 			return nil, err
 		}

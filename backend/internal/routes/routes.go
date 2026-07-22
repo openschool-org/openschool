@@ -46,9 +46,6 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 		roles, _ := c.Get("roles")
 		roleList := roles.([]string)
 
-		// determine role: highest-privilege recognized role wins; an
-		// unrecognized/missing roles claim must never default to admin
-		// (or any role) — it stays "" and the user is left unprovisioned.
 		role := ""
 		for _, candidate := range []string{"admin", "teacher", "student", "parent"} {
 			for _, r := range roleList {
@@ -61,9 +58,7 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 			}
 		}
 
-		// auto-insert user into users table if not exists and we have a
-		// recognized role to assign (users.role has a NOT NULL CHECK
-		// constraint, so there is no safe "unknown" value to insert).
+		// auto-insert user into users table if not exists
 		parsedID, err := uuid.Parse(userID)
 		if err == nil && role != "" {
 			queries := db.New(pool)
