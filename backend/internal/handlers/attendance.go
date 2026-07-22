@@ -41,19 +41,7 @@ func (h *AttendanceHandler) CreateSession(c *gin.Context) {
 		return
 	}
 
-	isAdmin := false
-	if roles, ok := c.Get("roles"); ok {
-		if roleList, ok := roles.([]string); ok {
-			for _, r := range roleList {
-				if r == "admin" {
-					isAdmin = true
-					break
-				}
-			}
-		}
-	}
-
-	session, err := h.service.CreateSession(c.Request.Context(), takenByID, isAdmin, req)
+	session, err := h.service.CreateSession(c.Request.Context(), takenByID, req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

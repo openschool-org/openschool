@@ -46,9 +46,10 @@ type Class struct {
 }
 
 type ClassStudent struct {
-	ClassID    uuid.UUID          `json:"class_id"`
-	StudentID  uuid.UUID          `json:"student_id"`
-	EnrolledAt pgtype.Timestamptz `json:"enrolled_at"`
+	ClassID        uuid.UUID          `json:"class_id"`
+	StudentID      uuid.UUID          `json:"student_id"`
+	EnrolledAt     pgtype.Timestamptz `json:"enrolled_at"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
 }
 
 type ClassSubjectTeacher struct {
