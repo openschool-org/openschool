@@ -84,6 +84,14 @@ type Guardian struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
+type House struct {
+	ID        uuid.UUID          `json:"id"`
+	Name      string             `json:"name"`
+	Code      pgtype.Text        `json:"code"`
+	Remainder int32              `json:"remainder"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type Level struct {
 	ID        uuid.UUID          `json:"id"`
 	Label     string             `json:"label"`
@@ -151,6 +159,7 @@ type StudentProfile struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	Gender         pgtype.Text        `json:"gender"`
+	HouseID        pgtype.UUID        `json:"house_id"`
 }
 
 type StudentSibling struct {

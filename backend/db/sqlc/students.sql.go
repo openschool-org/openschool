@@ -21,11 +21,12 @@ INSERT INTO student_profiles (
     phone,
     whatsapp,
     special_remarks,
-    gender
+    gender,
+    house_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
-RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender
+RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id
 `
 
 type CreateStudentProfileParams struct {
@@ -37,6 +38,7 @@ type CreateStudentProfileParams struct {
 	Whatsapp       pgtype.Text `json:"whatsapp"`
 	SpecialRemarks pgtype.Text `json:"special_remarks"`
 	Gender         pgtype.Text `json:"gender"`
+	HouseID        pgtype.UUID `json:"house_id"`
 }
 
 func (q *Queries) CreateStudentProfile(ctx context.Context, arg CreateStudentProfileParams) (StudentProfile, error) {
@@ -49,6 +51,7 @@ func (q *Queries) CreateStudentProfile(ctx context.Context, arg CreateStudentPro
 		arg.Whatsapp,
 		arg.SpecialRemarks,
 		arg.Gender,
+		arg.HouseID,
 	)
 	var i StudentProfile
 	err := row.Scan(
@@ -63,6 +66,7 @@ func (q *Queries) CreateStudentProfile(ctx context.Context, arg CreateStudentPro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Gender,
+		&i.HouseID,
 	)
 	return i, err
 }
@@ -88,7 +92,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
 }
 
 const getStudentByID = `-- name: GetStudentByID :one
-SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender FROM student_profiles
+SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id FROM student_profiles
 WHERE id = $1
 `
 
@@ -107,12 +111,13 @@ func (q *Queries) GetStudentByID(ctx context.Context, id uuid.UUID) (StudentProf
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Gender,
+		&i.HouseID,
 	)
 	return i, err
 }
 
 const getStudentByIndexNumber = `-- name: GetStudentByIndexNumber :one
-SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender FROM student_profiles
+SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id FROM student_profiles
 WHERE index_number = $1
 `
 
@@ -131,12 +136,13 @@ func (q *Queries) GetStudentByIndexNumber(ctx context.Context, indexNumber strin
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Gender,
+		&i.HouseID,
 	)
 	return i, err
 }
 
 const getStudentByUserID = `-- name: GetStudentByUserID :one
-SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender FROM student_profiles
+SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id FROM student_profiles
 WHERE user_id = $1
 `
 
@@ -155,20 +161,23 @@ func (q *Queries) GetStudentByUserID(ctx context.Context, userID pgtype.UUID) (S
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Gender,
+		&i.HouseID,
 	)
 	return i, err
 }
 
 const getStudentWithClass = `-- name: GetStudentWithClass :one
 SELECT
-    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender,
+    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id,
     c.name        AS class_name,
     g.name        AS grade_name,
+    h.name        AS house_name,
     ay.label      AS academic_year
 FROM student_profiles sp
 LEFT JOIN class_students cs ON cs.student_id = sp.id
 LEFT JOIN classes c         ON c.id = cs.class_id
 LEFT JOIN grades g          ON g.id = c.grade_id
+LEFT JOIN houses h          ON h.id = sp.house_id
 LEFT JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current = TRUE
 WHERE sp.id = $1
 `
@@ -185,8 +194,10 @@ type GetStudentWithClassRow struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	Gender         pgtype.Text        `json:"gender"`
+	HouseID        pgtype.UUID        `json:"house_id"`
 	ClassName      pgtype.Text        `json:"class_name"`
 	GradeName      pgtype.Text        `json:"grade_name"`
+	HouseName      pgtype.Text        `json:"house_name"`
 	AcademicYear   pgtype.Text        `json:"academic_year"`
 }
 
@@ -205,8 +216,10 @@ func (q *Queries) GetStudentWithClass(ctx context.Context, id uuid.UUID) (GetStu
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Gender,
+		&i.HouseID,
 		&i.ClassName,
 		&i.GradeName,
+		&i.HouseName,
 		&i.AcademicYear,
 	)
 	return i, err
@@ -214,9 +227,10 @@ func (q *Queries) GetStudentWithClass(ctx context.Context, id uuid.UUID) (GetStu
 
 const listStudents = `-- name: ListStudents :many
 SELECT
-    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender,
+    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id,
     c.name AS class_name,
-    g.name AS grade_name
+    g.name AS grade_name,
+    h.name AS house_name
 FROM student_profiles sp
 LEFT JOIN class_students cs
     ON cs.student_id = sp.id
@@ -225,6 +239,7 @@ LEFT JOIN class_students cs
    )
 LEFT JOIN classes c ON c.id = cs.class_id
 LEFT JOIN grades  g ON g.id = c.grade_id
+LEFT JOIN houses  h ON h.id = sp.house_id
 ORDER BY sp.full_name ASC
 `
 
@@ -240,8 +255,10 @@ type ListStudentsRow struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	Gender         pgtype.Text        `json:"gender"`
+	HouseID        pgtype.UUID        `json:"house_id"`
 	ClassName      pgtype.Text        `json:"class_name"`
 	GradeName      pgtype.Text        `json:"grade_name"`
+	HouseName      pgtype.Text        `json:"house_name"`
 }
 
 func (q *Queries) ListStudents(ctx context.Context) ([]ListStudentsRow, error) {
@@ -265,8 +282,10 @@ func (q *Queries) ListStudents(ctx context.Context) ([]ListStudentsRow, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Gender,
+			&i.HouseID,
 			&i.ClassName,
 			&i.GradeName,
+			&i.HouseName,
 		); err != nil {
 			return nil, err
 		}
@@ -280,7 +299,7 @@ func (q *Queries) ListStudents(ctx context.Context) ([]ListStudentsRow, error) {
 
 const listStudentsByClass = `-- name: ListStudentsByClass :many
 SELECT
-    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender
+    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id
 FROM student_profiles sp
 INNER JOIN class_students cs ON cs.student_id = sp.id
 WHERE cs.class_id = $1
@@ -308,6 +327,7 @@ func (q *Queries) ListStudentsByClass(ctx context.Context, classID uuid.UUID) ([
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Gender,
+			&i.HouseID,
 		); err != nil {
 			return nil, err
 		}
@@ -330,7 +350,7 @@ SET
     gender          = $7,
     updated_at      = NOW()
 WHERE id = $1
-RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender
+RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id
 `
 
 type UpdateStudentProfileParams struct {
@@ -366,6 +386,7 @@ func (q *Queries) UpdateStudentProfile(ctx context.Context, arg UpdateStudentPro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Gender,
+		&i.HouseID,
 	)
 	return i, err
 }

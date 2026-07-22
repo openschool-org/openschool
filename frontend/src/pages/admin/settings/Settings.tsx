@@ -1,11 +1,23 @@
 import { useState } from "react";
-import { Button, NumberInput, Select, SelectItem, Toggle } from "@carbon/react";
+import {
+  Button,
+  NumberInput,
+  Select,
+  SelectItem,
+  Toggle,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+} from "@carbon/react";
 import { Save, Edit, Settings as SettingsIcon } from "@carbon/icons-react";
 import SchoolInfoCard, { type SchoolFormValues } from "../../../components/school/SchoolInfoCard";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import { useSchool, useUpdateSchool } from "../../../queries/useSchool";
 import type { School } from "../../../services/school";
+import Houses from "./Houses";
 
 // The grade range lives alongside the school fields so a save carries every
 // value in one object — PUT /school replaces the whole record.
@@ -99,7 +111,16 @@ export default function SettingsPage() {
           <h1 className="os-page__title">Settings</h1>
           <p className="os-page__subtitle">School configuration and system preferences</p>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+      </div>
+
+      <Tabs>
+        <TabList aria-label="Settings sections">
+          <Tab>General</Tab>
+          <Tab>Houses</Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel style={{ padding: 0 }}>
+      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", justifyContent: "flex-end", margin: "1rem 0" }}>
           {saved && <span style={{ fontSize: "0.8125rem", color: "#24a148" }}>✓ Saved</span>}
           {updateSchool.isPending && <span style={{ fontSize: "0.8125rem", color: "#525252" }}>Saving…</span>}
           {editing ? (
@@ -112,7 +133,6 @@ export default function SettingsPage() {
           ) : (
             <Button renderIcon={Edit} kind="secondary" size="md" onClick={handleEdit}>Edit</Button>
           )}
-        </div>
       </div>
 
       {isLoading && <LoadingSpinner />}
@@ -225,6 +245,14 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+          </TabPanel>
+          <TabPanel style={{ padding: 0 }}>
+            <div style={{ marginTop: "1rem" }}>
+              <Houses />
+            </div>
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
     </div>
   );
 }

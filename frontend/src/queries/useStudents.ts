@@ -52,6 +52,19 @@ export const useUpdateStudent = () => {
   });
 };
 
+export const useUpdateStudentHouse = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, houseId }: { id: string; houseId: string }) =>
+      studentApi.updateHouse(id, houseId),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });
+      queryClient.invalidateQueries({ queryKey: studentKey(id) });
+      queryClient.invalidateQueries({ queryKey: studentClassKey(id) });
+    },
+  });
+};
+
 export const useDeleteStudent = () => {
   const queryClient = useQueryClient();
   return useMutation({

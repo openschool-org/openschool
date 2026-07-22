@@ -14,6 +14,8 @@ export interface Student {
   updated_at: string | null;
   class_name: string | null;
   grade_name: string | null;
+  house_id: string | null;
+  house_name: string | null;
 }
 
 export interface StudentWithClass extends Student {
@@ -61,6 +63,11 @@ export const studentApi = {
 
   update: (id: string, data: UpdateStudentRequest) =>
     api.put<Student>(`/students/${id}`, data).then((r) => r.data),
+
+  updateHouse: (id: string, houseId: string) =>
+    api
+      .put<Student>(`/students/${id}/house`, { house_id: houseId })
+      .then((r) => r.data),
 
   remove: (id: string) =>
     api.delete(`/students/${id}`).then((r) => r.data),

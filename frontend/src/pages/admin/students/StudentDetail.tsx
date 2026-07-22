@@ -5,6 +5,8 @@ import {
   Tag,
   TextInput,
   TextArea,
+  Select,
+  SelectItem,
   RadioButtonGroup,
   RadioButton,
   InlineNotification,
@@ -19,8 +21,10 @@ import { AxiosError } from "axios";
 import {
   useStudentWithClass,
   useUpdateStudent,
+  useUpdateStudentHouse,
   useDeleteStudent,
 } from "../../../queries/useStudents";
+import { useHouses } from "../../../queries/useHouses";
 import type { StudentWithClass } from "../../../services/student";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
@@ -50,7 +54,9 @@ export default function StudentDetail() {
   const { data: student, isLoading, isError, refetch } =
     useStudentWithClass(id);
   const updateStudent = useUpdateStudent();
+  const updateHouse = useUpdateStudentHouse();
   const deleteStudent = useDeleteStudent();
+  const { data: houses } = useHouses();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editing, setEditing] = useState(
@@ -317,6 +323,29 @@ export default function StudentDetail() {
                 Not enrolled in a class.
               </span>
             )}
+          </div>
+        </div>
+
+        <div className="os-section">
+          <div className="os-section__header">
+            <h2 className="os-section__title">House</h2>
+          </div>
+          <div className="os-section__body">
+            <Select
+              id="student-house"
+              labelText="Assigned house"
+              helperText="Assigned automatically from the index number; change it here if needed."
+              value={student.house_id ?? ""}
+              disabled={updateHouse.isPending}
+              onChange={(e) =>
+                updateHouse.mutate({ id: student.id, houseId: e.target.value })
+              }
+            >
+              <SelectItem value="" text="No house" />
+              {houses?.map((h) => (
+                <SelectItem key={h.id} value={h.id} text={h.name} />
+              ))}
+            </Select>
           </div>
         </div>
 

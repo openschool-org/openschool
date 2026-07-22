@@ -166,6 +166,40 @@ func (h *StudentHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, student)
 }
 
+// UpdateHouse godoc
+// @Summary      Update student house
+// @Description  Assign or clear a student's house
+// @Tags         students
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "Student ID"
+// @Param        request body models.UpdateStudentHouseRequest true "House assignment"
+// @Success      200 {object} models.StudentResponse
+// @Failure      400 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /students/{id}/house [put]
+func (h *StudentHandler) UpdateHouse(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var req models.UpdateStudentHouseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	student, err := h.service.UpdateStudentHouse(c.Request.Context(), id, req.HouseID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, student)
+}
+
 // Delete godoc
 // @Summary      Delete student
 // @Description  Delete a student profile and Asgardeo user account
