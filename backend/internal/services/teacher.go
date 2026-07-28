@@ -5,12 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/openschool-org/openschool/db/sqlc"
-	"github.com/openschool-org/openschool/internal/asgardeo"
+	"github.com/openschool-org/openschool/internal/identity"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
 )
@@ -21,12 +20,12 @@ var (
 )
 
 type TeacherService struct {
-	repo           *repositories.TeacherRepository
-	asgardeoClient *asgardeo.Client
+	repo *repositories.TeacherRepository
+	idp  identity.Provider
 }
 
-func NewTeacherService(repo *repositories.TeacherRepository, asgardeoClient *asgardeo.Client) *TeacherService {
-	return &TeacherService{repo: repo, asgardeoClient: asgardeoClient}
+func NewTeacherService(repo *repositories.TeacherRepository, idp identity.Provider) *TeacherService {
+	return &TeacherService{repo: repo, idp: idp}
 }
 
 func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTeacherRequest) (db.TeacherProfile, error) {
@@ -36,7 +35,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		return db.TeacherProfile{}, fmt.Errorf("employee number already exists")
 	}
 
-	asgardeoUser, err := s.asgardeoClient.CreateUser(ctx, "teacher", map[string]interface{}{
+	asgardeoUser, err := s.idp.CreateUser(ctx, "teacher", map[string]interface{}{
 		"username":        req.Email,
 		"email":           req.Email,
 		"given_name":      req.GivenName,
@@ -64,14 +63,14 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		Role:     "teacher",
 	})
 	if err != nil {
-		if delErr := s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
+		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
 			log.Printf("CreateTeacher: failed to roll back Asgardeo user %s after error: %v (Asgardeo account now orphaned)", asgardeoUser.ID, delErr)
 		}
 		return db.TeacherProfile{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
 	// assign teacher role in Asgardeo
-	if err := s.asgardeoClient.AssignRole(ctx, os.Getenv("ASGARDEO_ROLE_TEACHER"), asgardeoUser.ID); err != nil {
+	if err := s.idp.AssignRole(ctx, identity.RoleID("teacher"), asgardeoUser.ID); err != nil {
 		log.Printf("CreateTeacher: failed to assign teacher role to %s: %v", asgardeoUser.ID, err)
 	}
 
@@ -84,7 +83,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
 	})
 	if err != nil {
-		if delErr := s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
+		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
 			log.Printf("CreateTeacher: failed to roll back Asgardeo user %s after error: %v (Asgardeo account now orphaned)", asgardeoUser.ID, delErr)
 		}
 		return db.TeacherProfile{}, fmt.Errorf("failed to create teacher profile: %w", err)
@@ -115,7 +114,7 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 		return db.TeacherProfile{}, fmt.Errorf("user not found")
 	}
 
-	err = s.asgardeoClient.UpdateUser(ctx, userID, "teacher", map[string]interface{}{
+	err = s.idp.UpdateUser(ctx, userID, "teacher", map[string]interface{}{
 		"username":        user.Email,
 		"email":           user.Email,
 		"given_name":      req.GivenName,
@@ -155,7 +154,7 @@ func (s *TeacherService) DeleteTeacher(ctx context.Context, id uuid.UUID) error 
 		return fmt.Errorf("failed to delete user record: %w", err)
 	}
 
-	if err := s.asgardeoClient.DeleteUser(ctx, userID.String()); err != nil {
+	if err := s.idp.DeleteUser(ctx, userID.String()); err != nil {
 		return fmt.Errorf("teacher profile deleted locally but failed to delete Asgardeo user (account is now orphaned and must be removed manually): %w", err)
 	}
 

@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/openschool-org/openschool/internal/identity"
 )
 
 type Client struct {
@@ -90,7 +92,7 @@ func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 	return result.AccessToken, nil
 }
 
-func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[string]interface{}) (*ThunderIDUser, error) {
+func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[string]any) (*identity.User, error) {
 	token, err := c.getAccessToken(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ThunderID token: %w", err)
@@ -135,7 +137,7 @@ func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[stri
 		return nil, err
 	}
 
-	return &user, nil
+	return &identity.User{ID: user.ID}, nil
 }
 
 func (c *Client) UpdateUser(ctx context.Context, userID string, userType string, attrs map[string]interface{}) error {

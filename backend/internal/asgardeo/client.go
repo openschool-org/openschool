@@ -11,6 +11,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/openschool-org/openschool/internal/identity"
 )
 
 type Client struct {
@@ -103,7 +105,7 @@ func buildUserPayload(attrs map[string]any) map[string]any {
 	return body
 }
 
-func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[string]any) (*User, error) {
+func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[string]any) (*identity.User, error) {
 	token, err := c.getAccessToken(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Asgardeo token: %w", err)
@@ -141,7 +143,7 @@ func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[stri
 		return nil, err
 	}
 
-	return &user, nil
+	return &identity.User{ID: user.ID}, nil
 }
 
 func (c *Client) UpdateUser(ctx context.Context, userID string, userType string, attrs map[string]any) error {

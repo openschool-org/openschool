@@ -7,13 +7,13 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/openschool-org/openschool/internal/identity"
 )
 
 type StringOrSlice []string
@@ -132,7 +132,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		claims := &Claims{}
 		token, err := jwt.ParseWithClaims(tokenStr, claims, jwks.Keyfunc,
 			jwt.WithValidMethods([]string{"RS256"}),
-			jwt.WithIssuer(os.Getenv("ASGARDEO_ISSUER")),
+			jwt.WithIssuer(identity.Issuer()),
 		)
 		if err != nil || !token.Valid {
 			log.Printf("auth: token validation failed: %v", err)
