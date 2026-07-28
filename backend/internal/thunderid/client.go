@@ -50,7 +50,7 @@ func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 	data.Set("client_id", os.Getenv("THUNDERID_CLIENT_ID"))
 	data.Set("client_secret", os.Getenv("THUNDERID_CLIENT_SECRET"))
 	data.Set("scope", "system")
-	data.Set("resource",os.Getenv("THUNDERID_RESOURCE"))
+	data.Set("resource", os.Getenv("THUNDERID_RESOURCE"))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
 		os.Getenv("THUNDERID_TOKEN_URL"),
@@ -71,6 +71,7 @@ func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("thunderid token error (%d): %s", resp.StatusCode, string(bodyBytes))
 	}
@@ -78,7 +79,7 @@ func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 	var result struct {
 		AccessToken string `json:"access_token"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(bodyBytes, &result); err != nil {
 		return "", err
 	}
 
