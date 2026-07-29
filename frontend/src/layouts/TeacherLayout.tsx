@@ -8,7 +8,7 @@ import {
   HeaderGlobalAction,
 } from "@carbon/react";
 import { Search } from "@carbon/icons-react";
-import { UserDropdown, useAsgardeo } from "@asgardeo/react";
+import { UserDropdown, useThunderID } from "@thunderid/react";
 
 const NAV = [
   { path: "/",           label: "Home",       exact: true  },
@@ -18,7 +18,7 @@ const NAV = [
 ];
 
 export default function TeacherLayout() {
-  const { getAccessToken } = useAsgardeo();
+  const { getAccessToken } = useThunderID();
   const location = useLocation();
 
   const copyToken = async () => {

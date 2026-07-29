@@ -30,7 +30,7 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 	}
 
 	asgardeoUser, err := s.idp.CreateUser(ctx, "student", map[string]interface{}{
-		"username":     req.Email,
+		"username":     req.IndexNumber,
 		"email":        req.Email,
 		"given_name":   req.GivenName,
 		"family_name":  req.FamilyName,
@@ -130,7 +130,7 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 
 	// update Asgardeo user with all required fields
 	err = s.idp.UpdateUser(ctx, userID, "student", map[string]interface{}{
-		"username":     user.Email,
+		"username":     student.IndexNumber,
 		"email":        user.Email,
 		"given_name":   req.GivenName,
 		"family_name":  req.FamilyName,

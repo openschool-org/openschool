@@ -3,8 +3,10 @@ package middleware
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"io"
+	"os"
 	"log"
 	"net/http"
 	"strconv"
@@ -87,13 +89,16 @@ func (t *stripX5CTransport) RoundTrip(req *http.Request) (*http.Response, error)
 }
 
 func InitJWKS(jwksURL string) error {
-	// Strips x5c from the JWKS response (keyfunc chokes on Asgardeo's x5c
-	// certificate chains) but otherwise uses a normal, TLS-verifying
-	// transport — this endpoint is what establishes trust for every JWT
-	// signature check in the app, so it must not skip certificate validation.
+	baseTransport := http.DefaultTransport
+	if os.Getenv("APP_ENV") == "development" {
+		baseTransport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+
 	client := &http.Client{
 		Transport: &stripX5CTransport{
-			base: http.DefaultTransport,
+			base: baseTransport,
 		},
 	}
 

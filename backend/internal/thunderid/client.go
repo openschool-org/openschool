@@ -101,7 +101,7 @@ func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[stri
 	body := CreateUserRequest{
 		OuID:       c.ouID,
 		Type:       userType,
-		Attributes: attrs,
+		Attributes: thunderAttributes(attrs),
 	}
 
 	data, err := json.Marshal(body)
@@ -140,6 +140,18 @@ func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[stri
 	return &identity.User{ID: user.ID}, nil
 }
 
+func thunderAttributes(attrs map[string]any) map[string]any {
+	out := make(map[string]any, len(attrs))
+	for k, v := range attrs {
+		if k == "phone_number" {
+			out["phone"] = v
+			continue
+		}
+		out[k] = v
+	}
+	return out
+}
+
 func (c *Client) UpdateUser(ctx context.Context, userID string, userType string, attrs map[string]interface{}) error {
 	token, err := c.getAccessToken(ctx)
 	if err != nil {
@@ -149,7 +161,7 @@ func (c *Client) UpdateUser(ctx context.Context, userID string, userType string,
 	body := map[string]interface{}{
 		"ouId":       c.ouID,
 		"type":       userType,
-		"attributes": attrs,
+		"attributes": thunderAttributes(attrs),
 	}
 
 	data, err := json.Marshal(body)
@@ -200,7 +212,7 @@ func (c *Client) DeleteUser(ctx context.Context, userID string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusNoContent {
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("thunderid error: %s", string(body))
 	}

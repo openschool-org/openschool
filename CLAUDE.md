@@ -93,9 +93,9 @@ pnpm preview  # preview production build
 
 ### Architecture
 
-Authentication is handled by **WSO2 Asgardeo** (`@asgardeo/react`). The provider is configured in `main.tsx` via `VITE_ASGARDEO_CLIENT_ID`, `VITE_ASGARDEO_BASE_URL`, and `VITE_ASGARDEO_SCOPES` (see `frontend/.env.example`). All routes except `/signin` are wrapped in `ProtectedRoute`, which redirects unauthenticated users to `/signin`. Role (`admin`/`teacher`/`student`/`parent`) is read from the `roles` claim of the Asgardeo access token via the `useRole` hook.
+Authentication is handled by **ThunderID** (`@thunderid/react`). The provider is configured in `main.tsx` via `VITE_THUNDERID_CLIENT_ID`, `VITE_THUNDERID_BASE_URL`, and `VITE_THUNDERID_SCOPES` (see `frontend/.env.example`). Auth state and the access token come from the `useThunderID()` hook (`isSignedIn`/`isLoading`/`getAccessToken`/`signOut`). All routes except `/signin` are wrapped in `ProtectedRoute`, which redirects unauthenticated users to `/signin`. Role (`admin`/`teacher`/`student`/`parent`) is read from the `roles` claim of the access token via the `useRole` hook.
 
-- `main.tsx` — root: `AsgardeoProvider` → `QueryClientProvider` → `BrowserRouter` → `App`
+- `main.tsx` — root: `ThunderIDProvider` → `QueryClientProvider` → `BrowserRouter` → `App`
 - `App.tsx` — route definitions; `ProtectedRoute` guards the root layout
 - `src/layouts/RootLayout.tsx` — Carbon `Header` with nav; `<Outlet>` for page content
 - `src/pages/` — route-level page components
