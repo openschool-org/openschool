@@ -4,23 +4,22 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/openschool-org/openschool/db/sqlc"
-	"github.com/openschool-org/openschool/internal/asgardeo"
+	"github.com/openschool-org/openschool/internal/identity"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
 )
 
 type StudentService struct {
-	repo           *repositories.StudentRepository
-	asgardeoClient *asgardeo.Client
+	repo *repositories.StudentRepository
+	idp  identity.Provider
 }
 
-func NewStudentService(repo *repositories.StudentRepository, asgardeoClient *asgardeo.Client) *StudentService {
-	return &StudentService{repo: repo, asgardeoClient: asgardeoClient}
+func NewStudentService(repo *repositories.StudentRepository, idp identity.Provider) *StudentService {
+	return &StudentService{repo: repo, idp: idp}
 }
 
 func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStudentRequest) (db.StudentProfile, error) {
@@ -30,8 +29,8 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		return db.StudentProfile{}, fmt.Errorf("index number already exists")
 	}
 
-	asgardeoUser, err := s.asgardeoClient.CreateUser(ctx, "student", map[string]interface{}{
-		"username":     req.Email,
+	asgardeoUser, err := s.idp.CreateUser(ctx, "student", map[string]interface{}{
+		"username":     req.IndexNumber,
 		"email":        req.Email,
 		"given_name":   req.GivenName,
 		"family_name":  req.FamilyName,
@@ -57,14 +56,14 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		Role:     "student",
 	})
 	if err != nil {
-		if delErr := s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
+		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
 			log.Printf("CreateStudent: failed to roll back Asgardeo user %s after error: %v (Asgardeo account now orphaned)", asgardeoUser.ID, delErr)
 		}
 		return db.StudentProfile{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
 	// assign student role in Asgardeo
-	if err := s.asgardeoClient.AssignRole(ctx, os.Getenv("ASGARDEO_ROLE_STUDENT"), asgardeoUser.ID); err != nil {
+	if err := s.idp.AssignRole(ctx, identity.RoleID("student"), asgardeoUser.ID); err != nil {
 		log.Printf("CreateStudent: failed to assign student role to %s: %v", asgardeoUser.ID, err)
 	}
 
@@ -88,7 +87,7 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		HouseID:        houseID,
 	})
 	if err != nil {
-		if delErr := s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
+		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
 			log.Printf("CreateStudent: failed to roll back Asgardeo user %s after error: %v (Asgardeo account now orphaned)", asgardeoUser.ID, delErr)
 		}
 		return db.StudentProfile{}, fmt.Errorf("failed to create student profile: %w", err)
@@ -130,8 +129,8 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 	}
 
 	// update Asgardeo user with all required fields
-	err = s.asgardeoClient.UpdateUser(ctx, userID, "student", map[string]interface{}{
-		"username":     user.Email,
+	err = s.idp.UpdateUser(ctx, userID, "student", map[string]interface{}{
+		"username":     student.IndexNumber,
 		"email":        user.Email,
 		"given_name":   req.GivenName,
 		"family_name":  req.FamilyName,
@@ -179,7 +178,7 @@ func (s *StudentService) DeleteStudent(ctx context.Context, id uuid.UUID) error 
 	if student.UserID.Valid {
 		userID := uuid.UUID(student.UserID.Bytes)
 
-		if err := s.asgardeoClient.DeleteUser(ctx, userID.String()); err != nil {
+		if err := s.idp.DeleteUser(ctx, userID.String()); err != nil {
 			return fmt.Errorf("failed to delete Asgardeo user: %w", err)
 		}
 

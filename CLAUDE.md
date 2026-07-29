@@ -61,9 +61,16 @@ Never edit files in `db/sqlc/` directly — they are generated. Schema is inferr
 
 ### Environment Variables
 
-See `.env.example`. Key vars: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSLMODE`, `PORT`, plus the `ASGARDEO_*` vars (base/token/JWKS/issuer URLs, client credentials, role IDs) used for JWT validation and SCIM user management.
+See `.env.example`. Key vars: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSLMODE`, `PORT`, plus the identity-provider vars used for JWT validation and user management.
 
-> `internal/thunderid/` and the `THUNDERID_*` env vars are leftover from the previous identity provider and are no longer wired into `main.go` or any route/service/handler — treat them as dead code pending removal, not as active configuration.
+### Identity provider (Asgardeo / ThunderID)
+
+The backend supports two interchangeable identity providers, selected at startup by the `IDP_PROVIDER` env var (`asgardeo` — the default — or `thunderid`).
+
+- `internal/identity/` — provider-neutral seam: the `Provider` interface (CreateUser/UpdateUser/DeleteUser/AssignRole), the shared `User` return type, and env helpers `Selected()`, `JWKSURL()`, `Issuer()`, `RoleID(role)` that resolve to the `ASGARDEO_*` or `THUNDERID_*` vars based on `IDP_PROVIDER`.
+- `internal/asgardeo/` and `internal/thunderid/` — the two concrete clients; both satisfy `identity.Provider`.
+- `internal/routes/idp.go` — `newIdentityProvider()` factory that constructs the selected client; route files inject it into services.
+- Token validation reads `JWKSURL()`/`Issuer()`; provisioning uses the injected `Provider` and `RoleID(...)`. To switch providers, set `IDP_PROVIDER` and populate the matching `*_JWKS_URL`, `*_ISSUER`, credential, and `*_ROLE_*` vars, then restart.
 
 ## Frontend
 
@@ -86,9 +93,9 @@ pnpm preview  # preview production build
 
 ### Architecture
 
-Authentication is handled by **WSO2 Asgardeo** (`@asgardeo/react`). The provider is configured in `main.tsx` via `VITE_ASGARDEO_CLIENT_ID`, `VITE_ASGARDEO_BASE_URL`, and `VITE_ASGARDEO_SCOPES` (see `frontend/.env.example`). All routes except `/signin` are wrapped in `ProtectedRoute`, which redirects unauthenticated users to `/signin`. Role (`admin`/`teacher`/`student`/`parent`) is read from the `roles` claim of the Asgardeo access token via the `useRole` hook.
+Authentication is handled by **ThunderID** (`@thunderid/react`). The provider is configured in `main.tsx` via `VITE_THUNDERID_CLIENT_ID`, `VITE_THUNDERID_BASE_URL`, and `VITE_THUNDERID_SCOPES` (see `frontend/.env.example`). Auth state and the access token come from the `useThunderID()` hook (`isSignedIn`/`isLoading`/`getAccessToken`/`signOut`). All routes except `/signin` are wrapped in `ProtectedRoute`, which redirects unauthenticated users to `/signin`. Role (`admin`/`teacher`/`student`/`parent`) is read from the `roles` claim of the access token via the `useRole` hook.
 
-- `main.tsx` — root: `AsgardeoProvider` → `QueryClientProvider` → `BrowserRouter` → `App`
+- `main.tsx` — root: `ThunderIDProvider` → `QueryClientProvider` → `BrowserRouter` → `App`
 - `App.tsx` — route definitions; `ProtectedRoute` guards the root layout
 - `src/layouts/RootLayout.tsx` — Carbon `Header` with nav; `<Outlet>` for page content
 - `src/pages/` — route-level page components

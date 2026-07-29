@@ -1,8 +1,8 @@
-import { useAsgardeo } from "@asgardeo/react";
+import { useThunderID } from "@thunderid/react";
 import { Button } from "@carbon/react";
 
 export default function AccessRestricted() {
-  const { signOut } = useAsgardeo();
+  const { signOut } = useThunderID();
 
   return (
     <div style={{ textAlign: "center", marginTop: "4rem" }}>

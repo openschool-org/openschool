@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useAsgardeo } from "@asgardeo/react";
+import { useThunderID } from "@thunderid/react";
 
 type Role = "admin" | "teacher" | "student" | "parent";
 
@@ -12,10 +12,8 @@ function parseJwt(token: string): Record<string, unknown> | null {
 }
 
 export function useRole(): { role: Role | null; loading: boolean } {
-  const { getAccessToken, isSignedIn, isLoading } = useAsgardeo();
+  const { getAccessToken, isSignedIn, isLoading } = useThunderID();
   const getAccessTokenRef = useRef(getAccessToken);
-  // Start with no privilege. Never default to "admin" — an unresolved or
-  // unrecognized role must never be treated as an authorized role.
   const [role, setRole] = useState<Role | null>(null);
   const [roleResolved, setRoleResolved] = useState(false);
 

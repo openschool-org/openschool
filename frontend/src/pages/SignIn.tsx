@@ -1,7 +1,13 @@
-import { SignInButton } from "@asgardeo/react";
+import { SignInButton, useThunderID } from "@thunderid/react";
+import { Navigate } from "react-router";
 import { Button } from "@carbon/react";
 
 export default function SignIn() {
+  const { isSignedIn, isLoading } = useThunderID();
+
+  if (isLoading) return <div style={{ minHeight: "100vh" }} />;
+  if (isSignedIn) return <Navigate to="/" replace />;
+
   return (
     <div className="os-signin-wrapper">
       <div className="os-signin-card">
