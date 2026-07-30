@@ -62,9 +62,9 @@ Go to **Roles** in the left sidebar and create:
 - admin
 - teacher
 - student
-- guardian
+- parent
 
-These are plain business roles used by OpenSchool's own authorization logic. They're separate from ThunderID's built-in `Administrator` role, which you'll deal with separately below.
+These are plain business roles used by OpenSchool's own authorization logic — the role name must be exactly `parent`, not `guardian`. The backend's `users.role` column and every role check in the Go code (`routes.go`, `attendance.go`, etc.) compare against the literal strings `admin`, `teacher`, `student`, `parent`; a role named anything else will never match, and a parent's token will never resolve to an app role. These roles are also separate from ThunderID's built-in `Administrator` role, which you'll deal with separately below.
 
 ### Create the Frontend Application
 
@@ -139,6 +139,7 @@ THUNDERID_TOKEN_URL=https://localhost:8090/oauth2/token
 # role ids from thunderid
 THUNDERID_ROLE_STUDENT=<student role ID from Roles>
 THUNDERID_ROLE_TEACHER=<teacher role ID from Roles>
+THUNDERID_ROLE_PARENT=<parent role ID from Roles>
 THUNDERID_ROLE_ADMIN=<admin role ID from Roles>
 
 THUNDERID_RESOURCE=https://localhost:8090/mcp
@@ -149,6 +150,7 @@ THUNDERID_RESOURCE=https://localhost:8090/mcp
 - `THUNDERID_RESOURCE` is required when requesting a backend token (`client_credentials`), leaving it out gives an `invalid_target` error.
 - The role IDs are found by opening each role in the console, they're the role's own ID, not its name.
 - If your backend's JWKS client verifies TLS certificates strictly, relax that only for local development against ThunderID's self-signed certificate, and only when running locally, never in production.
+- **`Token Endpoint Auth Method` must actually be `client_secret_post` on the saved application, not just selected during creation.** The backend's client sends `client_id`/`client_secret` as form body fields (not an HTTP Basic Auth header). If the app ends up on `client_secret_basic` (the type-`m2m` default), every `client_credentials` request fails with `unauthorized_client: Client is not allowed to use the specified authentication method`, even though the client ID/secret are correct. Double-check this value in the console after saving.
 
 **Frontend `.env`**
 
