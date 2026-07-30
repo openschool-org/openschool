@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useLocation } from "react-router";
 import {
   Button,
   Tag,
@@ -20,13 +20,13 @@ import {
   ModalBody,
   ModalFooter,
 } from "@carbon/react";
-import { ArrowLeft, Edit, Add, UserMultiple, EventSchedule } from "@carbon/icons-react";
-import { AxiosError } from "axios";
+import { ArrowLeft, Edit, Add, UserMultiple, EventSchedule, UserFollow } from "@carbon/icons-react";
 import {
   useClass,
   useClassStudents,
   useUpdateClass,
   useAssignFormTeacher,
+  useAssignMonitors,
   useEnrollStudent,
   useUnenrollStudent,
 } from "../../../queries/useClasses";
@@ -42,14 +42,11 @@ import { useAcademicYears } from "../../../queries/useAcademicYears";
 import { useStudents } from "../../../queries/useStudents";
 import type { Student } from "../../../services/student";
 import type { AttendanceSession } from "../../../services/attendance";
+import { getErrorMessage as apiError } from "../../../lib/errorMessage";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
-
-function apiError(e: unknown, fallback: string) {
-  return (e as AxiosError<{ error: string }>)?.response?.data?.error ?? fallback;
-}
 
 function toYmd(d: Date | undefined): string {
   if (!d) return "";
@@ -71,6 +68,10 @@ function initials(name: string) {
 export default function ClassDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  // The dashboard's class boxes link straight to the Attendance tab so
+  // "view all attendance for this class" lands somewhere useful.
+  const initialTab = (location.state as { tab?: string } | null)?.tab === "attendance" ? 1 : 0;
 
   const { data: cls, isLoading, isError, refetch } = useClass(id);
   const { data: students, isLoading: studentsLoading } = useClassStudents(id);
@@ -84,6 +85,7 @@ export default function ClassDetail() {
 
   const updateClass = useUpdateClass(id);
   const assignFormTeacher = useAssignFormTeacher(id);
+  const assignMonitors = useAssignMonitors(id);
   const enrollStudent = useEnrollStudent(id);
   const unenrollStudent = useUnenrollStudent(id);
   const createSession = useCreateSession(id);
@@ -93,6 +95,9 @@ export default function ClassDetail() {
   const [nameEdit, setNameEdit] = useState("");
   const [teacherModalOpen, setTeacherModalOpen] = useState(false);
   const [teacherChoice, setTeacherChoice] = useState("");
+  const [monitorsModalOpen, setMonitorsModalOpen] = useState(false);
+  const [girlMonitorChoice, setGirlMonitorChoice] = useState("");
+  const [boyMonitorChoice, setBoyMonitorChoice] = useState("");
   const [enrolOpen, setEnrolOpen] = useState(false);
   const [studentChoice, setStudentChoice] = useState("");
   const [sessionOpen, setSessionOpen] = useState(false);
@@ -108,6 +113,12 @@ export default function ClassDetail() {
   const streamGroupName = streamGroups?.find((g) => g.id === cls?.stream_group_id)?.name;
   const formTeacher = teachers?.find((t) => t.id === cls?.form_teacher_id);
   const academicYearLabel = years?.find((y) => y.id === cls?.academic_year_id)?.label;
+  const girlMonitor = students?.find((s) => s.id === cls?.girl_monitor_id);
+  const boyMonitor = students?.find((s) => s.id === cls?.boy_monitor_id);
+  // Hide only students known to be the wrong gender — students with no
+  // gender on file stay selectable rather than being silently excluded.
+  const girlMonitorCandidates = (students ?? []).filter((s) => s.gender !== "male");
+  const boyMonitorCandidates = (students ?? []).filter((s) => s.gender !== "female");
 
   const enrolledIds = useMemo(
     () => new Set((students ?? []).map((s) => s.id)),
@@ -160,6 +171,20 @@ export default function ClassDetail() {
     assignFormTeacher.mutate(teacherChoice, {
       onSuccess: () => setTeacherModalOpen(false),
     });
+  };
+
+  const openMonitorsModal = () => {
+    assignMonitors.reset();
+    setGirlMonitorChoice(cls?.girl_monitor_id ?? "");
+    setBoyMonitorChoice(cls?.boy_monitor_id ?? "");
+    setMonitorsModalOpen(true);
+  };
+
+  const handleAssignMonitors = () => {
+    assignMonitors.mutate(
+      { girl_monitor_id: girlMonitorChoice || null, boy_monitor_id: boyMonitorChoice || null },
+      { onSuccess: () => setMonitorsModalOpen(false) },
+    );
   };
 
   const openEnrol = () => {
@@ -246,6 +271,9 @@ export default function ClassDetail() {
           <Button renderIcon={UserMultiple} kind="ghost" size="sm" onClick={openTeacherModal}>
             {formTeacher ? "Change Teacher" : "Assign Teacher"}
           </Button>
+          <Button renderIcon={UserFollow} kind="ghost" size="sm" onClick={openMonitorsModal}>
+            {girlMonitor || boyMonitor ? "Change Monitors" : "Assign Monitors"}
+          </Button>
           <Button renderIcon={ArrowLeft} kind="secondary" size="sm" as={Link} to="/classes">
             Back
           </Button>
@@ -262,7 +290,7 @@ export default function ClassDetail() {
           }}
         >
           <div>
-            <Tabs>
+            <Tabs defaultSelectedIndex={initialTab}>
               <TabList aria-label="Class sections">
                 <Tab>Students</Tab>
                 <Tab>Attendance</Tab>
@@ -321,6 +349,16 @@ export default function ClassDetail() {
                                 <Link to={`/students/${s.id}`} className="os-table__link">
                                   {s.full_name}
                                 </Link>
+                                {s.id === cls.girl_monitor_id && (
+                                  <Tag type="magenta" size="sm" style={{ marginLeft: "0.5rem" }}>
+                                    Girl Monitor
+                                  </Tag>
+                                )}
+                                {s.id === cls.boy_monitor_id && (
+                                  <Tag type="blue" size="sm" style={{ marginLeft: "0.5rem" }}>
+                                    Boy Monitor
+                                  </Tag>
+                                )}
                               </td>
                               <td className="os-table__mono">{s.index_number}</td>
                               <td className="os-table__muted">
@@ -537,6 +575,8 @@ export default function ClassDetail() {
                         ["Stream", streamName ?? "None"],
                         ["Sub-stream", streamGroupName ?? "None"],
                         ["Academic Year", academicYearLabel ?? "—"],
+                        ["Girl Monitor", girlMonitor?.full_name ?? "Unassigned"],
+                        ["Boy Monitor", boyMonitor?.full_name ?? "Unassigned"],
                       ].map(([label, value]) => (
                         <div key={label} className="os-kv-item">
                           <p className="os-kv-item__label">{label}</p>
@@ -741,6 +781,54 @@ export default function ClassDetail() {
             disabled={!teacherChoice || assignFormTeacher.isPending}
           >
             {assignFormTeacher.isPending ? "Saving…" : "Assign"}
+          </Button>
+        </ModalFooter>
+      </ComposedModal>
+
+      <ComposedModal open={monitorsModalOpen} size="sm" onClose={() => setMonitorsModalOpen(false)}>
+        <ModalHeader title="Assign class monitors" />
+        <ModalBody>
+          {assignMonitors.isError && (
+            <InlineNotification
+              kind="error"
+              title="Error"
+              subtitle={apiError(assignMonitors.error, "Failed to assign monitors")}
+              lowContrast
+              hideCloseButton
+              style={{ marginBottom: "1rem", maxWidth: "100%" }}
+            />
+          )}
+          <div style={{ display: "grid", gap: "1rem" }}>
+            <Select
+              id="girl-monitor-choice"
+              labelText="Girl Monitor"
+              value={girlMonitorChoice}
+              onChange={(e) => setGirlMonitorChoice(e.target.value)}
+            >
+              <SelectItem value="" text="Unassigned" />
+              {girlMonitorCandidates.map((s) => (
+                <SelectItem key={s.id} value={s.id} text={`${s.full_name} (${s.index_number})`} />
+              ))}
+            </Select>
+            <Select
+              id="boy-monitor-choice"
+              labelText="Boy Monitor"
+              value={boyMonitorChoice}
+              onChange={(e) => setBoyMonitorChoice(e.target.value)}
+            >
+              <SelectItem value="" text="Unassigned" />
+              {boyMonitorCandidates.map((s) => (
+                <SelectItem key={s.id} value={s.id} text={`${s.full_name} (${s.index_number})`} />
+              ))}
+            </Select>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button kind="secondary" onClick={() => setMonitorsModalOpen(false)}>
+            Cancel
+          </Button>
+          <Button kind="primary" onClick={handleAssignMonitors} disabled={assignMonitors.isPending}>
+            {assignMonitors.isPending ? "Saving…" : "Save"}
           </Button>
         </ModalFooter>
       </ComposedModal>

@@ -4,18 +4,32 @@ import {
   Button,
   TextInput,
   PasswordInput,
+  Select,
+  SelectItem,
+  RadioButtonGroup,
+  RadioButton,
   DatePicker,
   DatePickerInput,
   InlineNotification,
 } from "@carbon/react";
 import { ArrowLeft, Save } from "@carbon/icons-react";
 import { useCreateTeacher } from "../../../queries/useTeachers";
-import { AxiosError } from "axios";
+import { getErrorMessage } from "../../../lib/errorMessage";
+import type { TeacherTitle } from "../../../services/teacher";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const TITLES: TeacherTitle[] = ["Mr", "Miss", "Mrs", "Ms", "Dr", "Von", "Prof"];
+
+type Touched = Partial<
+  Record<"givenName" | "familyName" | "email" | "password" | "employeeNumber" | "joinedDate", boolean>
+>;
 
 export default function AddTeacher() {
   const navigate = useNavigate();
   const createTeacher = useCreateTeacher();
 
+  const [title, setTitle] = useState<TeacherTitle | "">("");
+  const [gender, setGender] = useState<"" | "male" | "female">("");
   const [givenName, setGivenName] = useState("");
   const [familyName, setFamilyName] = useState("");
   const [email, setEmail] = useState("");
@@ -23,8 +37,20 @@ export default function AddTeacher() {
   const [password, setPassword] = useState("");
   const [employeeNumber, setEmployeeNumber] = useState("");
   const [joinedDate, setJoinedDate] = useState("");
+  const [touched, setTouched] = useState<Touched>({});
+
+  const markTouched = (field: keyof Touched) => setTouched((t) => ({ ...t, [field]: true }));
 
   const handleSubmit = () => {
+    setTouched({
+      givenName: true,
+      familyName: true,
+      email: true,
+      password: true,
+      employeeNumber: true,
+      joinedDate: true,
+    });
+    if (!isValid) return;
     createTeacher.mutate(
       {
         given_name: givenName.trim(),
@@ -34,23 +60,31 @@ export default function AddTeacher() {
         password,
         employee_number: employeeNumber.trim(),
         joined_date: new Date(joinedDate).toISOString(),
+        title: title || undefined,
+        gender: gender || undefined,
       },
       { onSuccess: () => navigate("/teachers") },
     );
   };
 
   const errorMessage = createTeacher.isError
-    ? (createTeacher.error as AxiosError<{ error: string }>).response?.data
-        ?.error ?? "Failed to create teacher"
+    ? getErrorMessage(createTeacher.error, "Failed to create teacher")
     : null;
 
+  const givenNameInvalid = !!touched.givenName && !givenName.trim();
+  const familyNameInvalid = !!touched.familyName && !familyName.trim();
+  const emailInvalid = !!touched.email && !EMAIL_RE.test(email.trim());
+  const passwordInvalid = !!touched.password && password.length < 8;
+  const employeeNumberInvalid = !!touched.employeeNumber && !employeeNumber.trim();
+  const joinedDateInvalid = !!touched.joinedDate && !joinedDate;
+
   const isValid =
-    givenName.trim() &&
-    familyName.trim() &&
-    email.trim() &&
-    password &&
-    employeeNumber.trim() &&
-    joinedDate;
+    givenName.trim().length > 0 &&
+    familyName.trim().length > 0 &&
+    EMAIL_RE.test(email.trim()) &&
+    password.length >= 8 &&
+    employeeNumber.trim().length > 0 &&
+    !!joinedDate;
 
   return (
     <div className="os-page">
@@ -83,12 +117,35 @@ export default function AddTeacher() {
         <div className="os-form__section">
           <div className="os-form__section-header">Account</div>
           <div className="os-form__section-body">
+            <Select
+              id="title"
+              labelText="Title (optional)"
+              value={title}
+              onChange={(e) => setTitle(e.target.value as TeacherTitle | "")}
+            >
+              <SelectItem value="" text="None" />
+              {TITLES.map((t) => (
+                <SelectItem key={t} value={t} text={t} />
+              ))}
+            </Select>
+            <RadioButtonGroup
+              legendText="Gender (optional)"
+              name="gender"
+              valueSelected={gender}
+              onChange={(value) => setGender(value as "male" | "female")}
+            >
+              <RadioButton id="gender-male" labelText="Male" value="male" />
+              <RadioButton id="gender-female" labelText="Female" value="female" />
+            </RadioButtonGroup>
             <TextInput
               id="given-name"
               labelText="First Name"
               placeholder="e.g. Priya"
               value={givenName}
               onChange={(e) => setGivenName(e.target.value)}
+              onBlur={() => markTouched("givenName")}
+              invalid={givenNameInvalid}
+              invalidText="First name is required."
             />
             <TextInput
               id="family-name"
@@ -96,6 +153,9 @@ export default function AddTeacher() {
               placeholder="e.g. Rathnayake"
               value={familyName}
               onChange={(e) => setFamilyName(e.target.value)}
+              onBlur={() => markTouched("familyName")}
+              invalid={familyNameInvalid}
+              invalidText="Last name is required."
             />
             <TextInput
               id="email"
@@ -103,6 +163,9 @@ export default function AddTeacher() {
               placeholder="e.g. teacher@school.lk"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => markTouched("email")}
+              invalid={emailInvalid}
+              invalidText="Enter a valid email address."
             />
             <TextInput
               id="phone"
@@ -118,6 +181,9 @@ export default function AddTeacher() {
                 placeholder="Set an initial password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onBlur={() => markTouched("password")}
+                invalid={passwordInvalid}
+                invalidText="Password must be at least 8 characters."
               />
             </div>
           </div>
@@ -132,6 +198,9 @@ export default function AddTeacher() {
               placeholder="e.g. EMP-0145"
               value={employeeNumber}
               onChange={(e) => setEmployeeNumber(e.target.value)}
+              onBlur={() => markTouched("employeeNumber")}
+              invalid={employeeNumberInvalid}
+              invalidText="Employee number is required."
             />
             <DatePicker
               datePickerType="single"
@@ -150,6 +219,9 @@ export default function AddTeacher() {
                 id="joined-date"
                 labelText="Joining Date"
                 placeholder="YYYY-MM-DD"
+                onBlur={() => markTouched("joinedDate")}
+                invalid={joinedDateInvalid}
+                invalidText="Joining date is required."
               />
             </DatePicker>
           </div>

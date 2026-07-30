@@ -10,8 +10,8 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  SkeletonText,
 } from "@carbon/react";
-import { AxiosError } from "axios";
 import {
   useHouses,
   useCreateHouse,
@@ -20,13 +20,26 @@ import {
   useReassignMissingHouses,
 } from "../../../queries/useHouses";
 import type { House } from "../../../services/house";
-import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 
-function apiError(e: unknown, fallback: string) {
-  return (e as AxiosError<{ error: string }>)?.response?.data?.error ?? fallback;
+function HouseRowSkeleton() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "0.875rem 1.5rem",
+        borderBottom: "1px solid #e0e0e0",
+        gap: "1rem",
+      }}
+    >
+      <SkeletonText width="5.5rem" />
+      <SkeletonText width="30%" />
+    </div>
+  );
 }
 
 export default function Houses() {
@@ -43,6 +56,7 @@ export default function Houses() {
   const [remainder, setRemainder] = useState(0);
   const [toDelete, setToDelete] = useState<House | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const [touched, setTouched] = useState<{ name?: boolean }>({});
 
   const count = houses?.length ?? 0;
 
@@ -77,6 +91,7 @@ export default function Houses() {
     while (used.has(next)) next++;
     setRemainder(next);
     setEditing(null);
+    setTouched({});
     setModal("create");
   };
 
@@ -86,10 +101,13 @@ export default function Houses() {
     setCode(h.code ?? "");
     setRemainder(h.remainder);
     setEditing(h);
+    setTouched({});
     setModal("edit");
   };
 
   const handleSave = () => {
+    setTouched({ name: true });
+    if (!name.trim()) return;
     const data = {
       name: name.trim(),
       code: code.trim() || undefined,
@@ -134,7 +152,6 @@ export default function Houses() {
         </Button>
       </div>
 
-      {isLoading && <LoadingSpinner />}
       {isError && (
         <ErrorMessage message="Could not load houses." onRetry={refetch} />
       )}
@@ -143,7 +160,7 @@ export default function Houses() {
         <InlineNotification
           kind="error"
           title="Could not delete house"
-          subtitle={apiError(
+          subtitle={getErrorMessage(
             deleteHouse.error,
             "The house may be assigned to a student.",
           )}
@@ -179,7 +196,7 @@ export default function Houses() {
         <InlineNotification
           kind="error"
           title="Could not re-assign"
-          subtitle={apiError(reassign.error, "Please try again.")}
+          subtitle={getErrorMessage(reassign.error, "Please try again.")}
           lowContrast
           onClose={() => reassign.reset()}
           style={{ maxWidth: "100%", marginBottom: "1rem" }}
@@ -196,6 +213,14 @@ export default function Houses() {
           )}
         </div>
 
+        {isLoading && (
+          <div>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <HouseRowSkeleton key={i} />
+            ))}
+          </div>
+        )}
+
         {!isLoading && !isError && ordered.length === 0 && (
           <EmptyState
             title="No houses yet"
@@ -208,7 +233,7 @@ export default function Houses() {
           />
         )}
 
-        {ordered.length > 0 && (
+        {!isLoading && ordered.length > 0 && (
           <div>
             {ordered.map((h, i) => (
               <div
@@ -297,7 +322,7 @@ export default function Houses() {
             <InlineNotification
               kind="error"
               title="Error"
-              subtitle={apiError(
+              subtitle={getErrorMessage(
                 createHouse.error ?? updateHouse.error,
                 "Failed to save house",
               )}
@@ -312,6 +337,9 @@ export default function Houses() {
             placeholder="e.g. Vijaya"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onBlur={() => setTouched({ name: true })}
+            invalid={!!touched.name && !name.trim()}
+            invalidText="House name is required."
             style={{ marginBottom: "1rem" }}
           />
           <TextInput

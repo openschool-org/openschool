@@ -17,6 +17,8 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
+	RegisterSetupRoutes(api, pool)
+
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware())
 
@@ -38,6 +40,8 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	RegisterTeacherRoutes(admin, teacherOrAdmin, pool)
 	RegisterAttendanceRoutes(teacherOrAdmin, pool)
 	RegisterGuardianRoutes(admin, teacherOrAdmin, pool)
+	RegisterSectionHeadRoutes(admin, teacherOrAdmin, pool)
+	RegisterPrefectRoutes(admin, teacherOrAdmin, pool)
 
 	protected.GET("/me", func(c *gin.Context) {
 		userID := c.GetString("userID")

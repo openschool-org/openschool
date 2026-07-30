@@ -15,7 +15,6 @@ import {
   ModalBody,
   ModalFooter,
 } from "@carbon/react";
-import { AxiosError } from "axios";
 import {
   useLevelTree,
   useMediums,
@@ -30,14 +29,11 @@ import type {
   CurriculumTreeGroup,
   GroupSubject,
 } from "../../../services/curriculum";
+import { getErrorMessage as apiError } from "../../../lib/errorMessage";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
-
-function apiError(e: unknown, fallback: string) {
-  return (e as AxiosError<{ error: string }>)?.response?.data?.error ?? fallback;
-}
 
 // Owns its own hover state so the page does not have to track a hovered id.
 function SubjectCard({

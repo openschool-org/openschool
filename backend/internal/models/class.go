@@ -20,6 +20,13 @@ type AssignFormTeacherRequest struct {
 	TeacherID uuid.UUID `json:"teacher_id" binding:"required"`
 }
 
+// AssignClassMonitorsRequest sets both monitor slots at once; omit or send
+// null for a slot to clear it.
+type AssignClassMonitorsRequest struct {
+	GirlMonitorID *uuid.UUID `json:"girl_monitor_id"`
+	BoyMonitorID  *uuid.UUID `json:"boy_monitor_id"`
+}
+
 type AssignSubjectTeacherRequest struct {
 	SubjectID uuid.UUID `json:"subject_id" binding:"required"`
 	TeacherID uuid.UUID `json:"teacher_id" binding:"required"`
@@ -32,6 +39,8 @@ type ClassResponse struct {
 	FormTeacherID  *uuid.UUID `json:"form_teacher_id"`
 	StreamID       *uuid.UUID `json:"stream_id"`
 	StreamGroupID  *uuid.UUID `json:"stream_group_id"`
+	GirlMonitorID  *uuid.UUID `json:"girl_monitor_id"`
+	BoyMonitorID   *uuid.UUID `json:"boy_monitor_id"`
 	Name           string     `json:"name"`
 	CreatedAt      string     `json:"created_at"`
 }

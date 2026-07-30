@@ -1,18 +1,27 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { EventSchedule, CheckmarkFilled, WarningFilled } from "@carbon/icons-react";
-import { Button, Tag, DatePicker, DatePickerInput, InlineNotification } from "@carbon/react";
-import { AxiosError } from "axios";
+import { Button, Tag, DatePicker, DatePickerInput, InlineNotification, SkeletonText } from "@carbon/react";
 import { useDailySessions, useDeleteSession } from "../../../queries/useAttendance";
 import { useRole } from "../../../hooks/useRole";
 import type { DailySession } from "../../../services/attendance";
-import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import { getErrorMessage } from "../../../lib/errorMessage";
+import TableSkeleton from "../../../components/common/TableSkeleton";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 
-function apiError(e: unknown, fallback: string) {
-  return (e as AxiosError<{ error: string }>)?.response?.data?.error ?? fallback;
+const ATTENDANCE_TABLE_HEADERS = ["Class", "Grade", "Teacher", "Records", "Status", "Actions"];
+
+function StatCardSkeleton() {
+  return (
+    <div className="os-stat-card">
+      <div style={{ marginBottom: "0.5rem" }}>
+        <SkeletonText width="60%" />
+      </div>
+      <SkeletonText width="30%" heading />
+    </div>
+  );
 }
 
 function toYmd(d: Date): string {
@@ -81,7 +90,19 @@ export default function Attendance() {
       )}
 
       {isLoading ? (
-        <LoadingSpinner />
+        <>
+          <div className="os-stat-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <StatCardSkeleton key={i} />
+            ))}
+          </div>
+          <div className="os-section">
+            <div className="os-section__header">
+              <h2 className="os-section__title">Sessions</h2>
+            </div>
+            <TableSkeleton headers={ATTENDANCE_TABLE_HEADERS} />
+          </div>
+        </>
       ) : isError ? (
         <ErrorMessage message="Could not load sessions for this date." onRetry={refetch} />
       ) : (
@@ -120,7 +141,7 @@ export default function Attendance() {
               <InlineNotification
                 kind="error"
                 title="Could not delete session"
-                subtitle={apiError(deleteSession.error, "Please try again.")}
+                subtitle={getErrorMessage(deleteSession.error, "Please try again.")}
                 lowContrast
                 onClose={() => deleteSession.reset()}
                 style={{ maxWidth: "100%", margin: "0 1.5rem 1rem" }}

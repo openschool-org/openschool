@@ -45,12 +45,12 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		"password":        req.Password,
 	})
 	if err != nil {
-		return db.TeacherProfile{}, fmt.Errorf("failed to create Asgardeo user: %w", err)
+		return db.TeacherProfile{}, fmt.Errorf("failed to create identity provider user: %w", err)
 	}
 
 	userID, err := uuid.Parse(asgardeoUser.ID)
 	if err != nil {
-		return db.TeacherProfile{}, fmt.Errorf("invalid Asgardeo user ID: %w", err)
+		return db.TeacherProfile{}, fmt.Errorf("invalid identity provider user ID: %w", err)
 	}
 
 	fullName := req.GivenName + " " + req.FamilyName
@@ -64,12 +64,12 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 	})
 	if err != nil {
 		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
-			log.Printf("CreateTeacher: failed to roll back Asgardeo user %s after error: %v (Asgardeo account now orphaned)", asgardeoUser.ID, delErr)
+			log.Printf("CreateTeacher: failed to roll back identity provider user %s after error: %v (identity provider account now orphaned)", asgardeoUser.ID, delErr)
 		}
 		return db.TeacherProfile{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
-	// assign teacher role in Asgardeo
+	// assign teacher role in the identity provider
 	if err := s.idp.AssignRole(ctx, identity.RoleID("teacher"), asgardeoUser.ID); err != nil {
 		log.Printf("CreateTeacher: failed to assign teacher role to %s: %v", asgardeoUser.ID, err)
 	}
@@ -81,10 +81,12 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		EmployeeNumber: req.EmployeeNumber,
 		JoinedDate:     pgtype.Date{Time: req.JoinedDate, Valid: true},
 		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
+		Title:          pgtype.Text{String: req.Title, Valid: req.Title != ""},
+		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
 	})
 	if err != nil {
 		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
-			log.Printf("CreateTeacher: failed to roll back Asgardeo user %s after error: %v (Asgardeo account now orphaned)", asgardeoUser.ID, delErr)
+			log.Printf("CreateTeacher: failed to roll back identity provider user %s after error: %v (identity provider account now orphaned)", asgardeoUser.ID, delErr)
 		}
 		return db.TeacherProfile{}, fmt.Errorf("failed to create teacher profile: %w", err)
 	}
@@ -123,7 +125,7 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 		"employee_number": req.EmployeeNumber,
 	})
 	if err != nil {
-		fmt.Printf("warning: failed to update Asgardeo user: %v\n", err)
+		fmt.Printf("warning: failed to update identity provider user: %v\n", err)
 	}
 
 	return s.repo.Update(ctx, db.UpdateTeacherProfileParams{
@@ -131,6 +133,8 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 		FullName:       fullName,
 		EmployeeNumber: req.EmployeeNumber,
 		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
+		Title:          pgtype.Text{String: req.Title, Valid: req.Title != ""},
+		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
 	})
 }
 
@@ -155,7 +159,7 @@ func (s *TeacherService) DeleteTeacher(ctx context.Context, id uuid.UUID) error 
 	}
 
 	if err := s.idp.DeleteUser(ctx, userID.String()); err != nil {
-		return fmt.Errorf("teacher profile deleted locally but failed to delete Asgardeo user (account is now orphaned and must be removed manually): %w", err)
+		return fmt.Errorf("teacher profile deleted locally but failed to delete identity provider user (account is now orphaned and must be removed manually): %w", err)
 	}
 
 	return nil

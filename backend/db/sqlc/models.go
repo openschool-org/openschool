@@ -43,6 +43,8 @@ type Class struct {
 	StreamGroupID  pgtype.UUID        `json:"stream_group_id"`
 	Name           string             `json:"name"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	GirlMonitorID  pgtype.UUID        `json:"girl_monitor_id"`
+	BoyMonitorID   pgtype.UUID        `json:"boy_monitor_id"`
 }
 
 type ClassStudent struct {
@@ -106,6 +108,14 @@ type Medium struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type Prefect struct {
+	ID             uuid.UUID          `json:"id"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	StudentID      uuid.UUID          `json:"student_id"`
+	Rank           string             `json:"rank"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type School struct {
 	ID        uuid.UUID          `json:"id"`
 	Name      string             `json:"name"`
@@ -116,6 +126,15 @@ type School struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	GradeFrom pgtype.Int4        `json:"grade_from"`
 	GradeTo   pgtype.Int4        `json:"grade_to"`
+}
+
+type SectionHead struct {
+	ID             uuid.UUID          `json:"id"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	GradeID        uuid.UUID          `json:"grade_id"`
+	StreamID       pgtype.UUID        `json:"stream_id"`
+	TeacherID      uuid.UUID          `json:"teacher_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type SelectionGroup struct {
@@ -193,6 +212,8 @@ type TeacherProfile struct {
 	Phone          pgtype.Text        `json:"phone"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	Title          pgtype.Text        `json:"title"`
+	Gender         pgtype.Text        `json:"gender"`
 }
 
 type TeacherSubject struct {

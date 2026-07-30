@@ -29,8 +29,30 @@ export default function TeacherLayout() {
   return (
     <>
       <Header aria-label="OpenSchool">
-        <HeaderName as={Link} to="/" prefix="" style={{ fontSize: "1.25rem", fontWeight: 500, letterSpacing: "0.01em" }}>
-          OpenSchool
+        <HeaderName
+          as={Link}
+          to="/"
+          prefix=""
+          style={{ fontSize: "1.25rem", fontWeight: 500, letterSpacing: "0.01em" }}
+        >
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "#f4f4f4",
+                borderRadius: "6px",
+                padding: "3px",
+                flexShrink: 0,
+              }}
+            >
+              <img src="/favicon.webp" alt="" width={20} height={20} style={{ display: "block" }} />
+            </span>
+            <span>
+              Open<span style={{ color: "#FF6F1B" }}>School</span>
+            </span>
+          </span>
         </HeaderName>
 
         <HeaderNavigation aria-label="Teacher navigation">

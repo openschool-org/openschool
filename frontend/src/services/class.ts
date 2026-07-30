@@ -7,6 +7,8 @@ export interface ClassWithDetails {
   form_teacher_id: string | null;
   stream_id: string | null;
   stream_group_id: string | null;
+  girl_monitor_id: string | null;
+  boy_monitor_id: string | null;
   name: string;
   created_at: string | null;
   grade_name: string;
@@ -20,6 +22,8 @@ export interface ClassRow {
   form_teacher_id: string | null;
   stream_id: string | null;
   stream_group_id: string | null;
+  girl_monitor_id: string | null;
+  boy_monitor_id: string | null;
   name: string;
   created_at: string | null;
 }
@@ -69,6 +73,9 @@ export const classApi = {
     api
       .put<ClassRow>(`/classes/${id}/form-teacher`, { teacher_id: teacherId })
       .then((r) => r.data),
+
+  assignMonitors: (id: string, data: { girl_monitor_id?: string | null; boy_monitor_id?: string | null }) =>
+    api.put<ClassRow>(`/classes/${id}/monitors`, data).then((r) => r.data),
 
   listSubjectTeachers: (id: string) =>
     api.get<SubjectTeacher[]>(`/classes/${id}/subject-teachers`).then((r) => r.data),

@@ -4,9 +4,11 @@ INSERT INTO teacher_profiles (
     full_name,
     employee_number,
     joined_date,
-    phone
+    phone,
+    title,
+    gender
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4, $5, $6, $7
 )
 RETURNING *;
 
@@ -32,6 +34,8 @@ SET
     full_name       = $2,
     employee_number = $3,
     phone           = $4,
+    title           = $5,
+    gender          = $6,
     updated_at      = NOW()
 WHERE id = $1
 RETURNING *;

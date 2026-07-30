@@ -9,7 +9,7 @@ import {
   InlineLoading,
 } from "@carbon/react";
 import { Save } from "@carbon/icons-react";
-import { AxiosError } from "axios";
+import { getErrorMessage } from "../../../lib/errorMessage";
 import { useCurrentAcademicYear } from "../../../queries/useAcademicYears";
 import { useLevels, useLevelTree } from "../../../queries/useCurriculum";
 import { useStudentWithClass } from "../../../queries/useStudents";
@@ -132,8 +132,7 @@ export default function SubjectEnrollment({ studentId }: { studentId: string }) 
     submit.data && !submit.data.valid ? submit.data.errors ?? [] : [];
   const saved = submit.data?.valid === true;
   const saveError = submit.isError
-    ? (submit.error as AxiosError<{ error: string }>).response?.data?.error ??
-      "Failed to save enrollment"
+    ? getErrorMessage(submit.error, "Failed to save enrollment")
     : null;
 
   return (

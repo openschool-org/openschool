@@ -1,8 +1,10 @@
 import { Routes, Route } from "react-router";
 import SignIn from "./pages/SignIn";
+import Setup from "./pages/Setup";
 import AccessRestricted from "./pages/AccessRestricted";
 import { useRole } from "./hooks/useRole";
 import { useApi } from "./hooks/useApi";
+import { useProvisionUser } from "./hooks/useProvisionUser";
 import RootLayout from "./layouts/RootLayout";
 import TeacherLayout from "./layouts/TeacherLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -16,6 +18,8 @@ import Teachers from "./pages/admin/teachers/Teachers";
 import AddTeacher from "./pages/admin/teachers/AddTeacher";
 import TeacherDetail from "./pages/admin/teachers/TeacherDetail";
 import Classes from "./pages/admin/classes/Classes";
+import Streams from "./pages/admin/streams/Streams";
+import Prefects from "./pages/admin/prefects/Prefects";
 import AddClass from "./pages/admin/classes/AddClass";
 import Subjects from "./pages/admin/subjects/Subjects";
 import AddSubject from "./pages/admin/subjects/AddSubject";
@@ -29,6 +33,7 @@ import AttendanceMark from "./pages/admin/attendance/AttendanceMark";
 import AcademicYears from "./pages/admin/academic-years/AcademicYears";
 import Notifications from "./pages/admin/notifications/Notifications";
 import SettingsPage from "./pages/admin/settings/Settings";
+import SchoolSetup from "./pages/admin/setup/SchoolSetup";
 import NotFound from "./pages/NotFound";
 
 // Teacher pages
@@ -39,12 +44,14 @@ import TeacherProfile from "./pages/teacher/TeacherProfile";
 
 function App() {
   useApi();
+  useProvisionUser();
   const { role, loading } = useRole();
 
   return (
     <Routes>
-      {/* Public route - always accessible */}
+      {/* Public routes - always accessible */}
       <Route path="/signin" element={<SignIn />} />
+      <Route path="/setup" element={<Setup />} />
 
       {/* Show loading state while role is being determined */}
       {loading ? (
@@ -75,13 +82,24 @@ function App() {
         </Route>
       ) : role === "admin" ? (
         /* Admin routes */
-        <Route
-          element={
-            <ProtectedRoute>
-              <RootLayout />
-            </ProtectedRoute>
-          }
-        >
+        <>
+          {/* Full-page wizard — deliberately outside RootLayout so it
+              renders without the sidebar/header chrome. */}
+          <Route
+            path="/school-setup"
+            element={
+              <ProtectedRoute>
+                <SchoolSetup />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            element={
+              <ProtectedRoute>
+                <RootLayout />
+              </ProtectedRoute>
+            }
+          >
           <Route index element={<Dashboard />} />
           <Route path="/students" element={<Students />} />
           <Route path="/students/new" element={<AddStudent />} />
@@ -92,6 +110,8 @@ function App() {
           <Route path="/classes" element={<Classes />} />
           <Route path="/classes/new" element={<AddClass />} />
           <Route path="/classes/:id" element={<ClassDetail />} />
+          <Route path="/streams" element={<Streams />} />
+          <Route path="/prefects" element={<Prefects />} />
           <Route path="/subjects" element={<Subjects />} />
           <Route path="/subjects/new" element={<AddSubject />} />
           <Route path="/grades" element={<Grades />} />
@@ -107,7 +127,8 @@ function App() {
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
-        </Route>
+          </Route>
+        </>
       ) : (
         /* student / parent / unrecognized roles: no portal built yet — never
            fall through to admin or teacher routes */

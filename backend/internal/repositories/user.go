@@ -27,3 +27,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (db.User,
 func (r *UserRepository) Create(ctx context.Context, arg db.CreateUserParams) (db.User, error) {
 	return r.queries.CreateUser(ctx, arg)
 }
+
+func (r *UserRepository) CountByRole(ctx context.Context, role string) (int64, error) {
+	return r.queries.CountUsersByRole(ctx, role)
+}

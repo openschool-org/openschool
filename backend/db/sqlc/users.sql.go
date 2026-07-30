@@ -11,6 +11,18 @@ import (
 	"github.com/google/uuid"
 )
 
+const countUsersByRole = `-- name: CountUsersByRole :one
+SELECT COUNT(*) FROM users
+WHERE role = $1
+`
+
+func (q *Queries) CountUsersByRole(ctx context.Context, role string) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsersByRole, role)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
     id,

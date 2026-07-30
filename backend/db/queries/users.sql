@@ -26,6 +26,10 @@ SELECT * FROM users
 WHERE role = $1
 ORDER BY full_name ASC;
 
+-- name: CountUsersByRole :one
+SELECT COUNT(*) FROM users
+WHERE role = $1;
+
 -- name: UpdateUser :one
 UPDATE users
 SET

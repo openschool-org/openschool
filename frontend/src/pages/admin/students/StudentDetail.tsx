@@ -17,7 +17,6 @@ import {
   TabPanel,
 } from "@carbon/react";
 import { ArrowLeft, TrashCan, Edit, Save } from "@carbon/icons-react";
-import { AxiosError } from "axios";
 import {
   useStudentWithClass,
   useUpdateStudent,
@@ -26,6 +25,7 @@ import {
 } from "../../../queries/useStudents";
 import { useHouses } from "../../../queries/useHouses";
 import type { StudentWithClass } from "../../../services/student";
+import { getErrorMessage } from "../../../lib/errorMessage";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import ProfileBanner from "../../../components/common/ProfileBanner";
@@ -113,8 +113,7 @@ export default function StudentDetail() {
     setForm((f) => ({ ...f, [field]: value }));
 
   const updateError = updateStudent.isError
-    ? (updateStudent.error as AxiosError<{ error: string }>).response?.data
-        ?.error ?? "Failed to update student"
+    ? getErrorMessage(updateStudent.error, "Failed to update student")
     : null;
 
   const isValid = form.given_name.trim() && form.family_name.trim();

@@ -12,8 +12,8 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  SkeletonText,
 } from "@carbon/react";
-import { AxiosError } from "axios";
 import {
   useAcademicYears,
   useCreateAcademicYear,
@@ -21,10 +21,33 @@ import {
   useDeleteAcademicYear,
 } from "../../../queries/useAcademicYears";
 import type { AcademicYear } from "../../../services/academicYear";
-import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+
+function AcademicYearRowSkeleton() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "1.25rem 1.5rem",
+        borderBottom: "1px solid #e0e0e0",
+        gap: "1rem",
+      }}
+    >
+      <SkeletonText width="1.25rem" />
+      <div style={{ flex: 1 }}>
+        <div style={{ marginBottom: "0.4rem" }}>
+          <SkeletonText width="25%" />
+        </div>
+        <SkeletonText width="40%" />
+      </div>
+      <SkeletonText width="5rem" />
+    </div>
+  );
+}
 
 function formatDate(iso: string | null) {
   if (!iso) return "—";
@@ -49,15 +72,28 @@ export default function AcademicYears() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [touched, setTouched] = useState<{ label?: boolean; start_date?: boolean; end_date?: boolean }>({});
   const [toDelete, setToDelete] = useState<AcademicYear | null>(null);
 
   const openCreate = () => {
     setForm(EMPTY_FORM);
+    setTouched({});
     createYear.reset();
     setCreateOpen(true);
   };
 
+  const dateRangeInvalid =
+    !!form.start_date && !!form.end_date && form.end_date <= form.start_date;
+
+  const isValid =
+    form.label.trim().length > 0 &&
+    !!form.start_date &&
+    !!form.end_date &&
+    !dateRangeInvalid;
+
   const handleCreate = () => {
+    setTouched({ label: true, start_date: true, end_date: true });
+    if (!isValid) return;
     createYear.mutate(
       {
         label: form.label.trim(),
@@ -73,13 +109,6 @@ export default function AcademicYears() {
     if (!toDelete) return;
     deleteYear.mutate(toDelete.id, { onSettled: () => setToDelete(null) });
   };
-
-  const createError = createYear.isError
-    ? (createYear.error as AxiosError<{ error: string }>).response?.data?.error ??
-      "Failed to create academic year"
-    : null;
-
-  const isValid = form.label.trim() && form.start_date && form.end_date;
 
   return (
     <div className="os-page">
@@ -112,7 +141,13 @@ export default function AcademicYears() {
           )}
         </div>
 
-        {isLoading && <LoadingSpinner />}
+        {isLoading && (
+          <div>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <AcademicYearRowSkeleton key={i} />
+            ))}
+          </div>
+        )}
         {isError && (
           <ErrorMessage
             message="Could not load academic years."
@@ -127,7 +162,7 @@ export default function AcademicYears() {
           />
         )}
 
-        {years && years.length > 0 && (
+        {!isLoading && years && years.length > 0 && (
           <div>
             {years.map((y, i) => (
               <div
@@ -216,11 +251,11 @@ export default function AcademicYears() {
       >
         <ModalHeader title="New academic year" />
         <ModalBody>
-          {createError && (
+          {createYear.isError && (
             <InlineNotification
               kind="error"
               title="Error"
-              subtitle={createError}
+              subtitle={getErrorMessage(createYear.error, "Failed to create academic year")}
               lowContrast
               hideCloseButton
               style={{ marginBottom: "1rem", maxWidth: "100%" }}
@@ -235,6 +270,9 @@ export default function AcademicYears() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, label: e.target.value }))
               }
+              onBlur={() => setTouched((t) => ({ ...t, label: true }))}
+              invalid={!!touched.label && !form.label.trim()}
+              invalidText="A label is required."
             />
             <DatePicker
               datePickerType="single"
@@ -248,6 +286,9 @@ export default function AcademicYears() {
                 id="ay-start"
                 labelText="Start Date"
                 placeholder="YYYY-MM-DD"
+                onBlur={() => setTouched((t) => ({ ...t, start_date: true }))}
+                invalid={!!touched.start_date && !form.start_date}
+                invalidText="A start date is required."
               />
             </DatePicker>
             <DatePicker
@@ -262,6 +303,13 @@ export default function AcademicYears() {
                 id="ay-end"
                 labelText="End Date"
                 placeholder="YYYY-MM-DD"
+                onBlur={() => setTouched((t) => ({ ...t, end_date: true }))}
+                invalid={!!touched.end_date && (!form.end_date || dateRangeInvalid)}
+                invalidText={
+                  dateRangeInvalid
+                    ? "End date must be after the start date."
+                    : "An end date is required."
+                }
               />
             </DatePicker>
             <Checkbox

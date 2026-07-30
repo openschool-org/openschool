@@ -209,6 +209,40 @@ func (h *ClassHandler) AssignFormTeacher(c *gin.Context) {
 	c.JSON(http.StatusOK, class)
 }
 
+// AssignMonitors godoc
+// @Summary      Assign class monitors
+// @Description  Set the girl and/or boy monitor for a class; omit or send null to clear a slot
+// @Tags         classes
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "Class ID"
+// @Param        request body models.AssignClassMonitorsRequest true "Monitor details"
+// @Success      200 {object} models.ClassResponse
+// @Failure      400 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /classes/{id}/monitors [put]
+func (h *ClassHandler) AssignMonitors(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var req models.AssignClassMonitorsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	class, err := h.service.AssignMonitors(c.Request.Context(), id, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, class)
+}
+
 // AssignSubjectTeacher godoc
 // @Summary      Assign subject teacher
 // @Description  Assign a teacher to teach a subject in a class

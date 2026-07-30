@@ -8,8 +8,8 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  SkeletonText,
 } from "@carbon/react";
-import { AxiosError } from "axios";
 import {
   useGrades,
   useCreateGrade,
@@ -19,13 +19,26 @@ import {
 } from "../../../queries/useGrades";
 import { useSchool } from "../../../queries/useSchool";
 import type { Grade } from "../../../services/grade";
-import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 
-function apiError(e: unknown, fallback: string) {
-  return (e as AxiosError<{ error: string }>)?.response?.data?.error ?? fallback;
+function GradeRowSkeleton() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "0.875rem 1.5rem",
+        borderBottom: "1px solid #e0e0e0",
+        gap: "1rem",
+      }}
+    >
+      <SkeletonText width="1.75rem" />
+      <SkeletonText width="30%" />
+    </div>
+  );
 }
 
 // Grade names are free text, so these checks are advisory only — they point at
@@ -60,6 +73,7 @@ export default function Grades() {
   const [name, setName] = useState("");
   const [toDelete, setToDelete] = useState<Grade | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const [nameTouched, setNameTouched] = useState(false);
 
   // display order: sort_order first, name as a stable tie-break so duplicated
   // orders still render deterministically
@@ -91,6 +105,7 @@ export default function Grades() {
   const openCreate = () => {
     createGrade.reset();
     setName("");
+    setNameTouched(false);
     setEditing(null);
     setModal("create");
   };
@@ -98,11 +113,14 @@ export default function Grades() {
   const openEdit = (g: Grade) => {
     updateGrade.reset();
     setName(g.name);
+    setNameTouched(false);
     setEditing(g);
     setModal("edit");
   };
 
   const handleSave = () => {
+    setNameTouched(true);
+    if (!name.trim()) return;
     if (modal === "create") {
       // new grades land at the end; position is never typed
       createGrade.mutate(
@@ -151,7 +169,6 @@ export default function Grades() {
         </Button>
       </div>
 
-      {isLoading && <LoadingSpinner />}
       {isError && (
         <ErrorMessage message="Could not load grades." onRetry={refetch} />
       )}
@@ -160,7 +177,7 @@ export default function Grades() {
         <InlineNotification
           kind="error"
           title="Could not delete grade"
-          subtitle={apiError(
+          subtitle={getErrorMessage(
             deleteGrade.error,
             "The grade may be used by a class or curriculum level.",
           )}
@@ -174,7 +191,7 @@ export default function Grades() {
         <InlineNotification
           kind="error"
           title="Could not reorder"
-          subtitle={apiError(reorder.error, "Please try again.")}
+          subtitle={getErrorMessage(reorder.error, "Please try again.")}
           lowContrast
           onClose={() => reorder.reset()}
           style={{ maxWidth: "100%", marginBottom: "1rem" }}
@@ -224,6 +241,14 @@ export default function Grades() {
           )}
         </div>
 
+        {isLoading && (
+          <div>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <GradeRowSkeleton key={i} />
+            ))}
+          </div>
+        )}
+
         {!isLoading && !isError && ordered.length === 0 && (
           <EmptyState
             title="No grades yet"
@@ -236,7 +261,7 @@ export default function Grades() {
           />
         )}
 
-        {ordered.length > 0 && (
+        {!isLoading && ordered.length > 0 && (
           <div style={{ opacity: busy ? 0.6 : 1 }}>
             {ordered.map((g, i) => {
               const warning = nameWarning(g.name, from, to);
@@ -349,7 +374,7 @@ export default function Grades() {
             <InlineNotification
               kind="error"
               title="Error"
-              subtitle={apiError(
+              subtitle={getErrorMessage(
                 createGrade.error ?? updateGrade.error,
                 "Failed to save grade",
               )}
@@ -369,6 +394,9 @@ export default function Grades() {
             }
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onBlur={() => setNameTouched(true)}
+            invalid={nameTouched && !name.trim()}
+            invalidText="Grade name is required."
           />
         </ModalBody>
         <ModalFooter>

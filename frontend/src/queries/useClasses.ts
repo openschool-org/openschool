@@ -93,6 +93,18 @@ export const useAssignFormTeacher = (classId: string) => {
   });
 };
 
+export const useAssignMonitors = (classId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { girl_monitor_id?: string | null; boy_monitor_id?: string | null }) =>
+      classApi.assignMonitors(classId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: classKey(classId) });
+      queryClient.invalidateQueries({ queryKey: CURRENT_CLASSES_KEY });
+    },
+  });
+};
+
 export const useEnrollStudent = (classId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -127,3 +139,24 @@ export const useStreamGroups = (streamId: string) =>
     queryFn: () => streamApi.listGroups(streamId),
     enabled: !!streamId,
   });
+
+export const useCreateStream = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string }) => streamApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: STREAMS_KEY });
+    },
+  });
+};
+
+export const useCreateStreamGroup = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ streamId, data }: { streamId: string; data: { name: string } }) =>
+      streamApi.createGroup(streamId, data),
+    onSuccess: (_group, { streamId }) => {
+      queryClient.invalidateQueries({ queryKey: streamGroupsKey(streamId) });
+    },
+  });
+};

@@ -19,6 +19,7 @@ func RegisterClassRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup
 	admin.PUT("/classes/:id", handler.Update)
 	admin.DELETE("/classes/:id", handler.Delete)
 	admin.PUT("/classes/:id/form-teacher", handler.AssignFormTeacher)
+	admin.PUT("/classes/:id/monitors", handler.AssignMonitors)
 	admin.POST("/classes/:id/subject-teachers", handler.AssignSubjectTeacher)
 	admin.GET("/classes/:id/subject-teachers", handler.ListSubjectTeachers)
 	teacherOrAdmin.GET("/academic-years/:academic_year_id/classes", handler.ListByAcademicYear)

@@ -11,7 +11,7 @@ import {
   UserMultiple,
   Warning,
 } from "@carbon/icons-react";
-import { AxiosError } from "axios";
+import { getErrorMessage } from "../../../lib/errorMessage";
 import { useSession, useSessionRecords, useMarkAttendance } from "../../../queries/useAttendance";
 import { useClass, useClassStudents } from "../../../queries/useClasses";
 import { useGrades } from "../../../queries/useGrades";
@@ -179,8 +179,7 @@ export default function AttendanceMark() {
   };
 
   const saveError = markAttendance.isError
-    ? ((markAttendance.error as AxiosError<{ error: string }>).response?.data?.error ??
-        "Failed to save attendance")
+    ? getErrorMessage(markAttendance.error, "Failed to save attendance")
     : null;
 
   if (sessionLoading) return <LoadingSpinner />;

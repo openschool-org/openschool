@@ -101,7 +101,7 @@ func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[stri
 	body := CreateUserRequest{
 		OuID:       c.ouID,
 		Type:       userType,
-		Attributes: thunderAttributes(attrs),
+		Attributes: attrs,
 	}
 
 	data, err := json.Marshal(body)
@@ -129,6 +129,9 @@ func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[stri
 	}
 
 	if resp.StatusCode != http.StatusCreated {
+		if thunderErrorCode(respBody) == "USR-1014" {
+			return nil, identity.ErrDuplicateUser
+		}
 		return nil, fmt.Errorf("thunderid error: %s", string(respBody))
 	}
 
@@ -140,18 +143,6 @@ func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[stri
 	return &identity.User{ID: user.ID}, nil
 }
 
-func thunderAttributes(attrs map[string]any) map[string]any {
-	out := make(map[string]any, len(attrs))
-	for k, v := range attrs {
-		if k == "phone_number" {
-			out["phone"] = v
-			continue
-		}
-		out[k] = v
-	}
-	return out
-}
-
 func (c *Client) UpdateUser(ctx context.Context, userID string, userType string, attrs map[string]interface{}) error {
 	token, err := c.getAccessToken(ctx)
 	if err != nil {
@@ -161,7 +152,7 @@ func (c *Client) UpdateUser(ctx context.Context, userID string, userType string,
 	body := map[string]interface{}{
 		"ouId":       c.ouID,
 		"type":       userType,
-		"attributes": thunderAttributes(attrs),
+		"attributes": attrs,
 	}
 
 	data, err := json.Marshal(body)
@@ -261,4 +252,16 @@ func (c *Client) AssignRole(ctx context.Context, roleID string, userID string) e
 	}
 
 	return nil
+}
+
+// thunderErrorCode extracts ThunderID's machine-readable error code (e.g.
+// "USR-1014") from an error response body, or "" if it can't be parsed.
+func thunderErrorCode(body []byte) string {
+	var parsed struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return ""
+	}
+	return parsed.Code
 }

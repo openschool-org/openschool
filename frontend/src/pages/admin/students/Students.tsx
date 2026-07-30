@@ -1,16 +1,28 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Search, Add, Edit, TrashCan } from "@carbon/icons-react";
-import { Button, IconButton, Select, SelectItem } from "@carbon/react";
+import { Button, IconButton, Select, SelectItem, Pagination } from "@carbon/react";
 import { useStudents, useDeleteStudent } from "../../../queries/useStudents";
 import { useGrades } from "../../../queries/useGrades";
 import { useHouses } from "../../../queries/useHouses";
 import { useCurrentClasses } from "../../../queries/useClasses";
 import type { Student } from "../../../services/student";
-import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import { usePagination } from "../../../hooks/usePagination";
+import { getErrorMessage } from "../../../lib/errorMessage";
+import TableSkeleton from "../../../components/common/TableSkeleton";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+
+const STUDENT_TABLE_HEADERS = [
+  "Index No.",
+  "Full Name",
+  "Class",
+  "House",
+  "Phone",
+  "WhatsApp",
+  "Actions",
+];
 
 export default function Students() {
   const navigate = useNavigate();
@@ -52,6 +64,8 @@ export default function Students() {
       matchesHouse
     );
   });
+
+  const { page, pageSize, pageItems, totalItems, onChange } = usePagination(filtered, 10);
 
   const handleDelete = () => {
     if (!toDelete) return;
@@ -138,8 +152,16 @@ export default function Students() {
           </div>
         </div>
 
+        {deleteStudent.isError && (
+          <div style={{ padding: "0 1.5rem 1rem" }}>
+            <ErrorMessage
+              message={getErrorMessage(deleteStudent.error, "Failed to delete student.")}
+            />
+          </div>
+        )}
+
         {isLoading ? (
-          <LoadingSpinner />
+          <TableSkeleton headers={STUDENT_TABLE_HEADERS} />
         ) : isError ? (
           <ErrorMessage message="Failed to load students" onRetry={refetch} />
         ) : filtered.length === 0 ? (
@@ -169,7 +191,7 @@ export default function Students() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((s) => (
+                {pageItems.map((s) => (
                   <tr key={s.id}>
                     <td>
                       <span className="os-table__mono">{s.index_number}</span>
@@ -217,6 +239,13 @@ export default function Students() {
                 ))}
               </tbody>
             </table>
+            <Pagination
+              totalItems={totalItems}
+              page={page}
+              pageSize={pageSize}
+              pageSizes={[10, 20, 50]}
+              onChange={onChange}
+            />
           </>
         )}
       </div>

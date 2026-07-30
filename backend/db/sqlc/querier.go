@@ -14,10 +14,12 @@ import (
 type Querier interface {
 	// ── group subjects ──────────────────────────────────────────────────────────
 	AddGroupSubject(ctx context.Context, arg AddGroupSubjectParams) (GroupSubject, error)
+	AssignClassMonitors(ctx context.Context, arg AssignClassMonitorsParams) (Class, error)
 	AssignFormTeacher(ctx context.Context, arg AssignFormTeacherParams) (Class, error)
 	AssignSubjectTeacherToClass(ctx context.Context, arg AssignSubjectTeacherToClassParams) error
 	AssignSubjectToTeacher(ctx context.Context, arg AssignSubjectToTeacherParams) error
 	CountGroupSubjects(ctx context.Context, groupID uuid.UUID) (int64, error)
+	CountUsersByRole(ctx context.Context, role string) (int64, error)
 	CreateAcademicYear(ctx context.Context, arg CreateAcademicYearParams) (AcademicYear, error)
 	CreateAttendanceSession(ctx context.Context, arg CreateAttendanceSessionParams) (AttendanceSession, error)
 	CreateClass(ctx context.Context, arg CreateClassParams) (Class, error)
@@ -48,6 +50,8 @@ type Querier interface {
 	// blocked while any of its groups still carry enrollments
 	DeleteLevel(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteMedium(ctx context.Context, id uuid.UUID) (int64, error)
+	DeletePrefect(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteSectionHead(ctx context.Context, id uuid.UUID) (int64, error)
 	// blocked while enrollments reference it
 	DeleteSelectionGroup(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStream(ctx context.Context, id uuid.UUID) (int64, error)
@@ -88,7 +92,7 @@ type Querier interface {
 	GetStudentByID(ctx context.Context, id uuid.UUID) (StudentProfile, error)
 	GetStudentByIndexNumber(ctx context.Context, indexNumber string) (StudentProfile, error)
 	GetStudentByUserID(ctx context.Context, userID pgtype.UUID) (StudentProfile, error)
-	GetStudentCurrentClass(ctx context.Context, studentID uuid.UUID) (Class, error)
+	GetStudentCurrentClass(ctx context.Context, studentID uuid.UUID) (GetStudentCurrentClassRow, error)
 	GetStudentWithClass(ctx context.Context, id uuid.UUID) (GetStudentWithClassRow, error)
 	GetSubjectByCode(ctx context.Context, code string) (Subject, error)
 	GetSubjectByID(ctx context.Context, id uuid.UUID) (Subject, error)
@@ -115,6 +119,8 @@ type Querier interface {
 	ListLevels(ctx context.Context) ([]Level, error)
 	ListLevelsByGrade(ctx context.Context, gradeID pgtype.UUID) ([]Level, error)
 	ListMediums(ctx context.Context) ([]Medium, error)
+	ListPrefectsByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListPrefectsByYearRow, error)
+	ListSectionHeadsByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListSectionHeadsByYearRow, error)
 	ListSelectionGroupsByLevel(ctx context.Context, levelID uuid.UUID) ([]SelectionGroup, error)
 	// everything needed to validate a set of picks against a level in one round trip
 	ListSelectionGroupsWithSubjectIDsByLevel(ctx context.Context, levelID uuid.UUID) ([]ListSelectionGroupsWithSubjectIDsByLevelRow, error)
@@ -156,6 +162,11 @@ type Querier interface {
 	UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error)
 	UpdateTeacherProfile(ctx context.Context, arg UpdateTeacherProfileParams) (TeacherProfile, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	// Teacher-in-charge for a whole grade (grades without A/L streams).
+	UpsertGradeSectionHead(ctx context.Context, arg UpsertGradeSectionHeadParams) (SectionHead, error)
+	UpsertPrefect(ctx context.Context, arg UpsertPrefectParams) (Prefect, error)
+	// Teacher-in-charge for one A/L stream within a grade.
+	UpsertStreamSectionHead(ctx context.Context, arg UpsertStreamSectionHeadParams) (SectionHead, error)
 }
 
 var _ Querier = (*Queries)(nil)

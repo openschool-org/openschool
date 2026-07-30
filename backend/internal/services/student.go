@@ -38,12 +38,12 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		"password":     req.Password,
 	})
 	if err != nil {
-		return db.StudentProfile{}, fmt.Errorf("failed to create Asgardeo user: %w", err)
+		return db.StudentProfile{}, fmt.Errorf("failed to create identity provider user: %w", err)
 	}
 
 	userID, err := uuid.Parse(asgardeoUser.ID)
 	if err != nil {
-		return db.StudentProfile{}, fmt.Errorf("invalid Asgardeo user ID: %w", err)
+		return db.StudentProfile{}, fmt.Errorf("invalid identity provider user ID: %w", err)
 	}
 
 	fullName := req.GivenName + " " + req.FamilyName
@@ -57,12 +57,12 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 	})
 	if err != nil {
 		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
-			log.Printf("CreateStudent: failed to roll back Asgardeo user %s after error: %v (Asgardeo account now orphaned)", asgardeoUser.ID, delErr)
+			log.Printf("CreateStudent: failed to roll back identity provider user %s after error: %v (identity provider account now orphaned)", asgardeoUser.ID, delErr)
 		}
 		return db.StudentProfile{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
-	// assign student role in Asgardeo
+	// assign student role in the identity provider
 	if err := s.idp.AssignRole(ctx, identity.RoleID("student"), asgardeoUser.ID); err != nil {
 		log.Printf("CreateStudent: failed to assign student role to %s: %v", asgardeoUser.ID, err)
 	}
@@ -88,7 +88,7 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 	})
 	if err != nil {
 		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
-			log.Printf("CreateStudent: failed to roll back Asgardeo user %s after error: %v (Asgardeo account now orphaned)", asgardeoUser.ID, delErr)
+			log.Printf("CreateStudent: failed to roll back identity provider user %s after error: %v (identity provider account now orphaned)", asgardeoUser.ID, delErr)
 		}
 		return db.StudentProfile{}, fmt.Errorf("failed to create student profile: %w", err)
 	}
@@ -128,7 +128,7 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 		return db.StudentProfile{}, fmt.Errorf("user not found")
 	}
 
-	// update Asgardeo user with all required fields
+	// update identity provider user with all required fields
 	err = s.idp.UpdateUser(ctx, userID, "student", map[string]interface{}{
 		"username":     student.IndexNumber,
 		"email":        user.Email,
@@ -137,7 +137,7 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 		"phone_number": req.PhoneNumber,
 	})
 	if err != nil {
-		fmt.Printf("warning: failed to update Asgardeo user: %v\n", err)
+		fmt.Printf("warning: failed to update identity provider user: %v\n", err)
 	}
 
 	// update DB profile
@@ -174,12 +174,12 @@ func (s *StudentService) DeleteStudent(ctx context.Context, id uuid.UUID) error 
 		return fmt.Errorf("student not found")
 	}
 
-	// Delete the Asgardeo account first and abort on failure
+	// Delete the identity provider account first and abort on failure
 	if student.UserID.Valid {
 		userID := uuid.UUID(student.UserID.Bytes)
 
 		if err := s.idp.DeleteUser(ctx, userID.String()); err != nil {
-			return fmt.Errorf("failed to delete Asgardeo user: %w", err)
+			return fmt.Errorf("failed to delete identity provider user: %w", err)
 		}
 
 		if err := s.repo.DeleteStudent(ctx, id); err != nil {

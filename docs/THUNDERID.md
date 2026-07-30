@@ -90,6 +90,29 @@ Go to **Available Scopes** and activate: `phone`, `roles` (along with the defaul
 
 Go to **Flows** and assign the default authentication flow to the application.
 
+### Allow the Frontend Origin (CORS)
+
+The React app calls ThunderID's `/oauth2/token`, `/flow/meta`, and related
+endpoints **directly from the browser** (that's how PKCE token exchange works
+for a public SPA client) — this is separate from the backend's own
+`CORS_ORIGINS` setting, which only covers requests to the Go API. Without
+this step ThunderID has no allowed origins by default, so every one of those
+browser requests is blocked by CORS and sign-in silently fails.
+
+Update the `cors` server-config section (there's no console page for this yet
+— use the API with an admin token):
+
+```bash
+curl -k -X PUT "https://localhost:8090/server-config/cors" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"allowedOrigins": ["http://localhost:5173"]}'
+```
+
+This takes effect immediately — no restart needed. Add any other origin the
+frontend is served from (a deployed domain, a different dev port, etc.) to
+the same array.
+
 ### Create the Backend Service Application
 
 Go to **Applications** and create a new Backend Service application.
@@ -177,3 +200,5 @@ VITE_THUNDERID_AFTER_SIGN_OUT_URL=http://localhost:5173
 | Backend gets `certificate signed by unknown authority`        | TLS verification needs to be relaxed for local dev against the self-signed cert                                                                                    |
 | Backend gets `token has invalid issuer`                       | Issuer value includes a path; it should be just the bare server URL                                                                                                |
 | All users/roles/data disappeared after a restart              | `docker compose down -v` was used, or the whole stack (including the one-time database init container) was recreated instead of just restarting the running server |
+| Sign-in silently fails; console shows CORS errors on `/oauth2/token` or `/flow/meta`, ends up back on `/signin` | Frontend origin isn't in the `cors` server-config's `allowedOrigins` — see "Allow the Frontend Origin (CORS)" above |
+| Backend gets `schema_validation_failed` (`USR-1019`) creating a student/teacher/admin | The user type's field name in the console doesn't match what the backend sends — the phone field must be named exactly `phone_number` (not `phone`) on every user type. Open **User Types → (type) → schema** and check for typos if this happens after manually editing one. |

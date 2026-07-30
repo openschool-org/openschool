@@ -2,9 +2,15 @@ package identity
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strings"
 )
+
+// ErrDuplicateUser is returned by Provider.CreateUser when the identity
+// provider rejects the account because a unique attribute (email, username,
+// phone, etc.) is already taken by another account.
+var ErrDuplicateUser = errors.New("a user with these details already exists")
 
 type User struct {
 	ID string

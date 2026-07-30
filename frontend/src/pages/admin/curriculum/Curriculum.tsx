@@ -13,8 +13,8 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  SkeletonText,
 } from "@carbon/react";
-import { AxiosError } from "axios";
 import {
   useLevels,
   useCreateLevel,
@@ -23,13 +23,32 @@ import {
 } from "../../../queries/useCurriculum";
 import { useGrades } from "../../../queries/useGrades";
 import type { Level } from "../../../services/curriculum";
-import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 
-function apiError(e: unknown, fallback: string) {
-  return (e as AxiosError<{ error: string }>)?.response?.data?.error ?? fallback;
+function LevelRowSkeleton() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "1.25rem 1.5rem",
+        borderBottom: "1px solid #e0e0e0",
+        gap: "1rem",
+      }}
+    >
+      <SkeletonText width="1.25rem" />
+      <div style={{ flex: 1 }}>
+        <div style={{ marginBottom: "0.4rem" }}>
+          <SkeletonText width="30%" />
+        </div>
+        <SkeletonText width="15%" />
+      </div>
+      <SkeletonText width="4rem" />
+    </div>
+  );
 }
 
 const EMPTY_FORM = { label: "", grade_id: "", sort_order: 0 };
@@ -43,21 +62,26 @@ export default function Curriculum() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [labelTouched, setLabelTouched] = useState(false);
   const [toDelete, setToDelete] = useState<Level | null>(null);
   // the level being copied; its groups and subjects come along automatically
   const [toDuplicate, setToDuplicate] = useState<Level | null>(null);
   const [dupForm, setDupForm] = useState(EMPTY_FORM);
+  const [dupLabelTouched, setDupLabelTouched] = useState(false);
 
   const gradeName = (id: string | null) =>
     grades?.find((g) => g.id === id)?.name ?? null;
 
   const openCreate = () => {
     setForm(EMPTY_FORM);
+    setLabelTouched(false);
     createLevel.reset();
     setCreateOpen(true);
   };
 
   const handleCreate = () => {
+    setLabelTouched(true);
+    if (!form.label.trim()) return;
     createLevel.mutate(
       {
         label: form.label.trim(),
@@ -70,6 +94,7 @@ export default function Curriculum() {
 
   const openDuplicate = (l: Level) => {
     duplicateLevel.reset();
+    setDupLabelTouched(false);
     // labels are unique, so pre-fill something that will not collide
     setDupForm({
       label: `${l.label} (copy)`,
@@ -80,7 +105,8 @@ export default function Curriculum() {
   };
 
   const handleDuplicate = () => {
-    if (!toDuplicate) return;
+    setDupLabelTouched(true);
+    if (!toDuplicate || !dupForm.label.trim()) return;
     duplicateLevel.mutate(
       {
         id: toDuplicate.id,
@@ -131,7 +157,13 @@ export default function Curriculum() {
           )}
         </div>
 
-        {isLoading && <LoadingSpinner />}
+        {isLoading && (
+          <div>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <LevelRowSkeleton key={i} />
+            ))}
+          </div>
+        )}
         {isError && (
           <ErrorMessage message="Could not load levels." onRetry={refetch} />
         )}
@@ -140,7 +172,7 @@ export default function Curriculum() {
           <InlineNotification
             kind="error"
             title="Could not delete level"
-            subtitle={apiError(
+            subtitle={getErrorMessage(
               deleteLevel.error,
               "The level may have students enrolled through its groups.",
             )}
@@ -162,7 +194,7 @@ export default function Curriculum() {
           />
         )}
 
-        {levels && levels.length > 0 && (
+        {!isLoading && levels && levels.length > 0 && (
           <div>
             {levels.map((l, i) => (
               <div
@@ -245,7 +277,7 @@ export default function Curriculum() {
             <InlineNotification
               kind="error"
               title="Error"
-              subtitle={apiError(createLevel.error, "Failed to create level")}
+              subtitle={getErrorMessage(createLevel.error, "Failed to create level")}
               lowContrast
               hideCloseButton
               style={{ marginBottom: "1rem", maxWidth: "100%" }}
@@ -260,6 +292,9 @@ export default function Curriculum() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, label: e.target.value }))
               }
+              onBlur={() => setLabelTouched(true)}
+              invalid={labelTouched && !form.label.trim()}
+              invalidText="A label is required."
             />
             <Select
               id="level-grade"
@@ -312,7 +347,7 @@ export default function Curriculum() {
             <InlineNotification
               kind="error"
               title="Error"
-              subtitle={apiError(
+              subtitle={getErrorMessage(
                 duplicateLevel.error,
                 "Failed to duplicate level",
               )}
@@ -340,6 +375,9 @@ export default function Curriculum() {
               onChange={(e) =>
                 setDupForm((f) => ({ ...f, label: e.target.value }))
               }
+              onBlur={() => setDupLabelTouched(true)}
+              invalid={dupLabelTouched && !dupForm.label.trim()}
+              invalidText="A label is required."
             />
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1rem" }}>
               <Select
