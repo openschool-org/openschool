@@ -47,6 +47,7 @@ import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import ClassMarks from "./ClassMarks";
 
 function toYmd(d: Date | undefined): string {
   if (!d) return "";
@@ -287,6 +288,7 @@ export default function ClassDetail() {
               <TabList aria-label="Class sections">
                 <Tab>Students</Tab>
                 <Tab>Attendance</Tab>
+                <Tab>Marks</Tab>
                 <Tab>Details</Tab>
               </TabList>
               <TabPanels>
@@ -552,6 +554,13 @@ export default function ClassDetail() {
                         }
                       />
                     )}
+                  </div>
+                </TabPanel>
+
+                {/* ── Marks ────────────────────────────────────────────── */}
+                <TabPanel style={{ padding: 0 }}>
+                  <div style={{ marginTop: "1rem" }}>
+                    <ClassMarks classId={id} academicYearId={cls.academic_year_id} />
                   </div>
                 </TabPanel>
 

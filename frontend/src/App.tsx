@@ -8,6 +8,8 @@ import { useApi } from "./hooks/useApi";
 import { useProvisionUser } from "./hooks/useProvisionUser";
 import RootLayout from "./layouts/RootLayout";
 import TeacherLayout from "./layouts/TeacherLayout";
+import ParentLayout from "./layouts/ParentLayout";
+import StudentLayout from "./layouts/StudentLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Admin pages
@@ -42,6 +44,13 @@ import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import TeacherClasses from "./pages/teacher/TeacherClasses";
 import TeacherAttendance from "./pages/teacher/TeacherAttendance";
 import TeacherProfile from "./pages/teacher/TeacherProfile";
+
+// Parent pages
+import ParentDashboard from "./pages/parent/ParentDashboard";
+import ChildDetail from "./pages/parent/ChildDetail";
+
+// Student pages
+import StudentDashboard from "./pages/student/StudentDashboard";
 
 function App() {
   useApi();
@@ -139,9 +148,34 @@ function App() {
           <Route path="*" element={<NotFound />} />
           </Route>
         </>
+      ) : role === "parent" ? (
+        /* Parent routes */
+        <Route
+          element={
+            <ProtectedRoute>
+              <ParentLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<ParentDashboard />} />
+          <Route path="/p/children/:id" element={<ChildDetail />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      ) : role === "student" ? (
+        /* Student routes */
+        <Route
+          element={
+            <ProtectedRoute>
+              <StudentLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<StudentDashboard />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
       ) : (
-        /* student / parent / unrecognized roles: no portal built yet — never
-           fall through to admin or teacher routes */
+        /* unrecognized roles: no portal built yet — never fall through to
+           admin, teacher, parent, or student routes */
         <Route
           element={
             <ProtectedRoute>

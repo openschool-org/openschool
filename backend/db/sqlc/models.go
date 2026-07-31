@@ -221,6 +221,29 @@ type TeacherSubject struct {
 	SubjectID uuid.UUID `json:"subject_id"`
 }
 
+type Term struct {
+	ID             uuid.UUID          `json:"id"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	Name           string             `json:"name"`
+	StartDate      pgtype.Date        `json:"start_date"`
+	EndDate        pgtype.Date        `json:"end_date"`
+	IsCurrent      bool               `json:"is_current"`
+	SortOrder      int32              `json:"sort_order"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type TermMark struct {
+	ID        uuid.UUID          `json:"id"`
+	StudentID uuid.UUID          `json:"student_id"`
+	SubjectID uuid.UUID          `json:"subject_id"`
+	TermID    uuid.UUID          `json:"term_id"`
+	Marks     pgtype.Numeric     `json:"marks"`
+	MaxMarks  pgtype.Numeric     `json:"max_marks"`
+	EnteredBy pgtype.UUID        `json:"entered_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type User struct {
 	ID        uuid.UUID          `json:"id"`
 	Email     string             `json:"email"`

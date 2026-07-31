@@ -59,6 +59,28 @@ func (r *GuardianRepository) GetPrimaryGuardian(ctx context.Context, studentID u
 	return r.queries.GetPrimaryGuardian(ctx, studentID)
 }
 
+func (r *GuardianRepository) SetUserID(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
+	return r.queries.SetGuardianUserID(ctx, db.SetGuardianUserIDParams{
+		ID:     id,
+		UserID: pgtype.UUID{Bytes: userID, Valid: true},
+	})
+}
+
+func (r *GuardianRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (db.Guardian, error) {
+	return r.queries.GetGuardianByUserID(ctx, pgtype.UUID{Bytes: userID, Valid: true})
+}
+
+func (r *GuardianRepository) ListStudentsByGuardianUserID(ctx context.Context, userID uuid.UUID) ([]db.ListStudentsByGuardianUserIDRow, error) {
+	return r.queries.ListStudentsByGuardianUserID(ctx, pgtype.UUID{Bytes: userID, Valid: true})
+}
+
+func (r *GuardianRepository) IsGuardianOfStudent(ctx context.Context, userID uuid.UUID, studentID uuid.UUID) (bool, error) {
+	return r.queries.IsGuardianOfStudent(ctx, db.IsGuardianOfStudentParams{
+		UserID:    pgtype.UUID{Bytes: userID, Valid: true},
+		StudentID: studentID,
+	})
+}
+
 func (r *GuardianRepository) CreateWithNullable(ctx context.Context, fullName string, relationship string, phone string, email string) (db.Guardian, error) {
 	return r.queries.CreateGuardian(ctx, db.CreateGuardianParams{
 		FullName:     fullName,

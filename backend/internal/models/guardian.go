@@ -14,6 +14,13 @@ type UpdateGuardianRequest struct {
 	Email        string `json:"email"`
 }
 
+type ProvisionGuardianLoginRequest struct {
+	Username   string `json:"username" binding:"required"`
+	Password   string `json:"password" binding:"required,min=8"`
+	GivenName  string `json:"given_name" binding:"required"`
+	FamilyName string `json:"family_name" binding:"required"`
+}
+
 type LinkGuardianRequest struct {
 	GuardianID       string `json:"guardian_id" binding:"required"`
 	IsPrimaryContact bool   `json:"is_primary_contact"`

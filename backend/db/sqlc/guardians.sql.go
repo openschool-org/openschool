@@ -71,6 +71,26 @@ func (q *Queries) GetGuardianByID(ctx context.Context, id uuid.UUID) (Guardian, 
 	return i, err
 }
 
+const getGuardianByUserID = `-- name: GetGuardianByUserID :one
+SELECT id, user_id, full_name, relationship, phone, email, created_at FROM guardians
+WHERE user_id = $1
+`
+
+func (q *Queries) GetGuardianByUserID(ctx context.Context, userID pgtype.UUID) (Guardian, error) {
+	row := q.db.QueryRow(ctx, getGuardianByUserID, userID)
+	var i Guardian
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.FullName,
+		&i.Relationship,
+		&i.Phone,
+		&i.Email,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getPrimaryGuardian = `-- name: GetPrimaryGuardian :one
 SELECT
     g.id, g.user_id, g.full_name, g.relationship, g.phone, g.email, g.created_at
@@ -94,6 +114,30 @@ func (q *Queries) GetPrimaryGuardian(ctx context.Context, studentID uuid.UUID) (
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const isGuardianOfStudent = `-- name: IsGuardianOfStudent :one
+SELECT EXISTS (
+    SELECT 1
+    FROM student_guardians sg
+    INNER JOIN guardians g ON g.id = sg.guardian_id
+    WHERE g.user_id = $1
+      AND sg.student_id = $2
+) AS is_guardian
+`
+
+type IsGuardianOfStudentParams struct {
+	UserID    pgtype.UUID `json:"user_id"`
+	StudentID uuid.UUID   `json:"student_id"`
+}
+
+// Authorization check: does the signed-in guardian actually have this
+// student linked to them? Used to gate GET /me/children/:id/... routes.
+func (q *Queries) IsGuardianOfStudent(ctx context.Context, arg IsGuardianOfStudentParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isGuardianOfStudent, arg.UserID, arg.StudentID)
+	var is_guardian bool
+	err := row.Scan(&is_guardian)
+	return is_guardian, err
 }
 
 const linkGuardianToStudent = `-- name: LinkGuardianToStudent :exec
@@ -161,6 +205,96 @@ func (q *Queries) ListGuardiansByStudent(ctx context.Context, studentID uuid.UUI
 		return nil, err
 	}
 	return items, nil
+}
+
+const listStudentsByGuardianUserID = `-- name: ListStudentsByGuardianUserID :many
+SELECT
+    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id,
+    c.id     AS class_id,
+    c.name   AS class_name,
+    gr.name  AS grade_name
+FROM student_profiles sp
+INNER JOIN student_guardians sg ON sg.student_id = sp.id
+INNER JOIN guardians g          ON g.id = sg.guardian_id
+LEFT JOIN class_students cs ON cs.student_id = sp.id
+    AND cs.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE LIMIT 1)
+LEFT JOIN classes c ON c.id = cs.class_id
+LEFT JOIN grades gr ON gr.id = c.grade_id
+WHERE g.user_id = $1
+ORDER BY sp.full_name ASC
+`
+
+type ListStudentsByGuardianUserIDRow struct {
+	ID             uuid.UUID          `json:"id"`
+	UserID         pgtype.UUID        `json:"user_id"`
+	FullName       string             `json:"full_name"`
+	IndexNumber    string             `json:"index_number"`
+	Address        pgtype.Text        `json:"address"`
+	Phone          pgtype.Text        `json:"phone"`
+	Whatsapp       pgtype.Text        `json:"whatsapp"`
+	SpecialRemarks pgtype.Text        `json:"special_remarks"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	Gender         pgtype.Text        `json:"gender"`
+	HouseID        pgtype.UUID        `json:"house_id"`
+	ClassID        pgtype.UUID        `json:"class_id"`
+	ClassName      pgtype.Text        `json:"class_name"`
+	GradeName      pgtype.Text        `json:"grade_name"`
+}
+
+// The signed-in parent's linked children, for the parent portal.
+func (q *Queries) ListStudentsByGuardianUserID(ctx context.Context, userID pgtype.UUID) ([]ListStudentsByGuardianUserIDRow, error) {
+	rows, err := q.db.Query(ctx, listStudentsByGuardianUserID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListStudentsByGuardianUserIDRow{}
+	for rows.Next() {
+		var i ListStudentsByGuardianUserIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FullName,
+			&i.IndexNumber,
+			&i.Address,
+			&i.Phone,
+			&i.Whatsapp,
+			&i.SpecialRemarks,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Gender,
+			&i.HouseID,
+			&i.ClassID,
+			&i.ClassName,
+			&i.GradeName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setGuardianUserID = `-- name: SetGuardianUserID :exec
+UPDATE guardians
+SET user_id = $2
+WHERE id = $1
+`
+
+type SetGuardianUserIDParams struct {
+	ID     uuid.UUID   `json:"id"`
+	UserID pgtype.UUID `json:"user_id"`
+}
+
+// Links a guardian record to the ThunderID identity created for their
+// portal login (see internal/services/guardian.go ProvisionLogin).
+func (q *Queries) SetGuardianUserID(ctx context.Context, arg SetGuardianUserIDParams) error {
+	_, err := q.db.Exec(ctx, setGuardianUserID, arg.ID, arg.UserID)
+	return err
 }
 
 const setPrimaryContact = `-- name: SetPrimaryContact :exec

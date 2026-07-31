@@ -31,6 +31,7 @@ import ErrorMessage from "../../../components/common/ErrorMessage";
 import ProfileBanner from "../../../components/common/ProfileBanner";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 import SubjectEnrollment from "./SubjectEnrollment";
+import StudentGuardians from "./StudentGuardians";
 
 type Gender = "" | "male" | "female";
 
@@ -191,6 +192,7 @@ export default function StudentDetail() {
         <Tabs>
           <TabList aria-label="Student sections">
             <Tab>Profile</Tab>
+            <Tab>Guardians</Tab>
             <Tab>Subject Enrollment</Tab>
           </TabList>
           <TabPanels>
@@ -348,6 +350,11 @@ export default function StudentDetail() {
           </div>
         </div>
 
+            </TabPanel>
+            <TabPanel style={{ padding: 0 }}>
+              <div style={{ marginTop: "1rem" }}>
+                <StudentGuardians studentId={student.id} />
+              </div>
             </TabPanel>
             <TabPanel style={{ padding: 0 }}>
               <div style={{ marginTop: "1rem" }}>

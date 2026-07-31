@@ -8,7 +8,10 @@ import (
 	"github.com/openschool-org/openschool/internal/services"
 )
 
-func RegisterSchoolRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
+// anyRole covers any authenticated user regardless of role — needed for
+// GET /academic-years/current, which the parent portal reads to know which
+// year's terms to offer when picking marks to view.
+func RegisterSchoolRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, anyRole *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewSchoolRepository(pool)
 	service := services.NewSchoolService(repo)
 	handler := handlers.NewSchoolHandler(service)
@@ -19,7 +22,7 @@ func RegisterSchoolRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGrou
 
 	admin.POST("/academic-years", handler.CreateAcademicYear)
 	teacherOrAdmin.GET("/academic-years", handler.ListAcademicYears)
-	teacherOrAdmin.GET("/academic-years/current", handler.GetCurrentAcademicYear)
+	anyRole.GET("/academic-years/current", handler.GetCurrentAcademicYear)
 	admin.PUT("/academic-years/:id/set-current", handler.SetCurrentAcademicYear)
 	admin.DELETE("/academic-years/:id", handler.DeleteAcademicYear)
 }

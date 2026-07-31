@@ -2,6 +2,8 @@
 
 OpenSchool uses ThunderID as its identity provider. This guide walks through starting it, creating the user types and roles OpenSchool needs, and connecting the frontend and backend applications to it.
 
+**Everything in this guide is one-time infrastructure setup.** You do this once per instance, in the ThunderID console. Individual admin/teacher/student/parent *accounts* are never created here by hand afterward — the OpenSchool app provisions those itself (via the backend's Administrator-role service account) as you use the **Setup wizard**, **Teachers**, **Students**, and student **Guardians** pages. See [`SETUP.md`](./SETUP.md) for that day-to-day workflow, in particular its "Registering parents, and accessing each portal" section.
+
 ### Start ThunderID
 
 ```bash

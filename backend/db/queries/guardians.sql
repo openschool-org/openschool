@@ -54,3 +54,42 @@ INNER JOIN student_guardians sg ON sg.guardian_id = g.id
 WHERE sg.student_id = $1
   AND sg.is_primary_contact = TRUE
 LIMIT 1;
+
+-- name: SetGuardianUserID :exec
+-- Links a guardian record to the ThunderID identity created for their
+-- portal login (see internal/services/guardian.go ProvisionLogin).
+UPDATE guardians
+SET user_id = $2
+WHERE id = $1;
+
+-- name: GetGuardianByUserID :one
+SELECT * FROM guardians
+WHERE user_id = $1;
+
+-- name: ListStudentsByGuardianUserID :many
+-- The signed-in parent's linked children, for the parent portal.
+SELECT
+    sp.*,
+    c.id     AS class_id,
+    c.name   AS class_name,
+    gr.name  AS grade_name
+FROM student_profiles sp
+INNER JOIN student_guardians sg ON sg.student_id = sp.id
+INNER JOIN guardians g          ON g.id = sg.guardian_id
+LEFT JOIN class_students cs ON cs.student_id = sp.id
+    AND cs.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE LIMIT 1)
+LEFT JOIN classes c ON c.id = cs.class_id
+LEFT JOIN grades gr ON gr.id = c.grade_id
+WHERE g.user_id = $1
+ORDER BY sp.full_name ASC;
+
+-- name: IsGuardianOfStudent :one
+-- Authorization check: does the signed-in guardian actually have this
+-- student linked to them? Used to gate GET /me/children/:id/... routes.
+SELECT EXISTS (
+    SELECT 1
+    FROM student_guardians sg
+    INNER JOIN guardians g ON g.id = sg.guardian_id
+    WHERE g.user_id = $1
+      AND sg.student_id = $2
+) AS is_guardian;

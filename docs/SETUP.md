@@ -106,6 +106,48 @@ the order a real school would need them:
    teacher can create a session and start marking attendance from the
    class's own page.
 
+## 5. Registering parents, and accessing each portal
+
+Admins, teachers, and students all get their ThunderID login automatically
+at the moment their record is created (Setup wizard for the first admin,
+**Teachers**/**Students** pages for everyone else). Parents work a little
+differently, since a parent isn't a standalone record — they're a guardian
+attached to one or more students.
+
+**Registering a parent:**
+
+1. Sign in as admin → **Students** → open a student → **Guardians** tab.
+2. **Add Guardian** — name, relationship, phone, and an email. The email is
+   required later, so don't skip it even though the form allows it.
+3. Once added, click **Set Up Login** on that guardian → choose a username
+   and temporary password → **Create Login**. This is what actually
+   provisions their ThunderID account (type `parent`, role `parent`) and
+   links it back to the guardian record.
+4. Hand the username/password to the parent directly — there's no
+   self-registration or invite email.
+
+A guardian can be added to more than one student (siblings share a
+guardian) — add them from each sibling's **Guardians** tab rather than
+recreating the guardian record; **Add Guardian** always creates a new
+record, so use the same guardian's existing login for every child they're
+attached to. A student can have up to 2 guardians on file.
+
+**Signing in and accessing a portal:**
+
+There's no separate URL per role — everyone signs in at the same page, and
+which portal they land on is decided automatically from the `roles` claim
+on their token:
+
+| Role | How the account is created | What they see |
+| --- | --- | --- |
+| Admin | Setup wizard (first one only) | Full admin dashboard — everything in this guide |
+| Teacher | **Teachers** page | Their own dashboard, classes, attendance marking *(currently placeholder data — not wired to real records yet)* |
+| Student | **Students** page | Their own profile, attendance history, and term marks |
+| Parent | A student's **Guardians** tab, per above | A list of their linked children; click into one for that child's attendance and term marks |
+
+A parent or student can only ever see their own (or their own child's)
+data — this is enforced server-side, not just hidden in the UI.
+
 ## Starting over
 
 Everything above is idempotent in the sense that you can wipe app data and
@@ -117,10 +159,10 @@ redo it, but the two pieces live in different systems:
   TRUNCATE TABLE
     academic_years, attendance_records, attendance_sessions, class_students,
     class_subject_teachers, classes, grades, group_subjects, guardians, houses,
-    levels, mediums, school, section_heads, selection_groups, stream_groups,
-    streams, student_guardians, student_profiles, student_siblings,
-    student_subject_enrollments, subjects, teacher_profiles, teacher_subjects,
-    users
+    levels, mediums, prefects, school, section_heads, selection_groups,
+    stream_groups, streams, student_guardians, student_profiles,
+    student_siblings, student_subject_enrollments, subjects,
+    teacher_profiles, teacher_subjects, term_marks, terms, users
   RESTART IDENTITY CASCADE;
   ```
   This does **not** delete the corresponding identities (student/teacher/
