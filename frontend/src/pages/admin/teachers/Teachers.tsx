@@ -115,8 +115,8 @@ export default function Teachers() {
                         {t.full_name}
                       </Link>
                     </td>
-                    <td className="os-table__muted">{t.phone ?? "—"}</td>
-                    <td className="os-table__muted">{t.joined_date ?? "—"}</td>
+                    <td className="os-table__muted">{t.phone ?? "-"}</td>
+                    <td className="os-table__muted">{t.joined_date ?? "-"}</td>
                     <td>
                       <div
                         style={{

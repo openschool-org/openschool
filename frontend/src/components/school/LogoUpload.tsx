@@ -2,10 +2,6 @@ import { useRef, useState } from "react";
 import { Button } from "@carbon/react";
 import { Upload, TrashCan, Building } from "@carbon/icons-react";
 
-// No backend file storage exists — the logo is stored as a data: URL in the
-// same `logo_url` text column a pasted URL would use, so this needs no API
-// changes. Capped well under Postgres's TEXT limit; large enough for a
-// school crest, small enough not to bloat every /school response.
 const MAX_LOGO_BYTES = 500 * 1024;
 
 interface LogoUploadProps {

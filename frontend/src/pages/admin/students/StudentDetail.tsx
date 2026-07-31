@@ -277,7 +277,7 @@ export default function StudentDetail() {
                   value={
                     form.gender
                       ? form.gender[0].toUpperCase() + form.gender.slice(1)
-                      : "—"
+                      : "-"
                   }
                   readOnly
                 />

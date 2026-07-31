@@ -21,9 +21,6 @@ import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import type { AttendanceRecordRow } from "../../../services/attendance";
 
-// The schema also allows "excused", but this screen only exposes the three
-// statuses a teacher marks day to day; excused stays a valid value a record
-// can carry, just not one this UI writes.
 type Status = "present" | "absent" | "late" | null;
 
 const STATUS_STYLES: Record<

@@ -59,9 +59,6 @@ export default function Prefects() {
   };
 
   const byRank = (rank: PrefectRank) => (prefects ?? []).filter((p) => p.rank === rank);
-  // Students already holding a rank this year can't be picked again until
-  // their current appointment is removed — the backend enforces one rank
-  // per student per year anyway, so hiding them avoids a round-trip error.
   const assignedStudentIds = new Set((prefects ?? []).map((p) => p.student_id));
   const availableStudents = (students ?? []).filter((s) => !assignedStudentIds.has(s.id));
 

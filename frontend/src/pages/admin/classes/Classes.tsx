@@ -47,9 +47,6 @@ export default function Classes() {
   const [toDelete, setToDelete] = useState<ClassWithDetails | null>(null);
 
   const { page, pageSize, pageItems, totalItems, onChange } = usePagination(classes ?? [], 10);
-
-  // the list endpoint returns ids for stream and form teacher, so resolve the
-  // names from the lists we already hold rather than a request per row
   const streamName = (id: string | null) =>
     id ? (streams?.find((s) => s.id === id)?.name ?? null) : null;
   const teacherName = (id: string | null) =>

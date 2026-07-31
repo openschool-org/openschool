@@ -41,8 +41,6 @@ function GradeRowSkeleton() {
   );
 }
 
-// Grade names are free text, so these checks are advisory only — they point at
-// rows that look wrong rather than blocking anything.
 function gradeNumber(name: string): number | null {
   const m = name.match(/\d+/);
   return m ? Number(m[0]) : null;
@@ -55,8 +53,8 @@ function nameWarning(
 ): string | null {
   const n = gradeNumber(name);
   if (n === null) return "No number in this name";
-  if (from !== null && n < from) return `Below your grade range (${from}–${to})`;
-  if (to !== null && n > to) return `Above your grade range (${from}–${to})`;
+  if (from !== null && n < from) return `Below your grade range (${from}-${to})`;
+  if (to !== null && n > to) return `Above your grade range (${from}-${to})`;
   return null;
 }
 
@@ -160,7 +158,7 @@ export default function Grades() {
         <div>
           <h1 className="os-page__title">Grades</h1>
           <p className="os-page__subtitle">
-            The grades this school runs, in order. Reorder with the arrows —
+            The grades this school runs, in order. Reorder with the arrows -
             positions are numbered automatically.
           </p>
         </div>

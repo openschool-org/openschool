@@ -22,8 +22,6 @@ import { useSchool, useUpdateSchool, useCreateSchool } from "../../../queries/us
 import type { School } from "../../../services/school";
 import Houses from "./Houses";
 
-// The grade range lives alongside the school fields so a save carries every
-// value in one object — PUT /school replaces the whole record.
 type SettingsForm = SchoolFormValues & {
   grade_from: number | "";
   grade_to: number | "";
@@ -39,7 +37,6 @@ const EMPTY_FORM: SettingsForm = {
   grade_to: "",
 };
 
-// Unset columns arrive as null; the inputs are controlled, so coalesce to "".
 function schoolToForm(s: School): SettingsForm {
   return {
     name: s.name,
@@ -57,8 +54,6 @@ export default function SettingsPage() {
   const updateSchool = useUpdateSchool();
   const createSchool = useCreateSchool();
 
-  // No school row yet is a normal first-run state, not a failure — it's
-  // what every fresh instance looks like right after the admin registers.
   const noSchoolYet = error instanceof AxiosError && error.response?.status === 404;
 
   const [editing, setEditing] = useState(false);
@@ -80,8 +75,6 @@ export default function SettingsPage() {
     setEditing(false);
   };
 
-  // Sri Lankan schools run grades 1 through 13 — the same bounds the setup
-  // wizard uses when first creating the school.
   const GRADE_MIN = 1;
   const GRADE_MAX = 13;
 
@@ -257,12 +250,12 @@ export default function SettingsPage() {
               <SelectItem value="tamil" text="Tamil" />
             </Select>
             <Select id="calendar" labelText="Academic Calendar" defaultValue="jan_dec" disabled={!editing}>
-              <SelectItem value="jan_dec" text="January — December" />
-              <SelectItem value="sep_aug" text="September — August" />
+              <SelectItem value="jan_dec" text="January - December" />
+              <SelectItem value="sep_aug" text="September - August" />
             </Select>
             <Select id="grading" labelText="Grading System" defaultValue="percentage" disabled={!editing}>
-              <SelectItem value="percentage" text="Percentage (0–100)" />
-              <SelectItem value="grade" text="Grade (A–F)" />
+              <SelectItem value="percentage" text="Percentage (0-100)" />
+              <SelectItem value="grade" text="Grade (A-F)" />
             </Select>
           </div>
         </div>
@@ -305,7 +298,7 @@ export default function SettingsPage() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0" }}>
             {[
-              ["Version",    "0.1.0 — development build"],
+              ["Version",    "0.1.0 - development build"],
               ["License",    "MIT"],
               ["Repository", "github.com/openschool-org"],
               ["Support",    "github.com/openschool-org/issues"],

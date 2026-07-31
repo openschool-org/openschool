@@ -226,7 +226,7 @@ export default function Streams() {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 500, color: "#161616" }}>
                       {row.gradeName}
-                      {row.streamName ? ` — ${row.streamName}` : ""}
+                      {row.streamName ? ` - ${row.streamName}` : ""}
                     </p>
                     {head && (
                       <p style={{ margin: 0, fontSize: "0.75rem", color: "#525252" }}>

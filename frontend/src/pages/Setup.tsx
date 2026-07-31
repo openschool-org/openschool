@@ -50,8 +50,6 @@ export default function Setup() {
 
   if (statusLoading) return <div style={{ minHeight: "100vh" }} />;
 
-  // Setup already happened (or the check failed closed) — this page must
-  // never be usable again once an admin exists.
   if (!done && status && !status.needs_setup) {
     return <Navigate to="/signin" replace />;
   }
@@ -144,7 +142,7 @@ export default function Setup() {
 
         <p style={{ color: "#525252", marginBottom: "1.5rem", fontSize: "0.875rem" }}>
           This looks like a new instance. Create the admin account to get
-          started — <strong>this can only be done once.</strong>
+          started - <strong>this can only be done once.</strong>
         </p>
 
         {errorMessage && (
@@ -194,7 +192,7 @@ export default function Setup() {
           <TextInput
             id="setup-username"
             labelText="Username"
-            helperText="Used to sign in — separate from your email."
+            helperText="Used to sign in - separate from your email."
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             onBlur={() => markTouched("username")}

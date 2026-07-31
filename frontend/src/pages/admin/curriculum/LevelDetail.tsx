@@ -348,7 +348,7 @@ export default function LevelDetail() {
         <div className="os-section">
           <EmptyState
             title="No selection groups"
-            description="Add a group for each decision a student makes at this level — one for compulsory subjects, and one per elective pool."
+            description="Add a group for each decision a student makes at this level - one for compulsory subjects, and one per elective pool."
             action={
               <Button renderIcon={Add} kind="primary" onClick={openCreateGroup}>
                 New Group

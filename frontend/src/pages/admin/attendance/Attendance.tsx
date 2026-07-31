@@ -31,7 +31,6 @@ function toYmd(d: Date): string {
 const TODAY_YMD = toYmd(new Date());
 
 function displayDate(ymd: string) {
-  // avoid the UTC-midnight-shifts-a-day-back trap: parse as local, not Date(ymd)
   const [y, m, d] = ymd.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("en-LK", {
     weekday: "long",
@@ -54,8 +53,6 @@ export default function Attendance() {
     deleteSession.mutate(toDelete.id, { onSettled: () => setToDelete(null) });
   };
 
-  // a session is "marked" once at least one record has been written for it;
-  // partial marking still counts, since there is no per-session "done" flag
   const marked = (sessions ?? []).filter((s) => s.marked_count > 0).length;
   const pending = (sessions ?? []).length - marked;
   const isToday = date === TODAY_YMD;

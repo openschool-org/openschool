@@ -186,7 +186,7 @@ export default function Subjects() {
                           {s.type}
                         </Tag>
                       ) : (
-                        <span className="os-table__muted">—</span>
+                        <span className="os-table__muted">-</span>
                       )}
                     </td>
                     <td>

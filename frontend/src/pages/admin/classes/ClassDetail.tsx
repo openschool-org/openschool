@@ -53,9 +53,6 @@ function toYmd(d: Date | undefined): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// Inserts a dash between a leading grade number and the section letters when
-// one isn't already there, e.g. "6A" -> "6-A". Names already written with a
-// dash (e.g. "10-A") pass through unchanged.
 function formatClassLabel(name: string) {
   const m = name.match(/^(\d+)([^\d-].*)$/);
   return m ? `${m[1]}-${m[2]}` : name;
@@ -69,8 +66,6 @@ export default function ClassDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  // The dashboard's class boxes link straight to the Attendance tab so
-  // "view all attendance for this class" lands somewhere useful.
   const initialTab = (location.state as { tab?: string } | null)?.tab === "attendance" ? 1 : 0;
 
   const { data: cls, isLoading, isError, refetch } = useClass(id);
@@ -115,8 +110,6 @@ export default function ClassDetail() {
   const academicYearLabel = years?.find((y) => y.id === cls?.academic_year_id)?.label;
   const girlMonitor = students?.find((s) => s.id === cls?.girl_monitor_id);
   const boyMonitor = students?.find((s) => s.id === cls?.boy_monitor_id);
-  // Hide only students known to be the wrong gender — students with no
-  // gender on file stay selectable rather than being silently excluded.
   const girlMonitorCandidates = (students ?? []).filter((s) => s.gender !== "male");
   const boyMonitorCandidates = (students ?? []).filter((s) => s.gender !== "female");
 

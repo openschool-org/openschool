@@ -64,7 +64,6 @@ export default function Curriculum() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [labelTouched, setLabelTouched] = useState(false);
   const [toDelete, setToDelete] = useState<Level | null>(null);
-  // the level being copied; its groups and subjects come along automatically
   const [toDuplicate, setToDuplicate] = useState<Level | null>(null);
   const [dupForm, setDupForm] = useState(EMPTY_FORM);
   const [dupLabelTouched, setDupLabelTouched] = useState(false);
@@ -95,7 +94,6 @@ export default function Curriculum() {
   const openDuplicate = (l: Level) => {
     duplicateLevel.reset();
     setDupLabelTouched(false);
-    // labels are unique, so pre-fill something that will not collide
     setDupForm({
       label: `${l.label} (copy)`,
       grade_id: l.grade_id ?? "",
@@ -138,7 +136,7 @@ export default function Curriculum() {
         <div>
           <h1 className="os-page__title">Curriculum</h1>
           <p className="os-page__subtitle">
-            A level is any container you name — a grade, a stream, an exam stage.
+            A level is any container you name - a grade, a stream, an exam stage.
             Each level holds selection groups that decide what students pick.
           </p>
         </div>
@@ -185,7 +183,7 @@ export default function Curriculum() {
         {!isLoading && !isError && levels?.length === 0 && (
           <EmptyState
             title="No levels yet"
-            description="Create a level for each place a distinct set of subject rules applies — for example one per grade, or one per stream."
+            description="Create a level for each place a distinct set of subject rules applies - for example one per grade, or one per stream."
             action={
               <Button renderIcon={Add} kind="primary" onClick={openCreate}>
                 New Level

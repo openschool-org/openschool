@@ -201,10 +201,10 @@ export default function Students() {
                         {s.full_name}
                       </Link>
                     </td>
-                    <td className="os-table__muted">{s.class_name ?? "—"}</td>
-                    <td className="os-table__muted">{s.house_name ?? "—"}</td>
-                    <td className="os-table__muted">{s.phone ?? "—"}</td>
-                    <td className="os-table__muted">{s.whatsapp ?? "—"}</td>
+                    <td className="os-table__muted">{s.class_name ?? "-"}</td>
+                    <td className="os-table__muted">{s.house_name ?? "-"}</td>
+                    <td className="os-table__muted">{s.phone ?? "-"}</td>
+                    <td className="os-table__muted">{s.whatsapp ?? "-"}</td>
                     <td>
                       <div
                         style={{

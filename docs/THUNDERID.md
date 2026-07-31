@@ -5,10 +5,14 @@ OpenSchool uses ThunderID as its identity provider. This guide walks through sta
 ### Start ThunderID
 
 ```bash
-docker compose -f oci://ghcr.io/thunder-id/thunderid-quick-start:latest up -d
+docker compose -f oci://ghcr.io/thunder-id/thunderid-quick-start:latest -p openschool up -d
 ```
 
 This sets up the database, runs the setup process, and starts the ThunderID server. It creates three containers: two of them (`thunderid-db-init` and `thunderid-setup`) run once and exit, that's normal, not an error. The third (`thunderid`) keeps running.
+
+**Always pass `-p openschool`** (or some other fixed project name). Without it, Compose derives the project name from your current working directory, so running this same command from different directories silently creates separate, fully isolated stacks — each with its own database, admin password, and applications. It's easy to end up with several of these lying around and lose track of which one your `.env` files actually point at.
+
+**To restart ThunderID later, don't re-run the command above** — use `docker start openschool-thunderid-1` instead. It resumes the existing server against its existing data. Re-running the full `docker compose ... up -d` re-executes the one-shot `thunderid-setup` container against the already-initialized database, and its bootstrap step isn't idempotent: it fails with `user_type "Person" (USRS-1003): User type name conflict`, and since `thunderid` won't start until `thunderid-setup` completes successfully, the server never comes up either. See the troubleshooting table below if this happens.
 
 **Important: the admin password is not `admin`.** It's randomly generated the first time setup runs, and printed once to the setup container's own logs
 
@@ -55,6 +59,14 @@ Same as student, plus:
 | --------------- | --------------- | ------ | -------- | ------ | ---------- |
 | employee_number | Employee Number | String | Yes      | Yes    | No         |
 
+**Admin user type**
+
+Same fields as student, no extra attributes. This is what the test admin account below is created as — don't try to reuse the console's built-in `Person` type for it, `Person` accounts can't be added to an application's Allowed User Types and will never pick up app roles.
+
+**Parent user type**
+
+Same fields as student. Needed so guardians have a way to sign in at all — the `parent` role and the backend's `Guardian` profile table exist regardless, but without this user type there's no account type to attach a parent login to.
+
 ### Create Roles
 
 Go to **Roles** in the left sidebar and create:
@@ -75,7 +87,7 @@ Go to **Applications** and create a new application for the React frontend.
 - Set the Application URL to `http://localhost:5173`
 - Set the redirect URI to `http://localhost:5173`
 
-**Set Allowed User Types.** In the **Access** section of the application, add `student`, `teacher`, and `admin` to Allowed User Types. This step is easy to miss, but without it, no user attributes or roles will be added to tokens for anyone signing into this app, no matter what you configure elsewhere. This is also why you can't test with the built-in console admin, that account is type `Person`, which isn't and can't be added to this list.
+**Set Allowed User Types.** In the **Access** section of the application, add `student`, `teacher`, `admin`, and `parent` to Allowed User Types. This step is easy to miss, but without it, no user attributes or roles will be added to tokens for anyone signing into this app, no matter what you configure elsewhere. This is also why you can't test with the built-in console admin, that account is type `Person`, which isn't and can't be added to this list.
 
 Go to **Token Attributes and Response** for this application and add the following attributes to the **Access Token**:
 
@@ -200,5 +212,8 @@ VITE_THUNDERID_AFTER_SIGN_OUT_URL=http://localhost:5173
 | Backend gets `certificate signed by unknown authority`        | TLS verification needs to be relaxed for local dev against the self-signed cert                                                                                    |
 | Backend gets `token has invalid issuer`                       | Issuer value includes a path; it should be just the bare server URL                                                                                                |
 | All users/roles/data disappeared after a restart              | `docker compose down -v` was used, or the whole stack (including the one-time database init container) was recreated instead of just restarting the running server |
+| `thunderid-setup` fails with `User type name conflict` after a restart, and/or `thunderid` never comes back up | The full `docker compose ... up -d` command was re-run against an already-initialized volume instead of `docker start openschool-thunderid-1` — see "Start ThunderID" above. `docker start openschool-thunderid-1` directly still works since the underlying data is untouched. |
+| Console itself won't load — `/oauth2/authorize` redirects to `.../gate/error?errorCode=invalid_request&errorMessage=Invalid+client_id`, even for the built-in `CONSOLE` client | The aborted `thunderid-setup` re-run above can partially apply before it hits the conflict and dies, deleting default resources (including the built-in `CONSOLE` application) without recreating them. There's no clean recovery from this — remove the containers and volumes for that project and run setup fresh. |
+| Multiple ThunderID projects running or half-remembered, `.env` credentials rejected with `invalid_client` against the instance that's currently up | Compose was run without `-p openschool` from more than one working directory, creating separate isolated stacks. `docker compose ls`, then `docker ps -a \| grep thunder` and `docker volume ls \| grep thunder` to see what actually exists, and consolidate down to one. |
 | Sign-in silently fails; console shows CORS errors on `/oauth2/token` or `/flow/meta`, ends up back on `/signin` | Frontend origin isn't in the `cors` server-config's `allowedOrigins` — see "Allow the Frontend Origin (CORS)" above |
 | Backend gets `schema_validation_failed` (`USR-1019`) creating a student/teacher/admin | The user type's field name in the console doesn't match what the backend sends — the phone field must be named exactly `phone_number` (not `phone`) on every user type. Open **User Types → (type) → schema** and check for typos if this happens after manually editing one. |

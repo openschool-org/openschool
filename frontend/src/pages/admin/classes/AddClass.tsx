@@ -22,7 +22,6 @@ type Touched = Partial<Record<"grade" | "name" | "year", boolean>>;
 
 const EMPTY_FORM = {
   grade_id: "",
-  // "" means "fall back to the current year" — resolved at render, not stored
   academic_year_id: "",
   name: "",
   stream_id: "",
@@ -44,19 +43,14 @@ export default function AddClass() {
 
   const markTouched = (field: keyof Touched) => setTouched((t) => ({ ...t, [field]: true }));
 
-  // sub-streams belong to a stream, so they can only load once one is chosen
   const { data: streamGroups } = useStreamGroups(form.stream_id);
 
-  // Default to the current academic year by deriving it rather than writing it
-  // into state from an effect, so the field is correct on first paint.
   const currentYearId = years?.find((y) => y.is_current)?.id ?? "";
   const academicYearId = form.academic_year_id || currentYearId;
 
   const set = (field: keyof typeof EMPTY_FORM, value: string) =>
     setForm((f) => ({ ...f, [field]: value }));
 
-  // clearing the stream must clear the sub-stream: the classes table has a
-  // CHECK that stream_group_id is only set when stream_id is
   const handleStreamChange = (value: string) =>
     setForm((f) => ({ ...f, stream_id: value, stream_group_id: "" }));
 

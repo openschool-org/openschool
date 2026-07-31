@@ -18,9 +18,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Touched = Partial<Record<"givenName" | "familyName" | "email" | "indexNumber", boolean>>;
 
-// Index numbers are printed on ID cards and are often sequential, so they
-// must never double as a login credential. Generate an unrelated one-time
-// password instead and hand it to the admin to pass along out-of-band.
 function generateTempPassword(): string {
   const alphabet =
     "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -107,7 +104,6 @@ export default function AddStudent() {
           subtitle="A one-time password is generated on save. It is never the student's index number - share it with them out-of-band and have them change it on first login."
           lowContrast
           hideCloseButton
-          // .os-form has no gap — sections carry their own margin, so match it
           style={{ maxWidth: "100%", marginBottom: "1.5rem" }}
         />
 
@@ -241,7 +237,7 @@ export default function AddStudent() {
         <p style={{ marginBottom: "1rem" }}>
           Share this one-time password with the student through a secure,
           out-of-band channel (not email/SMS in the clear). It will not be
-          shown again — the student should change it after signing in.
+          shown again - the student should change it after signing in.
         </p>
         <div
           style={{

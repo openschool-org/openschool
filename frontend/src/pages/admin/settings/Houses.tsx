@@ -310,7 +310,7 @@ export default function Houses() {
               : "Re-assign all students without a house"}
           </Button>
           <span style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>
-            Useful after setting up houses — students added earlier get a house.
+            Useful after setting up houses - students added earlier get a house.
           </span>
         </div>
       )}

@@ -195,7 +195,6 @@ html, body, #root {
 // ─── Stat cards ─────────────────────────────────────────────────────────────
 .os-stat-grid {
   display: grid;
-  // 4 columns on wide screens, gracefully wraps as viewport narrows
   grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
   margin-bottom: 1.5rem;
@@ -302,8 +301,6 @@ html, body, #root {
     &:last-child td { border-bottom: none; }
   }
 
-  // rows that aren't themselves clickable (only their action buttons are) —
-  // the pointer/highlight otherwise implies the whole row does something
   &--no-hover tbody tr {
     cursor: default;
     &:hover { background-color: transparent; }
@@ -482,7 +479,6 @@ html, body, #root {
 .cds--header > nav {
   background-color: $os-accent-deeper !important;
   background: $os-accent-deeper !important;
-  // override Carbon CSS variable that sets the white background
   --cds-background: #{$os-accent-deeper};
   --cds-layer-01: #{$os-accent-deeper};
 }
@@ -517,10 +513,6 @@ html, body, #root {
 .cds--header__menu-item::before { display: none; }
 
 // ─── Compact inline DatePicker (e.g. attendance session filter) ──────────────
-// Carbon's DatePicker doesn't shrink its internal elements to fit a
-// constrained parent width on its own — without this, the calendar icon can
-// render past the intended box and overlap whatever sits next to it in a flex
-// row. Force every layer down to the input to actually respect the width.
 .os-session-date-filter {
   width: 11rem;
   overflow: hidden;

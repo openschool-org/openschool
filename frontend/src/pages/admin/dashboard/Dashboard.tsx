@@ -124,16 +124,13 @@ export default function Dashboard() {
   const { data: years, isLoading: yearsLoading } = useAcademicYears();
   const { data: todaySessions, isLoading: sessionsLoading } = useDailySessions(TODAY_YMD);
 
-  const title = school?.name ? `${school.name} — Admin Dashboard` : "Admin Dashboard";
+  const title = school?.name ? `${school.name} - Admin Dashboard` : "Admin Dashboard";
   const currentYear = years?.find((y) => y.is_current) ?? null;
 
   const marked = (todaySessions ?? []).filter((s) => s.marked_count > 0).length;
   const pending = (todaySessions ?? []).length - marked;
   const markedPct = todaySessions && todaySessions.length > 0 ? Math.round((marked / todaySessions.length) * 100) : 0;
 
-  // A real recent-activity feed: the newest students and teachers, merged
-  // and sorted by when their account was actually created — no fabricated
-  // events, nothing beyond what the backend already tracks.
   const recentActivity = useMemo(() => {
     type Item = { key: string; text: string; sub: string; time: string; path: string; kind: "student" | "teacher" };
     const items: Item[] = [];
@@ -384,7 +381,7 @@ export default function Dashboard() {
                     "Period",
                     currentYear.start_date && currentYear.end_date
                       ? `${new Date(currentYear.start_date).toLocaleDateString("en-LK", { month: "short", year: "numeric" })} – ${new Date(currentYear.end_date).toLocaleDateString("en-LK", { month: "short", year: "numeric" })}`
-                      : "—",
+                      : "-",
                   ],
                 ].map(([label, value]) => (
                   <div

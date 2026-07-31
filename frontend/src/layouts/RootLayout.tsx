@@ -74,8 +74,6 @@ export default function RootLayout() {
   const { getAccessToken } = useThunderID();
   const location = useLocation();
 
-  // A fresh instance has no school row yet — send the admin straight to
-  // Settings to create one before they can use the rest of the app.
   const { isLoading: schoolLoading, error: schoolError } = useSchool();
   const noSchoolYet = schoolError instanceof AxiosError && schoolError.response?.status === 404;
 

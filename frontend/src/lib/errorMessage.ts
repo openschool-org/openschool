@@ -1,8 +1,5 @@
 import { AxiosError } from "axios";
 
-// Every handler in the backend returns errors as `{ "error": "..." }` — this
-// is the one place that shape gets unwrapped, so a raw AxiosError never
-// leaks into a notification.
 export function getErrorMessage(
   error: unknown,
   fallback = "Something went wrong. Please try again.",

@@ -269,7 +269,7 @@ export default function TeacherDetail() {
               <TextInput
                 id="joined-date"
                 labelText="Joined Date"
-                value={teacher.joined_date ?? "—"}
+                value={teacher.joined_date ?? "-"}
                 readOnly
               />
               <TextInput
@@ -278,7 +278,7 @@ export default function TeacherDetail() {
                 value={
                   teacher.created_at
                     ? new Date(teacher.created_at).toLocaleDateString()
-                    : "—"
+                    : "-"
                 }
                 readOnly
               />

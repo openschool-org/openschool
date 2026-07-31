@@ -35,9 +35,6 @@ import { useCreateMedium } from "../../../queries/useCurriculum";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import type { Grade } from "../../../services/grade";
 
-// A/L (Grade 12/13) streams. Science splits into two stream_groups (Physical
-// Science = combined maths, Bio Science = biology); the other three streams
-// have no sub-groups, matching the backend's data model.
 type ALStreamKey = "science_physical" | "science_bio" | "commerce" | "arts" | "technology";
 
 interface ALStreamDef {
@@ -289,12 +286,11 @@ export default function SchoolSetup() {
         is_current: true,
       });
 
-      // Plain lettered sections (10-A, 10-B, …) for every non-A/L grade.
       for (const grade of regularGrades) {
         const gradeNumber = Number(grade.name.replace(/\D/g, ""));
         const count = sectionsPerGrade[gradeNumber] ?? 1;
         for (let i = 0; i < count; i++) {
-          const section = String.fromCharCode(65 + i); // A, B, C…
+          const section = String.fromCharCode(65 + i);
           await createClass.mutateAsync({
             grade_id: grade.id,
             academic_year_id: year.id,
@@ -303,8 +299,6 @@ export default function SchoolSetup() {
         }
       }
 
-      // A/L streams (12-M1, 12-M2, 12-C1, 13-B1, …) shared across whichever
-      // of Grade 12/13 were created.
       if (alGrades.length > 0) {
         const enabledDefs = AL_STREAM_DEFS.filter((d) => alStreams[d.key].enabled);
         const streamIdByName = new Map<string, string>();
@@ -377,7 +371,7 @@ export default function SchoolSetup() {
               Set Up Your School
             </p>
             <p style={{ margin: 0, fontSize: "0.75rem", color: "#8d8d8d" }}>
-              A few steps to get OpenSchool ready — you can change any of this later.
+              A few steps to get OpenSchool ready - you can change any of this later.
             </p>
           </div>
         </div>
@@ -404,7 +398,7 @@ export default function SchoolSetup() {
 
         {/* ── Step 0: School ─────────────────────────────────────────── */}
         {step === 0 && (
-          <StepShell icon={Enterprise} title="School details" subtitle="The basics — you can fill in the rest later from Settings.">
+          <StepShell icon={Enterprise} title="School details" subtitle="The basics - you can fill in the rest later from Settings.">
             <div style={{ display: "grid", gap: "1rem" }}>
               <TextInput
                 id="ss-name"
@@ -470,7 +464,7 @@ export default function SchoolSetup() {
 
         {/* ── Step 1: Houses ─────────────────────────────────────────── */}
         {step === 1 && (
-          <StepShell icon={Home} title="Houses" subtitle="Optional — students are auto-assigned a house by index number.">
+          <StepShell icon={Home} title="Houses" subtitle="Optional - students are auto-assigned a house by index number.">
             {houses.map((h, i) => (
               <RepeatableRow
                 key={i}
@@ -583,7 +577,7 @@ export default function SchoolSetup() {
                 {alGrades.length > 0 && (
                   <div>
                     <p style={{ margin: "0 0 0.25rem", fontSize: "0.8125rem", fontWeight: 600, color: "#161616" }}>
-                      A/L Streams — {alGrades.map((g) => g.name).join(" & ")}
+                      A/L Streams - {alGrades.map((g) => g.name).join(" & ")}
                     </p>
                     <p style={{ margin: "0 0 0.875rem", fontSize: "0.75rem", color: "#8d8d8d" }}>
                       Applied to both A/L grades. Uncheck streams your school doesn't offer, and adjust the code and
@@ -663,7 +657,7 @@ export default function SchoolSetup() {
 
         {/* ── Step 4: Mediums ────────────────────────────────────────── */}
         {step === 4 && (
-          <StepShell icon={Language} title="Mediums" subtitle="Optional — languages of instruction, used later to restrict subjects.">
+          <StepShell icon={Language} title="Mediums" subtitle="Optional - languages of instruction, used later to restrict subjects.">
             <div style={{ display: "flex", gap: "1.5rem", marginBottom: "1rem" }}>
               {SUGGESTED_MEDIUMS.map((m) => (
                 <Checkbox
@@ -736,7 +730,7 @@ export default function SchoolSetup() {
                 },
                 {
                   title: "Students & Teachers",
-                  body: "Enrol students and add teachers — each gets their own sign-in and profile automatically.",
+                  body: "Enrol students and add teachers - each gets their own sign-in and profile automatically.",
                   path: "/students",
                   icon: UserMultiple,
                 },
