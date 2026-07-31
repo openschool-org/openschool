@@ -1,18 +1,17 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Search, Add, Edit, TrashCan } from "@carbon/icons-react";
-import { Button, IconButton, InlineNotification } from "@carbon/react";
-import { AxiosError } from "axios";
+import { Button, IconButton, InlineNotification, Pagination } from "@carbon/react";
 import { useTeachers, useDeleteTeacher } from "../../../queries/useTeachers";
 import type { Teacher } from "../../../services/teacher";
-import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import { usePagination } from "../../../hooks/usePagination";
+import { getErrorMessage } from "../../../lib/errorMessage";
+import TableSkeleton from "../../../components/common/TableSkeleton";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 
-function apiError(e: unknown, fallback: string) {
-  return (e as AxiosError<{ error: string }>)?.response?.data?.error ?? fallback;
-}
+const TEACHER_TABLE_HEADERS = ["Employee No.", "Full Name", "Phone", "Joined Date", "Actions"];
 
 export default function Teachers() {
   const navigate = useNavigate();
@@ -28,6 +27,8 @@ export default function Teachers() {
       t.employee_number.toLowerCase().includes(q)
     );
   });
+
+  const { page, pageSize, pageItems, totalItems, onChange } = usePagination(filtered, 10);
 
   const handleDelete = () => {
     if (!toDelete) return;
@@ -65,7 +66,7 @@ export default function Teachers() {
           <InlineNotification
             kind="error"
             title="Could not delete teacher"
-            subtitle={apiError(
+            subtitle={getErrorMessage(
               deleteTeacher.error,
               "The teacher may be assigned to a class or have attendance records.",
             )}
@@ -76,7 +77,7 @@ export default function Teachers() {
         )}
 
         {isLoading ? (
-          <LoadingSpinner />
+          <TableSkeleton headers={TEACHER_TABLE_HEADERS} />
         ) : isError ? (
           <ErrorMessage message="Failed to load teachers" onRetry={refetch} />
         ) : filtered.length === 0 ? (
@@ -104,7 +105,7 @@ export default function Teachers() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((t) => (
+                {pageItems.map((t) => (
                   <tr key={t.id}>
                     <td>
                       <span className="os-table__mono">{t.employee_number}</span>
@@ -114,8 +115,8 @@ export default function Teachers() {
                         {t.full_name}
                       </Link>
                     </td>
-                    <td className="os-table__muted">{t.phone ?? "—"}</td>
-                    <td className="os-table__muted">{t.joined_date ?? "—"}</td>
+                    <td className="os-table__muted">{t.phone ?? "-"}</td>
+                    <td className="os-table__muted">{t.joined_date ?? "-"}</td>
                     <td>
                       <div
                         style={{
@@ -153,6 +154,13 @@ export default function Teachers() {
                 ))}
               </tbody>
             </table>
+            <Pagination
+              totalItems={totalItems}
+              page={page}
+              pageSize={pageSize}
+              pageSizes={[10, 20, 50]}
+              onChange={onChange}
+            />
           </>
         )}
       </div>

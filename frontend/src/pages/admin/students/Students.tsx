@@ -1,28 +1,71 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Search, Add, Edit, TrashCan } from "@carbon/icons-react";
-import { Button, IconButton } from "@carbon/react";
+import { Button, IconButton, Select, SelectItem, Pagination } from "@carbon/react";
 import { useStudents, useDeleteStudent } from "../../../queries/useStudents";
+import { useGrades } from "../../../queries/useGrades";
+import { useHouses } from "../../../queries/useHouses";
+import { useCurrentClasses } from "../../../queries/useClasses";
 import type { Student } from "../../../services/student";
-import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import { usePagination } from "../../../hooks/usePagination";
+import { getErrorMessage } from "../../../lib/errorMessage";
+import TableSkeleton from "../../../components/common/TableSkeleton";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 
+const STUDENT_TABLE_HEADERS = [
+  "Index No.",
+  "Full Name",
+  "Class",
+  "House",
+  "Phone",
+  "WhatsApp",
+  "Actions",
+];
+
 export default function Students() {
   const navigate = useNavigate();
   const { data: students, isLoading, isError, refetch } = useStudents();
+  const { data: grades } = useGrades();
+  const { data: houses } = useHouses();
+  const { data: classes } = useCurrentClasses();
   const deleteStudent = useDeleteStudent();
   const [query, setQuery] = useState("");
+  const [grade, setGrade] = useState("");
+  const [cls, setCls] = useState("");
+  const [gender, setGender] = useState("");
+  const [house, setHouse] = useState("");
   const [toDelete, setToDelete] = useState<Student | null>(null);
+
+  const classOptions = (classes ?? []).filter(
+    (c) => !grade || c.grade_name === grade,
+  );
+
+  const changeGrade = (value: string) => {
+    setGrade(value);
+    setCls("");
+  };
 
   const filtered = (students ?? []).filter((s) => {
     const q = query.toLowerCase();
-    return (
+    const matchesSearch =
       s.full_name.toLowerCase().includes(q) ||
-      s.index_number.toLowerCase().includes(q)
+      s.index_number.toLowerCase().includes(q);
+    const matchesGrade = !grade || s.grade_name === grade;
+    const matchesClass = !cls || s.class_name === cls;
+    const matchesGender = !gender || s.gender === gender;
+    const matchesHouse = !house || s.house_name === house;
+    return (
+      matchesSearch &&
+      matchesGrade &&
+      matchesClass &&
+      matchesGender &&
+      matchesHouse
     );
   });
+
+  const { page, pageSize, pageItems, totalItems, onChange } = usePagination(filtered, 10);
 
   const handleDelete = () => {
     if (!toDelete) return;
@@ -52,10 +95,73 @@ export default function Students() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
+          <div style={{ minWidth: "9rem" }}>
+            <Select
+              id="filter-grade"
+              labelText=""
+              size="md"
+              value={grade}
+              onChange={(e) => changeGrade(e.target.value)}
+            >
+              <SelectItem value="" text="All grades" />
+              {grades?.map((g) => (
+                <SelectItem key={g.id} value={g.name} text={g.name} />
+              ))}
+            </Select>
+          </div>
+          <div style={{ minWidth: "9rem" }}>
+            <Select
+              id="filter-class"
+              labelText=""
+              size="md"
+              value={cls}
+              onChange={(e) => setCls(e.target.value)}
+            >
+              <SelectItem value="" text="All classes" />
+              {classOptions.map((c) => (
+                <SelectItem key={c.id} value={c.name} text={c.name} />
+              ))}
+            </Select>
+          </div>
+          <div style={{ minWidth: "8rem" }}>
+            <Select
+              id="filter-gender"
+              labelText=""
+              size="md"
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+            >
+              <SelectItem value="" text="Any gender" />
+              <SelectItem value="male" text="Male" />
+              <SelectItem value="female" text="Female" />
+            </Select>
+          </div>
+          <div style={{ minWidth: "9rem" }}>
+            <Select
+              id="filter-house"
+              labelText=""
+              size="md"
+              value={house}
+              onChange={(e) => setHouse(e.target.value)}
+            >
+              <SelectItem value="" text="All houses" />
+              {houses?.map((h) => (
+                <SelectItem key={h.id} value={h.name} text={h.name} />
+              ))}
+            </Select>
+          </div>
         </div>
 
+        {deleteStudent.isError && (
+          <div style={{ padding: "0 1.5rem 1rem" }}>
+            <ErrorMessage
+              message={getErrorMessage(deleteStudent.error, "Failed to delete student.")}
+            />
+          </div>
+        )}
+
         {isLoading ? (
-          <LoadingSpinner />
+          <TableSkeleton headers={STUDENT_TABLE_HEADERS} />
         ) : isError ? (
           <ErrorMessage message="Failed to load students" onRetry={refetch} />
         ) : filtered.length === 0 ? (
@@ -77,13 +183,15 @@ export default function Students() {
                 <tr>
                   <th>Index No.</th>
                   <th>Full Name</th>
+                  <th>Class</th>
+                  <th>House</th>
                   <th>Phone</th>
                   <th>WhatsApp</th>
                   <th style={{ width: "6rem", textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((s) => (
+                {pageItems.map((s) => (
                   <tr key={s.id}>
                     <td>
                       <span className="os-table__mono">{s.index_number}</span>
@@ -93,8 +201,10 @@ export default function Students() {
                         {s.full_name}
                       </Link>
                     </td>
-                    <td className="os-table__muted">{s.phone ?? "—"}</td>
-                    <td className="os-table__muted">{s.whatsapp ?? "—"}</td>
+                    <td className="os-table__muted">{s.class_name ?? "-"}</td>
+                    <td className="os-table__muted">{s.house_name ?? "-"}</td>
+                    <td className="os-table__muted">{s.phone ?? "-"}</td>
+                    <td className="os-table__muted">{s.whatsapp ?? "-"}</td>
                     <td>
                       <div
                         style={{
@@ -129,6 +239,13 @@ export default function Students() {
                 ))}
               </tbody>
             </table>
+            <Pagination
+              totalItems={totalItems}
+              page={page}
+              pageSize={pageSize}
+              pageSizes={[10, 20, 50]}
+              onChange={onChange}
+            />
           </>
         )}
       </div>

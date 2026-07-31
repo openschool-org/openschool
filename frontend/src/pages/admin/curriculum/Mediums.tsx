@@ -8,8 +8,8 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  SkeletonText,
 } from "@carbon/react";
-import { AxiosError } from "axios";
 import {
   useMediums,
   useCreateMedium,
@@ -17,13 +17,25 @@ import {
   useDeleteMedium,
 } from "../../../queries/useCurriculum";
 import type { Medium } from "../../../services/curriculum";
-import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 
-function apiError(e: unknown, fallback: string) {
-  return (e as AxiosError<{ error: string }>)?.response?.data?.error ?? fallback;
+function MediumRowSkeleton() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "1rem 1.5rem",
+        borderBottom: "1px solid #e0e0e0",
+        gap: "1rem",
+      }}
+    >
+      <SkeletonText width="30%" />
+    </div>
+  );
 }
 
 export default function Mediums() {
@@ -35,11 +47,13 @@ export default function Mediums() {
   const [modal, setModal] = useState<"create" | "edit" | null>(null);
   const [editing, setEditing] = useState<Medium | null>(null);
   const [name, setName] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
   const [toDelete, setToDelete] = useState<Medium | null>(null);
 
   const openCreate = () => {
     createMedium.reset();
     setName("");
+    setNameTouched(false);
     setEditing(null);
     setModal("create");
   };
@@ -47,11 +61,14 @@ export default function Mediums() {
   const openEdit = (m: Medium) => {
     updateMedium.reset();
     setName(m.name);
+    setNameTouched(false);
     setEditing(m);
     setModal("edit");
   };
 
   const handleSave = () => {
+    setNameTouched(true);
+    if (!name.trim()) return;
     const data = { name: name.trim() };
     if (modal === "create") {
       createMedium.mutate(data, { onSuccess: () => setModal(null) });
@@ -100,7 +117,13 @@ export default function Mediums() {
           )}
         </div>
 
-        {isLoading && <LoadingSpinner />}
+        {isLoading && (
+          <div>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <MediumRowSkeleton key={i} />
+            ))}
+          </div>
+        )}
         {isError && (
           <ErrorMessage message="Could not load mediums." onRetry={refetch} />
         )}
@@ -109,7 +132,7 @@ export default function Mediums() {
           <InlineNotification
             kind="error"
             title="Could not delete medium"
-            subtitle={apiError(
+            subtitle={getErrorMessage(
               deleteMedium.error,
               "The medium may be in use by a group subject or enrollment.",
             )}
@@ -131,7 +154,7 @@ export default function Mediums() {
           />
         )}
 
-        {mediums && mediums.length > 0 && (
+        {!isLoading && mediums && mediums.length > 0 && (
           <div>
             {mediums.map((m, i) => (
               <div
@@ -179,7 +202,7 @@ export default function Mediums() {
             <InlineNotification
               kind="error"
               title="Error"
-              subtitle={apiError(
+              subtitle={getErrorMessage(
                 createMedium.error ?? updateMedium.error,
                 "Failed to save medium",
               )}
@@ -194,6 +217,9 @@ export default function Mediums() {
             placeholder="e.g. English"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            onBlur={() => setNameTouched(true)}
+            invalid={nameTouched && !name.trim()}
+            invalidText="Medium name is required."
           />
         </ModalBody>
         <ModalFooter>

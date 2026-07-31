@@ -28,8 +28,6 @@ func NewCurriculumService(repo *repositories.CurriculumRepository) *CurriculumSe
 	return &CurriculumService{repo: repo}
 }
 
-// ── mediums ─────────────────────────────────────────────────────────────────
-
 func (s *CurriculumService) CreateMedium(ctx context.Context, req models.CreateMediumRequest) (db.Medium, error) {
 	return s.repo.CreateMedium(ctx, req.Name)
 }
@@ -59,8 +57,6 @@ func (s *CurriculumService) DeleteMedium(ctx context.Context, id uuid.UUID) erro
 	}
 	return nil
 }
-
-// ── levels ──────────────────────────────────────────────────────────────────
 
 func (s *CurriculumService) CreateLevel(ctx context.Context, req models.CreateLevelRequest) (db.Level, error) {
 	gradeID, err := parseOptionalUUID(req.GradeID)
@@ -101,9 +97,6 @@ func (s *CurriculumService) UpdateLevel(ctx context.Context, id uuid.UUID, req m
 	})
 }
 
-// DuplicateLevel copies a level's whole structure under a new label. Useful
-// where consecutive levels share a curriculum (e.g. two grades of the same
-// exam stage) and re-entering every group by hand would be busywork.
 func (s *CurriculumService) DuplicateLevel(ctx context.Context, sourceID uuid.UUID, req models.DuplicateLevelRequest) (db.Level, error) {
 	if _, err := s.repo.GetLevelByID(ctx, sourceID); err != nil {
 		return db.Level{}, ErrLevelNotFound
@@ -134,8 +127,6 @@ func (s *CurriculumService) DeleteLevel(ctx context.Context, id uuid.UUID) error
 	}
 	return nil
 }
-
-// ── selection groups ────────────────────────────────────────────────────────
 
 func (s *CurriculumService) CreateSelectionGroup(ctx context.Context, levelID uuid.UUID, req models.CreateSelectionGroupRequest) (db.SelectionGroup, error) {
 	if req.MaxSelect < req.MinSelect {
@@ -190,8 +181,6 @@ func (s *CurriculumService) DeleteSelectionGroup(ctx context.Context, id uuid.UU
 	return nil
 }
 
-// ── group subjects ──────────────────────────────────────────────────────────
-
 func (s *CurriculumService) AddGroupSubject(ctx context.Context, groupID uuid.UUID, req models.AddGroupSubjectRequest) (db.GroupSubject, error) {
 	subjectID, err := uuid.Parse(req.SubjectID)
 	if err != nil {
@@ -245,10 +234,6 @@ func (s *CurriculumService) RemoveGroupSubject(ctx context.Context, groupID, sub
 	})
 }
 
-// ── curriculum tree ─────────────────────────────────────────────────────────
-
-// GetCurriculumTree returns a level with its groups and each group's subjects
-// nested inside, in two queries.
 func (s *CurriculumService) GetCurriculumTree(ctx context.Context, levelID uuid.UUID) (models.CurriculumTreeResponse, error) {
 	level, err := s.repo.GetLevelByID(ctx, levelID)
 	if err != nil {

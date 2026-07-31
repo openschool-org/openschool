@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { Building, Add, ChevronRight } from "@carbon/icons-react";
-import { Button, Tag, InlineNotification } from "@carbon/react";
-import { AxiosError } from "axios";
+import { Button, Tag, InlineNotification, Pagination, SkeletonText, SkeletonIcon } from "@carbon/react";
 import {
   useCurrentClasses,
   useDeleteClass,
@@ -10,13 +9,33 @@ import {
 } from "../../../queries/useClasses";
 import { useTeachers } from "../../../queries/useTeachers";
 import type { ClassWithDetails } from "../../../services/class";
-import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import { usePagination } from "../../../hooks/usePagination";
+import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 
-function apiError(e: unknown, fallback: string) {
-  return (e as AxiosError<{ error: string }>)?.response?.data?.error ?? fallback;
+function ClassRowSkeleton() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "1.25rem 1.5rem",
+        borderBottom: "1px solid #e0e0e0",
+        gap: "1rem",
+      }}
+    >
+      <SkeletonIcon />
+      <div style={{ flex: 1 }}>
+        <div style={{ marginBottom: "0.4rem" }}>
+          <SkeletonText width="35%" />
+        </div>
+        <SkeletonText width="55%" />
+      </div>
+      <SkeletonText width="4rem" />
+    </div>
+  );
 }
 
 export default function Classes() {
@@ -27,8 +46,7 @@ export default function Classes() {
 
   const [toDelete, setToDelete] = useState<ClassWithDetails | null>(null);
 
-  // the list endpoint returns ids for stream and form teacher, so resolve the
-  // names from the lists we already hold rather than a request per row
+  const { page, pageSize, pageItems, totalItems, onChange } = usePagination(classes ?? [], 10);
   const streamName = (id: string | null) =>
     id ? (streams?.find((s) => s.id === id)?.name ?? null) : null;
   const teacherName = (id: string | null) =>
@@ -76,7 +94,13 @@ export default function Classes() {
           )}
         </div>
 
-        {isLoading && <LoadingSpinner />}
+        {isLoading && (
+          <div>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <ClassRowSkeleton key={i} />
+            ))}
+          </div>
+        )}
         {isError && (
           <ErrorMessage message="Could not load classes." onRetry={refetch} />
         )}
@@ -85,7 +109,7 @@ export default function Classes() {
           <InlineNotification
             kind="error"
             title="Could not delete class"
-            subtitle={apiError(
+            subtitle={getErrorMessage(
               deleteClass.error,
               "The class may still have students enrolled.",
             )}
@@ -109,7 +133,7 @@ export default function Classes() {
 
         {classes && classes.length > 0 && (
           <div>
-            {classes.map((c, i) => (
+            {pageItems.map((c, i) => (
               <div
                 key={c.id}
                 style={{
@@ -117,7 +141,7 @@ export default function Classes() {
                   alignItems: "center",
                   padding: "1.25rem 1.5rem",
                   borderBottom:
-                    i < classes.length - 1 ? "1px solid #e0e0e0" : "none",
+                    i < pageItems.length - 1 ? "1px solid #e0e0e0" : "none",
                   gap: "1rem",
                 }}
               >
@@ -168,6 +192,13 @@ export default function Classes() {
                 </Button>
               </div>
             ))}
+            <Pagination
+              totalItems={totalItems}
+              page={page}
+              pageSize={pageSize}
+              pageSizes={[10, 20, 50]}
+              onChange={onChange}
+            />
           </div>
         )}
       </div>

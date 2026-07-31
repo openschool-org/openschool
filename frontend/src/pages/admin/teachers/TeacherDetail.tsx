@@ -4,21 +4,27 @@ import {
   Button,
   Tag,
   TextInput,
+  Select,
+  SelectItem,
+  RadioButtonGroup,
+  RadioButton,
   InlineNotification,
 } from "@carbon/react";
 import { ArrowLeft, TrashCan, Edit, Save, Book } from "@carbon/icons-react";
-import { AxiosError } from "axios";
 import {
   useTeacher,
   useTeacherSubjects,
   useDeleteTeacher,
   useUpdateTeacher,
 } from "../../../queries/useTeachers";
+import { getErrorMessage } from "../../../lib/errorMessage";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import ProfileBanner from "../../../components/common/ProfileBanner";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
-import type { Teacher } from "../../../services/teacher";
+import type { Teacher, TeacherTitle } from "../../../services/teacher";
+
+const TITLES: TeacherTitle[] = ["Mr", "Miss", "Mrs", "Ms", "Dr", "Von", "Prof"];
 
 function teacherToForm(t: Teacher) {
   const [given, ...rest] = t.full_name.trim().split(/\s+/);
@@ -27,6 +33,8 @@ function teacherToForm(t: Teacher) {
     family_name: rest.join(" "),
     phone_number: t.phone ?? "",
     employee_number: t.employee_number,
+    title: t.title ?? ("" as TeacherTitle | ""),
+    gender: t.gender ?? ("" as "" | "male" | "female"),
   };
 }
 
@@ -48,6 +56,8 @@ export default function TeacherDetail() {
     family_name: "",
     phone_number: "",
     employee_number: "",
+    title: "" as TeacherTitle | "",
+    gender: "" as "" | "male" | "female",
   });
 
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
@@ -78,6 +88,8 @@ export default function TeacherDetail() {
           family_name: form.family_name.trim(),
           phone_number: form.phone_number.trim() || undefined,
           employee_number: form.employee_number.trim(),
+          title: form.title || undefined,
+          gender: form.gender || undefined,
         },
       },
       { onSuccess: () => setEditing(false) },
@@ -88,8 +100,7 @@ export default function TeacherDetail() {
     setForm((f) => ({ ...f, [field]: value }));
 
   const updateError = updateTeacher.isError
-    ? (updateTeacher.error as AxiosError<{ error: string }>).response?.data
-        ?.error ?? "Failed to update teacher"
+    ? getErrorMessage(updateTeacher.error, "Failed to update teacher")
     : null;
 
   const isValid =
@@ -171,10 +182,10 @@ export default function TeacherDetail() {
           <InlineNotification
             kind="error"
             title="Could not delete teacher"
-            subtitle={
-              (deleteTeacher.error as AxiosError<{ error: string }>).response?.data
-                ?.error ?? "The teacher may be assigned to a class or have attendance records."
-            }
+            subtitle={getErrorMessage(
+              deleteTeacher.error,
+              "The teacher may be assigned to a class or have attendance records.",
+            )}
             lowContrast
             onClose={() => deleteTeacher.reset()}
             style={{ maxWidth: "100%", marginBottom: "1rem" }}
@@ -203,6 +214,30 @@ export default function TeacherDetail() {
                 gap: "1.25rem",
               }}
             >
+              <Select
+                id="title"
+                labelText="Title"
+                value={form.title}
+                disabled={!editing}
+                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value as TeacherTitle | "" }))}
+              >
+                <SelectItem value="" text="None" />
+                {TITLES.map((t) => (
+                  <SelectItem key={t} value={t} text={t} />
+                ))}
+              </Select>
+              <div>
+                <RadioButtonGroup
+                  legendText="Gender"
+                  name="gender"
+                  valueSelected={form.gender}
+                  disabled={!editing}
+                  onChange={(value) => setForm((f) => ({ ...f, gender: value as "male" | "female" }))}
+                >
+                  <RadioButton id="edit-gender-male" labelText="Male" value="male" />
+                  <RadioButton id="edit-gender-female" labelText="Female" value="female" />
+                </RadioButtonGroup>
+              </div>
               <TextInput
                 id="given-name"
                 labelText="First Name"
@@ -234,7 +269,7 @@ export default function TeacherDetail() {
               <TextInput
                 id="joined-date"
                 labelText="Joined Date"
-                value={teacher.joined_date ?? "—"}
+                value={teacher.joined_date ?? "-"}
                 readOnly
               />
               <TextInput
@@ -243,7 +278,7 @@ export default function TeacherDetail() {
                 value={
                   teacher.created_at
                     ? new Date(teacher.created_at).toLocaleDateString()
-                    : "—"
+                    : "-"
                 }
                 readOnly
               />

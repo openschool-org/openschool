@@ -3,7 +3,7 @@ package models
 import "time"
 
 type CreateTeacherRequest struct {
-	// Asgardeo account fields
+	// Identity provider account fields
 	Email       string `json:"email" binding:"required,email"`
 	GivenName   string `json:"given_name" binding:"required"`
 	FamilyName  string `json:"family_name" binding:"required"`
@@ -13,6 +13,8 @@ type CreateTeacherRequest struct {
 	// Teacher profile fields
 	EmployeeNumber string    `json:"employee_number" binding:"required"`
 	JoinedDate     time.Time `json:"joined_date" binding:"required"`
+	Title          string    `json:"title" binding:"omitempty,oneof=Mr Miss Mrs Ms Dr Von Prof"`
+	Gender         string    `json:"gender" binding:"omitempty,oneof=male female"`
 }
 
 type UpdateTeacherRequest struct {
@@ -20,6 +22,8 @@ type UpdateTeacherRequest struct {
 	FamilyName     string `json:"family_name" binding:"required"`
 	PhoneNumber    string `json:"phone_number"`
 	EmployeeNumber string `json:"employee_number" binding:"required"`
+	Title          string `json:"title" binding:"omitempty,oneof=Mr Miss Mrs Ms Dr Von Prof"`
+	Gender         string `json:"gender" binding:"omitempty,oneof=male female"`
 }
 
 type AssignSubjectToTeacherRequest struct {
@@ -33,6 +37,8 @@ type TeacherResponse struct {
 	EmployeeNumber string `json:"employee_number"`
 	JoinedDate     string `json:"joined_date"`
 	Phone          string `json:"phone"`
+	Title          string `json:"title"`
+	Gender         string `json:"gender"`
 	CreatedAt      string `json:"created_at"`
 }
 

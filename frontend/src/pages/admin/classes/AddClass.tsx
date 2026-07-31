@@ -8,7 +8,6 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { ArrowLeft, Save } from "@carbon/icons-react";
-import { AxiosError } from "axios";
 import {
   useCreateClass,
   useStreams,
@@ -17,10 +16,13 @@ import {
 import { useGrades } from "../../../queries/useGrades";
 import { useTeachers } from "../../../queries/useTeachers";
 import { useAcademicYears } from "../../../queries/useAcademicYears";
+import { getErrorMessage } from "../../../lib/errorMessage";
+import EntityCombobox from "../../../components/common/EntityCombobox";
+
+type Touched = Partial<Record<"grade" | "name" | "year", boolean>>;
 
 const EMPTY_FORM = {
   grade_id: "",
-  // "" means "fall back to the current year" — resolved at render, not stored
   academic_year_id: "",
   name: "",
   stream_id: "",
@@ -38,26 +40,30 @@ export default function AddClass() {
   const createClass = useCreateClass();
 
   const [form, setForm] = useState(EMPTY_FORM);
+  const [touched, setTouched] = useState<Touched>({});
 
-  // sub-streams belong to a stream, so they can only load once one is chosen
+  const markTouched = (field: keyof Touched) => setTouched((t) => ({ ...t, [field]: true }));
+
   const { data: streamGroups } = useStreamGroups(form.stream_id);
 
-  // Default to the current academic year by deriving it rather than writing it
-  // into state from an effect, so the field is correct on first paint.
   const currentYearId = years?.find((y) => y.is_current)?.id ?? "";
   const academicYearId = form.academic_year_id || currentYearId;
 
   const set = (field: keyof typeof EMPTY_FORM, value: string) =>
     setForm((f) => ({ ...f, [field]: value }));
 
-  // clearing the stream must clear the sub-stream: the classes table has a
-  // CHECK that stream_group_id is only set when stream_id is
   const handleStreamChange = (value: string) =>
     setForm((f) => ({ ...f, stream_id: value, stream_group_id: "" }));
+
+  const gradeInvalid = !!touched.grade && !form.grade_id;
+  const nameInvalid = !!touched.name && !form.name.trim();
+  const yearInvalid = !!touched.year && !academicYearId;
 
   const isValid = form.grade_id && academicYearId && form.name.trim();
 
   const handleSave = () => {
+    setTouched({ grade: true, name: true, year: true });
+    if (!isValid) return;
     createClass.mutate(
       {
         grade_id: form.grade_id,
@@ -72,8 +78,7 @@ export default function AddClass() {
   };
 
   const error = createClass.isError
-    ? ((createClass.error as AxiosError<{ error: string }>).response?.data
-        ?.error ?? "Failed to create class")
+    ? getErrorMessage(createClass.error, "Failed to create class")
     : null;
 
   return (
@@ -110,6 +115,9 @@ export default function AddClass() {
               labelText="Grade"
               value={form.grade_id}
               onChange={(e) => set("grade_id", e.target.value)}
+              onBlur={() => markTouched("grade")}
+              invalid={gradeInvalid}
+              invalidText="A grade is required."
             >
               <SelectItem
                 value=""
@@ -127,6 +135,9 @@ export default function AddClass() {
               maxLength={20}
               value={form.name}
               onChange={(e) => set("name", e.target.value)}
+              onBlur={() => markTouched("name")}
+              invalid={nameInvalid}
+              invalidText="A class name is required."
             />
 
             <Select
@@ -159,17 +170,16 @@ export default function AddClass() {
               ))}
             </Select>
 
-            <Select
+            <EntityCombobox
               id="class-teacher"
               labelText="Form Teacher (optional)"
-              value={form.form_teacher_id}
-              onChange={(e) => set("form_teacher_id", e.target.value)}
-            >
-              <SelectItem value="" text="Unassigned" />
-              {teachers?.map((t) => (
-                <SelectItem key={t.id} value={t.id} text={t.full_name} />
-              ))}
-            </Select>
+              items={teachers ?? []}
+              selectedId={form.form_teacher_id}
+              onSelect={(id) => set("form_teacher_id", id)}
+              getId={(t) => t.id}
+              itemToString={(t) => `${t.full_name} — ${t.employee_number}`}
+              placeholder="Search teachers by name or employee number…"
+            />
           </div>
         </div>
 
@@ -181,6 +191,9 @@ export default function AddClass() {
               labelText="Academic Year"
               value={academicYearId}
               onChange={(e) => set("academic_year_id", e.target.value)}
+              onBlur={() => markTouched("year")}
+              invalid={yearInvalid}
+              invalidText="An academic year is required."
             >
               <SelectItem value="" text="Select academic year…" />
               {years?.map((y) => (
@@ -202,17 +215,6 @@ export default function AddClass() {
             subtitle={error}
             lowContrast
             onClose={() => createClass.reset()}
-            style={{ maxWidth: "100%" }}
-          />
-        )}
-
-        {!isValid && (
-          <InlineNotification
-            kind="info"
-            title="Required fields"
-            subtitle="Grade, class name and academic year are required."
-            lowContrast
-            hideCloseButton
             style={{ maxWidth: "100%" }}
           />
         )}

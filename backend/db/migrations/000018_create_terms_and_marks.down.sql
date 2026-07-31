@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS term_marks;
+DROP TABLE IF EXISTS terms;

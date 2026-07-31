@@ -79,7 +79,7 @@ function recipientSummary(
   if (targetType === "class") {
     const cls = CLASSES.find((c) => c.id === selectedClass);
     if (!cls) return { label: "Select a class", count: null };
-    return { label: `${cls.grade} — Class ${cls.name} parents`, count: cls.count };
+    return { label: `${cls.grade} - Class ${cls.name} parents`, count: cls.count };
   }
   if (targetType === "grade") {
     const gr = GRADES.find((g) => g.id === selectedGrade);
@@ -240,7 +240,7 @@ export default function Notifications() {
               >
                 <SelectItem value="" text="Choose a class…" />
                 {CLASSES.map((c) => (
-                  <SelectItem key={c.id} value={c.id} text={`${c.grade} — ${c.name} (${c.count} students)`} />
+                  <SelectItem key={c.id} value={c.id} text={`${c.grade} - ${c.name} (${c.count} students)`} />
                 ))}
               </Select>
             )}
@@ -292,7 +292,7 @@ export default function Notifications() {
                   fontWeight: charWarning ? 600 : 400,
                 }}>
                   {charCount}{channel === "sms" ? ` / ${SMS_LIMIT}` : ""} characters
-                  {channel === "sms" && charCount > SMS_LIMIT && ` — will split into ${Math.ceil(charCount / 153)} SMS parts`}
+                  {channel === "sms" && charCount > SMS_LIMIT && ` - will split into ${Math.ceil(charCount / 153)} SMS parts`}
                 </span>
               </div>
             </div>

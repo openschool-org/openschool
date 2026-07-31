@@ -18,9 +18,6 @@ func NewCurriculumRepository(pool *pgxpool.Pool) *CurriculumRepository {
 	return &CurriculumRepository{pool: pool, queries: db.New(pool)}
 }
 
-// DuplicateLevel copies a level along with its groups and each group's
-// subjects. It runs in one transaction: a failure part way through leaves no
-// half-built level behind.
 func (r *CurriculumRepository) DuplicateLevel(
 	ctx context.Context,
 	sourceID uuid.UUID,
@@ -82,8 +79,6 @@ func (r *CurriculumRepository) DuplicateLevel(
 	return level, nil
 }
 
-// ── mediums ─────────────────────────────────────────────────────────────────
-
 func (r *CurriculumRepository) CreateMedium(ctx context.Context, name string) (db.Medium, error) {
 	return r.queries.CreateMedium(ctx, name)
 }
@@ -103,8 +98,6 @@ func (r *CurriculumRepository) UpdateMedium(ctx context.Context, params db.Updat
 func (r *CurriculumRepository) DeleteMedium(ctx context.Context, id uuid.UUID) (int64, error) {
 	return r.queries.DeleteMedium(ctx, id)
 }
-
-// ── levels ──────────────────────────────────────────────────────────────────
 
 func (r *CurriculumRepository) CreateLevel(ctx context.Context, params db.CreateLevelParams) (db.Level, error) {
 	return r.queries.CreateLevel(ctx, params)
@@ -130,8 +123,6 @@ func (r *CurriculumRepository) DeleteLevel(ctx context.Context, id uuid.UUID) (i
 	return r.queries.DeleteLevel(ctx, id)
 }
 
-// ── selection groups ────────────────────────────────────────────────────────
-
 func (r *CurriculumRepository) CreateSelectionGroup(ctx context.Context, params db.CreateSelectionGroupParams) (db.SelectionGroup, error) {
 	return r.queries.CreateSelectionGroup(ctx, params)
 }
@@ -156,8 +147,6 @@ func (r *CurriculumRepository) CountGroupSubjects(ctx context.Context, groupID u
 	return r.queries.CountGroupSubjects(ctx, groupID)
 }
 
-// ── group subjects ──────────────────────────────────────────────────────────
-
 func (r *CurriculumRepository) AddGroupSubject(ctx context.Context, params db.AddGroupSubjectParams) (db.GroupSubject, error) {
 	return r.queries.AddGroupSubject(ctx, params)
 }
@@ -169,8 +158,6 @@ func (r *CurriculumRepository) ListGroupSubjects(ctx context.Context, groupID uu
 func (r *CurriculumRepository) RemoveGroupSubject(ctx context.Context, params db.RemoveGroupSubjectParams) error {
 	return r.queries.RemoveGroupSubject(ctx, params)
 }
-
-// ── curriculum tree ─────────────────────────────────────────────────────────
 
 func (r *CurriculumRepository) GetCurriculumTreeByLevel(ctx context.Context, levelID uuid.UUID) ([]db.GetCurriculumTreeByLevelRow, error) {
 	return r.queries.GetCurriculumTreeByLevel(ctx, levelID)

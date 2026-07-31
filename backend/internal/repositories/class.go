@@ -48,6 +48,17 @@ func (r *ClassRepository) AssignFormTeacher(ctx context.Context, classID uuid.UU
 	})
 }
 
+func (r *ClassRepository) AssignMonitors(ctx context.Context, classID uuid.UUID, girlMonitorID, boyMonitorID *uuid.UUID) (db.Class, error) {
+	params := db.AssignClassMonitorsParams{ID: classID}
+	if girlMonitorID != nil {
+		params.GirlMonitorID = pgtype.UUID{Bytes: *girlMonitorID, Valid: true}
+	}
+	if boyMonitorID != nil {
+		params.BoyMonitorID = pgtype.UUID{Bytes: *boyMonitorID, Valid: true}
+	}
+	return r.queries.AssignClassMonitors(ctx, params)
+}
+
 func (r *ClassRepository) AssignSubjectTeacher(ctx context.Context, params db.AssignSubjectTeacherToClassParams) error {
 	return r.queries.AssignSubjectTeacherToClass(ctx, params)
 }

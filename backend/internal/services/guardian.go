@@ -2,20 +2,31 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 	db "github.com/openschool-org/openschool/db/sqlc"
+	"github.com/openschool-org/openschool/internal/identity"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
 )
 
+var (
+	ErrGuardianNotFound           = errors.New("guardian not found")
+	ErrGuardianAlreadyProvisioned = errors.New("this guardian already has a portal login")
+	ErrGuardianMissingEmail       = errors.New("guardian must have an email on file before provisioning a login")
+)
+
 type GuardianService struct {
-	repo *repositories.GuardianRepository
+	repo  *repositories.GuardianRepository
+	users *repositories.UserRepository
+	idp   identity.Provider
 }
 
-func NewGuardianService(repo *repositories.GuardianRepository) *GuardianService {
-	return &GuardianService{repo: repo}
+func NewGuardianService(repo *repositories.GuardianRepository, users *repositories.UserRepository, idp identity.Provider) *GuardianService {
+	return &GuardianService{repo: repo, users: users, idp: idp}
 }
 
 func (s *GuardianService) CreateGuardian(ctx context.Context, req models.CreateGuardianRequest) (db.Guardian, error) {
@@ -24,6 +35,10 @@ func (s *GuardianService) CreateGuardian(ctx context.Context, req models.CreateG
 
 func (s *GuardianService) GetGuardian(ctx context.Context, id uuid.UUID) (db.Guardian, error) {
 	return s.repo.GetByID(ctx, id)
+}
+
+func (s *GuardianService) ListGuardians(ctx context.Context) ([]db.Guardian, error) {
+	return s.repo.List(ctx)
 }
 
 func (s *GuardianService) UpdateGuardian(ctx context.Context, id uuid.UUID, req models.UpdateGuardianRequest) (db.Guardian, error) {
@@ -48,4 +63,73 @@ func (s *GuardianService) SetPrimaryContact(ctx context.Context, studentID uuid.
 
 func (s *GuardianService) ListByStudent(ctx context.Context, studentID uuid.UUID) ([]db.ListGuardiansByStudentRow, error) {
 	return s.repo.ListByStudent(ctx, studentID)
+}
+
+// ProvisionLogin creates a ThunderID identity for an existing guardian
+// record and links it via guardians.user_id, giving them access to the
+// parent portal. Mirrors RegisterFirstAdmin's identity-provisioning flow.
+func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UUID, req models.ProvisionGuardianLoginRequest) (db.Guardian, error) {
+	guardian, err := s.repo.GetByID(ctx, guardianID)
+	if err != nil {
+		return db.Guardian{}, ErrGuardianNotFound
+	}
+	if guardian.UserID.Valid {
+		return db.Guardian{}, ErrGuardianAlreadyProvisioned
+	}
+	if !guardian.Email.Valid || guardian.Email.String == "" {
+		return db.Guardian{}, ErrGuardianMissingEmail
+	}
+
+	idpUser, err := s.idp.CreateUser(ctx, "parent", map[string]interface{}{
+		"username":     req.Username,
+		"email":        guardian.Email.String,
+		"given_name":   req.GivenName,
+		"family_name":  req.FamilyName,
+		"phone_number": guardian.Phone,
+		"password":     req.Password,
+	})
+	if err != nil {
+		return db.Guardian{}, fmt.Errorf("failed to create identity provider account: %w", err)
+	}
+
+	userID, err := uuid.Parse(idpUser.ID)
+	if err != nil {
+		return db.Guardian{}, fmt.Errorf("invalid identity provider user id: %w", err)
+	}
+
+	// guardians.user_id references the local users table, not the identity
+	// provider directly — that row normally only appears lazily on first
+	// login (see MeHandler), which is too late for the FK this needs now.
+	if _, err := s.users.EnsureExists(ctx, db.EnsureUserExistsParams{
+		ID:       userID,
+		Email:    guardian.Email.String,
+		FullName: guardian.FullName,
+		Role:     "parent",
+	}); err != nil {
+		if delErr := s.idp.DeleteUser(ctx, idpUser.ID); delErr != nil {
+			log.Printf("ProvisionLogin: failed to roll back identity provider user %s: %v", idpUser.ID, delErr)
+		}
+		return db.Guardian{}, fmt.Errorf("failed to create local user record: %w", err)
+	}
+
+	if err := s.repo.SetUserID(ctx, guardianID, userID); err != nil {
+		if delErr := s.idp.DeleteUser(ctx, idpUser.ID); delErr != nil {
+			log.Printf("ProvisionLogin: failed to roll back identity provider user %s: %v", idpUser.ID, delErr)
+		}
+		return db.Guardian{}, fmt.Errorf("failed to link guardian record: %w", err)
+	}
+
+	if err := s.idp.AssignRole(ctx, identity.RoleID("parent"), idpUser.ID); err != nil {
+		return db.Guardian{}, fmt.Errorf("failed to assign parent role: %w", err)
+	}
+
+	return s.repo.GetByID(ctx, guardianID)
+}
+
+func (s *GuardianService) GetChildrenForUser(ctx context.Context, userID uuid.UUID) ([]db.ListStudentsByGuardianUserIDRow, error) {
+	return s.repo.ListStudentsByGuardianUserID(ctx, userID)
+}
+
+func (s *GuardianService) IsGuardianOfStudent(ctx context.Context, userID uuid.UUID, studentID uuid.UUID) (bool, error) {
+	return s.repo.IsGuardianOfStudent(ctx, userID, studentID)
 }

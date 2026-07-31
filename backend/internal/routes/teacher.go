@@ -3,7 +3,6 @@ package routes
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/openschool-org/openschool/internal/asgardeo"
 	"github.com/openschool-org/openschool/internal/handlers"
 	"github.com/openschool-org/openschool/internal/repositories"
 	"github.com/openschool-org/openschool/internal/services"
@@ -11,8 +10,7 @@ import (
 
 func RegisterTeacherRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewTeacherRepository(pool)
-	asgardeoClient := asgardeo.NewClient()
-	service := services.NewTeacherService(repo, asgardeoClient)
+	service := services.NewTeacherService(repo, newIdentityProvider())
 	handler := handlers.NewTeacherHandler(service)
 
 	admin.POST("/teachers", handler.Create)

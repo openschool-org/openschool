@@ -79,6 +79,10 @@ func (s *ClassService) AssignFormTeacher(ctx context.Context, classID uuid.UUID,
 	return s.repo.AssignFormTeacher(ctx, classID, req.TeacherID)
 }
 
+func (s *ClassService) AssignMonitors(ctx context.Context, classID uuid.UUID, req models.AssignClassMonitorsRequest) (db.Class, error) {
+	return s.repo.AssignMonitors(ctx, classID, req.GirlMonitorID, req.BoyMonitorID)
+}
+
 func (s *ClassService) AssignSubjectTeacher(ctx context.Context, classID uuid.UUID, req models.AssignSubjectTeacherRequest) error {
 	return s.repo.AssignSubjectTeacher(ctx, db.AssignSubjectTeacherToClassParams{
 		ClassID:   classID,

@@ -1,14 +1,27 @@
 import { useState } from "react";
-import { Button, NumberInput, Select, SelectItem, Toggle } from "@carbon/react";
+import {
+  Button,
+  NumberInput,
+  Select,
+  SelectItem,
+  Toggle,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
+  InlineNotification,
+} from "@carbon/react";
 import { Save, Edit, Settings as SettingsIcon } from "@carbon/icons-react";
+import { AxiosError } from "axios";
+import { getErrorMessage } from "../../../lib/errorMessage";
 import SchoolInfoCard, { type SchoolFormValues } from "../../../components/school/SchoolInfoCard";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
-import { useSchool, useUpdateSchool } from "../../../queries/useSchool";
+import { useSchool, useUpdateSchool, useCreateSchool } from "../../../queries/useSchool";
 import type { School } from "../../../services/school";
+import Houses from "./Houses";
 
-// The grade range lives alongside the school fields so a save carries every
-// value in one object — PUT /school replaces the whole record.
 type SettingsForm = SchoolFormValues & {
   grade_from: number | "";
   grade_to: number | "";
@@ -24,7 +37,6 @@ const EMPTY_FORM: SettingsForm = {
   grade_to: "",
 };
 
-// Unset columns arrive as null; the inputs are controlled, so coalesce to "".
 function schoolToForm(s: School): SettingsForm {
   return {
     name: s.name,
@@ -38,8 +50,11 @@ function schoolToForm(s: School): SettingsForm {
 }
 
 export default function SettingsPage() {
-  const { data: school, isLoading, isError, refetch } = useSchool();
+  const { data: school, isLoading, isError, error, refetch } = useSchool();
   const updateSchool = useUpdateSchool();
+  const createSchool = useCreateSchool();
+
+  const noSchoolYet = error instanceof AxiosError && error.response?.status === 404;
 
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -51,6 +66,8 @@ export default function SettingsPage() {
     setLoadedFor(school.id);
   }
 
+  const isEditable = editing || noSchoolYet;
+
   const handleEdit = () => setEditing(true);
 
   const handleCancel = () => {
@@ -58,26 +75,47 @@ export default function SettingsPage() {
     setEditing(false);
   };
 
+  const GRADE_MIN = 1;
+  const GRADE_MAX = 13;
+
+  const gradeFromOutOfRange =
+    form.grade_from !== "" && (form.grade_from < GRADE_MIN || form.grade_from > GRADE_MAX);
+  const gradeToOutOfRange =
+    form.grade_to !== "" && (form.grade_to < GRADE_MIN || form.grade_to > GRADE_MAX);
   const gradeRangeInvalid =
-    form.grade_from !== "" &&
-    form.grade_to !== "" &&
-    Number(form.grade_to) < Number(form.grade_from);
+    gradeFromOutOfRange ||
+    gradeToOutOfRange ||
+    (form.grade_from !== "" &&
+      form.grade_to !== "" &&
+      Number(form.grade_to) < Number(form.grade_from));
 
   const handleSave = () => {
-    if (!school || gradeRangeInvalid) return;
-    updateSchool.mutate(
-      {
-        id: school.id,
-        data: {
-          name: form.name,
-          address: form.address,
-          phone: form.phone,
-          email: form.email,
-          logo_url: form.logo_url,
-          grade_from: form.grade_from === "" ? null : Number(form.grade_from),
-          grade_to: form.grade_to === "" ? null : Number(form.grade_to),
+    if (gradeRangeInvalid) return;
+
+    const data = {
+      name: form.name,
+      address: form.address,
+      phone: form.phone,
+      email: form.email,
+      logo_url: form.logo_url,
+      grade_from: form.grade_from === "" ? null : Number(form.grade_from),
+      grade_to: form.grade_to === "" ? null : Number(form.grade_to),
+    };
+
+    if (noSchoolYet) {
+      if (!form.name.trim()) return;
+      createSchool.mutate(data, {
+        onSuccess: () => {
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2500);
         },
-      },
+      });
+      return;
+    }
+
+    if (!school) return;
+    updateSchool.mutate(
+      { id: school.id, data },
       {
         onSuccess: () => {
           setSaved(true);
@@ -99,10 +137,31 @@ export default function SettingsPage() {
           <h1 className="os-page__title">Settings</h1>
           <p className="os-page__subtitle">School configuration and system preferences</p>
         </div>
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+      </div>
+
+      <Tabs>
+        <TabList aria-label="Settings sections">
+          <Tab>General</Tab>
+          <Tab>Houses</Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel style={{ padding: 0 }}>
+      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", justifyContent: "flex-end", margin: "1rem 0" }}>
           {saved && <span style={{ fontSize: "0.8125rem", color: "#24a148" }}>✓ Saved</span>}
-          {updateSchool.isPending && <span style={{ fontSize: "0.8125rem", color: "#525252" }}>Saving…</span>}
-          {editing ? (
+          {(updateSchool.isPending || createSchool.isPending) && (
+            <span style={{ fontSize: "0.8125rem", color: "#525252" }}>Saving…</span>
+          )}
+          {noSchoolYet ? (
+            <Button
+              renderIcon={Save}
+              kind="primary"
+              size="md"
+              onClick={handleSave}
+              disabled={createSchool.isPending || gradeRangeInvalid || !form.name.trim()}
+            >
+              Create School
+            </Button>
+          ) : editing ? (
             <>
               <Button kind="secondary" size="md" onClick={handleCancel} disabled={updateSchool.isPending}>Cancel</Button>
               <Button renderIcon={Save} kind="primary" size="md" onClick={handleSave} disabled={updateSchool.isPending || gradeRangeInvalid}>
@@ -112,14 +171,33 @@ export default function SettingsPage() {
           ) : (
             <Button renderIcon={Edit} kind="secondary" size="md" onClick={handleEdit}>Edit</Button>
           )}
-        </div>
       </div>
 
       {isLoading && <LoadingSpinner />}
-      {isError && <ErrorMessage message="Could not load school information." onRetry={refetch} />}
+      {isError && !noSchoolYet && <ErrorMessage message="Could not load school information." onRetry={refetch} />}
+      {noSchoolYet && (
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          title="No school set up yet"
+          subtitle="Fill in your school's details below and save to finish setup."
+          style={{ marginBottom: "1rem", maxWidth: "100%" }}
+        />
+      )}
+      {createSchool.isError && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          title="Could not create school"
+          subtitle={getErrorMessage(createSchool.error)}
+          style={{ marginBottom: "1rem", maxWidth: "100%" }}
+        />
+      )}
 
-      {!isLoading && !isError && (
-        <SchoolInfoCard values={form} editing={editing} onChange={handleChange} />
+      {!isLoading && (!isError || noSchoolYet) && (
+        <SchoolInfoCard values={form} editing={isEditable} onChange={handleChange} />
       )}
 
       <div className="os-section">
@@ -131,9 +209,12 @@ export default function SettingsPage() {
             <NumberInput
               id="grade-from"
               label="Lowest grade"
-              helperText="The first grade this school runs."
-              min={0}
-              disabled={!editing}
+              helperText="The first grade this school runs (1–13)."
+              min={GRADE_MIN}
+              max={GRADE_MAX}
+              disabled={!isEditable}
+              invalid={gradeFromOutOfRange}
+              invalidText={`Must be between ${GRADE_MIN} and ${GRADE_MAX}.`}
               value={form.grade_from}
               onChange={(_e, { value }) =>
                 setForm((f) => ({ ...f, grade_from: value === "" ? "" : Number(value) }))
@@ -142,11 +223,16 @@ export default function SettingsPage() {
             <NumberInput
               id="grade-to"
               label="Highest grade"
-              helperText="The last grade this school runs."
-              min={0}
-              disabled={!editing}
+              helperText="The last grade this school runs (1–13)."
+              min={GRADE_MIN}
+              max={GRADE_MAX}
+              disabled={!isEditable}
               invalid={gradeRangeInvalid}
-              invalidText="Highest grade must be greater than or equal to lowest grade."
+              invalidText={
+                gradeToOutOfRange
+                  ? `Must be between ${GRADE_MIN} and ${GRADE_MAX}.`
+                  : "Highest grade must be greater than or equal to lowest grade."
+              }
               value={form.grade_to}
               onChange={(_e, { value }) =>
                 setForm((f) => ({ ...f, grade_to: value === "" ? "" : Number(value) }))
@@ -164,12 +250,12 @@ export default function SettingsPage() {
               <SelectItem value="tamil" text="Tamil" />
             </Select>
             <Select id="calendar" labelText="Academic Calendar" defaultValue="jan_dec" disabled={!editing}>
-              <SelectItem value="jan_dec" text="January — December" />
-              <SelectItem value="sep_aug" text="September — August" />
+              <SelectItem value="jan_dec" text="January - December" />
+              <SelectItem value="sep_aug" text="September - August" />
             </Select>
             <Select id="grading" labelText="Grading System" defaultValue="percentage" disabled={!editing}>
-              <SelectItem value="percentage" text="Percentage (0–100)" />
-              <SelectItem value="grade" text="Grade (A–F)" />
+              <SelectItem value="percentage" text="Percentage (0-100)" />
+              <SelectItem value="grade" text="Grade (A-F)" />
             </Select>
           </div>
         </div>
@@ -212,7 +298,7 @@ export default function SettingsPage() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0" }}>
             {[
-              ["Version",    "0.1.0 — development build"],
+              ["Version",    "0.1.0 - development build"],
               ["License",    "MIT"],
               ["Repository", "github.com/openschool-org"],
               ["Support",    "github.com/openschool-org/issues"],
@@ -225,6 +311,14 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+          </TabPanel>
+          <TabPanel style={{ padding: 0 }}>
+            <div style={{ marginTop: "1rem" }}>
+              <Houses />
+            </div>
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
     </div>
   );
 }

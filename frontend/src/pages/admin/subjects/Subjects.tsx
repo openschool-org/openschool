@@ -11,22 +11,22 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  Pagination,
 } from "@carbon/react";
-import { AxiosError } from "axios";
 import {
   useSubjects,
   useUpdateSubject,
   useDeleteSubject,
 } from "../../../queries/useSubjects";
 import type { Subject } from "../../../services/subject";
-import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import { usePagination } from "../../../hooks/usePagination";
+import { getErrorMessage } from "../../../lib/errorMessage";
+import TableSkeleton from "../../../components/common/TableSkeleton";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 
-function apiError(e: unknown, fallback: string) {
-  return (e as AxiosError<{ error: string }>)?.response?.data?.error ?? fallback;
-}
+const SUBJECT_TABLE_HEADERS = ["Code", "Subject", "Type", "Actions"];
 
 export default function Subjects() {
   const { data: subjects, isLoading, isError, refetch } = useSubjects();
@@ -36,6 +36,7 @@ export default function Subjects() {
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Subject | null>(null);
   const [form, setForm] = useState({ name: "", code: "", type: "" });
+  const [touched, setTouched] = useState<{ name?: boolean; code?: boolean }>({});
   const [toDelete, setToDelete] = useState<Subject | null>(null);
 
   const filtered = useMemo(() => {
@@ -48,14 +49,18 @@ export default function Subjects() {
     );
   }, [subjects, query]);
 
+  const { page, pageSize, pageItems, totalItems, onChange } = usePagination(filtered, 10);
+
   const openEdit = (s: Subject) => {
     updateSubject.reset();
     setForm({ name: s.name, code: s.code, type: s.type ?? "" });
+    setTouched({});
     setEditing(s);
   };
 
   const handleUpdate = () => {
-    if (!editing) return;
+    setTouched({ name: true, code: true });
+    if (!editing || !isValid) return;
     updateSubject.mutate(
       {
         id: editing.id,
@@ -115,7 +120,7 @@ export default function Subjects() {
           <InlineNotification
             kind="error"
             title="Could not delete subject"
-            subtitle={apiError(
+            subtitle={getErrorMessage(
               deleteSubject.error,
               "The subject may be in use by a class or curriculum group.",
             )}
@@ -126,7 +131,7 @@ export default function Subjects() {
         )}
 
         {isLoading ? (
-          <LoadingSpinner />
+          <TableSkeleton headers={SUBJECT_TABLE_HEADERS} />
         ) : isError ? (
           <ErrorMessage message="Failed to load subjects" onRetry={refetch} />
         ) : filtered.length === 0 ? (
@@ -169,7 +174,7 @@ export default function Subjects() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((s) => (
+                {pageItems.map((s) => (
                   <tr key={s.id}>
                     <td>
                       <span className="os-table__mono">{s.code}</span>
@@ -181,7 +186,7 @@ export default function Subjects() {
                           {s.type}
                         </Tag>
                       ) : (
-                        <span className="os-table__muted">—</span>
+                        <span className="os-table__muted">-</span>
                       )}
                     </td>
                     <td>
@@ -214,6 +219,13 @@ export default function Subjects() {
                 ))}
               </tbody>
             </table>
+            <Pagination
+              totalItems={totalItems}
+              page={page}
+              pageSize={pageSize}
+              pageSizes={[10, 20, 50]}
+              onChange={onChange}
+            />
           </>
         )}
       </div>
@@ -226,7 +238,7 @@ export default function Subjects() {
             <InlineNotification
               kind="error"
               title="Error"
-              subtitle={apiError(updateSubject.error, "Failed to update subject")}
+              subtitle={getErrorMessage(updateSubject.error, "Failed to update subject")}
               lowContrast
               hideCloseButton
               style={{ marginBottom: "1rem", maxWidth: "100%" }}
@@ -238,12 +250,18 @@ export default function Subjects() {
               labelText="Subject name"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              onBlur={() => setTouched((t) => ({ ...t, name: true }))}
+              invalid={!!touched.name && !form.name.trim()}
+              invalidText="Subject name is required."
             />
             <TextInput
               id="edit-subject-code"
               labelText="Subject code"
               value={form.code}
               onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+              onBlur={() => setTouched((t) => ({ ...t, code: true }))}
+              invalid={!!touched.code && !form.code.trim()}
+              invalidText="Subject code is required."
             />
             <TextInput
               id="edit-subject-type"

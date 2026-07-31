@@ -1,5 +1,6 @@
 import { TextInput } from "@carbon/react";
 import { Building } from "@carbon/icons-react";
+import LogoUpload from "./LogoUpload";
 
 export interface SchoolFormValues {
   name: string;
@@ -55,13 +56,13 @@ export default function SchoolInfoCard({ values, editing, onChange }: SchoolInfo
             readOnly={!editing}
             onChange={e => onChange("phone", e.target.value)}
           />
-          <TextInput
-            id="school-logo"
-            labelText="Logo URL"
-            value={values.logo_url}
-            readOnly={!editing}
-            onChange={e => onChange("logo_url", e.target.value)}
-          />
+          <div style={{ gridColumn: "1 / -1" }}>
+            <LogoUpload
+              value={values.logo_url}
+              editing={editing}
+              onChange={(v) => onChange("logo_url", v)}
+            />
+          </div>
         </div>
       </div>
     </div>

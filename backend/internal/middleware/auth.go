@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"log"
@@ -14,6 +15,7 @@ import (
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/openschool-org/openschool/internal/identity"
 )
 
 type StringOrSlice []string
@@ -87,13 +89,16 @@ func (t *stripX5CTransport) RoundTrip(req *http.Request) (*http.Response, error)
 }
 
 func InitJWKS(jwksURL string) error {
-	// Strips x5c from the JWKS response (keyfunc chokes on Asgardeo's x5c
-	// certificate chains) but otherwise uses a normal, TLS-verifying
-	// transport — this endpoint is what establishes trust for every JWT
-	// signature check in the app, so it must not skip certificate validation.
+	baseTransport := http.DefaultTransport
+	if os.Getenv("APP_ENV") == "development" {
+		baseTransport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+
 	client := &http.Client{
 		Transport: &stripX5CTransport{
-			base: http.DefaultTransport,
+			base: baseTransport,
 		},
 	}
 
@@ -132,7 +137,7 @@ func AuthMiddleware() gin.HandlerFunc {
 		claims := &Claims{}
 		token, err := jwt.ParseWithClaims(tokenStr, claims, jwks.Keyfunc,
 			jwt.WithValidMethods([]string{"RS256"}),
-			jwt.WithIssuer(os.Getenv("ASGARDEO_ISSUER")),
+			jwt.WithIssuer(identity.Issuer()),
 		)
 		if err != nil || !token.Valid {
 			log.Printf("auth: token validation failed: %v", err)

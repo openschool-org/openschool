@@ -33,13 +33,13 @@ SELECT
     ats.created_at,
     c.name                                    AS class_name,
     g.name                                     AS grade_name,
-    tp.full_name                               AS teacher_name,
+    u.full_name                                AS teacher_name,
     (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.id) AS enrolled_count,
     (SELECT COUNT(*) FROM attendance_records ar WHERE ar.session_id = ats.id) AS marked_count
 FROM attendance_sessions ats
-INNER JOIN classes         c  ON c.id  = ats.class_id
-INNER JOIN grades          g  ON g.id  = c.grade_id
-INNER JOIN teacher_profiles tp ON tp.id = ats.taken_by
+INNER JOIN classes c ON c.id = ats.class_id
+INNER JOIN grades  g ON g.id = c.grade_id
+INNER JOIN users   u ON u.id = ats.taken_by
 WHERE ats.date = $1
 ORDER BY g.sort_order ASC, c.name ASC;
 

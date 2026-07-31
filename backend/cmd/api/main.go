@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/openschool-org/openschool/internal/config"
 	"github.com/openschool-org/openschool/internal/database"
+	"github.com/openschool-org/openschool/internal/identity"
 	"github.com/openschool-org/openschool/internal/middleware"
 	"github.com/openschool-org/openschool/internal/routes"
 
@@ -46,7 +47,7 @@ func main() {
 	log.Println("database connected")
 
 	// init JWKS for JWT validation
-	jwksURL := os.Getenv("ASGARDEO_JWKS_URL")
+	jwksURL := identity.JWKSURL()
 	if err := middleware.InitJWKS(jwksURL); err != nil {
 		log.Fatalf("failed to init JWKS: %v", err)
 	}
@@ -58,6 +59,11 @@ func main() {
 	}
 
 	r := gin.Default()
+	// No reverse proxy in front of this service by default; trusting all
+	// proxies (Gin's default) would let a client spoof its own IP via
+	// X-Forwarded-For, undermining rate limiting and IP-based logging.
+	r.SetTrustedProxies(nil)
+	r.Use(middleware.SecurityHeaders())
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     corsOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},

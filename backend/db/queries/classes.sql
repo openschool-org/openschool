@@ -75,6 +75,13 @@ SET form_teacher_id = $2
 WHERE id = $1
 RETURNING *;
 
+-- name: AssignClassMonitors :one
+UPDATE classes
+SET girl_monitor_id = $2,
+    boy_monitor_id  = $3
+WHERE id = $1
+RETURNING *;
+
 -- name: EnrollStudentInClass :exec
 INSERT INTO class_students (class_id, student_id)
 VALUES ($1, $2)

@@ -4,23 +4,22 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/openschool-org/openschool/db/sqlc"
-	"github.com/openschool-org/openschool/internal/asgardeo"
+	"github.com/openschool-org/openschool/internal/identity"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
 )
 
 type StudentService struct {
-	repo           *repositories.StudentRepository
-	asgardeoClient *asgardeo.Client
+	repo *repositories.StudentRepository
+	idp  identity.Provider
 }
 
-func NewStudentService(repo *repositories.StudentRepository, asgardeoClient *asgardeo.Client) *StudentService {
-	return &StudentService{repo: repo, asgardeoClient: asgardeoClient}
+func NewStudentService(repo *repositories.StudentRepository, idp identity.Provider) *StudentService {
+	return &StudentService{repo: repo, idp: idp}
 }
 
 func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStudentRequest) (db.StudentProfile, error) {
@@ -30,8 +29,8 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		return db.StudentProfile{}, fmt.Errorf("index number already exists")
 	}
 
-	asgardeoUser, err := s.asgardeoClient.CreateUser(ctx, "student", map[string]interface{}{
-		"username":     req.Email,
+	asgardeoUser, err := s.idp.CreateUser(ctx, "student", map[string]interface{}{
+		"username":     req.IndexNumber,
 		"email":        req.Email,
 		"given_name":   req.GivenName,
 		"family_name":  req.FamilyName,
@@ -39,12 +38,12 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		"password":     req.Password,
 	})
 	if err != nil {
-		return db.StudentProfile{}, fmt.Errorf("failed to create Asgardeo user: %w", err)
+		return db.StudentProfile{}, fmt.Errorf("failed to create identity provider user: %w", err)
 	}
 
 	userID, err := uuid.Parse(asgardeoUser.ID)
 	if err != nil {
-		return db.StudentProfile{}, fmt.Errorf("invalid Asgardeo user ID: %w", err)
+		return db.StudentProfile{}, fmt.Errorf("invalid identity provider user ID: %w", err)
 	}
 
 	fullName := req.GivenName + " " + req.FamilyName
@@ -57,15 +56,22 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		Role:     "student",
 	})
 	if err != nil {
-		if delErr := s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
-			log.Printf("CreateStudent: failed to roll back Asgardeo user %s after error: %v (Asgardeo account now orphaned)", asgardeoUser.ID, delErr)
+		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
+			log.Printf("CreateStudent: failed to roll back identity provider user %s after error: %v (identity provider account now orphaned)", asgardeoUser.ID, delErr)
 		}
 		return db.StudentProfile{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
-	// assign student role in Asgardeo
-	if err := s.asgardeoClient.AssignRole(ctx, os.Getenv("ASGARDEO_ROLE_STUDENT"), asgardeoUser.ID); err != nil {
+	// assign student role in the identity provider
+	if err := s.idp.AssignRole(ctx, identity.RoleID("student"), asgardeoUser.ID); err != nil {
 		log.Printf("CreateStudent: failed to assign student role to %s: %v", asgardeoUser.ID, err)
+	}
+
+	houseID := pgtype.UUID{}
+	if houses, err := s.repo.ListHouses(ctx); err == nil {
+		if id, ok := houseForIndex(req.IndexNumber, houses); ok {
+			houseID = pgtype.UUID{Bytes: id, Valid: true}
+		}
 	}
 
 	// create student profile
@@ -78,10 +84,11 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		Whatsapp:       pgtype.Text{String: req.WhatsApp, Valid: req.WhatsApp != ""},
 		SpecialRemarks: pgtype.Text{String: req.SpecialRemarks, Valid: req.SpecialRemarks != ""},
 		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
+		HouseID:        houseID,
 	})
 	if err != nil {
-		if delErr := s.asgardeoClient.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
-			log.Printf("CreateStudent: failed to roll back Asgardeo user %s after error: %v (Asgardeo account now orphaned)", asgardeoUser.ID, delErr)
+		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
+			log.Printf("CreateStudent: failed to roll back identity provider user %s after error: %v (identity provider account now orphaned)", asgardeoUser.ID, delErr)
 		}
 		return db.StudentProfile{}, fmt.Errorf("failed to create student profile: %w", err)
 	}
@@ -97,7 +104,7 @@ func (s *StudentService) GetStudentWithClass(ctx context.Context, id uuid.UUID) 
 	return s.repo.GetWithClass(ctx, id)
 }
 
-func (s *StudentService) ListStudents(ctx context.Context) ([]db.StudentProfile, error) {
+func (s *StudentService) ListStudents(ctx context.Context) ([]db.ListStudentsRow, error) {
 	return s.repo.List(ctx)
 }
 
@@ -121,16 +128,16 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 		return db.StudentProfile{}, fmt.Errorf("user not found")
 	}
 
-	// update Asgardeo user with all required fields
-	err = s.asgardeoClient.UpdateUser(ctx, userID, "student", map[string]interface{}{
-		"username":     user.Email,
+	// update identity provider user with all required fields
+	err = s.idp.UpdateUser(ctx, userID, "student", map[string]interface{}{
+		"username":     student.IndexNumber,
 		"email":        user.Email,
 		"given_name":   req.GivenName,
 		"family_name":  req.FamilyName,
 		"phone_number": req.PhoneNumber,
 	})
 	if err != nil {
-		fmt.Printf("warning: failed to update Asgardeo user: %v\n", err)
+		fmt.Printf("warning: failed to update identity provider user: %v\n", err)
 	}
 
 	// update DB profile
@@ -145,29 +152,49 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 	})
 }
 
+func (s *StudentService) UpdateStudentHouse(ctx context.Context, id uuid.UUID, houseID string) (db.StudentProfile, error) {
+	house := pgtype.UUID{}
+	if houseID != "" {
+		parsed, err := uuid.Parse(houseID)
+		if err != nil {
+			return db.StudentProfile{}, fmt.Errorf("invalid house id")
+		}
+		house = pgtype.UUID{Bytes: parsed, Valid: true}
+	}
+
+	return s.repo.UpdateHouse(ctx, db.UpdateStudentHouseParams{
+		ID:      id,
+		HouseID: house,
+	})
+}
+
 func (s *StudentService) DeleteStudent(ctx context.Context, id uuid.UUID) error {
 	student, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("student not found")
 	}
 
-	userID := uuid.UUID(student.UserID.Bytes)
+	// Delete the identity provider account first and abort on failure
+	if student.UserID.Valid {
+		userID := uuid.UUID(student.UserID.Bytes)
 
-	// Delete the Asgardeo account first and abort on failure: if this were
-	// deleted last and failed, the local records would already be gone while
-	// the IdP account stayed live and sign-in-able — an orphaned account
-	// that can still authenticate. Deleting it first keeps local state
-	// untouched (and the operation retryable) on failure.
-	if err := s.asgardeoClient.DeleteUser(ctx, userID.String()); err != nil {
-		return fmt.Errorf("failed to delete Asgardeo user: %w", err)
+		if err := s.idp.DeleteUser(ctx, userID.String()); err != nil {
+			return fmt.Errorf("failed to delete identity provider user: %w", err)
+		}
+
+		if err := s.repo.DeleteStudent(ctx, id); err != nil {
+			return fmt.Errorf("failed to delete student profile: %w", err)
+		}
+
+		if err := s.repo.DeleteUser(ctx, userID); err != nil {
+			return fmt.Errorf("failed to delete user record: %w", err)
+		}
+
+		return nil
 	}
 
 	if err := s.repo.DeleteStudent(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete student profile: %w", err)
-	}
-
-	if err := s.repo.DeleteUser(ctx, userID); err != nil {
-		return fmt.Errorf("failed to delete user record: %w", err)
 	}
 
 	return nil

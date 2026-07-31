@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Button, TextInput, InlineNotification } from "@carbon/react";
 import { ArrowLeft, Save } from "@carbon/icons-react";
-import { AxiosError } from "axios";
 import { useCreateSubject } from "../../../queries/useSubjects";
+import { getErrorMessage } from "../../../lib/errorMessage";
+
+type Touched = Partial<Record<"name" | "code", boolean>>;
 
 export default function AddSubject() {
   const navigate = useNavigate();
@@ -12,10 +14,18 @@ export default function AddSubject() {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [type, setType] = useState("");
+  const [touched, setTouched] = useState<Touched>({});
+
+  const markTouched = (field: keyof Touched) => setTouched((t) => ({ ...t, [field]: true }));
+
+  const nameInvalid = !!touched.name && !name.trim();
+  const codeInvalid = !!touched.code && !code.trim();
 
   const isValid = name.trim() && code.trim();
 
   const handleSave = () => {
+    setTouched({ name: true, code: true });
+    if (!isValid) return;
     createSubject.mutate(
       { name: name.trim(), code: code.trim(), type: type.trim() },
       { onSuccess: () => navigate("/subjects") },
@@ -23,8 +33,7 @@ export default function AddSubject() {
   };
 
   const error = createSubject.isError
-    ? ((createSubject.error as AxiosError<{ error: string }>).response?.data
-        ?.error ?? "Failed to create subject")
+    ? getErrorMessage(createSubject.error, "Failed to create subject")
     : null;
 
   return (
@@ -63,6 +72,9 @@ export default function AddSubject() {
               placeholder="e.g. Mathematics"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onBlur={() => markTouched("name")}
+              invalid={nameInvalid}
+              invalidText="Subject name is required."
             />
             <TextInput
               id="subject-code"
@@ -71,6 +83,9 @@ export default function AddSubject() {
               helperText="Any code your school uses. Must be unique."
               value={code}
               onChange={(e) => setCode(e.target.value)}
+              onBlur={() => markTouched("code")}
+              invalid={codeInvalid}
+              invalidText="Subject code is required."
             />
             <TextInput
               id="subject-type"
@@ -90,17 +105,6 @@ export default function AddSubject() {
             subtitle={error}
             lowContrast
             onClose={() => createSubject.reset()}
-            style={{ maxWidth: "100%" }}
-          />
-        )}
-
-        {!isValid && (
-          <InlineNotification
-            kind="info"
-            title="Required fields"
-            subtitle="Subject name and code are required to save."
-            lowContrast
-            hideCloseButton
             style={{ maxWidth: "100%" }}
           />
         )}

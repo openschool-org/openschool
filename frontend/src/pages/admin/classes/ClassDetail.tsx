@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams, useLocation } from "react-router";
 import {
   Button,
   Tag,
@@ -8,8 +8,7 @@ import {
   TabList,
   TabPanels,
   TabPanel,
-  Select,
-  SelectItem,
+  TextInput,
   DatePicker,
   DatePickerInput,
   Pagination,
@@ -19,12 +18,13 @@ import {
   ModalBody,
   ModalFooter,
 } from "@carbon/react";
-import { ArrowLeft, Edit, Add, UserMultiple, EventSchedule } from "@carbon/icons-react";
-import { AxiosError } from "axios";
+import { ArrowLeft, Edit, Add, UserMultiple, EventSchedule, UserFollow } from "@carbon/icons-react";
 import {
   useClass,
   useClassStudents,
+  useUpdateClass,
   useAssignFormTeacher,
+  useAssignMonitors,
   useEnrollStudent,
   useUnenrollStudent,
 } from "../../../queries/useClasses";
@@ -40,23 +40,19 @@ import { useAcademicYears } from "../../../queries/useAcademicYears";
 import { useStudents } from "../../../queries/useStudents";
 import type { Student } from "../../../services/student";
 import type { AttendanceSession } from "../../../services/attendance";
+import { getErrorMessage as apiError } from "../../../lib/errorMessage";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
-
-function apiError(e: unknown, fallback: string) {
-  return (e as AxiosError<{ error: string }>)?.response?.data?.error ?? fallback;
-}
+import EntityCombobox from "../../../components/common/EntityCombobox";
+import ClassMarks from "./ClassMarks";
 
 function toYmd(d: Date | undefined): string {
   if (!d) return "";
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// Inserts a dash between a leading grade number and the section letters when
-// one isn't already there, e.g. "6A" -> "6-A". Names already written with a
-// dash (e.g. "10-A") pass through unchanged.
 function formatClassLabel(name: string) {
   const m = name.match(/^(\d+)([^\d-].*)$/);
   return m ? `${m[1]}-${m[2]}` : name;
@@ -69,6 +65,8 @@ function initials(name: string) {
 export default function ClassDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const initialTab = (location.state as { tab?: string } | null)?.tab === "attendance" ? 1 : 0;
 
   const { data: cls, isLoading, isError, refetch } = useClass(id);
   const { data: students, isLoading: studentsLoading } = useClassStudents(id);
@@ -80,14 +78,21 @@ export default function ClassDetail() {
   const { data: years } = useAcademicYears();
   const { data: allStudents } = useStudents();
 
+  const updateClass = useUpdateClass(id);
   const assignFormTeacher = useAssignFormTeacher(id);
+  const assignMonitors = useAssignMonitors(id);
   const enrollStudent = useEnrollStudent(id);
   const unenrollStudent = useUnenrollStudent(id);
   const createSession = useCreateSession(id);
   const deleteSession = useDeleteSession(id);
 
+  const [editOpen, setEditOpen] = useState(false);
+  const [nameEdit, setNameEdit] = useState("");
   const [teacherModalOpen, setTeacherModalOpen] = useState(false);
   const [teacherChoice, setTeacherChoice] = useState("");
+  const [monitorsModalOpen, setMonitorsModalOpen] = useState(false);
+  const [girlMonitorChoice, setGirlMonitorChoice] = useState("");
+  const [boyMonitorChoice, setBoyMonitorChoice] = useState("");
   const [enrolOpen, setEnrolOpen] = useState(false);
   const [studentChoice, setStudentChoice] = useState("");
   const [sessionOpen, setSessionOpen] = useState(false);
@@ -103,6 +108,10 @@ export default function ClassDetail() {
   const streamGroupName = streamGroups?.find((g) => g.id === cls?.stream_group_id)?.name;
   const formTeacher = teachers?.find((t) => t.id === cls?.form_teacher_id);
   const academicYearLabel = years?.find((y) => y.id === cls?.academic_year_id)?.label;
+  const girlMonitor = students?.find((s) => s.id === cls?.girl_monitor_id);
+  const boyMonitor = students?.find((s) => s.id === cls?.boy_monitor_id);
+  const girlMonitorCandidates = (students ?? []).filter((s) => s.gender !== "male");
+  const boyMonitorCandidates = (students ?? []).filter((s) => s.gender !== "female");
 
   const enrolledIds = useMemo(
     () => new Set((students ?? []).map((s) => s.id)),
@@ -129,6 +138,21 @@ export default function ClassDetail() {
     [sortedSessions, sessionPage, sessionPageSize],
   );
 
+  const openEdit = () => {
+    updateClass.reset();
+    setNameEdit(cls?.name ?? "");
+    setEditOpen(true);
+  };
+
+  const handleEditSave = () => {
+    const name = nameEdit.trim();
+    if (!name) return;
+    updateClass.mutate(
+      { name, form_teacher_id: cls?.form_teacher_id ?? null },
+      { onSuccess: () => setEditOpen(false) },
+    );
+  };
+
   const openTeacherModal = () => {
     assignFormTeacher.reset();
     setTeacherChoice(cls?.form_teacher_id ?? "");
@@ -140,6 +164,20 @@ export default function ClassDetail() {
     assignFormTeacher.mutate(teacherChoice, {
       onSuccess: () => setTeacherModalOpen(false),
     });
+  };
+
+  const openMonitorsModal = () => {
+    assignMonitors.reset();
+    setGirlMonitorChoice(cls?.girl_monitor_id ?? "");
+    setBoyMonitorChoice(cls?.boy_monitor_id ?? "");
+    setMonitorsModalOpen(true);
+  };
+
+  const handleAssignMonitors = () => {
+    assignMonitors.mutate(
+      { girl_monitor_id: girlMonitorChoice || null, boy_monitor_id: boyMonitorChoice || null },
+      { onSuccess: () => setMonitorsModalOpen(false) },
+    );
   };
 
   const openEnrol = () => {
@@ -220,8 +258,14 @@ export default function ClassDetail() {
               {streamName}
             </Tag>
           )}
-          <Button renderIcon={Edit} kind="ghost" size="sm" onClick={openTeacherModal}>
+          <Button renderIcon={Edit} kind="ghost" size="sm" onClick={openEdit}>
+            Edit
+          </Button>
+          <Button renderIcon={UserMultiple} kind="ghost" size="sm" onClick={openTeacherModal}>
             {formTeacher ? "Change Teacher" : "Assign Teacher"}
+          </Button>
+          <Button renderIcon={UserFollow} kind="ghost" size="sm" onClick={openMonitorsModal}>
+            {girlMonitor || boyMonitor ? "Change Monitors" : "Assign Monitors"}
           </Button>
           <Button renderIcon={ArrowLeft} kind="secondary" size="sm" as={Link} to="/classes">
             Back
@@ -239,10 +283,11 @@ export default function ClassDetail() {
           }}
         >
           <div>
-            <Tabs>
+            <Tabs defaultSelectedIndex={initialTab}>
               <TabList aria-label="Class sections">
                 <Tab>Students</Tab>
                 <Tab>Attendance</Tab>
+                <Tab>Marks</Tab>
                 <Tab>Details</Tab>
               </TabList>
               <TabPanels>
@@ -298,6 +343,16 @@ export default function ClassDetail() {
                                 <Link to={`/students/${s.id}`} className="os-table__link">
                                   {s.full_name}
                                 </Link>
+                                {s.id === cls.girl_monitor_id && (
+                                  <Tag type="magenta" size="sm" style={{ marginLeft: "0.5rem" }}>
+                                    Girl Monitor
+                                  </Tag>
+                                )}
+                                {s.id === cls.boy_monitor_id && (
+                                  <Tag type="blue" size="sm" style={{ marginLeft: "0.5rem" }}>
+                                    Boy Monitor
+                                  </Tag>
+                                )}
                               </td>
                               <td className="os-table__mono">{s.index_number}</td>
                               <td className="os-table__muted">
@@ -501,6 +556,13 @@ export default function ClassDetail() {
                   </div>
                 </TabPanel>
 
+                {/* ── Marks ────────────────────────────────────────────── */}
+                <TabPanel style={{ padding: 0 }}>
+                  <div style={{ marginTop: "1rem" }}>
+                    <ClassMarks classId={id} academicYearId={cls.academic_year_id} />
+                  </div>
+                </TabPanel>
+
                 {/* ── Details ──────────────────────────────────────────── */}
                 <TabPanel style={{ padding: 0 }}>
                   <div className="os-section" style={{ marginTop: "1rem" }}>
@@ -514,6 +576,8 @@ export default function ClassDetail() {
                         ["Stream", streamName ?? "None"],
                         ["Sub-stream", streamGroupName ?? "None"],
                         ["Academic Year", academicYearLabel ?? "—"],
+                        ["Girl Monitor", girlMonitor?.full_name ?? "Unassigned"],
+                        ["Boy Monitor", boyMonitor?.full_name ?? "Unassigned"],
                       ].map(([label, value]) => (
                         <div key={label} className="os-kv-item">
                           <p className="os-kv-item__label">{label}</p>
@@ -648,6 +712,41 @@ export default function ClassDetail() {
       </div>
 
       {/* Assign form teacher */}
+      <ComposedModal open={editOpen} size="sm" onClose={() => setEditOpen(false)}>
+        <ModalHeader title="Edit class" />
+        <ModalBody>
+          {updateClass.isError && (
+            <InlineNotification
+              kind="error"
+              title="Error"
+              subtitle={apiError(updateClass.error, "Failed to update class")}
+              lowContrast
+              hideCloseButton
+              style={{ marginBottom: "1rem", maxWidth: "100%" }}
+            />
+          )}
+          <TextInput
+            id="class-name-edit"
+            labelText="Class Name"
+            value={nameEdit}
+            maxLength={20}
+            onChange={(e) => setNameEdit(e.target.value)}
+          />
+        </ModalBody>
+        <ModalFooter>
+          <Button kind="secondary" onClick={() => setEditOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleEditSave}
+            disabled={!nameEdit.trim() || updateClass.isPending}
+          >
+            {updateClass.isPending ? "Saving…" : "Save"}
+          </Button>
+        </ModalFooter>
+      </ComposedModal>
+
       <ComposedModal open={teacherModalOpen} size="sm" onClose={() => setTeacherModalOpen(false)}>
         <ModalHeader title="Assign class teacher" />
         <ModalBody>
@@ -661,17 +760,16 @@ export default function ClassDetail() {
               style={{ marginBottom: "1rem", maxWidth: "100%" }}
             />
           )}
-          <Select
+          <EntityCombobox
             id="teacher-choice"
             labelText="Teacher"
-            value={teacherChoice}
-            onChange={(e) => setTeacherChoice(e.target.value)}
-          >
-            <SelectItem value="" text="Choose a teacher" />
-            {teachers?.map((t) => (
-              <SelectItem key={t.id} value={t.id} text={t.full_name} />
-            ))}
-          </Select>
+            items={teachers ?? []}
+            selectedId={teacherChoice}
+            onSelect={setTeacherChoice}
+            getId={(t) => t.id}
+            itemToString={(t) => `${t.full_name} — ${t.employee_number}`}
+            placeholder="Search teachers by name or employee number…"
+          />
         </ModalBody>
         <ModalFooter>
           <Button kind="secondary" onClick={() => setTeacherModalOpen(false)}>
@@ -683,6 +781,52 @@ export default function ClassDetail() {
             disabled={!teacherChoice || assignFormTeacher.isPending}
           >
             {assignFormTeacher.isPending ? "Saving…" : "Assign"}
+          </Button>
+        </ModalFooter>
+      </ComposedModal>
+
+      <ComposedModal open={monitorsModalOpen} size="sm" onClose={() => setMonitorsModalOpen(false)}>
+        <ModalHeader title="Assign class monitors" />
+        <ModalBody>
+          {assignMonitors.isError && (
+            <InlineNotification
+              kind="error"
+              title="Error"
+              subtitle={apiError(assignMonitors.error, "Failed to assign monitors")}
+              lowContrast
+              hideCloseButton
+              style={{ marginBottom: "1rem", maxWidth: "100%" }}
+            />
+          )}
+          <div style={{ display: "grid", gap: "1rem" }}>
+            <EntityCombobox
+              id="girl-monitor-choice"
+              labelText="Girl Monitor"
+              items={girlMonitorCandidates}
+              selectedId={girlMonitorChoice}
+              onSelect={setGirlMonitorChoice}
+              getId={(s) => s.id}
+              itemToString={(s) => `${s.full_name} — ${s.index_number}`}
+              placeholder="Search students by name or index number…"
+            />
+            <EntityCombobox
+              id="boy-monitor-choice"
+              labelText="Boy Monitor"
+              items={boyMonitorCandidates}
+              selectedId={boyMonitorChoice}
+              onSelect={setBoyMonitorChoice}
+              getId={(s) => s.id}
+              itemToString={(s) => `${s.full_name} — ${s.index_number}`}
+              placeholder="Search students by name or index number…"
+            />
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button kind="secondary" onClick={() => setMonitorsModalOpen(false)}>
+            Cancel
+          </Button>
+          <Button kind="primary" onClick={handleAssignMonitors} disabled={assignMonitors.isPending}>
+            {assignMonitors.isPending ? "Saving…" : "Save"}
           </Button>
         </ModalFooter>
       </ComposedModal>
@@ -707,21 +851,16 @@ export default function ClassDetail() {
               there are no students yet.
             </p>
           ) : (
-            <Select
+            <EntityCombobox
               id="student-choice"
               labelText="Student"
-              value={studentChoice}
-              onChange={(e) => setStudentChoice(e.target.value)}
-            >
-              <SelectItem value="" text="Choose a student" />
-              {enrolCandidates.map((s) => (
-                <SelectItem
-                  key={s.id}
-                  value={s.id}
-                  text={`${s.full_name} (${s.index_number})`}
-                />
-              ))}
-            </Select>
+              items={enrolCandidates}
+              selectedId={studentChoice}
+              onSelect={setStudentChoice}
+              getId={(s) => s.id}
+              itemToString={(s) => `${s.full_name} — ${s.index_number}`}
+              placeholder="Search students by name or index number…"
+            />
           )}
         </ModalBody>
         <ModalFooter>

@@ -12,11 +12,12 @@ import {
 } from "@carbon/react";
 import { ArrowLeft, Save } from "@carbon/icons-react";
 import { useCreateStudent } from "../../../queries/useStudents";
-import { AxiosError } from "axios";
+import { getErrorMessage } from "../../../lib/errorMessage";
 
-// Index numbers are printed on ID cards and are often sequential, so they
-// must never double as a login credential. Generate an unrelated one-time
-// password instead and hand it to the admin to pass along out-of-band.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type Touched = Partial<Record<"givenName" | "familyName" | "email" | "indexNumber", boolean>>;
+
 function generateTempPassword(): string {
   const alphabet =
     "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -39,8 +40,13 @@ export default function AddStudent() {
   const [specialRemarks, setSpecialRemarks] = useState("");
   const [gender, setGender] = useState<"" | "male" | "female">("");
   const [tempPassword, setTempPassword] = useState<string | null>(null);
+  const [touched, setTouched] = useState<Touched>({});
+
+  const markTouched = (field: keyof Touched) => setTouched((t) => ({ ...t, [field]: true }));
 
   const handleSubmit = () => {
+    setTouched({ givenName: true, familyName: true, email: true, indexNumber: true });
+    if (!isValid) return;
     const password = generateTempPassword();
     createStudent.mutate(
       {
@@ -60,12 +66,19 @@ export default function AddStudent() {
   };
 
   const errorMessage = createStudent.isError
-    ? (createStudent.error as AxiosError<{ error: string }>).response?.data
-        ?.error ?? "Failed to enrol student"
+    ? getErrorMessage(createStudent.error, "Failed to enrol student")
     : null;
 
+  const givenNameInvalid = !!touched.givenName && !givenName.trim();
+  const familyNameInvalid = !!touched.familyName && !familyName.trim();
+  const emailInvalid = !!touched.email && !EMAIL_RE.test(email.trim());
+  const indexNumberInvalid = !!touched.indexNumber && !indexNumber.trim();
+
   const isValid =
-    givenName.trim() && familyName.trim() && email.trim() && indexNumber.trim();
+    givenName.trim().length > 0 &&
+    familyName.trim().length > 0 &&
+    EMAIL_RE.test(email.trim()) &&
+    indexNumber.trim().length > 0;
 
   return (
     <div className="os-page">
@@ -88,10 +101,9 @@ export default function AddStudent() {
         <InlineNotification
           kind="info"
           title="Initial password"
-          subtitle="A one-time password is generated on save. It is never the student's index number — share it with them out-of-band and have them change it on first login."
+          subtitle="A one-time password is generated on save. It is never the student's index number - share it with them out-of-band and have them change it on first login."
           lowContrast
           hideCloseButton
-          // .os-form has no gap — sections carry their own margin, so match it
           style={{ maxWidth: "100%", marginBottom: "1.5rem" }}
         />
 
@@ -114,6 +126,9 @@ export default function AddStudent() {
               placeholder="e.g. Kavinda"
               value={givenName}
               onChange={(e) => setGivenName(e.target.value)}
+              onBlur={() => markTouched("givenName")}
+              invalid={givenNameInvalid}
+              invalidText="First name is required."
             />
             <TextInput
               id="family-name"
@@ -121,6 +136,9 @@ export default function AddStudent() {
               placeholder="e.g. Perera"
               value={familyName}
               onChange={(e) => setFamilyName(e.target.value)}
+              onBlur={() => markTouched("familyName")}
+              invalid={familyNameInvalid}
+              invalidText="Last name is required."
             />
             <TextInput
               id="email"
@@ -128,6 +146,9 @@ export default function AddStudent() {
               placeholder="e.g. student@school.lk"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => markTouched("email")}
+              invalid={emailInvalid}
+              invalidText="Enter a valid email address."
             />
             <TextInput
               id="phone"
@@ -148,6 +169,9 @@ export default function AddStudent() {
               placeholder="e.g. 2026/0145"
               value={indexNumber}
               onChange={(e) => setIndexNumber(e.target.value)}
+              onBlur={() => markTouched("indexNumber")}
+              invalid={indexNumberInvalid}
+              invalidText="Index number is required."
             />
             <TextInput
               id="whatsapp"
@@ -213,7 +237,7 @@ export default function AddStudent() {
         <p style={{ marginBottom: "1rem" }}>
           Share this one-time password with the student through a secure,
           out-of-band channel (not email/SMS in the clear). It will not be
-          shown again — the student should change it after signing in.
+          shown again - the student should change it after signing in.
         </p>
         <div
           style={{

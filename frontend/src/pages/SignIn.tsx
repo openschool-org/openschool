@@ -1,14 +1,30 @@
-import { SignInButton } from "@asgardeo/react";
+import { SignInButton, useThunderID } from "@thunderid/react";
+import { Navigate } from "react-router";
 import { Button } from "@carbon/react";
+import { useSetupStatus } from "../queries/useSetup";
 
 export default function SignIn() {
+  const { isSignedIn, isLoading } = useThunderID();
+  const { data: setupStatus, isLoading: setupLoading } = useSetupStatus();
+
+  if (isLoading || setupLoading) return <div style={{ minHeight: "100vh" }} />;
+  if (isSignedIn) return <Navigate to="/" replace />;
+  if (setupStatus?.needs_setup) return <Navigate to="/setup" replace />;
+
   return (
     <div className="os-signin-wrapper">
       <div className="os-signin-card">
-        <h1 style={{ fontSize: "1.75rem", fontWeight: 500, marginBottom: "0.5rem" }}>
-          OpenSchool
+        <img
+          src="/favicon.webp"
+          alt="OpenSchool"
+          width={48}
+          height={48}
+          className="os-signin-card__logo"
+        />
+        <h1 className="os-signin-card__title">
+          Open<span className="os-signin-card__title-accent">School</span>
         </h1>
-        <p style={{ color: "#525252", marginBottom: "2rem" }}>
+        <p className="os-signin-card__subtitle">
           Sign in to continue to your dashboard.
         </p>
         <SignInButton>
@@ -16,7 +32,7 @@ export default function SignIn() {
             <Button
               onClick={() => signIn()}
               disabled={isLoading}
-              style={{ width: "100%", maxWidth: "100%" }}
+              className="os-full-width-btn"
             >
               {isLoading ? "Signing in…" : "Sign In"}
             </Button>

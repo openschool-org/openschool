@@ -1,5 +1,7 @@
 import api from "../lib/api";
 
+export type TeacherTitle = "Mr" | "Miss" | "Mrs" | "Ms" | "Dr" | "Von" | "Prof";
+
 // Matches db.TeacherProfile JSON shape returned by the backend
 export interface Teacher {
   id: string;
@@ -8,6 +10,8 @@ export interface Teacher {
   employee_number: string;
   joined_date: string | null;
   phone: string | null;
+  title: TeacherTitle | null;
+  gender: "male" | "female" | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -29,6 +33,8 @@ export interface CreateTeacherRequest {
   password: string;
   employee_number: string;
   joined_date: string; // RFC3339 timestamp
+  title?: TeacherTitle;
+  gender?: "male" | "female";
 }
 
 // Matches models.UpdateTeacherRequest
@@ -37,6 +43,8 @@ export interface UpdateTeacherRequest {
   family_name: string;
   phone_number?: string;
   employee_number: string;
+  title?: TeacherTitle;
+  gender?: "male" | "female";
 }
 
 export const teacherApi = {

@@ -25,8 +25,6 @@ func NewEnrollmentService(repo *repositories.EnrollmentRepository, curriculum *r
 	return &EnrollmentService{repo: repo, curriculum: curriculum}
 }
 
-// Validate checks a proposed set of picks against every group of a level.
-// It reports one error per offending group rather than failing on the first.
 func (s *EnrollmentService) Validate(ctx context.Context, levelID uuid.UUID, picks []models.EnrollmentPick) ([]models.GroupValidationError, error) {
 	groups, err := s.curriculum.ListSelectionGroupsWithSubjectIDsByLevel(ctx, levelID)
 	if err != nil {
@@ -106,7 +104,6 @@ func (s *EnrollmentService) Validate(ctx context.Context, levelID uuid.UUID, pic
 	return errs, nil
 }
 
-// expectationMessage renders "expected 1 subject, got 0" style feedback.
 func expectationMessage(min, max, got int32) string {
 	if min == max {
 		return fmt.Sprintf("expected %d %s, got %d", min, pluralSubjects(min), got)
@@ -121,8 +118,6 @@ func pluralSubjects(n int32) string {
 	return "subjects"
 }
 
-// Submit validates the picks and, only if every group passes, replaces the
-// student's existing picks for that level and academic year.
 func (s *EnrollmentService) Submit(ctx context.Context, studentID uuid.UUID, req models.SubmitEnrollmentRequest) ([]models.GroupValidationError, error) {
 	academicYearID, err := uuid.Parse(req.AcademicYearID)
 	if err != nil {
@@ -176,8 +171,6 @@ func (s *EnrollmentService) Submit(ctx context.Context, studentID uuid.UUID, req
 
 	return nil, nil
 }
-
-// ── reads ───────────────────────────────────────────────────────────────────
 
 func (s *EnrollmentService) ListByStudent(ctx context.Context, studentID, academicYearID uuid.UUID) ([]models.EnrollmentResponse, error) {
 	rows, err := s.repo.ListByStudent(ctx, db.ListStudentEnrollmentsParams{

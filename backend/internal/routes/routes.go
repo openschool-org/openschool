@@ -1,13 +1,12 @@
 package routes
 
 import (
-	"log"
-
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	db "github.com/openschool-org/openschool/db/sqlc"
+	"github.com/openschool-org/openschool/internal/handlers"
 	"github.com/openschool-org/openschool/internal/middleware"
+	"github.com/openschool-org/openschool/internal/repositories"
+	"github.com/openschool-org/openschool/internal/services"
 )
 
 func Setup(r *gin.Engine, pool *pgxpool.Pool) {
@@ -16,6 +15,8 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	api.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
 	})
+
+	RegisterSetupRoutes(api, pool)
 
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware())
@@ -26,70 +27,31 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	teacherOrAdmin := protected.Group("")
 	teacherOrAdmin.Use(middleware.RequireRole("admin", "teacher"))
 
-	RegisterSchoolRoutes(admin, teacherOrAdmin, pool)
+	parent := protected.Group("")
+	parent.Use(middleware.RequireRole("parent"))
+
+	student := protected.Group("")
+	student.Use(middleware.RequireRole("student"))
+
+	RegisterSchoolRoutes(admin, teacherOrAdmin, protected, pool)
 	RegisterGradeRoutes(admin, teacherOrAdmin, pool)
+	RegisterHouseRoutes(admin, teacherOrAdmin, pool)
 	RegisterSubjectRoutes(admin, teacherOrAdmin, pool)
 	RegisterCurriculumRoutes(admin, protected, pool)
 	RegisterEnrollmentRoutes(admin, teacherOrAdmin, protected, pool)
-	RegisterStreamRoutes(admin, pool)
+	RegisterStreamRoutes(admin, teacherOrAdmin, pool)
 	RegisterClassRoutes(admin, teacherOrAdmin, pool)
 	RegisterStudentRoutes(admin, teacherOrAdmin, pool)
 	RegisterTeacherRoutes(admin, teacherOrAdmin, pool)
 	RegisterAttendanceRoutes(teacherOrAdmin, pool)
 	RegisterGuardianRoutes(admin, teacherOrAdmin, pool)
+	RegisterSectionHeadRoutes(admin, teacherOrAdmin, pool)
+	RegisterPrefectRoutes(admin, teacherOrAdmin, pool)
+	RegisterTermRoutes(admin, protected, pool)
+	RegisterTermMarkRoutes(teacherOrAdmin, pool)
+	RegisterParentRoutes(parent, pool)
+	RegisterStudentSelfRoutes(student, pool)
 
-	protected.GET("/me", func(c *gin.Context) {
-		userID := c.GetString("userID")
-		email := c.GetString("email")
-		givenName := c.GetString("given_name")
-		familyName := c.GetString("family_name")
-		roles, _ := c.Get("roles")
-		roleList := roles.([]string)
-
-		// determine role: highest-privilege recognized role wins; an
-		// unrecognized/missing roles claim must never default to admin
-		// (or any role) — it stays "" and the user is left unprovisioned.
-		role := ""
-		for _, candidate := range []string{"admin", "teacher", "student", "parent"} {
-			for _, r := range roleList {
-				if r == candidate {
-					role = candidate
-				}
-			}
-			if role != "" {
-				break
-			}
-		}
-
-		// auto-insert user into users table if not exists and we have a
-		// recognized role to assign (users.role has a NOT NULL CHECK
-		// constraint, so there is no safe "unknown" value to insert).
-		parsedID, err := uuid.Parse(userID)
-		if err == nil && role != "" {
-			queries := db.New(pool)
-			_, err = queries.GetUserByID(c.Request.Context(), parsedID)
-			if err != nil {
-				// user doesn't exist, insert
-				fullName := c.GetString("given_name") + " " + c.GetString("family_name")
-				if _, err := queries.CreateUser(c.Request.Context(), db.CreateUserParams{
-					ID:       parsedID,
-					Email:    email,
-					FullName: fullName,
-					Role:     role,
-				}); err != nil {
-					log.Printf("/me: failed to provision local user %s: %v", parsedID, err)
-				}
-			}
-		}
-
-		c.JSON(200, gin.H{
-			"user_id":      userID,
-			"email":        email,
-			"username":     c.GetString("username"),
-			"given_name":   givenName,
-			"family_name":  familyName,
-			"phone_number": c.GetString("phone_number"),
-			"roles":        roles,
-		})
-	})
+	meHandler := handlers.NewMeHandler(services.NewMeService(repositories.NewUserRepository(pool)))
+	protected.GET("/me", meHandler.Get)
 }

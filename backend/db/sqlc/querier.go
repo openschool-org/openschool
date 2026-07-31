@@ -14,15 +14,18 @@ import (
 type Querier interface {
 	// ── group subjects ──────────────────────────────────────────────────────────
 	AddGroupSubject(ctx context.Context, arg AddGroupSubjectParams) (GroupSubject, error)
+	AssignClassMonitors(ctx context.Context, arg AssignClassMonitorsParams) (Class, error)
 	AssignFormTeacher(ctx context.Context, arg AssignFormTeacherParams) (Class, error)
 	AssignSubjectTeacherToClass(ctx context.Context, arg AssignSubjectTeacherToClassParams) error
 	AssignSubjectToTeacher(ctx context.Context, arg AssignSubjectToTeacherParams) error
 	CountGroupSubjects(ctx context.Context, groupID uuid.UUID) (int64, error)
+	CountUsersByRole(ctx context.Context, role string) (int64, error)
 	CreateAcademicYear(ctx context.Context, arg CreateAcademicYearParams) (AcademicYear, error)
 	CreateAttendanceSession(ctx context.Context, arg CreateAttendanceSessionParams) (AttendanceSession, error)
 	CreateClass(ctx context.Context, arg CreateClassParams) (Class, error)
 	CreateGrade(ctx context.Context, arg CreateGradeParams) (Grade, error)
 	CreateGuardian(ctx context.Context, arg CreateGuardianParams) (Guardian, error)
+	CreateHouse(ctx context.Context, arg CreateHouseParams) (House, error)
 	// ── levels ──────────────────────────────────────────────────────────────────
 	CreateLevel(ctx context.Context, arg CreateLevelParams) (Level, error)
 	// ── mediums ─────────────────────────────────────────────────────────────────
@@ -36,6 +39,7 @@ type Querier interface {
 	CreateStudentSubjectEnrollment(ctx context.Context, arg CreateStudentSubjectEnrollmentParams) (StudentSubjectEnrollment, error)
 	CreateSubject(ctx context.Context, arg CreateSubjectParams) (Subject, error)
 	CreateTeacherProfile(ctx context.Context, arg CreateTeacherProfileParams) (TeacherProfile, error)
+	CreateTerm(ctx context.Context, arg CreateTermParams) (Term, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeactivateUser(ctx context.Context, id uuid.UUID) (User, error)
 	DeleteAcademicYear(ctx context.Context, id uuid.UUID) (int64, error)
@@ -43,9 +47,12 @@ type Querier interface {
 	DeleteAttendanceSession(ctx context.Context, id uuid.UUID) error
 	DeleteClass(ctx context.Context, id uuid.UUID) error
 	DeleteGrade(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteHouse(ctx context.Context, id uuid.UUID) (int64, error)
 	// blocked while any of its groups still carry enrollments
 	DeleteLevel(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteMedium(ctx context.Context, id uuid.UUID) (int64, error)
+	DeletePrefect(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteSectionHead(ctx context.Context, id uuid.UUID) (int64, error)
 	// blocked while enrollments reference it
 	DeleteSelectionGroup(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStream(ctx context.Context, id uuid.UUID) (int64, error)
@@ -58,8 +65,15 @@ type Querier interface {
 	// blocked while the teacher is assigned to teach a class subject, or has
 	// taken an attendance session (both ON DELETE RESTRICT)
 	DeleteTeacher(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteTerm(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteTermMark(ctx context.Context, id uuid.UUID) error
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	EnrollStudentInClass(ctx context.Context, arg EnrollStudentInClassParams) error
+	// Atomic get-or-create: used to provision the local row for an identity
+	// that just authenticated for the first time. The no-op DO UPDATE (rather
+	// than DO NOTHING) is required so RETURNING always yields a row, whether
+	// this call created it or another concurrent request already did.
+	EnsureUserExists(ctx context.Context, arg EnsureUserExistsParams) (User, error)
 	GetAcademicYearByID(ctx context.Context, id uuid.UUID) (AcademicYear, error)
 	GetAttendanceRecord(ctx context.Context, arg GetAttendanceRecordParams) (AttendanceRecord, error)
 	GetAttendanceSessionByClassAndDate(ctx context.Context, arg GetAttendanceSessionByClassAndDateParams) (AttendanceSession, error)
@@ -68,6 +82,7 @@ type Querier interface {
 	GetClassByID(ctx context.Context, id uuid.UUID) (Class, error)
 	GetClassStudentCount(ctx context.Context, classID uuid.UUID) (int64, error)
 	GetCurrentAcademicYear(ctx context.Context) (AcademicYear, error)
+	GetCurrentTerm(ctx context.Context) (Term, error)
 	// ── curriculum tree ─────────────────────────────────────────────────────────
 	// every group of a level with its subjects flattened alongside it.
 	// LEFT JOIN so a group with no subjects yet still comes back.
@@ -75,6 +90,8 @@ type Querier interface {
 	GetFormTeacherClass(ctx context.Context, formTeacherID pgtype.UUID) (Class, error)
 	GetGradeByID(ctx context.Context, id uuid.UUID) (Grade, error)
 	GetGuardianByID(ctx context.Context, id uuid.UUID) (Guardian, error)
+	GetGuardianByUserID(ctx context.Context, userID pgtype.UUID) (Guardian, error)
+	GetHouseByID(ctx context.Context, id uuid.UUID) (House, error)
 	GetLevelByID(ctx context.Context, id uuid.UUID) (Level, error)
 	GetMediumByID(ctx context.Context, id uuid.UUID) (Medium, error)
 	GetPrimaryGuardian(ctx context.Context, studentID uuid.UUID) (Guardian, error)
@@ -85,15 +102,19 @@ type Querier interface {
 	GetStudentByID(ctx context.Context, id uuid.UUID) (StudentProfile, error)
 	GetStudentByIndexNumber(ctx context.Context, indexNumber string) (StudentProfile, error)
 	GetStudentByUserID(ctx context.Context, userID pgtype.UUID) (StudentProfile, error)
-	GetStudentCurrentClass(ctx context.Context, studentID uuid.UUID) (Class, error)
+	GetStudentCurrentClass(ctx context.Context, studentID uuid.UUID) (GetStudentCurrentClassRow, error)
 	GetStudentWithClass(ctx context.Context, id uuid.UUID) (GetStudentWithClassRow, error)
 	GetSubjectByCode(ctx context.Context, code string) (Subject, error)
 	GetSubjectByID(ctx context.Context, id uuid.UUID) (Subject, error)
 	GetTeacherByEmployeeNumber(ctx context.Context, employeeNumber string) (TeacherProfile, error)
 	GetTeacherByID(ctx context.Context, id uuid.UUID) (TeacherProfile, error)
 	GetTeacherByUserID(ctx context.Context, userID uuid.UUID) (TeacherProfile, error)
+	GetTermByID(ctx context.Context, id uuid.UUID) (Term, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	// Authorization check: does the signed-in guardian actually have this
+	// student linked to them? Used to gate GET /me/children/:id/... routes.
+	IsGuardianOfStudent(ctx context.Context, arg IsGuardianOfStudentParams) (bool, error)
 	LinkGuardianToStudent(ctx context.Context, arg LinkGuardianToStudentParams) error
 	ListAcademicYears(ctx context.Context) ([]AcademicYear, error)
 	ListAttendanceBySession(ctx context.Context, sessionID uuid.UUID) ([]ListAttendanceBySessionRow, error)
@@ -103,14 +124,24 @@ type Querier interface {
 	// grade and teacher resolved, plus enough counts to show marked/pending and
 	// how many of the enrolled students have a record so far
 	ListAttendanceSessionsByDate(ctx context.Context, date pgtype.Date) ([]ListAttendanceSessionsByDateRow, error)
+	// Every student in the class, with their mark for this term+subject if one
+	// has been entered yet (NULL columns otherwise) — powers the marks-entry
+	// grid, which needs to show blanks for students not yet marked.
+	ListClassMarksForTermSubject(ctx context.Context, arg ListClassMarksForTermSubjectParams) ([]ListClassMarksForTermSubjectRow, error)
 	ListClassesByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]ListClassesByAcademicYearRow, error)
 	ListCurrentClasses(ctx context.Context) ([]ListCurrentClassesRow, error)
 	ListGrades(ctx context.Context) ([]Grade, error)
 	ListGroupSubjects(ctx context.Context, groupID uuid.UUID) ([]ListGroupSubjectsRow, error)
+	// Every guardian on file, for the "link an existing guardian to this
+	// student too" search picker (siblings sharing a guardian).
+	ListGuardians(ctx context.Context) ([]Guardian, error)
 	ListGuardiansByStudent(ctx context.Context, studentID uuid.UUID) ([]ListGuardiansByStudentRow, error)
+	ListHouses(ctx context.Context) ([]House, error)
 	ListLevels(ctx context.Context) ([]Level, error)
 	ListLevelsByGrade(ctx context.Context, gradeID pgtype.UUID) ([]Level, error)
 	ListMediums(ctx context.Context) ([]Medium, error)
+	ListPrefectsByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListPrefectsByYearRow, error)
+	ListSectionHeadsByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListSectionHeadsByYearRow, error)
 	ListSelectionGroupsByLevel(ctx context.Context, levelID uuid.UUID) ([]SelectionGroup, error)
 	// everything needed to validate a set of picks against a level in one round trip
 	ListSelectionGroupsWithSubjectIDsByLevel(ctx context.Context, levelID uuid.UUID) ([]ListSelectionGroupsWithSubjectIDsByLevelRow, error)
@@ -118,37 +149,55 @@ type Querier interface {
 	ListStreams(ctx context.Context) ([]Stream, error)
 	ListStudentEnrollments(ctx context.Context, arg ListStudentEnrollmentsParams) ([]ListStudentEnrollmentsRow, error)
 	ListStudentEnrollmentsByLevel(ctx context.Context, arg ListStudentEnrollmentsByLevelParams) ([]ListStudentEnrollmentsByLevelRow, error)
-	ListStudents(ctx context.Context) ([]StudentProfile, error)
+	ListStudentMarksByTerm(ctx context.Context, arg ListStudentMarksByTermParams) ([]ListStudentMarksByTermRow, error)
+	ListStudents(ctx context.Context) ([]ListStudentsRow, error)
 	ListStudentsByClass(ctx context.Context, classID uuid.UUID) ([]StudentProfile, error)
 	ListStudentsByGroup(ctx context.Context, arg ListStudentsByGroupParams) ([]ListStudentsByGroupRow, error)
+	// The signed-in parent's linked children, for the parent portal.
+	ListStudentsByGuardianUserID(ctx context.Context, userID pgtype.UUID) ([]ListStudentsByGuardianUserIDRow, error)
 	ListStudentsBySubject(ctx context.Context, arg ListStudentsBySubjectParams) ([]ListStudentsBySubjectRow, error)
+	ListStudentsMissingHouse(ctx context.Context) ([]StudentProfile, error)
 	ListSubjectTeachersByClass(ctx context.Context, classID uuid.UUID) ([]ListSubjectTeachersByClassRow, error)
 	ListSubjects(ctx context.Context) ([]Subject, error)
 	ListSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID) ([]Subject, error)
 	ListTeachers(ctx context.Context) ([]TeacherProfile, error)
 	ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID) ([]TeacherProfile, error)
+	ListTermsByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]Term, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListUsersByRole(ctx context.Context, role string) ([]User, error)
 	MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error)
 	RemoveGroupSubject(ctx context.Context, arg RemoveGroupSubjectParams) error
 	RemoveSubjectFromTeacher(ctx context.Context, arg RemoveSubjectFromTeacherParams) error
 	SetCurrentAcademicYear(ctx context.Context, id uuid.UUID) error
+	SetCurrentTerm(ctx context.Context, id uuid.UUID) error
+	// Links a guardian record to the ThunderID identity created for their
+	// portal login (see internal/services/guardian.go ProvisionLogin).
+	SetGuardianUserID(ctx context.Context, arg SetGuardianUserIDParams) error
 	SetPrimaryContact(ctx context.Context, arg SetPrimaryContactParams) error
 	UnenrollStudentFromClass(ctx context.Context, arg UnenrollStudentFromClassParams) error
 	UnlinkGuardianFromStudent(ctx context.Context, arg UnlinkGuardianFromStudentParams) error
 	UpdateClass(ctx context.Context, arg UpdateClassParams) (Class, error)
 	UpdateGrade(ctx context.Context, arg UpdateGradeParams) (Grade, error)
 	UpdateGuardian(ctx context.Context, arg UpdateGuardianParams) (Guardian, error)
+	UpdateHouse(ctx context.Context, arg UpdateHouseParams) (House, error)
 	UpdateLevel(ctx context.Context, arg UpdateLevelParams) (Level, error)
 	UpdateMedium(ctx context.Context, arg UpdateMediumParams) (Medium, error)
 	UpdateSchool(ctx context.Context, arg UpdateSchoolParams) (School, error)
 	UpdateSelectionGroup(ctx context.Context, arg UpdateSelectionGroupParams) (SelectionGroup, error)
 	UpdateStream(ctx context.Context, arg UpdateStreamParams) (Stream, error)
 	UpdateStreamGroup(ctx context.Context, arg UpdateStreamGroupParams) (StreamGroup, error)
+	UpdateStudentHouse(ctx context.Context, arg UpdateStudentHouseParams) (StudentProfile, error)
 	UpdateStudentProfile(ctx context.Context, arg UpdateStudentProfileParams) (StudentProfile, error)
 	UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error)
 	UpdateTeacherProfile(ctx context.Context, arg UpdateTeacherProfileParams) (TeacherProfile, error)
+	UpdateTerm(ctx context.Context, arg UpdateTermParams) (Term, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	// Teacher-in-charge for a whole grade (grades without A/L streams).
+	UpsertGradeSectionHead(ctx context.Context, arg UpsertGradeSectionHeadParams) (SectionHead, error)
+	UpsertPrefect(ctx context.Context, arg UpsertPrefectParams) (Prefect, error)
+	// Teacher-in-charge for one A/L stream within a grade.
+	UpsertStreamSectionHead(ctx context.Context, arg UpsertStreamSectionHeadParams) (SectionHead, error)
+	UpsertTermMark(ctx context.Context, arg UpsertTermMarkParams) (TermMark, error)
 }
 
 var _ Querier = (*Queries)(nil)

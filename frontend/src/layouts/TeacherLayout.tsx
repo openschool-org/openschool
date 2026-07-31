@@ -1,14 +1,6 @@
-import { Outlet, Link, useLocation } from "react-router";
-import {
-  Header,
-  HeaderName,
-  HeaderNavigation,
-  HeaderMenuItem,
-  HeaderGlobalBar,
-  HeaderGlobalAction,
-} from "@carbon/react";
-import { Search } from "@carbon/icons-react";
-import { UserDropdown, useAsgardeo } from "@asgardeo/react";
+import { Link, Outlet, useLocation } from "react-router";
+import { Header, HeaderNavigation, HeaderMenuItem } from "@carbon/react";
+import { AppHeaderBrand, AppHeaderActions } from "../components/AppHeaderChrome";
 
 const NAV = [
   { path: "/",           label: "Home",       exact: true  },
@@ -18,20 +10,12 @@ const NAV = [
 ];
 
 export default function TeacherLayout() {
-  const { getAccessToken } = useAsgardeo();
   const location = useLocation();
-
-  const copyToken = async () => {
-    const token = await getAccessToken();
-    if (token) navigator.clipboard.writeText(token);
-  };
 
   return (
     <>
       <Header aria-label="OpenSchool">
-        <HeaderName as={Link} to="/" prefix="" style={{ fontSize: "1.25rem", fontWeight: 500, letterSpacing: "0.01em" }}>
-          OpenSchool
-        </HeaderName>
+        <AppHeaderBrand />
 
         <HeaderNavigation aria-label="Teacher navigation">
           {NAV.map(({ path, label, exact }) => {
@@ -51,19 +35,7 @@ export default function TeacherLayout() {
           })}
         </HeaderNavigation>
 
-        <HeaderGlobalBar>
-          <HeaderGlobalAction aria-label="Search">
-            <Search size={20} style={{ fill: "#ffffff" }} />
-          </HeaderGlobalAction>
-          {import.meta.env.DEV && (
-            <HeaderGlobalAction aria-label="Copy access token (dev)" onClick={copyToken}>
-              <span style={{ fontSize: "0.75rem", fontWeight: 600, padding: "0 6px", color: "#ffffff", whiteSpace: "nowrap" }}>
-                Copy Token
-              </span>
-            </HeaderGlobalAction>
-          )}
-          <UserDropdown />
-        </HeaderGlobalBar>
+        <AppHeaderActions />
       </Header>
 
       <main className="os-teacher-content">

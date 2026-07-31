@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -68,6 +69,24 @@ func (h *GuardianHandler) GetByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, guardian)
+}
+
+// List godoc
+// @Summary      List all guardians
+// @Description  Every guardian on file, for the "link existing guardian" search picker
+// @Tags         guardians
+// @Produce      json
+// @Success      200 {array} models.GuardianResponse
+// @Security     BearerAuth
+// @Router       /guardians [get]
+func (h *GuardianHandler) List(c *gin.Context) {
+	guardians, err := h.service.ListGuardians(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, guardians)
 }
 
 // Update godoc
@@ -225,4 +244,47 @@ func (h *GuardianHandler) SetPrimaryContact(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "primary contact updated"})
+}
+
+// ProvisionLogin godoc
+// @Summary      Provision a parent portal login for a guardian
+// @Description  Creates an identity-provider account for an existing guardian and links it, giving them parent-portal access
+// @Tags         guardians
+// @Accept       json
+// @Produce      json
+// @Param        id       path      string                                 true  "Guardian ID"
+// @Param        request  body      models.ProvisionGuardianLoginRequest  true  "Login details"
+// @Success      200      {object}  models.GuardianResponse
+// @Failure      400      {object}  map[string]string
+// @Failure      404      {object}  map[string]string
+// @Failure      409      {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /guardians/{id}/provision-login [post]
+func (h *GuardianHandler) ProvisionLogin(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var req models.ProvisionGuardianLoginRequest
+	if err := bindStrict(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	guardian, err := h.service.ProvisionLogin(c.Request.Context(), id, req)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrGuardianNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case errors.Is(err, services.ErrGuardianAlreadyProvisioned), errors.Is(err, services.ErrGuardianMissingEmail):
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, guardian)
 }

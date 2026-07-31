@@ -5,22 +5,33 @@ import {
   Tag,
   TextInput,
   TextArea,
+  Select,
+  SelectItem,
   RadioButtonGroup,
   RadioButton,
   InlineNotification,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanels,
+  TabPanel,
 } from "@carbon/react";
 import { ArrowLeft, TrashCan, Edit, Save } from "@carbon/icons-react";
-import { AxiosError } from "axios";
 import {
   useStudentWithClass,
   useUpdateStudent,
+  useUpdateStudentHouse,
   useDeleteStudent,
 } from "../../../queries/useStudents";
+import { useHouses } from "../../../queries/useHouses";
 import type { StudentWithClass } from "../../../services/student";
+import { getErrorMessage } from "../../../lib/errorMessage";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import ProfileBanner from "../../../components/common/ProfileBanner";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import SubjectEnrollment from "./SubjectEnrollment";
+import StudentGuardians from "./StudentGuardians";
 
 type Gender = "" | "male" | "female";
 
@@ -44,7 +55,9 @@ export default function StudentDetail() {
   const { data: student, isLoading, isError, refetch } =
     useStudentWithClass(id);
   const updateStudent = useUpdateStudent();
+  const updateHouse = useUpdateStudentHouse();
   const deleteStudent = useDeleteStudent();
+  const { data: houses } = useHouses();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editing, setEditing] = useState(
@@ -101,8 +114,7 @@ export default function StudentDetail() {
     setForm((f) => ({ ...f, [field]: value }));
 
   const updateError = updateStudent.isError
-    ? (updateStudent.error as AxiosError<{ error: string }>).response?.data
-        ?.error ?? "Failed to update student"
+    ? getErrorMessage(updateStudent.error, "Failed to update student")
     : null;
 
   const isValid = form.given_name.trim() && form.family_name.trim();
@@ -177,10 +189,18 @@ export default function StudentDetail() {
       />
 
       <div style={{ padding: "1.5rem 2rem" }}>
-        <div className="os-section">
-          <div className="os-section__header">
-            <h2 className="os-section__title">Profile</h2>
-          </div>
+        <Tabs>
+          <TabList aria-label="Student sections">
+            <Tab>Profile</Tab>
+            <Tab>Guardians</Tab>
+            <Tab>Subject Enrollment</Tab>
+          </TabList>
+          <TabPanels>
+            <TabPanel style={{ padding: 0 }}>
+              <div className="os-section" style={{ marginTop: "1rem" }}>
+                <div className="os-section__header">
+                  <h2 className="os-section__title">Profile</h2>
+                </div>
           <div className="os-section__body">
             {updateError && (
               <InlineNotification
@@ -259,7 +279,7 @@ export default function StudentDetail() {
                   value={
                     form.gender
                       ? form.gender[0].toUpperCase() + form.gender.slice(1)
-                      : "—"
+                      : "-"
                   }
                   readOnly
                 />
@@ -306,6 +326,43 @@ export default function StudentDetail() {
             )}
           </div>
         </div>
+
+        <div className="os-section">
+          <div className="os-section__header">
+            <h2 className="os-section__title">House</h2>
+          </div>
+          <div className="os-section__body">
+            <Select
+              id="student-house"
+              labelText="Assigned house"
+              helperText="Assigned automatically from the index number; change it here if needed."
+              value={student.house_id ?? ""}
+              disabled={updateHouse.isPending}
+              onChange={(e) =>
+                updateHouse.mutate({ id: student.id, houseId: e.target.value })
+              }
+            >
+              <SelectItem value="" text="No house" />
+              {houses?.map((h) => (
+                <SelectItem key={h.id} value={h.id} text={h.name} />
+              ))}
+            </Select>
+          </div>
+        </div>
+
+            </TabPanel>
+            <TabPanel style={{ padding: 0 }}>
+              <div style={{ marginTop: "1rem" }}>
+                <StudentGuardians studentId={student.id} />
+              </div>
+            </TabPanel>
+            <TabPanel style={{ padding: 0 }}>
+              <div style={{ marginTop: "1rem" }}>
+                <SubjectEnrollment studentId={student.id} />
+              </div>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
       </div>
 
       <ConfirmDeleteModal

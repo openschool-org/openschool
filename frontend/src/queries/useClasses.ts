@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { classApi } from "../services/class";
 import { streamApi } from "../services/stream";
 import { studentApi } from "../services/student";
-import type { CreateClassRequest } from "../services/class";
+import type { CreateClassRequest, UpdateClassRequest } from "../services/class";
 
 export const CLASSES_KEY = ["classes"];
 export const CURRENT_CLASSES_KEY = ["classes", "current"];
@@ -69,11 +69,35 @@ export const useClassSubjectTeachers = (id: string) =>
     enabled: !!id,
   });
 
+export const useUpdateClass = (classId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: UpdateClassRequest) => classApi.update(classId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: classKey(classId) });
+      queryClient.invalidateQueries({ queryKey: CLASSES_KEY });
+      queryClient.invalidateQueries({ queryKey: CURRENT_CLASSES_KEY });
+    },
+  });
+};
+
 export const useAssignFormTeacher = (classId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (teacherId: string) =>
       classApi.assignFormTeacher(classId, teacherId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: classKey(classId) });
+      queryClient.invalidateQueries({ queryKey: CURRENT_CLASSES_KEY });
+    },
+  });
+};
+
+export const useAssignMonitors = (classId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { girl_monitor_id?: string | null; boy_monitor_id?: string | null }) =>
+      classApi.assignMonitors(classId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: classKey(classId) });
       queryClient.invalidateQueries({ queryKey: CURRENT_CLASSES_KEY });
@@ -115,3 +139,24 @@ export const useStreamGroups = (streamId: string) =>
     queryFn: () => streamApi.listGroups(streamId),
     enabled: !!streamId,
   });
+
+export const useCreateStream = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { name: string }) => streamApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: STREAMS_KEY });
+    },
+  });
+};
+
+export const useCreateStreamGroup = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ streamId, data }: { streamId: string; data: { name: string } }) =>
+      streamApi.createGroup(streamId, data),
+    onSuccess: (_group, { streamId }) => {
+      queryClient.invalidateQueries({ queryKey: streamGroupsKey(streamId) });
+    },
+  });
+};

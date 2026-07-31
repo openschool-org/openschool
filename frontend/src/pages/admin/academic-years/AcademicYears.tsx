@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, Add, Checkmark } from "@carbon/icons-react";
+import { Calendar, Add, Checkmark, TrashCan } from "@carbon/icons-react";
 import {
   Button,
   Tag,
@@ -12,19 +12,49 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
+  SkeletonText,
 } from "@carbon/react";
-import { AxiosError } from "axios";
 import {
   useAcademicYears,
   useCreateAcademicYear,
   useSetCurrentAcademicYear,
   useDeleteAcademicYear,
 } from "../../../queries/useAcademicYears";
+import {
+  useTerms,
+  useCreateTerm,
+  useSetCurrentTerm,
+  useDeleteTerm,
+} from "../../../queries/useTerms";
 import type { AcademicYear } from "../../../services/academicYear";
-import LoadingSpinner from "../../../components/common/LoadingSpinner";
+import type { Term } from "../../../services/term";
+import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+
+function AcademicYearRowSkeleton() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "1.25rem 1.5rem",
+        borderBottom: "1px solid #e0e0e0",
+        gap: "1rem",
+      }}
+    >
+      <SkeletonText width="1.25rem" />
+      <div style={{ flex: 1 }}>
+        <div style={{ marginBottom: "0.4rem" }}>
+          <SkeletonText width="25%" />
+        </div>
+        <SkeletonText width="40%" />
+      </div>
+      <SkeletonText width="5rem" />
+    </div>
+  );
+}
 
 function formatDate(iso: string | null) {
   if (!iso) return "—";
@@ -32,6 +62,207 @@ function formatDate(iso: string | null) {
     month: "short",
     year: "numeric",
   });
+}
+
+function formatTermDate(iso: string | null) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("en-LK", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+const EMPTY_TERM_FORM = { name: "", start_date: "", end_date: "" };
+
+function TermsModal({ year, onClose }: { year: AcademicYear; onClose: () => void }) {
+  const { data: terms, isLoading } = useTerms(year.id);
+  const createTerm = useCreateTerm(year.id);
+  const setCurrentTerm = useSetCurrentTerm(year.id);
+  const deleteTerm = useDeleteTerm(year.id);
+
+  const [form, setForm] = useState(EMPTY_TERM_FORM);
+  const [touched, setTouched] = useState<{ name?: boolean; start_date?: boolean; end_date?: boolean }>({});
+  const [toDelete, setToDelete] = useState<Term | null>(null);
+
+  const dateRangeInvalid =
+    !!form.start_date && !!form.end_date && form.end_date <= form.start_date;
+  const isValid =
+    form.name.trim().length > 0 && !!form.start_date && !!form.end_date && !dateRangeInvalid;
+
+  const handleAdd = () => {
+    setTouched({ name: true, start_date: true, end_date: true });
+    if (!isValid) return;
+    createTerm.mutate(
+      {
+        academic_year_id: year.id,
+        name: form.name.trim(),
+        start_date: new Date(form.start_date).toISOString(),
+        end_date: new Date(form.end_date).toISOString(),
+        sort_order: terms?.length ?? 0,
+      },
+      {
+        onSuccess: () => {
+          setForm(EMPTY_TERM_FORM);
+          setTouched({});
+        },
+      },
+    );
+  };
+
+  return (
+    <>
+      <ComposedModal open size="sm" onClose={onClose}>
+        <ModalHeader title={`Terms — ${year.label}`} />
+        <ModalBody>
+          {createTerm.isError && (
+            <InlineNotification
+              kind="error"
+              title="Error"
+              subtitle={getErrorMessage(createTerm.error, "Failed to create term")}
+              lowContrast
+              hideCloseButton
+              style={{ marginBottom: "1rem", maxWidth: "100%" }}
+            />
+          )}
+
+          {isLoading && <SkeletonText paragraph lineCount={3} />}
+
+          {!isLoading && terms?.length === 0 && (
+            <p style={{ fontSize: "0.875rem", color: "#8d8d8d", marginBottom: "1.25rem" }}>
+              No terms yet — a school year typically has three.
+            </p>
+          )}
+
+          {!isLoading && terms && terms.length > 0 && (
+            <div style={{ marginBottom: "1.5rem" }}>
+              {terms.map((t) => (
+                <div
+                  key={t.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.625rem",
+                    padding: "0.625rem 0",
+                    borderBottom: "1px solid #e0e0e0",
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontWeight: 500, fontSize: "0.875rem", color: "#161616" }}>
+                      {t.name}
+                    </p>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#525252" }}>
+                      {formatTermDate(t.start_date)} – {formatTermDate(t.end_date)}
+                    </p>
+                  </div>
+                  {t.is_current ? (
+                    <Tag type="teal" size="sm">
+                      <Checkmark size={12} style={{ marginRight: "4px" }} />
+                      Current
+                    </Tag>
+                  ) : (
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      onClick={() => setCurrentTerm.mutate(t.id)}
+                      disabled={setCurrentTerm.isPending}
+                    >
+                      Set Current
+                    </Button>
+                  )}
+                  <Button
+                    hasIconOnly
+                    kind="ghost"
+                    size="sm"
+                    iconDescription="Delete term"
+                    renderIcon={TrashCan}
+                    onClick={() => setToDelete(t)}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ display: "grid", gap: "0.75rem" }}>
+            <TextInput
+              id="term-name"
+              labelText="Term name"
+              placeholder="e.g. Term 1"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              onBlur={() => setTouched((t) => ({ ...t, name: true }))}
+              invalid={!!touched.name && !form.name.trim()}
+              invalidText="A name is required."
+            />
+            <DatePicker
+              datePickerType="single"
+              dateFormat="Y-m-d"
+              value={form.start_date}
+              onChange={(dates) => setForm((f) => ({ ...f, start_date: toYmd(dates[0]) }))}
+            >
+              <DatePickerInput
+                id="term-start"
+                labelText="Start Date"
+                placeholder="YYYY-MM-DD"
+                onBlur={() => setTouched((t) => ({ ...t, start_date: true }))}
+                invalid={!!touched.start_date && !form.start_date}
+                invalidText="A start date is required."
+              />
+            </DatePicker>
+            <DatePicker
+              datePickerType="single"
+              dateFormat="Y-m-d"
+              value={form.end_date}
+              onChange={(dates) => setForm((f) => ({ ...f, end_date: toYmd(dates[0]) }))}
+            >
+              <DatePickerInput
+                id="term-end"
+                labelText="End Date"
+                placeholder="YYYY-MM-DD"
+                onBlur={() => setTouched((t) => ({ ...t, end_date: true }))}
+                invalid={!!touched.end_date && (!form.end_date || dateRangeInvalid)}
+                invalidText={
+                  dateRangeInvalid
+                    ? "End date must be after the start date."
+                    : "An end date is required."
+                }
+              />
+            </DatePicker>
+            <Button
+              kind="ghost"
+              size="sm"
+              renderIcon={Add}
+              onClick={handleAdd}
+              disabled={createTerm.isPending}
+              style={{ justifySelf: "start" }}
+            >
+              {createTerm.isPending ? "Adding…" : "Add Term"}
+            </Button>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button kind="secondary" onClick={onClose}>
+            Close
+          </Button>
+        </ModalFooter>
+      </ComposedModal>
+
+      <ConfirmDeleteModal
+        open={!!toDelete}
+        title="Delete term"
+        description={
+          <>
+            Delete <strong>{toDelete?.name}</strong>? This cannot be undone.
+          </>
+        }
+        isPending={deleteTerm.isPending}
+        onClose={() => setToDelete(null)}
+        onConfirm={() => {
+          if (toDelete) deleteTerm.mutate(toDelete.id, { onSettled: () => setToDelete(null) });
+        }}
+      />
+    </>
+  );
 }
 
 const EMPTY_FORM = {
@@ -49,15 +280,29 @@ export default function AcademicYears() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [touched, setTouched] = useState<{ label?: boolean; start_date?: boolean; end_date?: boolean }>({});
   const [toDelete, setToDelete] = useState<AcademicYear | null>(null);
+  const [termsFor, setTermsFor] = useState<AcademicYear | null>(null);
 
   const openCreate = () => {
     setForm(EMPTY_FORM);
+    setTouched({});
     createYear.reset();
     setCreateOpen(true);
   };
 
+  const dateRangeInvalid =
+    !!form.start_date && !!form.end_date && form.end_date <= form.start_date;
+
+  const isValid =
+    form.label.trim().length > 0 &&
+    !!form.start_date &&
+    !!form.end_date &&
+    !dateRangeInvalid;
+
   const handleCreate = () => {
+    setTouched({ label: true, start_date: true, end_date: true });
+    if (!isValid) return;
     createYear.mutate(
       {
         label: form.label.trim(),
@@ -73,13 +318,6 @@ export default function AcademicYears() {
     if (!toDelete) return;
     deleteYear.mutate(toDelete.id, { onSettled: () => setToDelete(null) });
   };
-
-  const createError = createYear.isError
-    ? (createYear.error as AxiosError<{ error: string }>).response?.data?.error ??
-      "Failed to create academic year"
-    : null;
-
-  const isValid = form.label.trim() && form.start_date && form.end_date;
 
   return (
     <div className="os-page">
@@ -112,7 +350,13 @@ export default function AcademicYears() {
           )}
         </div>
 
-        {isLoading && <LoadingSpinner />}
+        {isLoading && (
+          <div>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <AcademicYearRowSkeleton key={i} />
+            ))}
+          </div>
+        )}
         {isError && (
           <ErrorMessage
             message="Could not load academic years."
@@ -127,7 +371,7 @@ export default function AcademicYears() {
           />
         )}
 
-        {years && years.length > 0 && (
+        {!isLoading && years && years.length > 0 && (
           <div>
             {years.map((y, i) => (
               <div
@@ -182,6 +426,9 @@ export default function AcademicYears() {
                     )}
                     {y.is_current ? "Current" : "Closed"}
                   </Tag>
+                  <Button kind="ghost" size="sm" onClick={() => setTermsFor(y)}>
+                    Terms
+                  </Button>
                   {!y.is_current && (
                     <Button
                       kind="ghost"
@@ -216,11 +463,11 @@ export default function AcademicYears() {
       >
         <ModalHeader title="New academic year" />
         <ModalBody>
-          {createError && (
+          {createYear.isError && (
             <InlineNotification
               kind="error"
               title="Error"
-              subtitle={createError}
+              subtitle={getErrorMessage(createYear.error, "Failed to create academic year")}
               lowContrast
               hideCloseButton
               style={{ marginBottom: "1rem", maxWidth: "100%" }}
@@ -235,6 +482,9 @@ export default function AcademicYears() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, label: e.target.value }))
               }
+              onBlur={() => setTouched((t) => ({ ...t, label: true }))}
+              invalid={!!touched.label && !form.label.trim()}
+              invalidText="A label is required."
             />
             <DatePicker
               datePickerType="single"
@@ -248,6 +498,9 @@ export default function AcademicYears() {
                 id="ay-start"
                 labelText="Start Date"
                 placeholder="YYYY-MM-DD"
+                onBlur={() => setTouched((t) => ({ ...t, start_date: true }))}
+                invalid={!!touched.start_date && !form.start_date}
+                invalidText="A start date is required."
               />
             </DatePicker>
             <DatePicker
@@ -262,6 +515,13 @@ export default function AcademicYears() {
                 id="ay-end"
                 labelText="End Date"
                 placeholder="YYYY-MM-DD"
+                onBlur={() => setTouched((t) => ({ ...t, end_date: true }))}
+                invalid={!!touched.end_date && (!form.end_date || dateRangeInvalid)}
+                invalidText={
+                  dateRangeInvalid
+                    ? "End date must be after the start date."
+                    : "An end date is required."
+                }
               />
             </DatePicker>
             <Checkbox
@@ -300,6 +560,8 @@ export default function AcademicYears() {
         onClose={() => setToDelete(null)}
         onConfirm={handleDelete}
       />
+
+      {termsFor && <TermsModal year={termsFor} onClose={() => setTermsFor(null)} />}
     </div>
   );
 }

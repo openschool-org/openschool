@@ -1,6 +1,8 @@
 package services
 
 import (
+	"strconv"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -48,4 +50,12 @@ func optionalInt4(v *int32) pgtype.Int4 {
 		return pgtype.Int4{}
 	}
 	return pgtype.Int4{Int32: *v, Valid: true}
+}
+
+// pgNumeric converts a plain float (e.g. a mark out of 100) to pgtype.Numeric.
+// pgtype.Numeric only scans from a string, not a float, hence the detour.
+func pgNumeric(v float64) pgtype.Numeric {
+	var n pgtype.Numeric
+	_ = n.Scan(strconv.FormatFloat(v, 'f', 2, 64))
+	return n
 }
