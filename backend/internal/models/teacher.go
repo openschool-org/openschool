@@ -39,7 +39,9 @@ type TeacherResponse struct {
 	Phone          string `json:"phone"`
 	Title          string `json:"title"`
 	Gender         string `json:"gender"`
-	CreatedAt      string `json:"created_at"`
+	// IsActive is true once the teacher has at least one assigned subject.
+	IsActive  bool   `json:"is_active"`
+	CreatedAt string `json:"created_at"`
 }
 
 type TeacherSubjectResponse struct {

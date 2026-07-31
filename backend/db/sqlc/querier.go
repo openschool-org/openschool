@@ -19,6 +19,7 @@ type Querier interface {
 	AssignSubjectTeacherToClass(ctx context.Context, arg AssignSubjectTeacherToClassParams) error
 	AssignSubjectToTeacher(ctx context.Context, arg AssignSubjectToTeacherParams) error
 	CountGroupSubjects(ctx context.Context, groupID uuid.UUID) (int64, error)
+	CountSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID) (int64, error)
 	CountUsersByRole(ctx context.Context, role string) (int64, error)
 	CreateAcademicYear(ctx context.Context, arg CreateAcademicYearParams) (AcademicYear, error)
 	CreateAttendanceSession(ctx context.Context, arg CreateAttendanceSessionParams) (AttendanceSession, error)
@@ -81,6 +82,8 @@ type Querier interface {
 	GetAttendanceSummaryByStudent(ctx context.Context, arg GetAttendanceSummaryByStudentParams) (GetAttendanceSummaryByStudentRow, error)
 	GetClassByID(ctx context.Context, id uuid.UUID) (Class, error)
 	GetClassStudentCount(ctx context.Context, classID uuid.UUID) (int64, error)
+	// the teacher assigned to teach a specific subject to a specific class, if any
+	GetClassSubjectTeacher(ctx context.Context, arg GetClassSubjectTeacherParams) (uuid.UUID, error)
 	GetCurrentAcademicYear(ctx context.Context) (AcademicYear, error)
 	GetCurrentTerm(ctx context.Context) (Term, error)
 	// ── curriculum tree ─────────────────────────────────────────────────────────
@@ -115,6 +118,9 @@ type Querier interface {
 	// Authorization check: does the signed-in guardian actually have this
 	// student linked to them? Used to gate GET /me/children/:id/... routes.
 	IsGuardianOfStudent(ctx context.Context, arg IsGuardianOfStudentParams) (bool, error)
+	IsStudentEnrollmentLocked(ctx context.Context, arg IsStudentEnrollmentLockedParams) (bool, error)
+	// true if the teacher is the class's form teacher OR teaches any subject in it
+	IsTeacherAssignedToClass(ctx context.Context, arg IsTeacherAssignedToClassParams) (bool, error)
 	LinkGuardianToStudent(ctx context.Context, arg LinkGuardianToStudentParams) error
 	ListAcademicYears(ctx context.Context) ([]AcademicYear, error)
 	ListAttendanceBySession(ctx context.Context, sessionID uuid.UUID) ([]ListAttendanceBySessionRow, error)
@@ -149,6 +155,8 @@ type Querier interface {
 	ListStreams(ctx context.Context) ([]Stream, error)
 	ListStudentEnrollments(ctx context.Context, arg ListStudentEnrollmentsParams) ([]ListStudentEnrollmentsRow, error)
 	ListStudentEnrollmentsByLevel(ctx context.Context, arg ListStudentEnrollmentsByLevelParams) ([]ListStudentEnrollmentsByLevelRow, error)
+	// teacher_id/teacher_name are NULL if the student's current-year class has
+	// no assigned teacher for that subject (or the student has no current class)
 	ListStudentMarksByTerm(ctx context.Context, arg ListStudentMarksByTermParams) ([]ListStudentMarksByTermRow, error)
 	ListStudents(ctx context.Context) ([]ListStudentsRow, error)
 	ListStudentsByClass(ctx context.Context, classID uuid.UUID) ([]StudentProfile, error)
@@ -160,11 +168,14 @@ type Querier interface {
 	ListSubjectTeachersByClass(ctx context.Context, classID uuid.UUID) ([]ListSubjectTeachersByClassRow, error)
 	ListSubjects(ctx context.Context) ([]Subject, error)
 	ListSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID) ([]Subject, error)
+	// every class+subject a teacher is assigned to teach, across academic years
+	ListTeacherWorkload(ctx context.Context, teacherID uuid.UUID) ([]ListTeacherWorkloadRow, error)
 	ListTeachers(ctx context.Context) ([]TeacherProfile, error)
 	ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID) ([]TeacherProfile, error)
 	ListTermsByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]Term, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListUsersByRole(ctx context.Context, role string) ([]User, error)
+	LockStudentEnrollment(ctx context.Context, arg LockStudentEnrollmentParams) error
 	MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error)
 	RemoveGroupSubject(ctx context.Context, arg RemoveGroupSubjectParams) error
 	RemoveSubjectFromTeacher(ctx context.Context, arg RemoveSubjectFromTeacherParams) error
@@ -174,8 +185,10 @@ type Querier interface {
 	// portal login (see internal/services/guardian.go ProvisionLogin).
 	SetGuardianUserID(ctx context.Context, arg SetGuardianUserIDParams) error
 	SetPrimaryContact(ctx context.Context, arg SetPrimaryContactParams) error
+	SetTeacherActiveStatus(ctx context.Context, arg SetTeacherActiveStatusParams) error
 	UnenrollStudentFromClass(ctx context.Context, arg UnenrollStudentFromClassParams) error
 	UnlinkGuardianFromStudent(ctx context.Context, arg UnlinkGuardianFromStudentParams) error
+	UnlockStudentEnrollment(ctx context.Context, arg UnlockStudentEnrollmentParams) (int64, error)
 	UpdateClass(ctx context.Context, arg UpdateClassParams) (Class, error)
 	UpdateGrade(ctx context.Context, arg UpdateGradeParams) (Grade, error)
 	UpdateGuardian(ctx context.Context, arg UpdateGuardianParams) (Guardian, error)

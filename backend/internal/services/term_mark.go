@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -10,23 +12,56 @@ import (
 	"github.com/openschool-org/openschool/internal/repositories"
 )
 
+// ErrNotAssignedToSubject is returned when a teacher tries to enter marks
+// for a subject they aren't the assigned class-subject-teacher for.
+var ErrNotAssignedToSubject = errors.New("you are not assigned to teach this subject for this class")
+
 type TermMarkService struct {
-	repo *repositories.TermMarkRepository
+	repo        *repositories.TermMarkRepository
+	teacherRepo *repositories.TeacherRepository
+	classRepo   *repositories.ClassRepository
 }
 
-func NewTermMarkService(repo *repositories.TermMarkRepository) *TermMarkService {
-	return &TermMarkService{repo: repo}
+func NewTermMarkService(repo *repositories.TermMarkRepository, teacherRepo *repositories.TeacherRepository, classRepo *repositories.ClassRepository) *TermMarkService {
+	return &TermMarkService{repo: repo, teacherRepo: teacherRepo, classRepo: classRepo}
+}
+
+// authorizeTeacherForClassSubject ensures the acting user, if a teacher, is
+// the class_subject_teachers-assigned teacher for this class+subject. Admins
+// bypass the check entirely.
+func (s *TermMarkService) authorizeTeacherForClassSubject(ctx context.Context, actor Actor, classID, subjectID uuid.UUID) error {
+	if actor.Role == "admin" {
+		return nil
+	}
+
+	teacher, err := s.teacherRepo.GetByUserID(ctx, actor.ID)
+	if err != nil {
+		return fmt.Errorf("only teachers assigned to a subject can enter its marks")
+	}
+
+	assignedTeacherID, err := s.classRepo.GetSubjectTeacher(ctx, classID, subjectID)
+	if err != nil {
+		return fmt.Errorf("no teacher is assigned to teach this subject for this class")
+	}
+	if assignedTeacherID != teacher.ID {
+		return ErrNotAssignedToSubject
+	}
+	return nil
 }
 
 // BulkUpsertMarks records one mark per entry (typically a whole class's
 // marks for one subject and term, entered from the marks-entry grid).
-func (s *TermMarkService) BulkUpsertMarks(ctx context.Context, req models.BulkUpsertMarksRequest, enteredBy uuid.UUID) ([]db.TermMark, error) {
+func (s *TermMarkService) BulkUpsertMarks(ctx context.Context, classID uuid.UUID, actor Actor, req models.BulkUpsertMarksRequest) ([]db.TermMark, error) {
 	termID, err := uuid.Parse(req.TermID)
 	if err != nil {
 		return nil, err
 	}
 	subjectID, err := uuid.Parse(req.SubjectID)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.authorizeTeacherForClassSubject(ctx, actor, classID, subjectID); err != nil {
 		return nil, err
 	}
 
@@ -48,7 +83,7 @@ func (s *TermMarkService) BulkUpsertMarks(ctx context.Context, req models.BulkUp
 			TermID:    termID,
 			Marks:     pgNumeric(entry.Marks),
 			MaxMarks:  pgNumeric(maxMarks),
-			EnteredBy: pgtype.UUID{Bytes: enteredBy, Valid: true},
+			EnteredBy: pgtype.UUID{Bytes: actor.ID, Valid: true},
 		})
 		if err != nil {
 			return nil, err

@@ -162,8 +162,6 @@ With the applications, roles, and users created above, add their values to both 
 **Backend `.env`**
 
 ```dotenv
-IDP_PROVIDER=thunderid
-
 THUNDERID_JWKS_URL=https://localhost:8090/oauth2/jwks
 THUNDERID_ISSUER=https://localhost:8090
 

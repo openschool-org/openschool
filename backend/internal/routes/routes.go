@@ -33,6 +33,9 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	student := protected.Group("")
 	student.Use(middleware.RequireRole("student"))
 
+	teacher := protected.Group("")
+	teacher.Use(middleware.RequireRole("teacher"))
+
 	RegisterSchoolRoutes(admin, teacherOrAdmin, protected, pool)
 	RegisterGradeRoutes(admin, teacherOrAdmin, pool)
 	RegisterHouseRoutes(admin, teacherOrAdmin, pool)
@@ -51,6 +54,7 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	RegisterTermMarkRoutes(teacherOrAdmin, pool)
 	RegisterParentRoutes(parent, pool)
 	RegisterStudentSelfRoutes(student, pool)
+	RegisterTeacherSelfRoutes(teacher, pool)
 
 	meHandler := handlers.NewMeHandler(services.NewMeService(repositories.NewUserRepository(pool)))
 	protected.GET("/me", meHandler.Get)

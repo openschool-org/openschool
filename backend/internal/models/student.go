@@ -1,7 +1,7 @@
 package models
 
 type CreateStudentRequest struct {
-	// Asgardeo account fields
+	// ThunderID account fields
 	Email       string `json:"email" binding:"required,email"`
 	GivenName   string `json:"given_name" binding:"required"`
 	FamilyName  string `json:"family_name" binding:"required"`

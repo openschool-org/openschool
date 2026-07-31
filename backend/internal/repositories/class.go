@@ -67,6 +67,25 @@ func (r *ClassRepository) ListSubjectTeachers(ctx context.Context, classID uuid.
 	return r.queries.ListSubjectTeachersByClass(ctx, classID)
 }
 
+// GetSubjectTeacher returns the teacher_profiles.id assigned to teach the
+// given subject in the given class, or pgx.ErrNoRows if no one is.
+func (r *ClassRepository) GetSubjectTeacher(ctx context.Context, classID, subjectID uuid.UUID) (uuid.UUID, error) {
+	return r.queries.GetClassSubjectTeacher(ctx, db.GetClassSubjectTeacherParams{
+		ClassID:   classID,
+		SubjectID: subjectID,
+	})
+}
+
+// IsTeacherAssignedToClass reports whether the teacher is the class's form
+// teacher or teaches any subject in it.
+func (r *ClassRepository) IsTeacherAssignedToClass(ctx context.Context, classID, teacherID uuid.UUID) (bool, error) {
+	return r.queries.IsTeacherAssignedToClass(ctx, db.IsTeacherAssignedToClassParams{
+		ID:            classID,
+		FormTeacherID: pgtype.UUID{Bytes: teacherID, Valid: true},
+		TeacherID:     teacherID,
+	})
+}
+
 func (r *ClassRepository) GetStudentCount(ctx context.Context, classID uuid.UUID) (int64, error) {
 	count, err := r.queries.GetClassStudentCount(ctx, classID)
 	return count, err

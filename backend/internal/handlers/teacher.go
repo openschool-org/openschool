@@ -20,7 +20,7 @@ func NewTeacherHandler(service *services.TeacherService) *TeacherHandler {
 
 // Create godoc
 // @Summary      Create teacher
-// @Description  Onboard a new teacher - creates Asgardeo user and teacher profile
+// @Description  Onboard a new teacher - creates ThunderID user and teacher profile
 // @Tags         teachers
 // @Accept       json
 // @Produce      json
@@ -127,7 +127,7 @@ func (h *TeacherHandler) Update(c *gin.Context) {
 
 // Delete godoc
 // @Summary      Delete teacher
-// @Description  Delete a teacher profile and Asgardeo user account
+// @Description  Delete a teacher profile and ThunderID user account
 // @Tags         teachers
 // @Produce      json
 // @Param        id path string true "Teacher ID"
@@ -219,6 +219,32 @@ func (h *TeacherHandler) RemoveSubject(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "subject removed from teacher"})
+}
+
+// Workload godoc
+// @Summary      Get teacher workload
+// @Description  Every class+subject a teacher is assigned to teach, across academic years
+// @Tags         teachers
+// @Produce      json
+// @Param        id path string true "Teacher ID"
+// @Success      200 {array} map[string]any
+// @Failure      400 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /teachers/{id}/workload [get]
+func (h *TeacherHandler) Workload(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	workload, err := h.service.GetWorkload(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, workload)
 }
 
 // ListSubjects godoc

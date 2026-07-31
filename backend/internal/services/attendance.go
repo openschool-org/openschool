@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -11,13 +12,43 @@ import (
 	"github.com/openschool-org/openschool/internal/repositories"
 )
 
+// ErrNotAssignedToClass is returned when a teacher tries to create a
+// session or mark attendance for a class they aren't the form teacher of,
+// or don't teach any subject in.
+var ErrNotAssignedToClass = errors.New("you are not assigned to teach this class")
+
 type AttendanceService struct {
-	repo     *repositories.AttendanceRepository
-	userRepo *repositories.UserRepository
+	repo        *repositories.AttendanceRepository
+	userRepo    *repositories.UserRepository
+	teacherRepo *repositories.TeacherRepository
+	classRepo   *repositories.ClassRepository
 }
 
-func NewAttendanceService(repo *repositories.AttendanceRepository, userRepo *repositories.UserRepository) *AttendanceService {
-	return &AttendanceService{repo: repo, userRepo: userRepo}
+func NewAttendanceService(repo *repositories.AttendanceRepository, userRepo *repositories.UserRepository, teacherRepo *repositories.TeacherRepository, classRepo *repositories.ClassRepository) *AttendanceService {
+	return &AttendanceService{repo: repo, userRepo: userRepo, teacherRepo: teacherRepo, classRepo: classRepo}
+}
+
+// authorizeTeacherForClass ensures the acting user, if a teacher, is the
+// class's form teacher or teaches at least one subject in it. Admins bypass
+// the check entirely.
+func (s *AttendanceService) authorizeTeacherForClass(ctx context.Context, actor Actor, classID uuid.UUID) error {
+	if actor.Role == "admin" {
+		return nil
+	}
+
+	teacher, err := s.teacherRepo.GetByUserID(ctx, actor.ID)
+	if err != nil {
+		return fmt.Errorf("only teachers assigned to a class can record its attendance")
+	}
+
+	assigned, err := s.classRepo.IsTeacherAssignedToClass(ctx, classID, teacher.ID)
+	if err != nil {
+		return err
+	}
+	if !assigned {
+		return ErrNotAssignedToClass
+	}
+	return nil
 }
 
 // authenticated user creating the session (taken from jwt)
@@ -37,6 +68,10 @@ func (s *AttendanceService) CreateSession(ctx context.Context, actor Actor, req 
 	date, err := time.Parse("2006-01-02", req.Date)
 	if err != nil {
 		return db.AttendanceSession{}, fmt.Errorf("invalid date format, use YYYY-MM-DD")
+	}
+
+	if err := s.authorizeTeacherForClass(ctx, actor, classID); err != nil {
+		return db.AttendanceSession{}, err
 	}
 
 	takenBy, err := s.resolveActingUser(ctx, actor)
@@ -106,11 +141,14 @@ func (s *AttendanceService) ListSessionsByDate(ctx context.Context, dateStr stri
 	return s.repo.ListSessionsByDate(ctx, date)
 }
 
-func (s *AttendanceService) MarkAttendance(ctx context.Context, sessionID uuid.UUID, req models.MarkAttendanceRequest) error {
-	// verify session exists
-	_, err := s.repo.GetSessionByID(ctx, sessionID)
+func (s *AttendanceService) MarkAttendance(ctx context.Context, actor Actor, sessionID uuid.UUID, req models.MarkAttendanceRequest) error {
+	session, err := s.repo.GetSessionByID(ctx, sessionID)
 	if err != nil {
 		return fmt.Errorf("attendance session not found")
+	}
+
+	if err := s.authorizeTeacherForClass(ctx, actor, session.ClassID); err != nil {
+		return err
 	}
 
 	for _, record := range req.Records {

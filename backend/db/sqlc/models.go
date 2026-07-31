@@ -160,6 +160,13 @@ type StreamGroup struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type StudentEnrollmentLock struct {
+	StudentID      uuid.UUID          `json:"student_id"`
+	LevelID        uuid.UUID          `json:"level_id"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	LockedAt       pgtype.Timestamptz `json:"locked_at"`
+}
+
 type StudentGuardian struct {
 	StudentID        uuid.UUID `json:"student_id"`
 	GuardianID       uuid.UUID `json:"guardian_id"`
@@ -214,6 +221,7 @@ type TeacherProfile struct {
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	Title          pgtype.Text        `json:"title"`
 	Gender         pgtype.Text        `json:"gender"`
+	IsActive       bool               `json:"is_active"`
 }
 
 type TeacherSubject struct {

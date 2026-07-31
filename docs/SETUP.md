@@ -8,8 +8,8 @@ that part is already done and picks up from "the app runs, but is empty."
 
 ## 1. Start the stack
 
-You need four things running: Postgres, the identity provider (ThunderID or
-Asgardeo), the backend, and the frontend.
+You need four things running: Postgres, ThunderID, the backend, and the
+frontend.
 
 ```bash
 # Postgres

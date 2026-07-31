@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/google/uuid"
 	db "github.com/openschool-org/openschool/db/sqlc"
@@ -67,9 +66,7 @@ func (s *SetupService) RegisterFirstAdmin(ctx context.Context, req models.Regist
 		return db.User{}, err
 	}
 	if !needsSetup {
-		if delErr := s.idp.DeleteUser(ctx, idpUser.ID); delErr != nil {
-			log.Printf("RegisterFirstAdmin: failed to roll back identity provider user %s: %v", idpUser.ID, delErr)
-		}
+		rollbackIDPUser(ctx, s.idp, "RegisterFirstAdmin", idpUser.ID)
 		return db.User{}, ErrSetupAlreadyDone
 	}
 
@@ -82,9 +79,7 @@ func (s *SetupService) RegisterFirstAdmin(ctx context.Context, req models.Regist
 		Role:     "admin",
 	})
 	if err != nil {
-		if delErr := s.idp.DeleteUser(ctx, idpUser.ID); delErr != nil {
-			log.Printf("RegisterFirstAdmin: failed to roll back identity provider user %s: %v", idpUser.ID, delErr)
-		}
+		rollbackIDPUser(ctx, s.idp, "RegisterFirstAdmin", idpUser.ID)
 		return db.User{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
