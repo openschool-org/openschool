@@ -35,7 +35,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		return db.TeacherProfile{}, fmt.Errorf("employee number already exists")
 	}
 
-	asgardeoUser, err := s.idp.CreateUser(ctx, "teacher", map[string]interface{}{
+	idpUser, err := s.idp.CreateUser(ctx, "teacher", map[string]interface{}{
 		"username":        req.Email,
 		"email":           req.Email,
 		"given_name":      req.GivenName,
@@ -48,7 +48,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		return db.TeacherProfile{}, fmt.Errorf("failed to create identity provider user: %w", err)
 	}
 
-	userID, err := uuid.Parse(asgardeoUser.ID)
+	userID, err := uuid.Parse(idpUser.ID)
 	if err != nil {
 		return db.TeacherProfile{}, fmt.Errorf("invalid identity provider user ID: %w", err)
 	}
@@ -63,15 +63,13 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		Role:     "teacher",
 	})
 	if err != nil {
-		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
-			log.Printf("CreateTeacher: failed to roll back identity provider user %s after error: %v (identity provider account now orphaned)", asgardeoUser.ID, delErr)
-		}
+		rollbackIDPUser(ctx, s.idp, "CreateTeacher", idpUser.ID)
 		return db.TeacherProfile{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
 	// assign teacher role in the identity provider
-	if err := s.idp.AssignRole(ctx, identity.RoleID("teacher"), asgardeoUser.ID); err != nil {
-		log.Printf("CreateTeacher: failed to assign teacher role to %s: %v", asgardeoUser.ID, err)
+	if err := s.idp.AssignRole(ctx, identity.RoleID("teacher"), idpUser.ID); err != nil {
+		log.Printf("CreateTeacher: failed to assign teacher role to %s: %v", idpUser.ID, err)
 	}
 
 	// create teacher profile
@@ -85,8 +83,9 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
 	})
 	if err != nil {
-		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
-			log.Printf("CreateTeacher: failed to roll back identity provider user %s after error: %v (identity provider account now orphaned)", asgardeoUser.ID, delErr)
+		rollbackIDPUser(ctx, s.idp, "CreateTeacher", idpUser.ID)
+		if delErr := s.repo.DeleteUser(ctx, userID); delErr != nil {
+			log.Printf("CreateTeacher: failed to roll back local user row %s after error: %v (local user now orphaned)", userID, delErr)
 		}
 		return db.TeacherProfile{}, fmt.Errorf("failed to create teacher profile: %w", err)
 	}

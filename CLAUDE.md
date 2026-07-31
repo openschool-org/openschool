@@ -53,8 +53,7 @@ Never edit files in `db/sqlc/` directly — they are generated. Schema is inferr
 - `cmd/api/main.go` — entry point: loads env, runs migrations, connects DB, inits JWKS, starts Gin router
 - `internal/config/` — loads `.env` via `godotenv`
 - `internal/database/` — DSN builder, pgxpool connection, `golang-migrate` runner
-- `internal/middleware/` — `AuthMiddleware` (validates Asgardeo-issued JWTs against JWKS) and `RequireRole` (per-route role gating)
-- `internal/asgardeo/` — SCIM2 client used to provision/update/delete users and assign roles in Asgardeo
+- `internal/middleware/` — `AuthMiddleware` (validates ThunderID-issued JWTs against JWKS) and `RequireRole` (per-route role gating)
 - `db/migrations/` — numbered up/down SQL migrations (golang-migrate format)
 - `db/queries/` — raw SQL queries annotated for sqlc
 - `db/sqlc/` — generated type-safe query code (do not edit)
@@ -63,14 +62,14 @@ Never edit files in `db/sqlc/` directly — they are generated. Schema is inferr
 
 See `.env.example`. Key vars: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_SSLMODE`, `PORT`, plus the identity-provider vars used for JWT validation and user management.
 
-### Identity provider (Asgardeo / ThunderID)
+### Identity provider (ThunderID)
 
-The backend supports two interchangeable identity providers, selected at startup by the `IDP_PROVIDER` env var (`asgardeo` — the default — or `thunderid`).
+The backend authenticates against ThunderID exclusively.
 
-- `internal/identity/` — provider-neutral seam: the `Provider` interface (CreateUser/UpdateUser/DeleteUser/AssignRole), the shared `User` return type, and env helpers `Selected()`, `JWKSURL()`, `Issuer()`, `RoleID(role)` that resolve to the `ASGARDEO_*` or `THUNDERID_*` vars based on `IDP_PROVIDER`.
-- `internal/asgardeo/` and `internal/thunderid/` — the two concrete clients; both satisfy `identity.Provider`.
-- `internal/routes/idp.go` — `newIdentityProvider()` factory that constructs the selected client; route files inject it into services.
-- Token validation reads `JWKSURL()`/`Issuer()`; provisioning uses the injected `Provider` and `RoleID(...)`. To switch providers, set `IDP_PROVIDER` and populate the matching `*_JWKS_URL`, `*_ISSUER`, credential, and `*_ROLE_*` vars, then restart.
+- `internal/identity/` — provider-neutral seam: the `Provider` interface (CreateUser/UpdateUser/DeleteUser/AssignRole), the shared `User` return type, and env helpers `JWKSURL()`, `Issuer()`, `RoleID(role)` that resolve to the `THUNDERID_*` vars.
+- `internal/thunderid/` — the concrete client; satisfies `identity.Provider`.
+- `internal/routes/idp.go` — `newIdentityProvider()` factory that constructs the ThunderID client; route files inject it into services.
+- Token validation reads `JWKSURL()`/`Issuer()`; provisioning uses the injected `Provider` and `RoleID(...)`.
 
 ## Frontend
 

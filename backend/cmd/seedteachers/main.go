@@ -15,10 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openschool-org/openschool/internal/asgardeo"
 	"github.com/openschool-org/openschool/internal/config"
 	"github.com/openschool-org/openschool/internal/database"
-	"github.com/openschool-org/openschool/internal/identity"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
 	"github.com/openschool-org/openschool/internal/services"
@@ -60,13 +58,6 @@ var tamilSurnames = []string{
 
 var titlesMale = []string{"Mr", "Dr", "Prof"}
 var titlesFemale = []string{"Mrs", "Ms", "Miss", "Dr"}
-
-func newIdentityProvider() identity.Provider {
-	if identity.Selected() == "thunderid" {
-		return thunderid.NewClient()
-	}
-	return asgardeo.NewClient()
-}
 
 func name(n int) (given, family, gender, title string) {
 	useTamil := n%4 == 3
@@ -116,7 +107,7 @@ func main() {
 	defer pool.Close()
 
 	teacherRepo := repositories.NewTeacherRepository(pool)
-	teacherService := services.NewTeacherService(teacherRepo, newIdentityProvider())
+	teacherService := services.NewTeacherService(teacherRepo, thunderid.NewClient())
 
 	ctx := context.Background()
 	log.Printf("seeding %d teachers...", count)

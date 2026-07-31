@@ -13,10 +13,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/openschool-org/openschool/internal/asgardeo"
 	"github.com/openschool-org/openschool/internal/config"
 	"github.com/openschool-org/openschool/internal/database"
-	"github.com/openschool-org/openschool/internal/identity"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
 	"github.com/openschool-org/openschool/internal/services"
@@ -56,13 +54,6 @@ var tamilSurnames = []string{
 	"Chandran", "Ganeshan", "Rajaratnam", "Thevar",
 }
 
-func newIdentityProvider() identity.Provider {
-	if identity.Selected() == "thunderid" {
-		return thunderid.NewClient()
-	}
-	return asgardeo.NewClient()
-}
-
 // name deterministically picks a given/family/gender combo for the nth
 // student overall, alternating Sinhala/Tamil name pools for variety.
 func name(n int) (given, family, gender string) {
@@ -96,7 +87,7 @@ func main() {
 
 	studentRepo := repositories.NewStudentRepository(pool)
 	classRepo := repositories.NewClassRepository(pool)
-	studentService := services.NewStudentService(studentRepo, newIdentityProvider())
+	studentService := services.NewStudentService(studentRepo, thunderid.NewClient())
 
 	ctx := context.Background()
 

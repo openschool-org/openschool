@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/google/uuid"
 	db "github.com/openschool-org/openschool/db/sqlc"
@@ -106,16 +105,12 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 		FullName: guardian.FullName,
 		Role:     "parent",
 	}); err != nil {
-		if delErr := s.idp.DeleteUser(ctx, idpUser.ID); delErr != nil {
-			log.Printf("ProvisionLogin: failed to roll back identity provider user %s: %v", idpUser.ID, delErr)
-		}
+		rollbackIDPUser(ctx, s.idp, "ProvisionLogin", idpUser.ID)
 		return db.Guardian{}, fmt.Errorf("failed to create local user record: %w", err)
 	}
 
 	if err := s.repo.SetUserID(ctx, guardianID, userID); err != nil {
-		if delErr := s.idp.DeleteUser(ctx, idpUser.ID); delErr != nil {
-			log.Printf("ProvisionLogin: failed to roll back identity provider user %s: %v", idpUser.ID, delErr)
-		}
+		rollbackIDPUser(ctx, s.idp, "ProvisionLogin", idpUser.ID)
 		return db.Guardian{}, fmt.Errorf("failed to link guardian record: %w", err)
 	}
 
