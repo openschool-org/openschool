@@ -21,4 +21,5 @@ func RegisterTeacherRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGro
 	admin.POST("/teachers/:id/subjects", handler.AssignSubject)
 	admin.DELETE("/teachers/:id/subjects/:subject_id", handler.RemoveSubject)
 	teacherOrAdmin.GET("/teachers/:id/subjects", handler.ListSubjects)
+	teacherOrAdmin.GET("/teachers/:id/workload", handler.Workload)
 }

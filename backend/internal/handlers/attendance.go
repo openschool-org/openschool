@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -16,6 +17,28 @@ type AttendanceHandler struct {
 
 func NewAttendanceHandler(service *services.AttendanceService) *AttendanceHandler {
 	return &AttendanceHandler{service: service}
+}
+
+// actorFromContext builds a services.Actor from the JWT claims AuthMiddleware
+// already put on the gin context. Shared by any handler that needs to know
+// who's acting, not just who's authenticated (e.g. for assignment checks).
+func actorFromContext(c *gin.Context) (services.Actor, error) {
+	id, err := uuid.Parse(c.GetString("userID"))
+	if err != nil {
+		return services.Actor{}, fmt.Errorf("invalid caller identity")
+	}
+
+	var roleList []string
+	if roles, ok := c.Get("roles"); ok {
+		roleList, _ = roles.([]string)
+	}
+
+	return services.Actor{
+		ID:       id,
+		Email:    c.GetString("email"),
+		FullName: strings.TrimSpace(c.GetString("given_name") + " " + c.GetString("family_name")),
+		Role:     services.ResolveAppRole(roleList),
+	}, nil
 }
 
 // CreateSession godoc
@@ -36,34 +59,10 @@ func (h *AttendanceHandler) CreateSession(c *gin.Context) {
 		return
 	}
 
-	takenByID, err := uuid.Parse(c.GetString("userID"))
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
-	}
-
-	role := ""
-	if roles, ok := c.Get("roles"); ok {
-		if roleList, ok := roles.([]string); ok {
-			for _, candidate := range []string{"admin", "teacher", "student", "parent"} {
-				for _, r := range roleList {
-					if r == candidate {
-						role = candidate
-						break
-					}
-				}
-				if role != "" {
-					break
-				}
-			}
-		}
-	}
-
-	actor := services.Actor{
-		ID:       takenByID,
-		Email:    c.GetString("email"),
-		FullName: strings.TrimSpace(c.GetString("given_name") + " " + c.GetString("family_name")),
-		Role:     role,
 	}
 
 	session, err := h.service.CreateSession(c.Request.Context(), actor, req)
@@ -203,7 +202,13 @@ func (h *AttendanceHandler) MarkAttendance(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.MarkAttendance(c.Request.Context(), id, req); err != nil {
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.service.MarkAttendance(c.Request.Context(), actor, id, req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

@@ -58,6 +58,25 @@ func (r *TeacherRepository) ListSubjects(ctx context.Context, teacherID uuid.UUI
 	return r.queries.ListSubjectsByTeacher(ctx, teacherID)
 }
 
+func (r *TeacherRepository) CountSubjects(ctx context.Context, teacherID uuid.UUID) (int64, error) {
+	return r.queries.CountSubjectsByTeacher(ctx, teacherID)
+}
+
+func (r *TeacherRepository) SetActiveStatus(ctx context.Context, teacherID uuid.UUID, isActive bool) error {
+	return r.queries.SetTeacherActiveStatus(ctx, db.SetTeacherActiveStatusParams{
+		ID:       teacherID,
+		IsActive: isActive,
+	})
+}
+
+func (r *TeacherRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (db.TeacherProfile, error) {
+	return r.queries.GetTeacherByUserID(ctx, userID)
+}
+
+func (r *TeacherRepository) ListWorkload(ctx context.Context, teacherID uuid.UUID) ([]db.ListTeacherWorkloadRow, error) {
+	return r.queries.ListTeacherWorkload(ctx, teacherID)
+}
+
 func (r *TeacherRepository) CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error) {
 	return r.queries.CreateUser(ctx, params)
 }

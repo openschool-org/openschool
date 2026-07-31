@@ -11,7 +11,9 @@ import (
 func RegisterAttendanceRoutes(teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewAttendanceRepository(pool)
 	userRepo := repositories.NewUserRepository(pool)
-	service := services.NewAttendanceService(repo, userRepo)
+	teacherRepo := repositories.NewTeacherRepository(pool)
+	classRepo := repositories.NewClassRepository(pool)
+	service := services.NewAttendanceService(repo, userRepo, teacherRepo, classRepo)
 	handler := handlers.NewAttendanceHandler(service)
 
 	teacherOrAdmin.POST("/attendance/sessions", handler.CreateSession)

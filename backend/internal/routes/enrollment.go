@@ -15,6 +15,7 @@ func RegisterEnrollmentRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.Router
 	handler := handlers.NewEnrollmentHandler(service)
 
 	admin.POST("/students/:id/enrollments", handler.Submit)
+	admin.DELETE("/students/:id/enrollments/lock/:level_id", handler.Unlock)
 	admin.DELETE("/students/:id/enrollments/:group_id/:subject_id", handler.Delete)
 
 	teacherOrAdmin.GET("/students/:id/enrollments", handler.ListByStudent)

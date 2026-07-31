@@ -83,6 +83,7 @@ function MarksTab({ studentId }: { studentId: string }) {
           <thead>
             <tr>
               <th>Subject</th>
+              <th>Teacher</th>
               <th style={{ textAlign: "right" }}>Marks</th>
             </tr>
           </thead>
@@ -93,6 +94,7 @@ function MarksTab({ studentId }: { studentId: string }) {
                   {m.subject_name}{" "}
                   <span className="os-table__muted">({m.subject_code})</span>
                 </td>
+                <td className="os-table__muted">{m.teacher_name || "—"}</td>
                 <td style={{ textAlign: "right", fontWeight: 600 }}>
                   {m.marks} / {m.max_marks}
                 </td>

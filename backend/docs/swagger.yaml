@@ -15,18 +15,64 @@ definitions:
       start_date:
         type: string
     type: object
-  models.AddSubjectToBucketRequest:
+  models.AddGroupSubjectRequest:
     properties:
+      medium_id:
+        type: string
+      prerequisite_note:
+        type: string
+      sort_order:
+        type: integer
       subject_id:
         type: string
     required:
     - subject_id
+    type: object
+  models.AssignClassMonitorsRequest:
+    properties:
+      boy_monitor_id:
+        type: string
+      girl_monitor_id:
+        type: string
     type: object
   models.AssignFormTeacherRequest:
     properties:
       teacher_id:
         type: string
     required:
+    - teacher_id
+    type: object
+  models.AssignPrefectRequest:
+    properties:
+      academic_year_id:
+        type: string
+      rank:
+        enum:
+        - junior
+        - senior
+        - deputy_head
+        - head
+        type: string
+      student_id:
+        type: string
+    required:
+    - academic_year_id
+    - rank
+    - student_id
+    type: object
+  models.AssignSectionHeadRequest:
+    properties:
+      academic_year_id:
+        type: string
+      grade_id:
+        type: string
+      stream_id:
+        type: string
+      teacher_id:
+        type: string
+    required:
+    - academic_year_id
+    - grade_id
     - teacher_id
     type: object
   models.AssignSubjectTeacherRequest:
@@ -38,13 +84,6 @@ definitions:
     required:
     - subject_id
     - teacher_id
-    type: object
-  models.AssignSubjectToGradeRequest:
-    properties:
-      subject_id:
-        type: string
-    required:
-    - subject_id
     type: object
   models.AssignSubjectToTeacherRequest:
     properties:
@@ -108,13 +147,33 @@ definitions:
       total_days:
         type: integer
     type: object
+  models.BulkUpsertMarksRequest:
+    properties:
+      entries:
+        items:
+          $ref: '#/definitions/models.MarkEntry'
+        minItems: 1
+        type: array
+      subject_id:
+        type: string
+      term_id:
+        type: string
+    required:
+    - entries
+    - subject_id
+    - term_id
+    type: object
   models.ClassResponse:
     properties:
       academic_year_id:
         type: string
+      boy_monitor_id:
+        type: string
       created_at:
         type: string
       form_teacher_id:
+        type: string
+      girl_monitor_id:
         type: string
       grade_id:
         type: string
@@ -133,9 +192,13 @@ definitions:
         type: string
       academic_year_label:
         type: string
+      boy_monitor_id:
+        type: string
       created_at:
         type: string
       form_teacher_id:
+        type: string
+      girl_monitor_id:
         type: string
       grade_id:
         type: string
@@ -149,6 +212,16 @@ definitions:
         type: string
       stream_id:
         type: string
+    type: object
+  models.ConfirmEnrollmentRequest:
+    properties:
+      academic_year_id:
+        type: string
+      level_id:
+        type: string
+    required:
+    - academic_year_id
+    - level_id
     type: object
   models.CreateAcademicYearRequest:
     properties:
@@ -218,12 +291,34 @@ definitions:
     - phone
     - relationship
     type: object
+  models.CreateLevelRequest:
+    properties:
+      grade_id:
+        type: string
+      label:
+        type: string
+      sort_order:
+        type: integer
+    required:
+    - label
+    type: object
+  models.CreateMediumRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
   models.CreateSchoolRequest:
     properties:
       address:
         type: string
       email:
         type: string
+      grade_from:
+        type: integer
+      grade_to:
+        type: integer
       logo_url:
         type: string
       name:
@@ -232,6 +327,21 @@ definitions:
         type: string
     required:
     - name
+    type: object
+  models.CreateSelectionGroupRequest:
+    properties:
+      label:
+        type: string
+      max_select:
+        minimum: 0
+        type: integer
+      min_select:
+        minimum: 0
+        type: integer
+      sort_order:
+        type: integer
+    required:
+    - label
     type: object
   models.CreateStreamGroupRequest:
     properties:
@@ -247,18 +357,13 @@ definitions:
     required:
     - name
     type: object
-  models.CreateSubjectBucketRequest:
-    properties:
-      name:
-        type: string
-    required:
-    - name
-    type: object
   models.CreateSubjectRequest:
     properties:
       code:
         type: string
       name:
+        type: string
+      type:
         type: string
     required:
     - code
@@ -267,20 +372,36 @@ definitions:
   models.CreateTeacherRequest:
     properties:
       email:
-        description: ThunderID fields
+        description: Identity provider account fields
         type: string
       employee_number:
         description: Teacher profile fields
         type: string
       family_name:
         type: string
+      gender:
+        enum:
+        - male
+        - female
+        type: string
       given_name:
         type: string
       joined_date:
         type: string
       password:
+        minLength: 8
         type: string
       phone_number:
+        type: string
+      title:
+        enum:
+        - Mr
+        - Miss
+        - Mrs
+        - Ms
+        - Dr
+        - Von
+        - Prof
         type: string
     required:
     - email
@@ -289,6 +410,136 @@ definitions:
     - given_name
     - joined_date
     - password
+    type: object
+  models.CreateTermRequest:
+    properties:
+      academic_year_id:
+        type: string
+      end_date:
+        type: string
+      name:
+        type: string
+      sort_order:
+        type: integer
+      start_date:
+        type: string
+    required:
+    - academic_year_id
+    - end_date
+    - name
+    - start_date
+    type: object
+  models.CurriculumGroupResponse:
+    properties:
+      id:
+        type: string
+      label:
+        type: string
+      max_select:
+        type: integer
+      min_select:
+        type: integer
+      sort_order:
+        type: integer
+      subjects:
+        items:
+          $ref: '#/definitions/models.GroupSubjectResponse'
+        type: array
+    type: object
+  models.CurriculumTreeResponse:
+    properties:
+      groups:
+        items:
+          $ref: '#/definitions/models.CurriculumGroupResponse'
+        type: array
+      level:
+        $ref: '#/definitions/models.LevelResponse'
+    type: object
+  models.DuplicateLevelRequest:
+    properties:
+      grade_id:
+        type: string
+      label:
+        type: string
+      sort_order:
+        type: integer
+    required:
+    - label
+    type: object
+  models.EnrolledStudentResponse:
+    properties:
+      enrolled_at:
+        type: string
+      full_name:
+        type: string
+      group_id:
+        type: string
+      group_label:
+        type: string
+      index_number:
+        type: string
+      medium_id:
+        type: string
+      medium_name:
+        type: string
+      student_id:
+        type: string
+      subject_code:
+        type: string
+      subject_id:
+        type: string
+      subject_name:
+        type: string
+    type: object
+  models.EnrollmentPick:
+    properties:
+      group_id:
+        type: string
+      medium_id:
+        type: string
+      subject_id:
+        type: string
+    required:
+    - group_id
+    - subject_id
+    type: object
+  models.EnrollmentResponse:
+    properties:
+      academic_year_id:
+        type: string
+      enrolled_at:
+        type: string
+      group_id:
+        type: string
+      group_label:
+        type: string
+      level_id:
+        type: string
+      level_label:
+        type: string
+      medium_id:
+        type: string
+      medium_name:
+        type: string
+      student_id:
+        type: string
+      subject_code:
+        type: string
+      subject_id:
+        type: string
+      subject_name:
+        type: string
+      subject_type:
+        type: string
+    type: object
+  models.EnrollmentValidationResponse:
+    properties:
+      errors:
+        items:
+          $ref: '#/definitions/models.GroupValidationError'
+        type: array
+      valid:
+        type: boolean
     type: object
   models.GradeResponse:
     properties:
@@ -300,6 +551,34 @@ definitions:
         type: string
       sort_order:
         type: integer
+    type: object
+  models.GroupSubjectResponse:
+    properties:
+      medium_id:
+        type: string
+      medium_name:
+        type: string
+      prerequisite_note:
+        type: string
+      sort_order:
+        type: integer
+      subject_code:
+        type: string
+      subject_id:
+        type: string
+      subject_name:
+        type: string
+      subject_type:
+        type: string
+    type: object
+  models.GroupValidationError:
+    properties:
+      group_id:
+        type: string
+      label:
+        type: string
+      message:
+        type: string
     type: object
   models.GuardianResponse:
     properties:
@@ -333,6 +612,19 @@ definitions:
       relationship:
         type: string
     type: object
+  models.LevelResponse:
+    properties:
+      created_at:
+        type: string
+      grade_id:
+        type: string
+      id:
+        type: string
+      label:
+        type: string
+      sort_order:
+        type: integer
+    type: object
   models.LinkGuardianRequest:
     properties:
       guardian_id:
@@ -351,6 +643,65 @@ definitions:
     required:
     - records
     type: object
+  models.MarkEntry:
+    properties:
+      marks:
+        type: number
+      max_marks:
+        type: number
+      student_id:
+        type: string
+    required:
+    - student_id
+    type: object
+  models.MediumResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  models.ProvisionGuardianLoginRequest:
+    properties:
+      family_name:
+        type: string
+      given_name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      username:
+        type: string
+    required:
+    - family_name
+    - given_name
+    - password
+    - username
+    type: object
+  models.RegisterAdminRequest:
+    properties:
+      email:
+        type: string
+      family_name:
+        type: string
+      given_name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      phone_number:
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - family_name
+    - given_name
+    - password
+    - username
+    type: object
   models.SchoolResponse:
     properties:
       address:
@@ -359,6 +710,10 @@ definitions:
         type: string
       email:
         type: string
+      grade_from:
+        type: integer
+      grade_to:
+        type: integer
       id:
         type: string
       logo_url:
@@ -367,6 +722,23 @@ definitions:
         type: string
       phone:
         type: string
+    type: object
+  models.SelectionGroupResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      label:
+        type: string
+      level_id:
+        type: string
+      max_select:
+        type: integer
+      min_select:
+        type: integer
+      sort_order:
+        type: integer
     type: object
   models.StreamGroupResponse:
     properties:
@@ -396,6 +768,8 @@ definitions:
         type: string
       full_name:
         type: string
+      gender:
+        type: string
       id:
         type: string
       index_number:
@@ -409,19 +783,6 @@ definitions:
       whatsapp:
         type: string
     type: object
-  models.StudentSubjectSelectionResponse:
-    properties:
-      bucket_id:
-        type: string
-      bucket_name:
-        type: string
-      subject_code:
-        type: string
-      subject_id:
-        type: string
-      subject_name:
-        type: string
-    type: object
   models.StudentWithClassResponse:
     properties:
       academic_year:
@@ -433,6 +794,8 @@ definitions:
       created_at:
         type: string
       full_name:
+        type: string
+      gender:
         type: string
       grade_name:
         type: string
@@ -449,17 +812,6 @@ definitions:
       whatsapp:
         type: string
     type: object
-  models.SubjectBucketResponse:
-    properties:
-      created_at:
-        type: string
-      grade_id:
-        type: string
-      id:
-        type: string
-      name:
-        type: string
-    type: object
   models.SubjectResponse:
     properties:
       code:
@@ -469,6 +821,8 @@ definitions:
       id:
         type: string
       name:
+        type: string
+      type:
         type: string
     type: object
   models.SubjectTeacherResponse:
@@ -484,6 +838,20 @@ definitions:
       teacher_name:
         type: string
     type: object
+  models.SubmitEnrollmentRequest:
+    properties:
+      academic_year_id:
+        type: string
+      level_id:
+        type: string
+      picks:
+        items:
+          $ref: '#/definitions/models.EnrollmentPick'
+        type: array
+    required:
+    - academic_year_id
+    - level_id
+    type: object
   models.TeacherResponse:
     properties:
       created_at:
@@ -492,11 +860,18 @@ definitions:
         type: string
       full_name:
         type: string
+      gender:
+        type: string
       id:
         type: string
+      is_active:
+        description: IsActive is true once the teacher has at least one assigned subject.
+        type: boolean
       joined_date:
         type: string
       phone:
+        type: string
+      title:
         type: string
       user_id:
         type: string
@@ -508,6 +883,25 @@ definitions:
       id:
         type: string
       name:
+        type: string
+    type: object
+  models.TermResponse:
+    properties:
+      academic_year_id:
+        type: string
+      created_at:
+        type: string
+      end_date:
+        type: string
+      id:
+        type: string
+      is_current:
+        type: boolean
+      name:
+        type: string
+      sort_order:
+        type: integer
+      start_date:
         type: string
     type: object
   models.UpdateClassRequest:
@@ -543,12 +937,34 @@ definitions:
     - phone
     - relationship
     type: object
+  models.UpdateLevelRequest:
+    properties:
+      grade_id:
+        type: string
+      label:
+        type: string
+      sort_order:
+        type: integer
+    required:
+    - label
+    type: object
+  models.UpdateMediumRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
   models.UpdateSchoolRequest:
     properties:
       address:
         type: string
       email:
         type: string
+      grade_from:
+        type: integer
+      grade_to:
+        type: integer
       logo_url:
         type: string
       name:
@@ -557,6 +973,21 @@ definitions:
         type: string
     required:
     - name
+    type: object
+  models.UpdateSelectionGroupRequest:
+    properties:
+      label:
+        type: string
+      max_select:
+        minimum: 0
+        type: integer
+      min_select:
+        minimum: 0
+        type: integer
+      sort_order:
+        type: integer
+    required:
+    - label
     type: object
   models.UpdateStreamGroupRequest:
     properties:
@@ -572,11 +1003,21 @@ definitions:
     required:
     - name
     type: object
+  models.UpdateStudentHouseRequest:
+    properties:
+      house_id:
+        type: string
+    type: object
   models.UpdateStudentRequest:
     properties:
       address:
         type: string
       family_name:
+        type: string
+      gender:
+        enum:
+        - male
+        - female
         type: string
       given_name:
         type: string
@@ -596,6 +1037,8 @@ definitions:
         type: string
       name:
         type: string
+      type:
+        type: string
     required:
     - code
     - name
@@ -606,24 +1049,84 @@ definitions:
         type: string
       family_name:
         type: string
+      gender:
+        enum:
+        - male
+        - female
+        type: string
       given_name:
         type: string
       phone_number:
+        type: string
+      title:
+        enum:
+        - Mr
+        - Miss
+        - Mrs
+        - Ms
+        - Dr
+        - Von
+        - Prof
         type: string
     required:
     - employee_number
     - family_name
     - given_name
     type: object
-  models.UpsertStudentSubjectSelectionRequest:
+  models.UpdateTermRequest:
     properties:
-      bucket_id:
+      end_date:
         type: string
-      subject_id:
+      name:
+        type: string
+      sort_order:
+        type: integer
+      start_date:
         type: string
     required:
-    - bucket_id
-    - subject_id
+    - end_date
+    - name
+    - start_date
+    type: object
+  services.PresetLevelPreview:
+    properties:
+      already_exists:
+        type: boolean
+      grade_number:
+        type: integer
+      groups_to_add:
+        type: integer
+      label:
+        type: string
+      subjects_to_link:
+        type: integer
+    type: object
+  services.PresetSummary:
+    properties:
+      dry_run:
+        type: boolean
+      grades_covered:
+        description: grade numbers this preset has content for, present in this school
+        items:
+          type: integer
+        type: array
+      grades_skipped:
+        description: grade numbers with no matching Grade row
+        items:
+          type: integer
+        type: array
+      groups_created:
+        type: integer
+      levels:
+        items:
+          $ref: '#/definitions/services.PresetLevelPreview'
+        type: array
+      levels_created:
+        type: integer
+      links_created:
+        type: integer
+      subjects_created:
+        type: integer
     type: object
 host: localhost:8080
 info:
@@ -799,6 +1302,35 @@ paths:
       tags:
       - academic-years
   /attendance/sessions:
+    get:
+      description: 'Cross-class attendance dashboard: every session on one date, with
+        class/grade/teacher resolved and marked/enrolled counts'
+      parameters:
+      - description: Date, YYYY-MM-DD
+        in: query
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.AttendanceSessionResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List sessions for a date
+      tags:
+      - attendance
     post:
       consumes:
       - application/json
@@ -829,6 +1361,35 @@ paths:
       tags:
       - attendance
   /attendance/sessions/{id}:
+    delete:
+      description: Delete a session and every attendance record already written for
+        it
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete attendance session
+      tags:
+      - attendance
     get:
       description: Get an attendance session by ID
       parameters:
@@ -1109,6 +1670,120 @@ paths:
       summary: Assign form teacher
       tags:
       - classes
+  /classes/{id}/marks:
+    get:
+      description: Every student in the class with their mark, if entered, for the
+        given term and subject
+      parameters:
+      - description: Class UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Term UUID
+        in: query
+        name: term_id
+        required: true
+        type: string
+      - description: Subject UUID
+        in: query
+        name: subject_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List a class's marks for a term/subject
+      tags:
+      - marks
+    put:
+      consumes:
+      - application/json
+      description: Upserts one term-test mark per student for a given term and subject
+      parameters:
+      - description: Class UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Marks
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.BulkUpsertMarksRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Record term marks for a class
+      tags:
+      - marks
+  /classes/{id}/monitors:
+    put:
+      consumes:
+      - application/json
+      description: Set the girl and/or boy monitor for a class; omit or send null
+        to clear a slot
+      parameters:
+      - description: Class ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Monitor details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AssignClassMonitorsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ClassResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assign class monitors
+      tags:
+      - classes
   /classes/{id}/students:
     get:
       description: Get all students enrolled in a specific class
@@ -1294,6 +1969,82 @@ paths:
       summary: List current classes
       tags:
       - classes
+  /curriculum/preset:
+    post:
+      description: Idempotently creates subjects, levels, and selection groups for
+        the standard Grade 1-13 curriculum, scoped to whichever grades exist in this
+        school
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.PresetSummary'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Seed the Sri Lankan national curriculum
+      tags:
+      - curriculum
+  /curriculum/preset/preview:
+    get:
+      description: Computes exactly what Run would create, without writing anything
+        — for admin review before committing
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/services.PresetSummary'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Preview the Sri Lankan national curriculum preset
+      tags:
+      - curriculum
+  /enrollments/validate:
+    post:
+      consumes:
+      - application/json
+      description: 'Dry run: checks picks against every group of the level without
+        saving'
+      parameters:
+      - description: Proposed picks
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.SubmitEnrollmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.EnrollmentValidationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Validate enrollment picks
+      tags:
+      - enrollments
   /grades:
     get:
       description: Retrieve all grades ordered by sort_order then name
@@ -1453,13 +2204,85 @@ paths:
       summary: Update grade
       tags:
       - grades
-  /grades/{id}/buckets:
-    get:
-      description: Retrieve all elective subject buckets for a grade
+  /groups/{group_id}:
+    delete:
+      description: Blocked while enrollments reference the group
       parameters:
-      - description: Grade UUID
+      - description: Group UUID
         in: path
-        name: id
+        name: group_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete selection group
+      tags:
+      - curriculum
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Group UUID
+        in: path
+        name: group_id
+        required: true
+        type: string
+      - description: Group info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateSelectionGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SelectionGroupResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update selection group
+      tags:
+      - curriculum
+  /groups/{group_id}/students:
+    get:
+      parameters:
+      - description: Group UUID
+        in: path
+        name: group_id
+        required: true
+        type: string
+      - description: Academic year UUID
+        in: query
+        name: academic_year_id
         required: true
         type: string
       produces:
@@ -1469,7 +2292,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.SubjectBucketResponse'
+              $ref: '#/definitions/models.EnrolledStudentResponse'
             type: array
         "400":
           description: Bad Request
@@ -1477,6 +2300,28 @@ paths:
             additionalProperties:
               type: string
             type: object
+      security:
+      - BearerAuth: []
+      summary: List students enrolled through a group
+      tags:
+      - enrollments
+  /groups/{group_id}/subjects:
+    get:
+      parameters:
+      - description: Group UUID
+        in: path
+        name: group_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.GroupSubjectResponse'
+            type: array
         "500":
           description: Internal Server Error
           schema:
@@ -1485,110 +2330,31 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: List subject buckets
+      summary: List a group's subjects
       tags:
-      - grade-subjects
+      - curriculum
     post:
       consumes:
       - application/json
-      description: Create an elective subject bucket for a grade
+      description: Upserts the subject's medium restriction and prerequisite note
       parameters:
-      - description: Grade UUID
+      - description: Group UUID
         in: path
-        name: id
+        name: group_id
         required: true
         type: string
-      - description: Bucket details
+      - description: Group subject info
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/models.CreateSubjectBucketRequest'
+          $ref: '#/definitions/models.AddGroupSubjectRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/models.SubjectBucketResponse'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Create subject bucket
-      tags:
-      - grade-subjects
-  /grades/{id}/buckets/{bucket_id}/subjects:
-    get:
-      description: Retrieve all subjects available in an elective bucket
-      parameters:
-      - description: Grade UUID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Bucket UUID
-        in: path
-        name: bucket_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.SubjectResponse'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: List bucket options
-      tags:
-      - grade-subjects
-    post:
-      consumes:
-      - application/json
-      description: Add a subject as an option in an elective bucket
-      parameters:
-      - description: Grade UUID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Bucket UUID
-        in: path
-        name: bucket_id
-        required: true
-        type: string
-      - description: Subject details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.AddSubjectToBucketRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
             additionalProperties:
               type: string
             type: object
@@ -1600,87 +2366,15 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Add subject to bucket
+      summary: Add subject to group
       tags:
-      - grade-subjects
-  /grades/{id}/subjects:
-    get:
-      description: Retrieve all subjects assigned to a specific grade
-      parameters:
-      - description: Grade UUID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.SubjectResponse'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: List subjects for grade
-      tags:
-      - grade-subjects
-    post:
-      consumes:
-      - application/json
-      description: Assign a subject to be offered at a specific grade
-      parameters:
-      - description: Grade UUID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Subject details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.AssignSubjectToGradeRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Assign subject to grade
-      tags:
-      - grade-subjects
-  /grades/{id}/subjects/{subject_id}:
+      - curriculum
+  /groups/{group_id}/subjects/{subject_id}:
     delete:
-      description: Remove a subject assignment from a specific grade
       parameters:
-      - description: Grade UUID
+      - description: Group UUID
         in: path
-        name: id
+        name: group_id
         required: true
         type: string
       - description: Subject UUID
@@ -1705,10 +2399,27 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Remove subject from grade
+      summary: Remove subject from group
       tags:
-      - grade-subjects
+      - curriculum
   /guardians:
+    get:
+      description: Every guardian on file, for the "link existing guardian" search
+        picker
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.GuardianResponse'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List all guardians
+      tags:
+      - guardians
     post:
       consumes:
       - application/json
@@ -1799,6 +2510,851 @@ paths:
       summary: Update guardian
       tags:
       - guardians
+  /guardians/{id}/provision-login:
+    post:
+      consumes:
+      - application/json
+      description: Creates an identity-provider account for an existing guardian and
+        links it, giving them parent-portal access
+      parameters:
+      - description: Guardian ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Login details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ProvisionGuardianLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.GuardianResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Provision a parent portal login for a guardian
+      tags:
+      - guardians
+  /levels:
+    get:
+      description: Optionally filtered by grade via ?grade_id=
+      parameters:
+      - description: Grade UUID
+        in: query
+        name: grade_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.LevelResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List levels
+      tags:
+      - curriculum
+    post:
+      consumes:
+      - application/json
+      description: Create an admin-defined curriculum level
+      parameters:
+      - description: Level info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateLevelRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.LevelResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create level
+      tags:
+      - curriculum
+  /levels/{id}:
+    delete:
+      description: Blocked while any of the level's groups still carry enrollments
+      parameters:
+      - description: Level UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete level
+      tags:
+      - curriculum
+    get:
+      parameters:
+      - description: Level UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.LevelResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get level
+      tags:
+      - curriculum
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Level UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Level info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateLevelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.LevelResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update level
+      tags:
+      - curriculum
+  /levels/{id}/duplicate:
+    post:
+      consumes:
+      - application/json
+      description: Copy a level with all its selection groups and their subjects,
+        under a new label
+      parameters:
+      - description: Source level UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New level info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.DuplicateLevelRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.LevelResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Duplicate level
+      tags:
+      - curriculum
+  /levels/{id}/groups:
+    get:
+      parameters:
+      - description: Level UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SelectionGroupResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List selection groups of a level
+      tags:
+      - curriculum
+    post:
+      consumes:
+      - application/json
+      description: A pool the student picks between min_select and max_select subjects
+        from
+      parameters:
+      - description: Level UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Group info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateSelectionGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.SelectionGroupResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create selection group
+      tags:
+      - curriculum
+  /levels/{id}/tree:
+    get:
+      description: A level with its selection groups and each group's subjects nested
+      parameters:
+      - description: Level UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CurriculumTreeResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get curriculum tree
+      tags:
+      - curriculum
+  /marks/{id}:
+    delete:
+      parameters:
+      - description: Term mark UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a recorded mark
+      tags:
+      - marks
+  /me:
+    get:
+      description: Returns the signed-in identity's claims, provisioning a local user
+        row on first sign-in
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Current user
+      tags:
+      - me
+  /me/children:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List the signed-in parent's children
+      tags:
+      - parent
+  /me/children/{id}/attendance:
+    get:
+      parameters:
+      - description: Student UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: A linked child's attendance history
+      tags:
+      - parent
+  /me/children/{id}/marks:
+    get:
+      parameters:
+      - description: Student UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Term UUID
+        in: query
+        name: term_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: A linked child's term marks
+      tags:
+      - parent
+  /me/student:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: The signed-in student's own profile
+      tags:
+      - student
+  /me/student/attendance:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: The signed-in student's own attendance history
+      tags:
+      - student
+  /me/student/enrollments:
+    get:
+      parameters:
+      - description: Level UUID
+        in: query
+        name: level_id
+        required: true
+        type: string
+      - description: Academic year UUID
+        in: query
+        name: academic_year_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.EnrollmentResponse'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: The signed-in student's own subject picks for a level
+      tags:
+      - student
+    post:
+      consumes:
+      - application/json
+      description: Validates then replaces the student's picks for a level+year; rejected
+        if already confirmed/locked
+      parameters:
+      - description: Picks
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.SubmitEnrollmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.EnrollmentValidationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/models.EnrollmentValidationResponse'
+      security:
+      - BearerAuth: []
+      summary: Submit the signed-in student's own subject picks
+      tags:
+      - student
+  /me/student/enrollments/confirm:
+    post:
+      consumes:
+      - application/json
+      description: Once confirmed, picks for this level+year can't be changed until
+        an admin unlocks them
+      parameters:
+      - description: Level + academic year
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ConfirmEnrollmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Confirm and lock the signed-in student's subject picks
+      tags:
+      - student
+  /me/student/marks:
+    get:
+      parameters:
+      - description: Term UUID
+        in: query
+        name: term_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: The signed-in student's own term marks
+      tags:
+      - student
+  /me/teacher:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: The signed-in teacher's own profile
+      tags:
+      - teacher
+  /mediums:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.MediumResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List mediums
+      tags:
+      - curriculum
+    post:
+      consumes:
+      - application/json
+      description: Create a school-defined medium of instruction
+      parameters:
+      - description: Medium info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateMediumRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.MediumResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create medium
+      tags:
+      - curriculum
+  /mediums/{id}:
+    delete:
+      description: Blocked while the medium is referenced by a group subject or enrollment
+      parameters:
+      - description: Medium UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete medium
+      tags:
+      - curriculum
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Medium UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Medium info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateMediumRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MediumResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update medium
+      tags:
+      - curriculum
+  /prefects:
+    get:
+      parameters:
+      - description: Academic year UUID
+        in: query
+        name: academic_year_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties:
+                type: string
+              type: object
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List prefects for an academic year
+      tags:
+      - prefects
+    put:
+      consumes:
+      - application/json
+      description: Upserts the prefect rank for a student in an academic year
+      parameters:
+      - description: Appointment
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AssignPrefectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Appoint (or re-appoint) a student as a prefect
+      tags:
+      - prefects
+  /prefects/{id}:
+    delete:
+      parameters:
+      - description: Prefect UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove a prefect appointment
+      tags:
+      - prefects
   /school:
     get:
       description: Retrieve the school record for this instance
@@ -1890,6 +3446,153 @@ paths:
       summary: Update school
       tags:
       - school
+  /section-heads:
+    get:
+      parameters:
+      - description: Academic year UUID
+        in: query
+        name: academic_year_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties:
+                type: string
+              type: object
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List section heads for an academic year
+      tags:
+      - section-heads
+    put:
+      consumes:
+      - application/json
+      description: Upserts the TIC for a grade, or for one A/L stream within a grade
+        when stream_id is set
+      parameters:
+      - description: Assignment
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AssignSectionHeadRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assign a teacher-in-charge (section head)
+      tags:
+      - section-heads
+  /section-heads/{id}:
+    delete:
+      parameters:
+      - description: Section head UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove a section head assignment
+      tags:
+      - section-heads
+  /setup/admin:
+    post:
+      consumes:
+      - application/json
+      description: 'One-time bootstrap: only succeeds while no admin account exists'
+      parameters:
+      - description: Admin details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterAdminRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register the first admin account
+      tags:
+      - setup
+  /setup/status:
+    get:
+      description: Reports whether an admin account still needs to be registered
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+      summary: Check first-run setup status
+      tags:
+      - setup
   /streams:
     get:
       description: Retrieve all streams ordered by name
@@ -2454,6 +4157,167 @@ paths:
       summary: Get student with class
       tags:
       - students
+  /students/{id}/enrollments:
+    get:
+      parameters:
+      - description: Student UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Academic year UUID
+        in: query
+        name: academic_year_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.EnrollmentResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List a student's subjects
+      tags:
+      - enrollments
+    post:
+      consumes:
+      - application/json
+      description: Validates then replaces the student's picks for that level and
+        academic year
+      parameters:
+      - description: Student UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Picks
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.SubmitEnrollmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.EnrollmentValidationResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/models.EnrollmentValidationResponse'
+      security:
+      - BearerAuth: []
+      summary: Submit enrollment picks
+      tags:
+      - enrollments
+  /students/{id}/enrollments/{group_id}/{subject_id}:
+    delete:
+      parameters:
+      - description: Student UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Group UUID
+        in: path
+        name: group_id
+        required: true
+        type: string
+      - description: Subject UUID
+        in: path
+        name: subject_id
+        required: true
+        type: string
+      - description: Academic year UUID
+        in: query
+        name: academic_year_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Remove one enrollment pick
+      tags:
+      - enrollments
+  /students/{id}/enrollments/lock/{level_id}:
+    delete:
+      description: 'Admin-only: removes the lock so the student''s picks for this
+        level+year can be changed again'
+      parameters:
+      - description: Student UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Level UUID
+        in: path
+        name: level_id
+        required: true
+        type: string
+      - description: Academic year UUID
+        in: query
+        name: academic_year_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Unlock a student's confirmed subject selection
+      tags:
+      - enrollments
   /students/{id}/guardians:
     get:
       description: Get all guardians linked to a student
@@ -2587,13 +4451,53 @@ paths:
       summary: Set primary contact
       tags:
       - guardians
-  /students/{id}/selections:
+  /students/{id}/house:
+    put:
+      consumes:
+      - application/json
+      description: Assign or clear a student's house
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: House assignment
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateStudentHouseRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.StudentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update student house
+      tags:
+      - students
+  /students/{id}/marks:
     get:
-      description: Retrieve all subject selections for a student
+      description: Every subject mark recorded for the student in the given term
       parameters:
       - description: Student UUID
         in: path
         name: id
+        required: true
+        type: string
+      - description: Term UUID
+        in: query
+        name: term_id
         required: true
         type: string
       produces:
@@ -2603,7 +4507,8 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/models.StudentSubjectSelectionResponse'
+              additionalProperties: true
+              type: object
             type: array
         "400":
           description: Bad Request
@@ -2611,87 +4516,11 @@ paths:
             additionalProperties:
               type: string
             type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
       security:
       - BearerAuth: []
-      summary: List student subject selections
+      summary: List a student's marks for a term
       tags:
-      - student-selections
-    post:
-      consumes:
-      - application/json
-      description: Set or update a student's subject choice for a given bucket (upsert)
-      parameters:
-      - description: Student UUID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Selection
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.UpsertStudentSubjectSelectionRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Upsert student subject selection
-      tags:
-      - student-selections
-  /students/{id}/selections/{bucket_id}:
-    delete:
-      description: Remove a student's subject selection for a specific bucket
-      parameters:
-      - description: Student UUID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Bucket UUID
-        in: path
-        name: bucket_id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Delete student subject selection
-      tags:
-      - student-selections
+      - marks
   /subjects:
     get:
       description: Retrieve all subjects ordered by name
@@ -2852,6 +4681,39 @@ paths:
       summary: Update subject
       tags:
       - subjects
+  /subjects/{id}/students:
+    get:
+      parameters:
+      - description: Subject UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Academic year UUID
+        in: query
+        name: academic_year_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.EnrolledStudentResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List students taking a subject
+      tags:
+      - enrollments
   /teachers:
     get:
       description: Get all teachers
@@ -3098,6 +4960,227 @@ paths:
       summary: Remove subject from teacher
       tags:
       - teachers
+  /teachers/{id}/workload:
+    get:
+      description: Every class+subject a teacher is assigned to teach, across academic
+        years
+      parameters:
+      - description: Teacher ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get teacher workload
+      tags:
+      - teachers
+  /terms:
+    get:
+      description: Retrieve all terms for an academic year, ordered by sort_order
+      parameters:
+      - description: Academic year UUID
+        in: query
+        name: academic_year_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.TermResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List terms
+      tags:
+      - terms
+    post:
+      consumes:
+      - application/json
+      description: Create a new term within an academic year
+      parameters:
+      - description: Term info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateTermRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.TermResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create term
+      tags:
+      - terms
+  /terms/{id}:
+    delete:
+      description: Delete a term by ID; blocked if marks have been recorded against
+        it
+      parameters:
+      - description: Term UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete term
+      tags:
+      - terms
+    put:
+      consumes:
+      - application/json
+      description: Update a term's name, dates, or sort order by ID
+      parameters:
+      - description: Term UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Term info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateTermRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TermResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update term
+      tags:
+      - terms
+  /terms/{id}/set-current:
+    put:
+      description: Mark a term as the current one; clears the previous current
+      parameters:
+      - description: Term UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Set current term
+      tags:
+      - terms
+  /terms/current:
+    get:
+      description: Retrieve the term marked as current
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TermResponse'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get current term
+      tags:
+      - terms
 securityDefinitions:
   BearerAuth:
     description: 'Type "Bearer" followed by a space and your JWT token. Example: "Bearer

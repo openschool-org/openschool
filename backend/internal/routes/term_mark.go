@@ -10,7 +10,9 @@ import (
 
 func RegisterTermMarkRoutes(teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewTermMarkRepository(pool)
-	service := services.NewTermMarkService(repo)
+	teacherRepo := repositories.NewTeacherRepository(pool)
+	classRepo := repositories.NewClassRepository(pool)
+	service := services.NewTermMarkService(repo, teacherRepo, classRepo)
 	handler := handlers.NewTermMarkHandler(service)
 
 	teacherOrAdmin.PUT("/classes/:id/marks", handler.BulkUpsert)

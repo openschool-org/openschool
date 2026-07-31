@@ -90,11 +90,21 @@ SELECT
     tm.id,
     tm.marks,
     tm.max_marks,
-    s.id   AS subject_id,
-    s.name AS subject_name,
-    s.code AS subject_code
+    s.id         AS subject_id,
+    s.name       AS subject_name,
+    s.code       AS subject_code,
+    tp.id        AS teacher_id,
+    tp.full_name AS teacher_name
 FROM term_marks tm
 INNER JOIN subjects s ON s.id = tm.subject_id
+INNER JOIN terms t ON t.id = tm.term_id
+LEFT JOIN class_students cs
+    ON cs.student_id = tm.student_id
+LEFT JOIN classes c
+    ON c.id = cs.class_id AND c.academic_year_id = t.academic_year_id
+LEFT JOIN class_subject_teachers cst
+    ON cst.class_id = c.id AND cst.subject_id = tm.subject_id
+LEFT JOIN teacher_profiles tp ON tp.id = cst.teacher_id
 WHERE tm.student_id = $1
   AND tm.term_id = $2
 ORDER BY s.name ASC
@@ -112,8 +122,12 @@ type ListStudentMarksByTermRow struct {
 	SubjectID   uuid.UUID      `json:"subject_id"`
 	SubjectName string         `json:"subject_name"`
 	SubjectCode string         `json:"subject_code"`
+	TeacherID   pgtype.UUID    `json:"teacher_id"`
+	TeacherName pgtype.Text    `json:"teacher_name"`
 }
 
+// teacher_id/teacher_name are NULL if the student's current-year class has
+// no assigned teacher for that subject (or the student has no current class)
 func (q *Queries) ListStudentMarksByTerm(ctx context.Context, arg ListStudentMarksByTermParams) ([]ListStudentMarksByTermRow, error) {
 	rows, err := q.db.Query(ctx, listStudentMarksByTerm, arg.StudentID, arg.TermID)
 	if err != nil {
@@ -130,6 +144,8 @@ func (q *Queries) ListStudentMarksByTerm(ctx context.Context, arg ListStudentMar
 			&i.SubjectID,
 			&i.SubjectName,
 			&i.SubjectCode,
+			&i.TeacherID,
+			&i.TeacherName,
 		); err != nil {
 			return nil, err
 		}

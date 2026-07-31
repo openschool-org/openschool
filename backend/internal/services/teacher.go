@@ -164,16 +164,39 @@ func (s *TeacherService) DeleteTeacher(ctx context.Context, id uuid.UUID) error 
 	return nil
 }
 
+// AssignSubject gives the teacher a subject qualification. A teacher becomes
+// an active teaching staff member as soon as they have at least one subject.
 func (s *TeacherService) AssignSubject(ctx context.Context, teacherID uuid.UUID, req models.AssignSubjectToTeacherRequest) error {
 	subjectID, err := uuid.Parse(req.SubjectID)
 	if err != nil {
 		return fmt.Errorf("invalid subject id")
 	}
-	return s.repo.AssignSubject(ctx, teacherID, subjectID)
+	if err := s.repo.AssignSubject(ctx, teacherID, subjectID); err != nil {
+		return err
+	}
+	return s.repo.SetActiveStatus(ctx, teacherID, true)
 }
 
+// RemoveSubject revokes a subject qualification. A teacher with no subjects
+// left cannot be an active teaching staff member, per business rule.
 func (s *TeacherService) RemoveSubject(ctx context.Context, teacherID uuid.UUID, subjectID uuid.UUID) error {
-	return s.repo.RemoveSubject(ctx, teacherID, subjectID)
+	if err := s.repo.RemoveSubject(ctx, teacherID, subjectID); err != nil {
+		return err
+	}
+
+	remaining, err := s.repo.CountSubjects(ctx, teacherID)
+	if err != nil {
+		return err
+	}
+	if remaining == 0 {
+		return s.repo.SetActiveStatus(ctx, teacherID, false)
+	}
+	return nil
+}
+
+// GetWorkload lists every class+subject a teacher is assigned to teach.
+func (s *TeacherService) GetWorkload(ctx context.Context, teacherID uuid.UUID) ([]db.ListTeacherWorkloadRow, error) {
+	return s.repo.ListWorkload(ctx, teacherID)
 }
 
 func (s *TeacherService) ListSubjects(ctx context.Context, teacherID uuid.UUID) ([]db.Subject, error) {

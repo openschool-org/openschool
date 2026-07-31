@@ -35,7 +35,6 @@ func (h *TermMarkHandler) BulkUpsert(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-	_ = classID // marks are scoped by student/subject/term, not class — id kept for a clear, RESTful URL
 
 	var req models.BulkUpsertMarksRequest
 	if err := bindStrict(c, &req); err != nil {
@@ -43,13 +42,13 @@ func (h *TermMarkHandler) BulkUpsert(c *gin.Context) {
 		return
 	}
 
-	enteredBy, err := uuid.Parse(c.GetString("userID"))
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	marks, err := h.service.BulkUpsertMarks(c.Request.Context(), req, enteredBy)
+	marks, err := h.service.BulkUpsertMarks(c.Request.Context(), classID, actor, req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

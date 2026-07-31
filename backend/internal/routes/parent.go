@@ -10,8 +10,8 @@ import (
 
 func RegisterParentRoutes(parent *gin.RouterGroup, pool *pgxpool.Pool) {
 	guardianService := services.NewGuardianService(repositories.NewGuardianRepository(pool), repositories.NewUserRepository(pool), newIdentityProvider())
-	attendanceService := services.NewAttendanceService(repositories.NewAttendanceRepository(pool), repositories.NewUserRepository(pool))
-	marksService := services.NewTermMarkService(repositories.NewTermMarkRepository(pool))
+	attendanceService := services.NewAttendanceService(repositories.NewAttendanceRepository(pool), repositories.NewUserRepository(pool), repositories.NewTeacherRepository(pool), repositories.NewClassRepository(pool))
+	marksService := services.NewTermMarkService(repositories.NewTermMarkRepository(pool), repositories.NewTeacherRepository(pool), repositories.NewClassRepository(pool))
 
 	handler := handlers.NewParentHandler(guardianService, attendanceService, marksService)
 

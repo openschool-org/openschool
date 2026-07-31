@@ -221,6 +221,32 @@ func (h *TeacherHandler) RemoveSubject(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "subject removed from teacher"})
 }
 
+// Workload godoc
+// @Summary      Get teacher workload
+// @Description  Every class+subject a teacher is assigned to teach, across academic years
+// @Tags         teachers
+// @Produce      json
+// @Param        id path string true "Teacher ID"
+// @Success      200 {array} map[string]any
+// @Failure      400 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /teachers/{id}/workload [get]
+func (h *TeacherHandler) Workload(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	workload, err := h.service.GetWorkload(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, workload)
+}
+
 // ListSubjects godoc
 // @Summary      List teacher subjects
 // @Description  Get all subjects assigned to a teacher

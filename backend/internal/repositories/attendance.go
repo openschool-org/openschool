@@ -72,7 +72,3 @@ func (r *AttendanceRepository) GetSummaryByStudent(ctx context.Context, studentI
 		ClassID:   classID,
 	})
 }
-
-func (r *TeacherRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (db.TeacherProfile, error) {
-	return r.queries.GetTeacherByUserID(ctx, userID)
-}

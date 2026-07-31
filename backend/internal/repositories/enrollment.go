@@ -40,6 +40,19 @@ func (r *EnrollmentRepository) ListStudentsByGroup(ctx context.Context, params d
 	return r.queries.ListStudentsByGroup(ctx, params)
 }
 
+func (r *EnrollmentRepository) Lock(ctx context.Context, params db.LockStudentEnrollmentParams) error {
+	return r.queries.LockStudentEnrollment(ctx, params)
+}
+
+// Unlock returns the number of rows removed: 0 means it wasn't locked.
+func (r *EnrollmentRepository) Unlock(ctx context.Context, params db.UnlockStudentEnrollmentParams) (int64, error) {
+	return r.queries.UnlockStudentEnrollment(ctx, params)
+}
+
+func (r *EnrollmentRepository) IsLocked(ctx context.Context, params db.IsStudentEnrollmentLockedParams) (bool, error) {
+	return r.queries.IsStudentEnrollmentLocked(ctx, params)
+}
+
 func (r *EnrollmentRepository) ReplaceForLevel(
 	ctx context.Context,
 	clear db.DeleteStudentEnrollmentsForLevelParams,

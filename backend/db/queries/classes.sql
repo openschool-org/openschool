@@ -127,6 +127,19 @@ INNER JOIN teacher_profiles tp ON tp.id = cst.teacher_id
 WHERE cst.class_id = $1
 ORDER BY s.name ASC;
 
+-- name: GetClassSubjectTeacher :one
+-- the teacher assigned to teach a specific subject to a specific class, if any
+SELECT teacher_id FROM class_subject_teachers
+WHERE class_id = $1 AND subject_id = $2;
+
+-- name: IsTeacherAssignedToClass :one
+-- true if the teacher is the class's form teacher OR teaches any subject in it
+SELECT EXISTS (
+    SELECT 1 FROM classes WHERE id = $1 AND form_teacher_id = $2
+    UNION
+    SELECT 1 FROM class_subject_teachers WHERE class_id = $1 AND teacher_id = $3
+) AS assigned;
+
 -- name: UpdateGrade :one
 UPDATE grades
 SET
