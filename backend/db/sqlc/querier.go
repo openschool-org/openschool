@@ -66,6 +66,11 @@ type Querier interface {
 	DeleteTeacher(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	EnrollStudentInClass(ctx context.Context, arg EnrollStudentInClassParams) error
+	// Atomic get-or-create: used to provision the local row for an identity
+	// that just authenticated for the first time. The no-op DO UPDATE (rather
+	// than DO NOTHING) is required so RETURNING always yields a row, whether
+	// this call created it or another concurrent request already did.
+	EnsureUserExists(ctx context.Context, arg EnsureUserExistsParams) (User, error)
 	GetAcademicYearByID(ctx context.Context, id uuid.UUID) (AcademicYear, error)
 	GetAttendanceRecord(ctx context.Context, arg GetAttendanceRecordParams) (AttendanceRecord, error)
 	GetAttendanceSessionByClassAndDate(ctx context.Context, arg GetAttendanceSessionByClassAndDateParams) (AttendanceSession, error)

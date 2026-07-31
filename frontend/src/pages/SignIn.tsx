@@ -14,11 +14,17 @@ export default function SignIn() {
   return (
     <div className="os-signin-wrapper">
       <div className="os-signin-card">
-        <img src="/favicon.webp" alt="OpenSchool" width={48} height={48} style={{ display: "block", marginBottom: "1rem" }} />
-        <h1 style={{ fontSize: "1.75rem", fontWeight: 500, marginBottom: "0.5rem" }}>
-          Open<span style={{ color: "#FF6F1B" }}>School</span>
+        <img
+          src="/favicon.webp"
+          alt="OpenSchool"
+          width={48}
+          height={48}
+          className="os-signin-card__logo"
+        />
+        <h1 className="os-signin-card__title">
+          Open<span className="os-signin-card__title-accent">School</span>
         </h1>
-        <p style={{ color: "#525252", marginBottom: "2rem" }}>
+        <p className="os-signin-card__subtitle">
           Sign in to continue to your dashboard.
         </p>
         <SignInButton>
@@ -26,7 +32,7 @@ export default function SignIn() {
             <Button
               onClick={() => signIn()}
               disabled={isLoading}
-              style={{ width: "100%", maxWidth: "100%" }}
+              className="os-full-width-btn"
             >
               {isLoading ? "Signing in…" : "Sign In"}
             </Button>

@@ -11,7 +11,13 @@ $os-accent-deeper: $os-accent; // header background — matches the avatar/accen
 $os-accent-mid:    #6a93c8;   // lighter icon / disabled
 $os-accent-light:  #edf2fa;   // hover / active bg
 $os-accent-border: #9ab5d9;   // light border accent
+$os-brand-orange:  #FF6F1B;   // "School" wordmark accent — distinct from the UI accent
 $os-sidebar-w:     13rem;
+
+// Text grays reused across the auth screens (sign-in, setup, access-restricted)
+$os-text-primary:   #161616;
+$os-text-secondary: #525252;
+$os-text-tertiary:  #8d8d8d;
 
 // ─── Global font ────────────────────────────────────────────────────────────
 * { font-family: 'IBM Plex Sans', sans-serif; }
@@ -43,8 +49,19 @@ html, body, #root {
   justify-content: center;
   background-color: #f4f4f4;
 }
-.os-signin-card { width: 100%; max-width: 480px; }
+.os-signin-card {
+  width: 100%;
+  max-width: 480px;
+
+  &__logo { display: block; margin-bottom: 1rem; }
+  &__title { font-size: 1.75rem; font-weight: 500; margin-bottom: 0.5rem; }
+  &__title-accent { color: $os-brand-orange; }
+  &__subtitle { color: $os-text-secondary; margin-bottom: 2rem; }
+}
 .os-signin { padding: 2rem !important; }
+
+// Full-width submit button, reused on the sign-in and setup cards
+.os-full-width-btn { width: 100%; max-width: 100%; }
 
 // ─── First-run setup (admin registration) ──────────────────────────────────
 .os-setup-card {
@@ -55,10 +72,112 @@ html, body, #root {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
   padding: 2.5rem;
   margin: 2rem 0;
+
+  &__title { font-size: 1.5rem; font-weight: 500; margin-bottom: 0.5rem; color: $os-text-primary; }
+  &__subtitle { color: $os-text-secondary; margin-bottom: 2rem; }
+  &__intro { color: $os-text-secondary; margin-bottom: 1.5rem; font-size: 0.875rem; }
 }
 
 @media (max-width: 560px) {
   .os-setup-card { padding: 1.5rem; }
+}
+
+.os-setup-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.75rem;
+
+  &__logo { display: block; flex-shrink: 0; }
+  &__title { margin: 0; font-size: 1.125rem; font-weight: 600; color: $os-text-primary; }
+  &__subtitle { margin: 0; font-size: 0.75rem; color: $os-text-tertiary; }
+}
+
+.os-setup-name-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.os-setup-success-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  margin: 0 auto 1.25rem;
+  border-radius: 50%;
+  background: #defbe6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg { fill: #24a148; }
+}
+
+.os-setup-signin-link {
+  text-align: center;
+  font-size: 0.8125rem;
+  color: $os-text-secondary;
+
+  &__btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: $os-accent;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+}
+
+// ─── Status views (404, coming soon, access restricted) ──────────────────────
+.os-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4.5rem 1.5rem;
+  min-height: calc(100vh - 3rem - 3.5rem); // header + page padding, roughly
+
+  &__icon {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    background: #f4f4f4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    svg { fill: $os-text-tertiary; }
+  }
+
+  &__title { font-size: 1.375rem; font-weight: 500; color: $os-text-primary; margin: 0 0 0.5rem; }
+
+  &__subtitle {
+    font-size: 0.875rem;
+    color: $os-text-secondary;
+    max-width: 26rem;
+    line-height: 1.5;
+    margin: 0 0 1.75rem;
+  }
+
+  &__actions { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+}
+
+// Fullscreen variant reuses the sign-in/setup card look
+.os-status-card {
+  width: 100%;
+  max-width: 28rem;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+
+  .os-status__subtitle { margin-bottom: 1.5rem; }
 }
 
 // ─── Header ─────────────────────────────────────────────────────────────────
@@ -92,6 +211,38 @@ html, body, #root {
 }
 
 .cds--header__global button { color: #ffffff; }
+
+.os-header-brand {
+  font-size: 1.25rem !important;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+
+  &__inner { display: inline-flex; align-items: center; gap: 0.5rem; }
+
+  &__logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #f4f4f4;
+    border-radius: 6px;
+    padding: 3px;
+    flex-shrink: 0;
+
+    img { display: block; }
+  }
+
+  &__accent { color: $os-brand-orange; }
+}
+
+.os-header-icon { fill: #ffffff; }
+
+.os-header-copy-token {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0 6px;
+  color: #ffffff;
+  white-space: nowrap;
+}
 
 // ─── Sidebar ────────────────────────────────────────────────────────────────
 .cds--side-nav {

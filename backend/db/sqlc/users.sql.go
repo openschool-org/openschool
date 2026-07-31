@@ -86,6 +86,50 @@ func (q *Queries) DeactivateUser(ctx context.Context, id uuid.UUID) (User, error
 	return i, err
 }
 
+const ensureUserExists = `-- name: EnsureUserExists :one
+INSERT INTO users (
+    id,
+    email,
+    full_name,
+    role
+) VALUES (
+    $1, $2, $3, $4
+)
+ON CONFLICT (id) DO UPDATE SET id = users.id
+RETURNING id, email, full_name, role, is_active, created_at, updated_at
+`
+
+type EnsureUserExistsParams struct {
+	ID       uuid.UUID `json:"id"`
+	Email    string    `json:"email"`
+	FullName string    `json:"full_name"`
+	Role     string    `json:"role"`
+}
+
+// Atomic get-or-create: used to provision the local row for an identity
+// that just authenticated for the first time. The no-op DO UPDATE (rather
+// than DO NOTHING) is required so RETURNING always yields a row, whether
+// this call created it or another concurrent request already did.
+func (q *Queries) EnsureUserExists(ctx context.Context, arg EnsureUserExistsParams) (User, error) {
+	row := q.db.QueryRow(ctx, ensureUserExists,
+		arg.ID,
+		arg.Email,
+		arg.FullName,
+		arg.Role,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.FullName,
+		&i.Role,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, email, full_name, role, is_active, created_at, updated_at FROM users
 WHERE email = $1

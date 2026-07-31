@@ -1,14 +1,6 @@
-import { Outlet, Link, useLocation } from "react-router";
-import {
-  Header,
-  HeaderName,
-  HeaderNavigation,
-  HeaderMenuItem,
-  HeaderGlobalBar,
-  HeaderGlobalAction,
-} from "@carbon/react";
-import { Search } from "@carbon/icons-react";
-import { UserDropdown, useThunderID } from "@thunderid/react";
+import { Link, Outlet, useLocation } from "react-router";
+import { Header, HeaderNavigation, HeaderMenuItem } from "@carbon/react";
+import { AppHeaderBrand, AppHeaderActions } from "../components/AppHeaderChrome";
 
 const NAV = [
   { path: "/",           label: "Home",       exact: true  },
@@ -18,42 +10,12 @@ const NAV = [
 ];
 
 export default function TeacherLayout() {
-  const { getAccessToken } = useThunderID();
   const location = useLocation();
-
-  const copyToken = async () => {
-    const token = await getAccessToken();
-    if (token) navigator.clipboard.writeText(token);
-  };
 
   return (
     <>
       <Header aria-label="OpenSchool">
-        <HeaderName
-          as={Link}
-          to="/"
-          prefix=""
-          style={{ fontSize: "1.25rem", fontWeight: 500, letterSpacing: "0.01em" }}
-        >
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "#f4f4f4",
-                borderRadius: "6px",
-                padding: "3px",
-                flexShrink: 0,
-              }}
-            >
-              <img src="/favicon.webp" alt="" width={20} height={20} style={{ display: "block" }} />
-            </span>
-            <span>
-              Open<span style={{ color: "#FF6F1B" }}>School</span>
-            </span>
-          </span>
-        </HeaderName>
+        <AppHeaderBrand />
 
         <HeaderNavigation aria-label="Teacher navigation">
           {NAV.map(({ path, label, exact }) => {
@@ -73,19 +35,7 @@ export default function TeacherLayout() {
           })}
         </HeaderNavigation>
 
-        <HeaderGlobalBar>
-          <HeaderGlobalAction aria-label="Search">
-            <Search size={20} style={{ fill: "#ffffff" }} />
-          </HeaderGlobalAction>
-          {import.meta.env.DEV && (
-            <HeaderGlobalAction aria-label="Copy access token (dev)" onClick={copyToken}>
-              <span style={{ fontSize: "0.75rem", fontWeight: 600, padding: "0 6px", color: "#ffffff", whiteSpace: "nowrap" }}>
-                Copy Token
-              </span>
-            </HeaderGlobalAction>
-          )}
-          <UserDropdown />
-        </HeaderGlobalBar>
+        <AppHeaderActions />
       </Header>
 
       <main className="os-teacher-content">

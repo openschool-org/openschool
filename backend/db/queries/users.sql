@@ -9,6 +9,22 @@ INSERT INTO users (
 )
 RETURNING *;
 
+-- name: EnsureUserExists :one
+-- Atomic get-or-create: used to provision the local row for an identity
+-- that just authenticated for the first time. The no-op DO UPDATE (rather
+-- than DO NOTHING) is required so RETURNING always yields a row, whether
+-- this call created it or another concurrent request already did.
+INSERT INTO users (
+    id,
+    email,
+    full_name,
+    role
+) VALUES (
+    $1, $2, $3, $4
+)
+ON CONFLICT (id) DO UPDATE SET id = users.id
+RETURNING *;
+
 -- name: GetUserByID :one
 SELECT * FROM users
 WHERE id = $1;

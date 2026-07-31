@@ -59,6 +59,11 @@ func main() {
 	}
 
 	r := gin.Default()
+	// No reverse proxy in front of this service by default; trusting all
+	// proxies (Gin's default) would let a client spoof its own IP via
+	// X-Forwarded-For, undermining rate limiting and IP-based logging.
+	r.SetTrustedProxies(nil)
+	r.Use(middleware.SecurityHeaders())
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     corsOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},

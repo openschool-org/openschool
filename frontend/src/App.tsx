@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router";
 import SignIn from "./pages/SignIn";
 import Setup from "./pages/Setup";
 import AccessRestricted from "./pages/AccessRestricted";
+import ComingSoon from "./pages/ComingSoon";
 import { useRole } from "./hooks/useRole";
 import { useApi } from "./hooks/useApi";
 import { useProvisionUser } from "./hooks/useProvisionUser";
@@ -52,6 +53,15 @@ function App() {
       {/* Public routes - always accessible */}
       <Route path="/signin" element={<SignIn />} />
       <Route path="/setup" element={<Setup />} />
+
+      {/* Dev-only previews for status pages that are otherwise only reachable
+          by actually triggering the condition (no role, unbuilt feature). */}
+      {import.meta.env.DEV && (
+        <>
+          <Route path="/dev/access-restricted" element={<AccessRestricted />} />
+          <Route path="/dev/coming-soon" element={<ComingSoon feature="Example Feature" />} />
+        </>
+      )}
 
       {/* Show loading state while role is being determined */}
       {loading ? (

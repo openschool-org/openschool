@@ -1,15 +1,11 @@
 import { Outlet, Link, useLocation, Navigate } from "react-router";
 import {
   Header,
-  HeaderName,
-  HeaderGlobalBar,
-  HeaderGlobalAction,
   SideNav,
   SideNavItems,
   SideNavLink,
   SideNavDivider,
 } from "@carbon/react";
-import { Search } from "@carbon/icons-react";
 import {
   Dashboard,
   UserMultiple,
@@ -26,9 +22,9 @@ import {
   UserFollow,
   Trophy,
 } from "@carbon/icons-react";
-import { UserDropdown, useThunderID } from "@thunderid/react";
 import { AxiosError } from "axios";
 import { useSchool } from "../queries/useSchool";
+import { AppHeaderBrand, AppHeaderActions } from "../components/AppHeaderChrome";
 
 // Grouped so the sidebar reads as "who, what, when" instead of one flat
 // alphabet-soup list — each group gets a small uppercase label + divider.
@@ -71,16 +67,10 @@ const NAV_GROUPS: { label: string; items: { path: string; label: string; Icon: t
 ];
 
 export default function RootLayout() {
-  const { getAccessToken } = useThunderID();
   const location = useLocation();
 
   const { isLoading: schoolLoading, error: schoolError } = useSchool();
   const noSchoolYet = schoolError instanceof AxiosError && schoolError.response?.status === 404;
-
-  const copyToken = async () => {
-    const token = await getAccessToken();
-    if (token) navigator.clipboard.writeText(token);
-  };
 
   if (!schoolLoading && noSchoolYet && location.pathname !== "/school-setup") {
     return <Navigate to="/school-setup" replace />;
@@ -89,47 +79,8 @@ export default function RootLayout() {
   return (
     <>
       <Header aria-label="OpenSchool">
-        <HeaderName
-          as={Link}
-          to="/"
-          prefix=""
-          style={{ fontSize: "1.25rem", fontWeight: 500, letterSpacing: "0.01em" }}
-        >
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "#f4f4f4",
-                borderRadius: "6px",
-                padding: "3px",
-                flexShrink: 0,
-              }}
-            >
-              <img src="/favicon.webp" alt="" width={20} height={20} style={{ display: "block" }} />
-            </span>
-            <span>
-              Open<span style={{ color: "#FF6F1B" }}>School</span>
-            </span>
-          </span>
-        </HeaderName>
-        <HeaderGlobalBar>
-          <HeaderGlobalAction aria-label="Search">
-            <Search size={20} style={{ fill: "#ffffff" }} />
-          </HeaderGlobalAction>
-          {import.meta.env.DEV && (
-            <HeaderGlobalAction
-              aria-label="Copy access token (dev)"
-              onClick={copyToken}
-            >
-              <span style={{ fontSize: "0.75rem", fontWeight: 600, padding: "0 6px", color: "#ffffff", whiteSpace: "nowrap" }}>
-                Copy Token
-              </span>
-            </HeaderGlobalAction>
-          )}
-          <UserDropdown />
-        </HeaderGlobalBar>
+        <AppHeaderBrand />
+        <AppHeaderActions />
       </Header>
 
       <div className="os-layout">

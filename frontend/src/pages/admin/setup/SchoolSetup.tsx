@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, Link } from "react-router";
 import {
   Button,
@@ -8,6 +8,7 @@ import {
   ProgressIndicator,
   ProgressStep,
   InlineNotification,
+  InlineLoading,
 } from "@carbon/react";
 import {
   Enterprise,
@@ -33,6 +34,7 @@ import { useCreateAcademicYear } from "../../../queries/useAcademicYears";
 import { useCreateClass, useCreateStream, useCreateStreamGroup } from "../../../queries/useClasses";
 import { useCreateMedium } from "../../../queries/useCurriculum";
 import { getErrorMessage } from "../../../lib/errorMessage";
+import { silentProgressStatus } from "../../../lib/carbonA11y";
 import type { Grade } from "../../../services/grade";
 
 type ALStreamKey = "science_physical" | "science_bio" | "commerce" | "arts" | "technology";
@@ -58,6 +60,7 @@ const AL_GRADE_NUMBERS = new Set([12, 13]);
 const ACCENT = "#406AAF";
 const GRADE_MIN = 1;
 const GRADE_MAX = 13;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const STEPS = ["School", "Houses", "Grades", "Classes", "Mediums", "Done"] as const;
 
@@ -121,6 +124,17 @@ function RepeatableRow({
   );
 }
 
+// Tracks which phases of the final submission have already succeeded, so
+// clicking Retry after a mid-sequence failure resumes instead of
+// re-creating (and duplicating) whatever already went through.
+interface SubmitProgress {
+  school: boolean;
+  houses: boolean;
+  grades: Grade[] | null;
+  classes: boolean;
+  mediums: boolean;
+}
+
 export default function SchoolSetup() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
@@ -151,30 +165,54 @@ export default function SchoolSetup() {
     school.grade_from !== "" &&
     school.grade_to !== "" &&
     Number(school.grade_to) < Number(school.grade_from);
-  const schoolValid = school.name.trim().length > 0 && !gradeRangeInvalid;
+  const schoolValid =
+    school.name.trim().length > 0 &&
+    school.phone.trim().length > 0 &&
+    EMAIL_RE.test(school.email.trim()) &&
+    school.address.trim().length > 0 &&
+    !gradeRangeInvalid;
 
   // ── Step 1: Houses ───────────────────────────────────────────────────────
   const [houses, setHouses] = useState([{ name: "", code: "" }]);
+  const [housesSkipped, setHousesSkipped] = useState(false);
 
   // ── Step 2: Grades ───────────────────────────────────────────────────────
-  const [selectedGrades, setSelectedGrades] = useState<Set<number>>(new Set());
-  const [gradesInitialized, setGradesInitialized] = useState(false);
-  const [createdGrades, setCreatedGrades] = useState<Grade[]>([]);
+  // The range picked in Step 0 is what the Grades step both pre-selects AND
+  // displays, so they can never show/select grades outside it. Falls back
+  // to the full 1-13 range only if the school step was somehow left blank.
+  const gradeRangeStart = school.grade_from === "" ? GRADE_MIN : Number(school.grade_from);
+  const gradeRangeEnd = school.grade_to === "" ? GRADE_MAX : Number(school.grade_to);
 
-  if (!gradesInitialized && school.grade_from !== "" && school.grade_to !== "") {
+  const [selectedGrades, setSelectedGrades] = useState<Set<number>>(new Set());
+
+  // Re-syncs whenever the chosen range actually changes — e.g. the user
+  // goes Back to Step 0 and edits the range after already visiting this
+  // step. Without this, a stale selection from the first render (or a
+  // previous range) could silently include grades outside the new range,
+  // which then leak into the grades and classes actually created. Adjusted
+  // during render (React's supported pattern for this) rather than in an
+  // effect, so it takes effect in the same render instead of one tick late.
+  const [syncedRange, setSyncedRange] = useState<[number, number] | null>(null);
+  if (
+    school.grade_from !== "" &&
+    school.grade_to !== "" &&
+    (syncedRange === null || syncedRange[0] !== gradeRangeStart || syncedRange[1] !== gradeRangeEnd)
+  ) {
+    setSyncedRange([gradeRangeStart, gradeRangeEnd]);
     const all = new Set<number>();
-    for (let n = Number(school.grade_from); n <= Number(school.grade_to); n++) all.add(n);
+    for (let n = gradeRangeStart; n <= gradeRangeEnd; n++) all.add(n);
     setSelectedGrades(all);
-    setGradesInitialized(true);
   }
+
+  const orderedSelectedGrades = [...selectedGrades].sort((a, b) => a - b);
+  const regularGradeNumbers = orderedSelectedGrades.filter((n) => !AL_GRADE_NUMBERS.has(n));
+  const alGradeNumbers = orderedSelectedGrades.filter((n) => AL_GRADE_NUMBERS.has(n));
 
   // ── Step 3: Classes ──────────────────────────────────────────────────────
   const now = new Date();
   const [yearLabel, setYearLabel] = useState(String(now.getFullYear()));
   const [sectionsPerGrade, setSectionsPerGrade] = useState<Record<number, number>>({});
-
-  const alGrades = createdGrades.filter((g) => AL_GRADE_NUMBERS.has(Number(g.name.replace(/\D/g, ""))));
-  const regularGrades = createdGrades.filter((g) => !AL_GRADE_NUMBERS.has(Number(g.name.replace(/\D/g, ""))));
+  const [classesSkipped, setClassesSkipped] = useState(false);
 
   const [alStreams, setAlStreams] = useState<Record<ALStreamKey, { enabled: boolean; code: string; sections: number }>>(
     () =>
@@ -191,174 +229,193 @@ export default function SchoolSetup() {
     English: true,
   });
   const [customMediums, setCustomMediums] = useState<string[]>([]);
+  const [mediumsSkipped, setMediumsSkipped] = useState(false);
 
-  const busy =
-    createSchool.isPending ||
-    createHouse.isPending ||
-    createGrade.isPending ||
-    createAcademicYear.isPending ||
-    createClass.isPending ||
-    createMedium.isPending ||
-    createStream.isPending ||
-    createStreamGroup.isPending;
+  // ── Final submission (Step 5) ───────────────────────────────────────────
+  // Nothing above this point has touched the database — Steps 0-4 are pure
+  // local-state navigation, freely back-and-forward-able. Everything is
+  // written here, once, in dependency order.
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const progressRef = useRef<SubmitProgress>({
+    school: false,
+    houses: false,
+    grades: null,
+    classes: false,
+    mediums: false,
+  });
+
+  const submitAll = async () => {
+    setSubmitting(true);
+    setSubmitError(null);
+    const progress = progressRef.current;
+
+    try {
+      if (!progress.school) {
+        await createSchool.mutateAsync({
+          name: school.name.trim(),
+          address: school.address.trim(),
+          phone: school.phone.trim(),
+          email: school.email.trim(),
+          logo_url: school.logo_url || undefined,
+          grade_from: school.grade_from === "" ? null : Number(school.grade_from),
+          grade_to: school.grade_to === "" ? null : Number(school.grade_to),
+        });
+        progress.school = true;
+      }
+
+      if (!progress.houses) {
+        if (!housesSkipped) {
+          const named = houses.filter((h) => h.name.trim());
+          for (let i = 0; i < named.length; i++) {
+            await createHouse.mutateAsync({
+              name: named[i].name.trim(),
+              code: named[i].code.trim() || undefined,
+              remainder: i,
+            });
+          }
+        }
+        progress.houses = true;
+      }
+
+      if (!progress.grades) {
+        const created: Grade[] = [];
+        for (let i = 0; i < orderedSelectedGrades.length; i++) {
+          const g = await createGrade.mutateAsync({
+            name: `Grade ${orderedSelectedGrades[i]}`,
+            sort_order: i,
+          });
+          created.push(g);
+        }
+        progress.grades = created;
+      }
+      const createdGrades = progress.grades;
+
+      if (!progress.classes) {
+        if (!classesSkipped && yearLabel.trim() && createdGrades.length > 0) {
+          const regularGrades = createdGrades.filter((g) => !AL_GRADE_NUMBERS.has(Number(g.name.replace(/\D/g, ""))));
+          const alGrades = createdGrades.filter((g) => AL_GRADE_NUMBERS.has(Number(g.name.replace(/\D/g, ""))));
+
+          const year = await createAcademicYear.mutateAsync({
+            label: yearLabel.trim(),
+            start_date: new Date(now.getFullYear(), 0, 1).toISOString(),
+            end_date: new Date(now.getFullYear(), 11, 31).toISOString(),
+            is_current: true,
+          });
+
+          for (const grade of regularGrades) {
+            const gradeNumber = Number(grade.name.replace(/\D/g, ""));
+            const count = sectionsPerGrade[gradeNumber] ?? 1;
+            for (let i = 0; i < count; i++) {
+              const section = String.fromCharCode(65 + i);
+              await createClass.mutateAsync({
+                grade_id: grade.id,
+                academic_year_id: year.id,
+                name: `${gradeNumber}-${section}`,
+              });
+            }
+          }
+
+          if (alGrades.length > 0) {
+            const enabledDefs = AL_STREAM_DEFS.filter((d) => alStreams[d.key].enabled);
+            const streamIdByName = new Map<string, string>();
+            const groupIdByKey = new Map<ALStreamKey, string>();
+
+            for (const def of enabledDefs) {
+              if (!streamIdByName.has(def.streamName)) {
+                const stream = await createStream.mutateAsync({ name: def.streamName });
+                streamIdByName.set(def.streamName, stream.id);
+              }
+              if (def.groupName) {
+                const group = await createStreamGroup.mutateAsync({
+                  streamId: streamIdByName.get(def.streamName)!,
+                  data: { name: def.groupName },
+                });
+                groupIdByKey.set(def.key, group.id);
+              }
+            }
+
+            for (const grade of alGrades) {
+              const gradeNumber = Number(grade.name.replace(/\D/g, ""));
+              for (const def of enabledDefs) {
+                const config = alStreams[def.key];
+                const code = config.code.trim() || def.defaultCode;
+                for (let i = 0; i < config.sections; i++) {
+                  await createClass.mutateAsync({
+                    grade_id: grade.id,
+                    academic_year_id: year.id,
+                    stream_id: streamIdByName.get(def.streamName)!,
+                    stream_group_id: def.groupName ? groupIdByKey.get(def.key) ?? null : null,
+                    name: `${gradeNumber}-${code}${i + 1}`,
+                  });
+                }
+              }
+            }
+          }
+        }
+        progress.classes = true;
+      }
+
+      if (!progress.mediums) {
+        if (!mediumsSkipped) {
+          const names = [
+            ...SUGGESTED_MEDIUMS.filter((m) => mediumChecks[m]),
+            ...customMediums.filter((m) => m.trim()),
+          ];
+          for (const name of names) {
+            await createMedium.mutateAsync({ name });
+          }
+        }
+        progress.mediums = true;
+      }
+
+      setSubmitted(true);
+    } catch (e) {
+      setSubmitError(getErrorMessage(e, "Failed to save your school setup. Please try again."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const goNext = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
 
-  const handleSchoolNext = async () => {
+  const handleSchoolNext = () => {
     setSchoolTouched(true);
     if (!schoolValid) return;
     setError(null);
-    try {
-      await createSchool.mutateAsync({
-        name: school.name.trim(),
-        address: school.address.trim() || undefined,
-        phone: school.phone.trim() || undefined,
-        email: school.email.trim() || undefined,
-        logo_url: school.logo_url || undefined,
-        grade_from: school.grade_from === "" ? null : Number(school.grade_from),
-        grade_to: school.grade_to === "" ? null : Number(school.grade_to),
-      });
-      goNext();
-    } catch (e) {
-      setError(getErrorMessage(e, "Failed to save school details."));
-    }
-  };
-
-  const handleHousesNext = async (skip: boolean) => {
-    setError(null);
-    if (!skip) {
-      const named = houses.filter((h) => h.name.trim());
-      try {
-        for (let i = 0; i < named.length; i++) {
-          await createHouse.mutateAsync({
-            name: named[i].name.trim(),
-            code: named[i].code.trim() || undefined,
-            remainder: i,
-          });
-        }
-      } catch (e) {
-        setError(getErrorMessage(e, "Failed to save houses."));
-        return;
-      }
-    }
     goNext();
   };
 
-  const handleGradesNext = async () => {
+  const handleHousesNext = (skip: boolean) => {
+    setHousesSkipped(skip);
+    goNext();
+  };
+
+  const handleGradesNext = () => {
     setError(null);
     if (selectedGrades.size === 0) {
       setError("Select at least one grade.");
       return;
     }
-    const ordered = [...selectedGrades].sort((a, b) => a - b);
-    const created: Grade[] = [];
-    try {
-      for (let i = 0; i < ordered.length; i++) {
-        const g = await createGrade.mutateAsync({
-          name: `Grade ${ordered[i]}`,
-          sort_order: i,
-        });
-        created.push(g);
-      }
-      setCreatedGrades(created);
-      goNext();
-    } catch (e) {
-      setError(getErrorMessage(e, "Failed to save grades."));
-    }
+    goNext();
   };
 
-  const handleClassesNext = async (skip: boolean) => {
+  const handleClassesNext = (skip: boolean) => {
     setError(null);
-    if (skip) {
-      goNext();
-      return;
-    }
-    if (!yearLabel.trim()) {
+    if (!skip && !yearLabel.trim()) {
       setError("An academic year label is required.");
       return;
     }
-    try {
-      const year = await createAcademicYear.mutateAsync({
-        label: yearLabel.trim(),
-        start_date: new Date(now.getFullYear(), 0, 1).toISOString(),
-        end_date: new Date(now.getFullYear(), 11, 31).toISOString(),
-        is_current: true,
-      });
-
-      for (const grade of regularGrades) {
-        const gradeNumber = Number(grade.name.replace(/\D/g, ""));
-        const count = sectionsPerGrade[gradeNumber] ?? 1;
-        for (let i = 0; i < count; i++) {
-          const section = String.fromCharCode(65 + i);
-          await createClass.mutateAsync({
-            grade_id: grade.id,
-            academic_year_id: year.id,
-            name: `${gradeNumber}-${section}`,
-          });
-        }
-      }
-
-      if (alGrades.length > 0) {
-        const enabledDefs = AL_STREAM_DEFS.filter((d) => alStreams[d.key].enabled);
-        const streamIdByName = new Map<string, string>();
-        const groupIdByKey = new Map<ALStreamKey, string>();
-
-        for (const def of enabledDefs) {
-          if (!streamIdByName.has(def.streamName)) {
-            const stream = await createStream.mutateAsync({ name: def.streamName });
-            streamIdByName.set(def.streamName, stream.id);
-          }
-          if (def.groupName) {
-            const group = await createStreamGroup.mutateAsync({
-              streamId: streamIdByName.get(def.streamName)!,
-              data: { name: def.groupName },
-            });
-            groupIdByKey.set(def.key, group.id);
-          }
-        }
-
-        for (const grade of alGrades) {
-          const gradeNumber = Number(grade.name.replace(/\D/g, ""));
-          for (const def of enabledDefs) {
-            const config = alStreams[def.key];
-            const code = config.code.trim() || def.defaultCode;
-            for (let i = 0; i < config.sections; i++) {
-              await createClass.mutateAsync({
-                grade_id: grade.id,
-                academic_year_id: year.id,
-                stream_id: streamIdByName.get(def.streamName)!,
-                stream_group_id: def.groupName ? groupIdByKey.get(def.key) ?? null : null,
-                name: `${gradeNumber}-${code}${i + 1}`,
-              });
-            }
-          }
-        }
-      }
-
-      goNext();
-    } catch (e) {
-      setError(getErrorMessage(e, "Failed to save classes."));
-    }
+    setClassesSkipped(skip);
+    goNext();
   };
 
-  const handleMediumsNext = async (skip: boolean) => {
-    setError(null);
-    if (!skip) {
-      const names = [
-        ...SUGGESTED_MEDIUMS.filter((m) => mediumChecks[m]),
-        ...customMediums.filter((m) => m.trim()),
-      ];
-      try {
-        for (const name of names) {
-          await createMedium.mutateAsync({ name });
-        }
-      } catch (e) {
-        setError(getErrorMessage(e, "Failed to save mediums."));
-        return;
-      }
-    }
+  const handleMediumsNext = (skip: boolean) => {
+    setMediumsSkipped(skip);
     goNext();
+    submitAll();
   };
 
   return (
@@ -378,7 +435,7 @@ export default function SchoolSetup() {
 
         <ProgressIndicator currentIndex={step} spaceEqually style={{ marginBottom: "0.5rem" }}>
           {STEPS.map((label) => (
-            <ProgressStep key={label} label={label} />
+            <ProgressStep key={label} label={label} translateWithId={silentProgressStatus} />
           ))}
         </ProgressIndicator>
         <p style={{ margin: "0 0 1.75rem", fontSize: "0.75rem", color: "#8d8d8d", textAlign: "right" }}>
@@ -412,22 +469,29 @@ export default function SchoolSetup() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 <TextInput
                   id="ss-phone"
-                  labelText="Phone (optional)"
+                  labelText="Phone"
                   value={school.phone}
                   onChange={(e) => setSchool((s) => ({ ...s, phone: e.target.value }))}
+                  invalid={schoolTouched && !school.phone.trim()}
+                  invalidText="Phone number is required."
                 />
                 <TextInput
                   id="ss-email"
-                  labelText="Email (optional)"
+                  labelText="Email"
+                  type="email"
                   value={school.email}
                   onChange={(e) => setSchool((s) => ({ ...s, email: e.target.value }))}
+                  invalid={schoolTouched && !EMAIL_RE.test(school.email.trim())}
+                  invalidText="Enter a valid email address."
                 />
               </div>
               <TextInput
                 id="ss-address"
-                labelText="Address (optional)"
+                labelText="Address"
                 value={school.address}
                 onChange={(e) => setSchool((s) => ({ ...s, address: e.target.value }))}
+                invalid={schoolTouched && !school.address.trim()}
+                invalidText="Address is required."
               />
               <LogoUpload
                 value={school.logo_url}
@@ -507,7 +571,7 @@ export default function SchoolSetup() {
         {step === 2 && (
           <StepShell icon={Education} title="Grades" subtitle="Pre-selected from the range you set. Uncheck any that don't apply.">
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem" }}>
-              {Array.from({ length: GRADE_MAX - GRADE_MIN + 1 }, (_, i) => i + GRADE_MIN).map((n) => (
+              {Array.from({ length: gradeRangeEnd - gradeRangeStart + 1 }, (_, i) => i + gradeRangeStart).map((n) => (
                 <Checkbox
                   key={n}
                   id={`grade-${n}`}
@@ -541,43 +605,40 @@ export default function SchoolSetup() {
               onChange={(e) => setYearLabel(e.target.value)}
               style={{ marginBottom: "1.25rem" }}
             />
-            {createdGrades.length === 0 ? (
+            {orderedSelectedGrades.length === 0 ? (
               <p style={{ fontSize: "0.875rem", color: "#8d8d8d" }}>
-                No grades were created in the previous step, so there's nothing to add classes to yet.
+                No grades were selected in the previous step, so there's nothing to add classes to yet.
               </p>
             ) : (
               <>
-                {regularGrades.length > 0 && (
-                  <div style={{ display: "grid", gap: "0.75rem", marginBottom: alGrades.length > 0 ? "1.75rem" : 0 }}>
-                    {regularGrades.map((g) => {
-                      const gradeNumber = Number(g.name.replace(/\D/g, ""));
-                      return (
-                        <div
-                          key={g.id}
-                          style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "0.5rem 0", borderBottom: "1px solid #f4f4f4" }}
-                        >
-                          <span style={{ flex: 1, fontSize: "0.875rem", fontWeight: 500, color: "#161616" }}>{g.name}</span>
-                          <NumberInput
-                            id={`sections-${g.id}`}
-                            label="Sections"
-                            size="sm"
-                            min={0}
-                            max={10}
-                            value={sectionsPerGrade[gradeNumber] ?? 1}
-                            onChange={(_e, { value }) =>
-                              setSectionsPerGrade((prev) => ({ ...prev, [gradeNumber]: value === "" ? 0 : Number(value) }))
-                            }
-                          />
-                        </div>
-                      );
-                    })}
+                {regularGradeNumbers.length > 0 && (
+                  <div style={{ display: "grid", gap: "0.75rem", marginBottom: alGradeNumbers.length > 0 ? "1.75rem" : 0 }}>
+                    {regularGradeNumbers.map((gradeNumber) => (
+                      <div
+                        key={gradeNumber}
+                        style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "0.5rem 0", borderBottom: "1px solid #f4f4f4" }}
+                      >
+                        <span style={{ flex: 1, fontSize: "0.875rem", fontWeight: 500, color: "#161616" }}>Grade {gradeNumber}</span>
+                        <NumberInput
+                          id={`sections-${gradeNumber}`}
+                          label="Sections"
+                          size="sm"
+                          min={0}
+                          max={10}
+                          value={sectionsPerGrade[gradeNumber] ?? 1}
+                          onChange={(_e, { value }) =>
+                            setSectionsPerGrade((prev) => ({ ...prev, [gradeNumber]: value === "" ? 0 : Number(value) }))
+                          }
+                        />
+                      </div>
+                    ))}
                   </div>
                 )}
 
-                {alGrades.length > 0 && (
+                {alGradeNumbers.length > 0 && (
                   <div>
                     <p style={{ margin: "0 0 0.25rem", fontSize: "0.8125rem", fontWeight: 600, color: "#161616" }}>
-                      A/L Streams - {alGrades.map((g) => g.name).join(" & ")}
+                      A/L Streams - {alGradeNumbers.map((n) => `Grade ${n}`).join(" & ")}
                     </p>
                     <p style={{ margin: "0 0 0.875rem", fontSize: "0.75rem", color: "#8d8d8d" }}>
                       Applied to both A/L grades. Uncheck streams your school doesn't offer, and adjust the code and
@@ -640,13 +701,7 @@ export default function SchoolSetup() {
                     </div>
                     <p style={{ margin: "0.75rem 0 0", fontSize: "0.75rem", color: "#8d8d8d" }}>
                       Example: Physical Science with code "M" and 2 sections creates{" "}
-                      {alGrades
-                        .map((g) => {
-                          const n = Number(g.name.replace(/\D/g, ""));
-                          return `${n}-M1, ${n}-M2`;
-                        })
-                        .join(", ")}
-                      .
+                      {alGradeNumbers.map((n) => `${n}-M1, ${n}-M2`).join(", ")}.
                     </p>
                   </div>
                 )}
@@ -691,117 +746,142 @@ export default function SchoolSetup() {
         {/* ── Step 5: Done ───────────────────────────────────────────── */}
         {step === 5 && (
           <div>
-            <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-              <div
-                style={{
-                  width: "3.5rem",
-                  height: "3.5rem",
-                  margin: "0 auto 1rem",
-                  borderRadius: "50%",
-                  background: "#defbe6",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <CheckmarkFilled size={28} style={{ fill: "#24a148" }} />
+            {submitting && (
+              <div style={{ display: "flex", justifyContent: "center", padding: "3.5rem 0" }}>
+                <InlineLoading description="Saving your school setup…" />
               </div>
-              <h2 style={{ margin: "0 0 0.35rem", fontSize: "1.25rem", fontWeight: 600, color: "#161616" }}>
-                Your school is ready
-              </h2>
-              <p style={{ margin: 0, fontSize: "0.875rem", color: "#525252" }}>
-                Here's what OpenSchool helps you run day to day, and where to go next.
-              </p>
-            </div>
+            )}
 
-            <div style={{ display: "grid", gap: "0.75rem", marginBottom: "1.5rem" }}>
-              {[
-                {
-                  title: "Curriculum",
-                  body: "Define levels (a grade, a stream, an exam class) and selection groups to control which subjects students can pick.",
-                  path: "/curriculum",
-                  icon: Layers,
-                },
-                {
-                  title: "Subjects",
-                  body: "Build your subject catalogue, then offer subjects to students through curriculum selection groups.",
-                  path: "/subjects",
-                  icon: Book,
-                },
-                {
-                  title: "Students & Teachers",
-                  body: "Enrol students and add teachers - each gets their own sign-in and profile automatically.",
-                  path: "/students",
-                  icon: UserMultiple,
-                },
-                {
-                  title: "Attendance",
-                  body: "Once classes have students, teachers can create sessions and mark attendance from the class page.",
-                  path: "/attendance",
-                  icon: EventSchedule,
-                },
-              ].map((item) => (
-                <Link
-                  key={item.title}
-                  to={item.path}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.875rem",
-                    padding: "0.875rem 1rem",
-                    border: "1px solid #e0e0e0",
-                    background: "#fafafa",
-                    textDecoration: "none",
-                    transition: "border-color 0.15s ease, background 0.15s ease",
-                  }}
-                >
+            {!submitting && submitError && (
+              <div style={{ textAlign: "center" }}>
+                <InlineNotification
+                  kind="error"
+                  title="Could not finish setup"
+                  subtitle={submitError}
+                  hideCloseButton
+                  lowContrast
+                  style={{ marginBottom: "1.25rem", maxWidth: "100%", textAlign: "left" }}
+                />
+                <Button onClick={submitAll} style={{ width: "100%", maxWidth: "100%" }}>
+                  Retry
+                </Button>
+              </div>
+            )}
+
+            {!submitting && !submitError && submitted && (
+              <>
+                <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
                   <div
                     style={{
-                      width: "2.25rem",
-                      height: "2.25rem",
+                      width: "3.5rem",
+                      height: "3.5rem",
+                      margin: "0 auto 1rem",
                       borderRadius: "50%",
-                      background: "#edf2fa",
+                      background: "#defbe6",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      flexShrink: 0,
                     }}
                   >
-                    <item.icon size={18} style={{ fill: ACCENT }} />
+                    <CheckmarkFilled size={28} style={{ fill: "#24a148" }} />
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: "0 0 0.25rem", fontSize: "0.875rem", fontWeight: 600, color: "#161616" }}>
-                      {item.title}
-                    </p>
-                    <p style={{ margin: 0, fontSize: "0.8125rem", color: "#525252" }}>{item.body}</p>
-                  </div>
-                  <ChevronRight size={16} style={{ fill: "#8d8d8d", flexShrink: 0 }} />
-                </Link>
-              ))}
-            </div>
+                  <h2 style={{ margin: "0 0 0.35rem", fontSize: "1.25rem", fontWeight: 600, color: "#161616" }}>
+                    Your school is ready
+                  </h2>
+                  <p style={{ margin: 0, fontSize: "0.875rem", color: "#525252" }}>
+                    Here's what OpenSchool helps you run day to day, and where to go next.
+                  </p>
+                </div>
 
-            <Button
-              renderIcon={ArrowRight}
-              kind="primary"
-              onClick={() => navigate("/")}
-              style={{ width: "100%", maxWidth: "100%" }}
-            >
-              Go to Dashboard
-            </Button>
+                <div style={{ display: "grid", gap: "0.75rem", marginBottom: "1.5rem" }}>
+                  {[
+                    {
+                      title: "Curriculum",
+                      body: "Define levels (a grade, a stream, an exam class) and selection groups to control which subjects students can pick.",
+                      path: "/curriculum",
+                      icon: Layers,
+                    },
+                    {
+                      title: "Subjects",
+                      body: "Build your subject catalogue, then offer subjects to students through curriculum selection groups.",
+                      path: "/subjects",
+                      icon: Book,
+                    },
+                    {
+                      title: "Students & Teachers",
+                      body: "Enrol students and add teachers - each gets their own sign-in and profile automatically.",
+                      path: "/students",
+                      icon: UserMultiple,
+                    },
+                    {
+                      title: "Attendance",
+                      body: "Once classes have students, teachers can create sessions and mark attendance from the class page.",
+                      path: "/attendance",
+                      icon: EventSchedule,
+                    },
+                  ].map((item) => (
+                    <Link
+                      key={item.title}
+                      to={item.path}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.875rem",
+                        padding: "0.875rem 1rem",
+                        border: "1px solid #e0e0e0",
+                        background: "#fafafa",
+                        textDecoration: "none",
+                        transition: "border-color 0.15s ease, background 0.15s ease",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "2.25rem",
+                          height: "2.25rem",
+                          borderRadius: "50%",
+                          background: "#edf2fa",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <item.icon size={18} style={{ fill: ACCENT }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: "0 0 0.25rem", fontSize: "0.875rem", fontWeight: 600, color: "#161616" }}>
+                          {item.title}
+                        </p>
+                        <p style={{ margin: 0, fontSize: "0.8125rem", color: "#525252" }}>{item.body}</p>
+                      </div>
+                      <ChevronRight size={16} style={{ fill: "#8d8d8d", flexShrink: 0 }} />
+                    </Link>
+                  ))}
+                </div>
+
+                <Button
+                  renderIcon={ArrowRight}
+                  kind="primary"
+                  onClick={() => navigate("/")}
+                  style={{ width: "100%", maxWidth: "100%" }}
+                >
+                  Go to Dashboard
+                </Button>
+              </>
+            )}
           </div>
         )}
 
         {/* ── Navigation ─────────────────────────────────────────────── */}
         {step < 5 && (
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "1.75rem" }}>
-            <Button kind="ghost" onClick={goBack} disabled={step === 0 || busy}>
+            <Button kind="ghost" onClick={goBack} disabled={step === 0}>
               Back
             </Button>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               {(step === 1 || step === 3 || step === 4) && (
                 <Button
                   kind="secondary"
-                  disabled={busy}
                   onClick={() => {
                     if (step === 1) handleHousesNext(true);
                     else if (step === 3) handleClassesNext(true);
@@ -813,7 +893,6 @@ export default function SchoolSetup() {
               )}
               <Button
                 kind="primary"
-                disabled={busy}
                 onClick={() => {
                   if (step === 0) handleSchoolNext();
                   else if (step === 1) handleHousesNext(false);
@@ -822,7 +901,7 @@ export default function SchoolSetup() {
                   else handleMediumsNext(false);
                 }}
               >
-                {busy ? "Saving…" : "Continue"}
+                {step === 4 ? "Finish Setup" : "Continue"}
               </Button>
             </div>
           </div>

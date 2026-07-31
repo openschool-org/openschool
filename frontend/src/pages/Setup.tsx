@@ -13,6 +13,7 @@ import {
 import { CheckmarkFilled } from "@carbon/icons-react";
 import { useSetupStatus, useRegisterAdmin } from "../queries/useSetup";
 import { getErrorMessage } from "../lib/errorMessage";
+import { silentProgressStatus } from "../lib/carbonA11y";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -20,13 +21,13 @@ type Touched = Partial<Record<"givenName" | "familyName" | "email" | "username" 
 
 function Header() {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.75rem" }}>
-      <img src="/favicon.webp" alt="" width={44} height={44} style={{ display: "block", flexShrink: 0 }} />
+    <div className="os-setup-header">
+      <img src="/favicon.webp" alt="" width={44} height={44} className="os-setup-header__logo" />
       <div>
-        <p style={{ margin: 0, fontSize: "1.125rem", fontWeight: 600, color: "#161616" }}>
-          Open<span style={{ color: "#FF6F1B" }}>School</span>
+        <p className="os-setup-header__title">
+          Open<span className="os-signin-card__title-accent">School</span>
         </p>
-        <p style={{ margin: 0, fontSize: "0.75rem", color: "#8d8d8d" }}>School management, self-hosted</p>
+        <p className="os-setup-header__subtitle">School management, self-hosted</p>
       </div>
     </div>
   );
@@ -101,28 +102,15 @@ export default function Setup() {
     return (
       <div className="os-signin-wrapper">
         <div className="os-setup-card" style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: "3.5rem",
-              height: "3.5rem",
-              margin: "0 auto 1.25rem",
-              borderRadius: "50%",
-              background: "#defbe6",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <CheckmarkFilled size={28} style={{ fill: "#24a148" }} />
+          <div className="os-setup-success-icon">
+            <CheckmarkFilled size={28} />
           </div>
-          <h1 style={{ fontSize: "1.5rem", fontWeight: 500, marginBottom: "0.5rem", color: "#161616" }}>
-            Admin account created
-          </h1>
-          <p style={{ color: "#525252", marginBottom: "2rem" }}>
+          <h1 className="os-setup-card__title">Admin account created</h1>
+          <p className="os-setup-card__subtitle">
             Sign in with the credentials you just set, then head to{" "}
             <strong>Settings</strong> to register your school's details.
           </p>
-          <Button href="/signin" style={{ width: "100%", maxWidth: "100%" }}>
+          <Button href="/signin" className="os-full-width-btn">
             Go to Sign In
           </Button>
         </div>
@@ -136,11 +124,11 @@ export default function Setup() {
         <Header />
 
         <ProgressIndicator currentIndex={0} spaceEqually style={{ marginBottom: "1.75rem" }}>
-          <ProgressStep label="Admin account" description="Create the first admin" />
-          <ProgressStep label="School setup" description="Register your school" />
+          <ProgressStep label="Admin account" description="Create the first admin" translateWithId={silentProgressStatus} />
+          <ProgressStep label="School setup" description="Register your school" translateWithId={silentProgressStatus} />
         </ProgressIndicator>
 
-        <p style={{ color: "#525252", marginBottom: "1.5rem", fontSize: "0.875rem" }}>
+        <p className="os-setup-card__intro">
           This looks like a new instance. Create the admin account to get
           started - <strong>this can only be done once.</strong>
         </p>
@@ -157,7 +145,7 @@ export default function Setup() {
         )}
 
         <Stack gap={5}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+          <div className="os-setup-name-grid">
             <TextInput
               id="setup-given-name"
               labelText="First Name"
@@ -230,12 +218,12 @@ export default function Setup() {
           <Button
             onClick={handleSubmit}
             disabled={registerAdmin.isPending}
-            style={{ width: "100%", maxWidth: "100%" }}
+            className="os-full-width-btn"
           >
             {registerAdmin.isPending ? "Creating admin account…" : "Create Admin Account"}
           </Button>
 
-          <div style={{ textAlign: "center", fontSize: "0.8125rem", color: "#525252" }}>
+          <div className="os-setup-signin-link">
             Already set up an admin account?{" "}
             <SignInButton>
               {({ signIn, isLoading: signInLoading }) => (
@@ -243,16 +231,7 @@ export default function Setup() {
                   type="button"
                   onClick={() => signIn()}
                   disabled={signInLoading}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    padding: 0,
-                    font: "inherit",
-                    color: "#406AAF",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    textDecoration: "underline",
-                  }}
+                  className="os-setup-signin-link__btn"
                 >
                   {signInLoading ? "Signing in…" : "Sign in instead"}
                 </button>

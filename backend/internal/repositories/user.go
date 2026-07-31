@@ -28,6 +28,10 @@ func (r *UserRepository) Create(ctx context.Context, arg db.CreateUserParams) (d
 	return r.queries.CreateUser(ctx, arg)
 }
 
+func (r *UserRepository) EnsureExists(ctx context.Context, arg db.EnsureUserExistsParams) (db.User, error) {
+	return r.queries.EnsureUserExists(ctx, arg)
+}
+
 func (r *UserRepository) CountByRole(ctx context.Context, role string) (int64, error) {
 	return r.queries.CountUsersByRole(ctx, role)
 }

@@ -22,11 +22,7 @@ export function useRole(): { role: Role | null; loading: boolean } {
   });
 
   useEffect(() => {
-    if (isLoading) return;
-
-    if (!isSignedIn) {
-      return;
-    }
+    if (isLoading || !isSignedIn) return;
 
     let cancelled = false;
 
@@ -52,6 +48,11 @@ export function useRole(): { role: Role | null; loading: boolean } {
 
     return () => {
       cancelled = true;
+      // Reset on teardown (sign-out, or a fresh sign-in superseding this
+      // run) rather than leaving stale — otherwise a role from the previous
+      // session lingers in state for a moment before the next resolves.
+      setRole(null);
+      setRoleResolved(false);
     };
   }, [isLoading, isSignedIn]);
 

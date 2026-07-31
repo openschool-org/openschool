@@ -10,7 +10,6 @@ export function useProvisionUser() {
     if (isLoading || !isSignedIn || provisionedRef.current) return;
     provisionedRef.current = true;
     api.get("/me").catch(() => {
-      // Best-effort — a failure here shouldn't block the app from loading.
       provisionedRef.current = false;
     });
   }, [isLoading, isSignedIn]);

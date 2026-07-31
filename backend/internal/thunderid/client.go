@@ -22,14 +22,21 @@ type Client struct {
 }
 
 func NewClient() *Client {
+	// Skipping cert verification is only ever acceptable against ThunderID's
+	// self-signed local-dev certificate. Doing this unconditionally would
+	// silently disable TLS verification in production too, exposing the
+	// channel that creates users and assigns roles to a MITM.
+	transport := http.DefaultTransport
+	if os.Getenv("APP_ENV") == "development" {
+		transport = &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+
 	return &Client{
-		baseUrl: os.Getenv("THUNDERID_BASE_URL"),
-		ouID:    os.Getenv("THUNDERID_OU_ID"),
-		httpClient: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			},
-		},
+		baseUrl:    os.Getenv("THUNDERID_BASE_URL"),
+		ouID:       os.Getenv("THUNDERID_OU_ID"),
+		httpClient: &http.Client{Transport: transport},
 	}
 }
 
