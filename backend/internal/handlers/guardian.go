@@ -71,6 +71,24 @@ func (h *GuardianHandler) GetByID(c *gin.Context) {
 	c.JSON(http.StatusOK, guardian)
 }
 
+// List godoc
+// @Summary      List all guardians
+// @Description  Every guardian on file, for the "link existing guardian" search picker
+// @Tags         guardians
+// @Produce      json
+// @Success      200 {array} models.GuardianResponse
+// @Security     BearerAuth
+// @Router       /guardians [get]
+func (h *GuardianHandler) List(c *gin.Context) {
+	guardians, err := h.service.ListGuardians(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, guardians)
+}
+
 // Update godoc
 // @Summary      Update guardian
 // @Description  Update a guardian record

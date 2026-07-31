@@ -8,8 +8,6 @@ import {
   TabList,
   TabPanels,
   TabPanel,
-  Select,
-  SelectItem,
   TextInput,
   DatePicker,
   DatePickerInput,
@@ -47,6 +45,7 @@ import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import EntityCombobox from "../../../components/common/EntityCombobox";
 import ClassMarks from "./ClassMarks";
 
 function toYmd(d: Date | undefined): string {
@@ -761,17 +760,16 @@ export default function ClassDetail() {
               style={{ marginBottom: "1rem", maxWidth: "100%" }}
             />
           )}
-          <Select
+          <EntityCombobox
             id="teacher-choice"
             labelText="Teacher"
-            value={teacherChoice}
-            onChange={(e) => setTeacherChoice(e.target.value)}
-          >
-            <SelectItem value="" text="Choose a teacher" />
-            {teachers?.map((t) => (
-              <SelectItem key={t.id} value={t.id} text={t.full_name} />
-            ))}
-          </Select>
+            items={teachers ?? []}
+            selectedId={teacherChoice}
+            onSelect={setTeacherChoice}
+            getId={(t) => t.id}
+            itemToString={(t) => `${t.full_name} — ${t.employee_number}`}
+            placeholder="Search teachers by name or employee number…"
+          />
         </ModalBody>
         <ModalFooter>
           <Button kind="secondary" onClick={() => setTeacherModalOpen(false)}>
@@ -801,28 +799,26 @@ export default function ClassDetail() {
             />
           )}
           <div style={{ display: "grid", gap: "1rem" }}>
-            <Select
+            <EntityCombobox
               id="girl-monitor-choice"
               labelText="Girl Monitor"
-              value={girlMonitorChoice}
-              onChange={(e) => setGirlMonitorChoice(e.target.value)}
-            >
-              <SelectItem value="" text="Unassigned" />
-              {girlMonitorCandidates.map((s) => (
-                <SelectItem key={s.id} value={s.id} text={`${s.full_name} (${s.index_number})`} />
-              ))}
-            </Select>
-            <Select
+              items={girlMonitorCandidates}
+              selectedId={girlMonitorChoice}
+              onSelect={setGirlMonitorChoice}
+              getId={(s) => s.id}
+              itemToString={(s) => `${s.full_name} — ${s.index_number}`}
+              placeholder="Search students by name or index number…"
+            />
+            <EntityCombobox
               id="boy-monitor-choice"
               labelText="Boy Monitor"
-              value={boyMonitorChoice}
-              onChange={(e) => setBoyMonitorChoice(e.target.value)}
-            >
-              <SelectItem value="" text="Unassigned" />
-              {boyMonitorCandidates.map((s) => (
-                <SelectItem key={s.id} value={s.id} text={`${s.full_name} (${s.index_number})`} />
-              ))}
-            </Select>
+              items={boyMonitorCandidates}
+              selectedId={boyMonitorChoice}
+              onSelect={setBoyMonitorChoice}
+              getId={(s) => s.id}
+              itemToString={(s) => `${s.full_name} — ${s.index_number}`}
+              placeholder="Search students by name or index number…"
+            />
           </div>
         </ModalBody>
         <ModalFooter>
@@ -855,21 +851,16 @@ export default function ClassDetail() {
               there are no students yet.
             </p>
           ) : (
-            <Select
+            <EntityCombobox
               id="student-choice"
               labelText="Student"
-              value={studentChoice}
-              onChange={(e) => setStudentChoice(e.target.value)}
-            >
-              <SelectItem value="" text="Choose a student" />
-              {enrolCandidates.map((s) => (
-                <SelectItem
-                  key={s.id}
-                  value={s.id}
-                  text={`${s.full_name} (${s.index_number})`}
-                />
-              ))}
-            </Select>
+              items={enrolCandidates}
+              selectedId={studentChoice}
+              onSelect={setStudentChoice}
+              getId={(s) => s.id}
+              itemToString={(s) => `${s.full_name} — ${s.index_number}`}
+              placeholder="Search students by name or index number…"
+            />
           )}
         </ModalBody>
         <ModalFooter>

@@ -32,6 +32,8 @@ export interface ProvisionGuardianLoginRequest {
 }
 
 export const guardianApi = {
+  list: () => api.get<Guardian[]>("/guardians").then((r) => r.data),
+
   listByStudent: (studentId: string) =>
     api
       .get<GuardianWithPrimary[]>(`/students/${studentId}/guardians`)

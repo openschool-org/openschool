@@ -157,6 +157,41 @@ func (q *Queries) LinkGuardianToStudent(ctx context.Context, arg LinkGuardianToS
 	return err
 }
 
+const listGuardians = `-- name: ListGuardians :many
+SELECT id, user_id, full_name, relationship, phone, email, created_at FROM guardians
+ORDER BY full_name ASC
+`
+
+// Every guardian on file, for the "link an existing guardian to this
+// student too" search picker (siblings sharing a guardian).
+func (q *Queries) ListGuardians(ctx context.Context) ([]Guardian, error) {
+	rows, err := q.db.Query(ctx, listGuardians)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Guardian{}
+	for rows.Next() {
+		var i Guardian
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FullName,
+			&i.Relationship,
+			&i.Phone,
+			&i.Email,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listGuardiansByStudent = `-- name: ListGuardiansByStudent :many
 SELECT
     g.id, g.user_id, g.full_name, g.relationship, g.phone, g.email, g.created_at,

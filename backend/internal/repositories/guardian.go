@@ -25,6 +25,10 @@ func (r *GuardianRepository) GetByID(ctx context.Context, id uuid.UUID) (db.Guar
 	return r.queries.GetGuardianByID(ctx, id)
 }
 
+func (r *GuardianRepository) List(ctx context.Context) ([]db.Guardian, error) {
+	return r.queries.ListGuardians(ctx)
+}
+
 func (r *GuardianRepository) Update(ctx context.Context, params db.UpdateGuardianParams) (db.Guardian, error) {
 	return r.queries.UpdateGuardian(ctx, params)
 }

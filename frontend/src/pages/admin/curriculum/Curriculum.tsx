@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Add, ChevronRight, Copy, Layers } from "@carbon/icons-react";
+import { Add, ChevronRight, Copy, Layers, Rocket } from "@carbon/icons-react";
 import {
   Button,
   Tag,
@@ -21,6 +21,7 @@ import {
   useDuplicateLevel,
   useDeleteLevel,
 } from "../../../queries/useCurriculum";
+import { useRunCurriculumPreset } from "../../../queries/useCurriculumPreset";
 import { useGrades } from "../../../queries/useGrades";
 import type { Level } from "../../../services/curriculum";
 import { getErrorMessage } from "../../../lib/errorMessage";
@@ -59,6 +60,7 @@ export default function Curriculum() {
   const createLevel = useCreateLevel();
   const duplicateLevel = useDuplicateLevel();
   const deleteLevel = useDeleteLevel();
+  const runPreset = useRunCurriculumPreset();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -67,6 +69,7 @@ export default function Curriculum() {
   const [toDuplicate, setToDuplicate] = useState<Level | null>(null);
   const [dupForm, setDupForm] = useState(EMPTY_FORM);
   const [dupLabelTouched, setDupLabelTouched] = useState(false);
+  const [presetConfirmOpen, setPresetConfirmOpen] = useState(false);
 
   const gradeName = (id: string | null) =>
     grades?.find((g) => g.id === id)?.name ?? null;
@@ -140,10 +143,48 @@ export default function Curriculum() {
             Each level holds selection groups that decide what students pick.
           </p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>
-          New Level
-        </Button>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <Button
+            renderIcon={Rocket}
+            kind="secondary"
+            size="md"
+            onClick={() => {
+              runPreset.reset();
+              setPresetConfirmOpen(true);
+            }}
+          >
+            Load Curriculum Preset
+          </Button>
+          <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>
+            New Level
+          </Button>
+        </div>
       </div>
+
+      {runPreset.isSuccess && (
+        <InlineNotification
+          kind="success"
+          title="Curriculum preset loaded"
+          subtitle={`Created ${runPreset.data.subjects_created} subjects, ${runPreset.data.levels_created} levels, ${runPreset.data.groups_created} selection groups, and ${runPreset.data.links_created} subject links.${
+            runPreset.data.grades_skipped?.length
+              ? ` Skipped grade(s) ${runPreset.data.grades_skipped.join(", ")} — no matching grade in this school.`
+              : ""
+          }`}
+          lowContrast
+          onClose={() => runPreset.reset()}
+          style={{ marginBottom: "1.5rem", maxWidth: "100%" }}
+        />
+      )}
+      {runPreset.isError && (
+        <InlineNotification
+          kind="error"
+          title="Could not load preset"
+          subtitle={getErrorMessage(runPreset.error, "Please try again.")}
+          lowContrast
+          onClose={() => runPreset.reset()}
+          style={{ marginBottom: "1.5rem", maxWidth: "100%" }}
+        />
+      )}
 
       <div className="os-section">
         <div className="os-section__header">
@@ -430,6 +471,34 @@ export default function Curriculum() {
         onClose={() => setToDelete(null)}
         onConfirm={handleDelete}
       />
+
+      <ComposedModal open={presetConfirmOpen} size="sm" onClose={() => setPresetConfirmOpen(false)}>
+        <ModalHeader title="Load Sri Lanka curriculum preset" />
+        <ModalBody>
+          <p style={{ fontSize: "0.875rem", color: "#525252", marginBottom: "0.75rem" }}>
+            This creates the standard Grade 1–13 curriculum — compulsory
+            subjects for primary and junior secondary, O/L baskets, and A/L
+            streams — as subjects, levels, and selection groups.
+          </p>
+          <p style={{ fontSize: "0.875rem", color: "#525252" }}>
+            It only fills in what's missing for the grades your school
+            actually has — safe to run more than once, and it won't touch
+            anything you've already set up by hand.
+          </p>
+        </ModalBody>
+        <ModalFooter>
+          <Button kind="secondary" onClick={() => setPresetConfirmOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            kind="primary"
+            onClick={() => runPreset.mutate(undefined, { onSuccess: () => setPresetConfirmOpen(false) })}
+            disabled={runPreset.isPending}
+          >
+            {runPreset.isPending ? "Loading…" : "Load Preset"}
+          </Button>
+        </ModalFooter>
+      </ComposedModal>
     </div>
   );
 }

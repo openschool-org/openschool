@@ -132,6 +132,9 @@ type Querier interface {
 	ListCurrentClasses(ctx context.Context) ([]ListCurrentClassesRow, error)
 	ListGrades(ctx context.Context) ([]Grade, error)
 	ListGroupSubjects(ctx context.Context, groupID uuid.UUID) ([]ListGroupSubjectsRow, error)
+	// Every guardian on file, for the "link an existing guardian to this
+	// student too" search picker (siblings sharing a guardian).
+	ListGuardians(ctx context.Context) ([]Guardian, error)
 	ListGuardiansByStudent(ctx context.Context, studentID uuid.UUID) ([]ListGuardiansByStudentRow, error)
 	ListHouses(ctx context.Context) ([]House, error)
 	ListLevels(ctx context.Context) ([]Level, error)

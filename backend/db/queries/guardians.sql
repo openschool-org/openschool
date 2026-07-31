@@ -13,6 +13,12 @@ RETURNING *;
 SELECT * FROM guardians
 WHERE id = $1;
 
+-- name: ListGuardians :many
+-- Every guardian on file, for the "link an existing guardian to this
+-- student too" search picker (siblings sharing a guardian).
+SELECT * FROM guardians
+ORDER BY full_name ASC;
+
 -- name: UpdateGuardian :one
 UPDATE guardians
 SET

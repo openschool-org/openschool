@@ -37,6 +37,10 @@ func (s *GuardianService) GetGuardian(ctx context.Context, id uuid.UUID) (db.Gua
 	return s.repo.GetByID(ctx, id)
 }
 
+func (s *GuardianService) ListGuardians(ctx context.Context) ([]db.Guardian, error) {
+	return s.repo.List(ctx)
+}
+
 func (s *GuardianService) UpdateGuardian(ctx context.Context, id uuid.UUID, req models.UpdateGuardianRequest) (db.Guardian, error) {
 	return s.repo.UpdateWithNullable(ctx, id, req.FullName, req.Relationship, req.Phone, req.Email)
 }

@@ -14,8 +14,31 @@ export const useGuardiansByStudent = (studentId: string) =>
     enabled: !!studentId,
   });
 
+// Every guardian on file, for the "link existing guardian" search picker.
+export const useGuardians = () =>
+  useQuery({
+    queryKey: ["guardians"],
+    queryFn: guardianApi.list,
+  });
+
+export const useLinkGuardian = (studentId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      guardianId,
+      isPrimaryContact,
+    }: {
+      guardianId: string;
+      isPrimaryContact: boolean;
+    }) => guardianApi.linkToStudent(studentId, guardianId, isPrimaryContact),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: guardiansKey(studentId) });
+    },
+  });
+};
+
 // Creates a new guardian record and links it to the student in one step —
-// there's no "search existing guardians" UI yet, so every add is a new one.
+// for guardians who aren't already on file elsewhere.
 export const useAddGuardian = (studentId: string) => {
   const queryClient = useQueryClient();
   return useMutation({

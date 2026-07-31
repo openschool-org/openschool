@@ -17,6 +17,7 @@ import { useGrades } from "../../../queries/useGrades";
 import { useTeachers } from "../../../queries/useTeachers";
 import { useAcademicYears } from "../../../queries/useAcademicYears";
 import { getErrorMessage } from "../../../lib/errorMessage";
+import EntityCombobox from "../../../components/common/EntityCombobox";
 
 type Touched = Partial<Record<"grade" | "name" | "year", boolean>>;
 
@@ -169,17 +170,16 @@ export default function AddClass() {
               ))}
             </Select>
 
-            <Select
+            <EntityCombobox
               id="class-teacher"
               labelText="Form Teacher (optional)"
-              value={form.form_teacher_id}
-              onChange={(e) => set("form_teacher_id", e.target.value)}
-            >
-              <SelectItem value="" text="Unassigned" />
-              {teachers?.map((t) => (
-                <SelectItem key={t.id} value={t.id} text={t.full_name} />
-              ))}
-            </Select>
+              items={teachers ?? []}
+              selectedId={form.form_teacher_id}
+              onSelect={(id) => set("form_teacher_id", id)}
+              getId={(t) => t.id}
+              itemToString={(t) => `${t.full_name} — ${t.employee_number}`}
+              placeholder="Search teachers by name or employee number…"
+            />
           </div>
         </div>
 

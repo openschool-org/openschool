@@ -3,8 +3,6 @@ import { Layers, Add, UserFollow } from "@carbon/icons-react";
 import {
   Button,
   TextInput,
-  Select,
-  SelectItem,
   Tag,
   InlineNotification,
   ComposedModal,
@@ -26,6 +24,7 @@ import { useSectionHeads, useAssignSectionHead } from "../../../queries/useSecti
 import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
+import EntityCombobox from "../../../components/common/EntityCombobox";
 import type { Stream } from "../../../services/stream";
 
 function StreamGroups({ stream }: { stream: Stream }) {
@@ -234,19 +233,16 @@ export default function Streams() {
                       </p>
                     )}
                   </div>
-                  <div style={{ width: "14rem" }}>
-                    <Select
+                  <div style={{ width: "16rem" }}>
+                    <EntityCombobox
                       id={`tic-${row.key}`}
-                      labelText=""
-                      size="sm"
-                      value={head?.teacher_id ?? ""}
-                      onChange={(e) => handleAssign(row.gradeId, row.streamId, e.target.value)}
-                    >
-                      <SelectItem value="" text="Unassigned" />
-                      {teachers?.map((t) => (
-                        <SelectItem key={t.id} value={t.id} text={t.full_name} />
-                      ))}
-                    </Select>
+                      items={teachers ?? []}
+                      selectedId={head?.teacher_id ?? ""}
+                      onSelect={(id) => handleAssign(row.gradeId, row.streamId, id)}
+                      getId={(t) => t.id}
+                      itemToString={(t) => `${t.full_name} — ${t.employee_number}`}
+                      placeholder="Search teachers…"
+                    />
                   </div>
                 </div>
               );

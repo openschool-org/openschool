@@ -14,6 +14,7 @@ func RegisterGuardianRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGr
 	handler := handlers.NewGuardianHandler(service)
 
 	admin.POST("/guardians", handler.Create)
+	teacherOrAdmin.GET("/guardians", handler.List)
 	teacherOrAdmin.GET("/guardians/:id", handler.GetByID)
 	admin.PUT("/guardians/:id", handler.Update)
 	admin.POST("/students/:id/guardians", handler.LinkToStudent)

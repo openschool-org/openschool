@@ -18,6 +18,7 @@ import { usePrefects, useAssignPrefect, useRemovePrefect } from "../../../querie
 import { getErrorMessage } from "../../../lib/errorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ErrorMessage from "../../../components/common/ErrorMessage";
+import EntityCombobox from "../../../components/common/EntityCombobox";
 import type { Prefect, PrefectRank } from "../../../services/prefect";
 
 const RANKS: { value: PrefectRank; label: string }[] = [
@@ -172,17 +173,16 @@ export default function Prefects() {
             />
           )}
           <div style={{ display: "grid", gap: "1rem" }}>
-            <Select
+            <EntityCombobox
               id="prefect-student"
               labelText="Student"
-              value={studentChoice}
-              onChange={(e) => setStudentChoice(e.target.value)}
-            >
-              <SelectItem value="" text="Choose a student" />
-              {availableStudents.map((s) => (
-                <SelectItem key={s.id} value={s.id} text={`${s.full_name} (${s.index_number})`} />
-              ))}
-            </Select>
+              items={availableStudents}
+              selectedId={studentChoice}
+              onSelect={setStudentChoice}
+              getId={(s) => s.id}
+              itemToString={(s) => `${s.full_name} — ${s.index_number}`}
+              placeholder="Search students by name or index number…"
+            />
             <Select
               id="prefect-rank"
               labelText="Rank"
