@@ -12,8 +12,21 @@ export interface Teacher {
   phone: string | null;
   title: TeacherTitle | null;
   gender: "male" | "female" | null;
+  is_active: boolean;
   created_at: string | null;
   updated_at: string | null;
+}
+
+// Matches db.ListTeacherWorkloadRow
+export interface TeacherWorkloadRow {
+  subject_id: string;
+  subject_name: string;
+  class_id: string;
+  class_name: string;
+  grade_name: string;
+  academic_year_id: string;
+  academic_year_label: string;
+  academic_year_is_current: boolean;
 }
 
 // Matches db.Subject
@@ -51,6 +64,12 @@ export const teacherApi = {
   list: () => api.get<Teacher[]>("/teachers").then((r) => r.data),
 
   get: (id: string) => api.get<Teacher>(`/teachers/${id}`).then((r) => r.data),
+
+  // The signed-in teacher's own profile, resolved server-side from the JWT.
+  me: () => api.get<Teacher>("/me/teacher").then((r) => r.data),
+
+  workload: (id: string) =>
+    api.get<TeacherWorkloadRow[]>(`/teachers/${id}/workload`).then((r) => r.data),
 
   create: (data: CreateTeacherRequest) =>
     api.post<Teacher>("/teachers", data).then((r) => r.data),

@@ -8,6 +8,8 @@ import type {
 export const TEACHERS_KEY = ["teachers"];
 export const teacherKey = (id: string) => ["teachers", id];
 export const teacherSubjectsKey = (id: string) => ["teachers", id, "subjects"];
+export const teacherWorkloadKey = (id: string) => ["teachers", id, "workload"];
+export const MY_TEACHER_PROFILE_KEY = ["me", "teacher"];
 
 export const useTeachers = () =>
   useQuery({
@@ -26,6 +28,22 @@ export const useTeacherSubjects = (id: string) =>
   useQuery({
     queryKey: teacherSubjectsKey(id),
     queryFn: () => teacherApi.listSubjects(id),
+    enabled: !!id,
+  });
+
+// The signed-in teacher's own profile — resolves their teacher_profile ID
+// from the JWT server-side. Everything else (classes, sessions, marks) is
+// then fetched with that ID via the normal admin/teacher-shared endpoints.
+export const useMyTeacherProfile = () =>
+  useQuery({
+    queryKey: MY_TEACHER_PROFILE_KEY,
+    queryFn: teacherApi.me,
+  });
+
+export const useTeacherWorkload = (id: string) =>
+  useQuery({
+    queryKey: teacherWorkloadKey(id),
+    queryFn: () => teacherApi.workload(id),
     enabled: !!id,
   });
 
