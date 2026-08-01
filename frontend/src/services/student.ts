@@ -69,6 +69,5 @@ export const studentApi = {
       .put<Student>(`/students/${id}/house`, { house_id: houseId })
       .then((r) => r.data),
 
-  remove: (id: string) =>
-    api.delete(`/students/${id}`).then((r) => r.data),
+  remove: (id: string) => api.delete(`/students/${id}`).then((r) => r.data),
 };
