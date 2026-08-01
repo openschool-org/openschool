@@ -34,7 +34,7 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		"email":        req.Email,
 		"given_name":   req.GivenName,
 		"family_name":  req.FamilyName,
-		"phone_number": req.PhoneNumber,
+		"phone":        req.PhoneNumber,
 		"password":     req.Password,
 	})
 	if err != nil {
@@ -133,7 +133,7 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 		"email":        user.Email,
 		"given_name":   req.GivenName,
 		"family_name":  req.FamilyName,
-		"phone_number": req.PhoneNumber,
+		"phone":        req.PhoneNumber,
 	})
 	if err != nil {
 		fmt.Printf("warning: failed to update identity provider user: %v\n", err)

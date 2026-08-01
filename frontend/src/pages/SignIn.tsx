@@ -14,16 +14,16 @@ export default function SignIn() {
   return (
     <div className="os-signin-wrapper">
       <div className="os-signin-card">
-        <img
-          src="/favicon.webp"
-          alt="OpenSchool"
-          width={48}
-          height={48}
-          className="os-signin-card__logo"
-        />
-        <h1 className="os-signin-card__title">
-          Open<span className="os-signin-card__title-accent">School</span>
-        </h1>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <img
+            src="/favicon.webp"
+            alt="OpenSchool"
+            width={48}
+            height={48}
+            className="os-signin-card__logo"
+          />
+          <h1 className="os-signin-card__title">OpenSchool</h1>
+        </div>
         <p className="os-signin-card__subtitle">
           Sign in to continue to your dashboard.
         </p>

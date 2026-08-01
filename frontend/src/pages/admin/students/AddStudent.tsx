@@ -16,11 +16,12 @@ import { getErrorMessage } from "../../../lib/errorMessage";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-type Touched = Partial<Record<"givenName" | "familyName" | "email" | "indexNumber", boolean>>;
+type Touched = Partial<
+  Record<"givenName" | "familyName" | "email" | "indexNumber", boolean>
+>;
 
 function generateTempPassword(): string {
-  const alphabet =
-    "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
   const bytes = new Uint32Array(12);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
@@ -42,10 +43,16 @@ export default function AddStudent() {
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [touched, setTouched] = useState<Touched>({});
 
-  const markTouched = (field: keyof Touched) => setTouched((t) => ({ ...t, [field]: true }));
+  const markTouched = (field: keyof Touched) =>
+    setTouched((t) => ({ ...t, [field]: true }));
 
   const handleSubmit = () => {
-    setTouched({ givenName: true, familyName: true, email: true, indexNumber: true });
+    setTouched({
+      givenName: true,
+      familyName: true,
+      email: true,
+      indexNumber: true,
+    });
     if (!isValid) return;
     const password = generateTempPassword();
     createStudent.mutate(
@@ -90,9 +97,17 @@ export default function AddStudent() {
             <span>Enrol New Student</span>
           </div>
           <h1 className="os-page__title">Enrol New Student</h1>
-          <p className="os-page__subtitle">Create a student account and profile</p>
+          <p className="os-page__subtitle">
+            Create a student account and profile
+          </p>
         </div>
-        <Button renderIcon={ArrowLeft} kind="ghost" size="md" as={Link} to="/students">
+        <Button
+          renderIcon={ArrowLeft}
+          kind="ghost"
+          size="md"
+          as={Link}
+          to="/students"
+        >
           Back
         </Button>
       </div>
@@ -187,7 +202,11 @@ export default function AddStudent() {
               onChange={(value) => setGender(value as "male" | "female")}
             >
               <RadioButton id="gender-male" labelText="Male" value="male" />
-              <RadioButton id="gender-female" labelText="Female" value="female" />
+              <RadioButton
+                id="gender-female"
+                labelText="Female"
+                value="female"
+              />
             </RadioButtonGroup>
             <div className="os-form__full-col">
               <TextInput
@@ -236,8 +255,8 @@ export default function AddStudent() {
       >
         <p style={{ marginBottom: "1rem" }}>
           Share this one-time password with the student through a secure,
-          out-of-band channel (not email/SMS in the clear). It will not be
-          shown again - the student should change it after signing in.
+          out-of-band channel (not email/SMS in the clear). It will not be shown
+          again - the student should change it after signing in.
         </p>
         <div
           style={{

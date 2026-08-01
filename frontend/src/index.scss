@@ -12,7 +12,7 @@ $os-accent-mid:    #6a93c8;   // lighter icon / disabled
 $os-accent-light:  #edf2fa;   // hover / active bg
 $os-accent-border: #9ab5d9;   // light border accent
 $os-brand-orange:  #FF6F1B;   // "School" wordmark accent — distinct from the UI accent
-$os-sidebar-w:     13rem;
+$os-sidebar-w:     15rem;
 
 // Text grays reused across the auth screens (sign-in, setup, access-restricted)
 $os-text-primary:   #161616;
@@ -246,10 +246,31 @@ html, body, #root {
 
 // ─── Sidebar ────────────────────────────────────────────────────────────────
 .cds--side-nav {
-  width: $os-sidebar-w !important; 
+  width: $os-sidebar-w !important;
   background-color: #ffffff;
   border-right: 1px solid #e0e0e0;
   top: 3rem;
+}
+
+.cds--side-nav,
+.cds--side-nav__navigation,
+.cds--side-nav__items {
+  scrollbar-width: thin;
+  scrollbar-color: #c6c6c6 transparent;
+
+  &::-webkit-scrollbar {
+    width: 3px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: #c6c6c6;
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: #a8a8a8;
+  }
 }
 
 .cds--side-nav__link {
@@ -290,6 +311,24 @@ html, body, #root {
     background-color: #ffffff;
     border-right: 1px solid #e0e0e0;
     z-index: 999;
+
+    // Thin scrollbar so long nav lists don't eat into the item width
+    scrollbar-width: thin;
+    scrollbar-color: #c6c6c6 transparent;
+
+    &::-webkit-scrollbar {
+      width: 3px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      background-color: #c6c6c6;
+      border-radius: 3px;
+    }
+    &::-webkit-scrollbar-thumb:hover {
+      background-color: #a8a8a8;
+    }
   }
 
   &__content {
