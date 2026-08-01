@@ -8,6 +8,7 @@ import {
 } from "@carbon/react";
 import {
   Dashboard,
+  Home,
   UserMultiple,
   Education,
   Building,
@@ -24,14 +25,20 @@ import {
 } from "@carbon/icons-react";
 import { AxiosError } from "axios";
 import { useSchool } from "../queries/useSchool";
-import { AppHeaderBrand, AppHeaderActions } from "../components/AppHeaderChrome";
+import {
+  AppHeaderBrand,
+  AppHeaderActions,
+} from "../components/AppHeaderChrome";
 
 // Grouped so the sidebar reads as "who, what, when" instead of one flat
 // alphabet-soup list — each group gets a small uppercase label + divider.
-const NAV_GROUPS: { label: string; items: { path: string; label: string; Icon: typeof Dashboard }[] }[] = [
+const NAV_GROUPS: {
+  label: string;
+  items: { path: string; label: string; Icon: typeof Dashboard }[];
+}[] = [
   {
     label: "Overview",
-    items: [{ path: "/", label: "Dashboard", Icon: Dashboard }],
+    items: [{ path: "/", label: "Overview", Icon: Home }],
   },
   {
     label: "People",
@@ -45,7 +52,7 @@ const NAV_GROUPS: { label: string; items: { path: string; label: string; Icon: t
     label: "Academics",
     items: [
       { path: "/classes", label: "Classes", Icon: Building },
-      { path: "/streams", label: "Streams & Section Heads", Icon: UserFollow },
+      { path: "/streams", label: "Streams", Icon: UserFollow },
       { path: "/grades", label: "Grades", Icon: Grid },
       { path: "/subjects", label: "Subjects", Icon: Book },
       { path: "/curriculum", label: "Curriculum", Icon: Layers },
@@ -70,7 +77,8 @@ export default function RootLayout() {
   const location = useLocation();
 
   const { isLoading: schoolLoading, error: schoolError } = useSchool();
-  const noSchoolYet = schoolError instanceof AxiosError && schoolError.response?.status === 404;
+  const noSchoolYet =
+    schoolError instanceof AxiosError && schoolError.response?.status === 404;
 
   if (!schoolLoading && noSchoolYet && location.pathname !== "/school-setup") {
     return <Navigate to="/school-setup" replace />;
