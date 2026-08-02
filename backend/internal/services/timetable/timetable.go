@@ -537,15 +537,16 @@ func (s *TimetableService) notifyPublication(ctx context.Context, tt db.Timetabl
 	}
 
 	students, _ := s.studentRepo.ListByClass(ctx, tt.ClassID)
+	studentIDs := make([]uuid.UUID, 0, len(students))
 	for _, student := range students {
 		if student.UserID.Valid {
 			add(uuid.UUID(student.UserID.Bytes))
 		}
-		guardians, _ := s.guardianRepo.ListByStudent(ctx, student.ID)
-		for _, guardian := range guardians {
-			if guardian.UserID.Valid {
-				add(uuid.UUID(guardian.UserID.Bytes))
-			}
+		studentIDs = append(studentIDs, student.ID)
+	}
+	if guardianUserIDs, err := s.guardianRepo.ListGuardianUserIDsByStudentIDs(ctx, studentIDs); err == nil {
+		for _, id := range guardianUserIDs {
+			add(id)
 		}
 	}
 

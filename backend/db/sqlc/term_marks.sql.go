@@ -22,6 +22,28 @@ func (q *Queries) DeleteTermMark(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const getTermMarkByID = `-- name: GetTermMarkByID :one
+SELECT id, student_id, subject_id, term_id, marks, max_marks, entered_by, created_at, updated_at FROM term_marks
+WHERE id = $1
+`
+
+func (q *Queries) GetTermMarkByID(ctx context.Context, id uuid.UUID) (TermMark, error) {
+	row := q.db.QueryRow(ctx, getTermMarkByID, id)
+	var i TermMark
+	err := row.Scan(
+		&i.ID,
+		&i.StudentID,
+		&i.SubjectID,
+		&i.TermID,
+		&i.Marks,
+		&i.MaxMarks,
+		&i.EnteredBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listClassMarksForTermSubject = `-- name: ListClassMarksForTermSubject :many
 SELECT
     sp.id          AS student_id,

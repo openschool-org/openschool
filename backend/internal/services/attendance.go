@@ -118,13 +118,24 @@ func (s *AttendanceService) resolveActingUser(ctx context.Context, actor Actor) 
 	return created.ID, nil
 }
 
-func (s *AttendanceService) GetSession(ctx context.Context, id uuid.UUID) (db.AttendanceSession, error) {
-	return s.repo.GetSessionByID(ctx, id)
+func (s *AttendanceService) GetSession(ctx context.Context, actor Actor, id uuid.UUID) (db.AttendanceSession, error) {
+	session, err := s.repo.GetSessionByID(ctx, id)
+	if err != nil {
+		return db.AttendanceSession{}, fmt.Errorf("attendance session not found")
+	}
+	if err := s.authorizeTeacherForClass(ctx, actor, session.ClassID); err != nil {
+		return db.AttendanceSession{}, err
+	}
+	return session, nil
 }
 
-func (s *AttendanceService) DeleteSession(ctx context.Context, id uuid.UUID) error {
-	if _, err := s.repo.GetSessionByID(ctx, id); err != nil {
+func (s *AttendanceService) DeleteSession(ctx context.Context, actor Actor, id uuid.UUID) error {
+	session, err := s.repo.GetSessionByID(ctx, id)
+	if err != nil {
 		return fmt.Errorf("attendance session not found")
+	}
+	if err := s.authorizeTeacherForClass(ctx, actor, session.ClassID); err != nil {
+		return err
 	}
 	return s.repo.DeleteSession(ctx, id)
 }
@@ -170,14 +181,57 @@ func (s *AttendanceService) MarkAttendance(ctx context.Context, actor Actor, ses
 	return nil
 }
 
-func (s *AttendanceService) ListBySession(ctx context.Context, sessionID uuid.UUID) ([]db.ListAttendanceBySessionRow, error) {
+func (s *AttendanceService) ListBySession(ctx context.Context, actor Actor, sessionID uuid.UUID) ([]db.ListAttendanceBySessionRow, error) {
+	session, err := s.repo.GetSessionByID(ctx, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("attendance session not found")
+	}
+	if err := s.authorizeTeacherForClass(ctx, actor, session.ClassID); err != nil {
+		return nil, err
+	}
 	return s.repo.ListBySession(ctx, sessionID)
 }
 
+// authorizeTeacherForStudent ensures the acting user, if a teacher, teaches
+// the class the student is currently enrolled in. A student with no current
+// class enrollment can't be verified against, so non-admins are denied.
+func (s *AttendanceService) authorizeTeacherForStudent(ctx context.Context, actor Actor, studentID uuid.UUID) error {
+	if actor.Role == "admin" {
+		return nil
+	}
+	class, err := s.classRepo.GetStudentCurrentClass(ctx, studentID)
+	if err != nil {
+		return ErrNotAssignedToClass
+	}
+	return s.authorizeTeacherForClass(ctx, actor, class.ID)
+}
+
+// ListByStudent is for contexts that have already verified the caller is
+// allowed to see this student's records by some other means (a student
+// viewing their own via /me/student/attendance, a parent viewing their own
+// linked child via /me/children/:id/attendance — both resolve studentID
+// from the caller's own identity/relationships, not a free-form path
+// param). For the teacher/admin-facing /students/:id/attendance route, use
+// ListByStudentForTeacher instead, which enforces class assignment.
 func (s *AttendanceService) ListByStudent(ctx context.Context, studentID uuid.UUID) ([]db.ListAttendanceByStudentRow, error) {
 	return s.repo.ListByStudent(ctx, studentID)
 }
 
+func (s *AttendanceService) ListByStudentForTeacher(ctx context.Context, actor Actor, studentID uuid.UUID) ([]db.ListAttendanceByStudentRow, error) {
+	if err := s.authorizeTeacherForStudent(ctx, actor, studentID); err != nil {
+		return nil, err
+	}
+	return s.repo.ListByStudent(ctx, studentID)
+}
+
+// GetSummary — see ListByStudent's doc comment; same split applies.
 func (s *AttendanceService) GetSummary(ctx context.Context, studentID uuid.UUID, classID uuid.UUID) (db.GetAttendanceSummaryByStudentRow, error) {
+	return s.repo.GetSummaryByStudent(ctx, studentID, classID)
+}
+
+func (s *AttendanceService) GetSummaryForTeacher(ctx context.Context, actor Actor, studentID uuid.UUID, classID uuid.UUID) (db.GetAttendanceSummaryByStudentRow, error) {
+	if err := s.authorizeTeacherForClass(ctx, actor, classID); err != nil {
+		return db.GetAttendanceSummaryByStudentRow{}, err
+	}
 	return s.repo.GetSummaryByStudent(ctx, studentID, classID)
 }

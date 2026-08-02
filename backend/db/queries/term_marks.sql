@@ -63,6 +63,10 @@ WHERE tm.student_id = $1
   AND tm.term_id = $2
 ORDER BY s.name ASC;
 
+-- name: GetTermMarkByID :one
+SELECT * FROM term_marks
+WHERE id = $1;
+
 -- name: DeleteTermMark :exec
 DELETE FROM term_marks
 WHERE id = $1;

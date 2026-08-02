@@ -99,19 +99,22 @@ func (s *HouseService) ReassignMissing(ctx context.Context) (int, error) {
 		return 0, err
 	}
 
-	assigned := 0
+	studentIDs := make([]uuid.UUID, 0, len(students))
+	houseIDs := make([]uuid.UUID, 0, len(students))
 	for _, student := range students {
 		houseID, ok := houseForIndex(student.IndexNumber, houses)
 		if !ok {
 			continue
 		}
-		if _, err := s.repo.UpdateStudentHouse(ctx, db.UpdateStudentHouseParams{
-			ID:      student.ID,
-			HouseID: pgtype.UUID{Bytes: houseID, Valid: true},
-		}); err != nil {
-			return assigned, err
-		}
-		assigned++
+		studentIDs = append(studentIDs, student.ID)
+		houseIDs = append(houseIDs, houseID)
 	}
-	return assigned, nil
+	if len(studentIDs) == 0 {
+		return 0, nil
+	}
+
+	if err := s.repo.BulkUpdateStudentHouses(ctx, studentIDs, houseIDs); err != nil {
+		return 0, err
+	}
+	return len(studentIDs), nil
 }

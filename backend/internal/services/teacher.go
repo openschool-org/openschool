@@ -35,7 +35,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		return db.TeacherProfile{}, fmt.Errorf("employee number already exists")
 	}
 
-	idpUser, err := s.idp.CreateUser(ctx, "employee", map[string]interface{}{
+	idpUser, err := s.idp.CreateUser(ctx, "teacher", map[string]interface{}{
 		"username":        req.Email,
 		"email":           req.Email,
 		"given_name":      req.GivenName,
@@ -115,7 +115,7 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 		return db.TeacherProfile{}, fmt.Errorf("user not found")
 	}
 
-	err = s.idp.UpdateUser(ctx, userID, "employee", map[string]interface{}{
+	err = s.idp.UpdateUser(ctx, userID, "teacher", map[string]interface{}{
 		"username":        user.Email,
 		"email":           user.Email,
 		"given_name":      req.GivenName,

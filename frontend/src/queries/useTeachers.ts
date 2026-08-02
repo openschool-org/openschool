@@ -3,6 +3,7 @@ import { teacherApi } from "../services/teacher";
 import type {
   CreateTeacherRequest,
   UpdateTeacherRequest,
+  TeacherWorkloadRow,
 } from "../services/teacher";
 
 export const TEACHERS_KEY = ["teachers"];
@@ -46,6 +47,48 @@ export const useTeacherWorkload = (id: string) =>
     queryFn: () => teacherApi.workload(id),
     enabled: !!id,
   });
+
+export interface MyClass {
+  class_id: string;
+  class_name: string;
+  grade_name: string;
+  subjects: string[];
+}
+
+function buildMyClasses(workload: TeacherWorkloadRow[] | undefined): MyClass[] {
+  if (!workload) return [];
+  const byClass = new Map<string, MyClass>();
+  for (const row of workload) {
+    if (!row.academic_year_is_current) continue;
+    const existing = byClass.get(row.class_id);
+    if (existing) {
+      if (!existing.subjects.includes(row.subject_name)) existing.subjects.push(row.subject_name);
+    } else {
+      byClass.set(row.class_id, {
+        class_id: row.class_id,
+        class_name: row.class_name,
+        grade_name: row.grade_name,
+        subjects: [row.subject_name],
+      });
+    }
+  }
+  return [...byClass.values()].sort((a, b) => a.grade_name.localeCompare(b.grade_name, undefined, { numeric: true }));
+}
+
+// The signed-in teacher's current-year classes, deduped from their subject
+// workload rows and sorted by grade. Shared by every teacher-portal page
+// that needs "my classes" (dashboard, roster, attendance, profile stats).
+export const useMyClasses = () => {
+  const teacher = useMyTeacherProfile();
+  const workload = useTeacherWorkload(teacher.data?.id ?? "");
+  return {
+    teacher: teacher.data,
+    classes: buildMyClasses(workload.data),
+    isLoading: teacher.isLoading || workload.isLoading,
+    isError: teacher.isError || workload.isError,
+    refetch: teacher.refetch,
+  };
+};
 
 export const useCreateTeacher = () => {
   const queryClient = useQueryClient();

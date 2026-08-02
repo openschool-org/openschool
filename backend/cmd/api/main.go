@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +20,30 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
+
+func envFloat(key string, fallback float64) float64 {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	n, err := strconv.ParseFloat(v, 64)
+	if err != nil {
+		return fallback
+	}
+	return n
+}
+
+func envInt(key string, fallback int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return fallback
+	}
+	return n
+}
 
 // @title           OpenSchool API
 // @version         1.0
@@ -72,10 +97,21 @@ func main() {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
+	// API-wide per-IP rate limit, on top of any endpoint-specific ones
+	// (e.g. /setup/admin's stricter limiter). Kept generous by default: a
+	// school's users are frequently behind one shared NAT/proxy IP, so a
+	// tight limit here would throttle the whole school together, not just
+	// an abusive client. Tune via env once real traffic patterns are known.
+	r.Use(middleware.RateLimit(envFloat("API_RATE_LIMIT_RPS", 30), envInt("API_RATE_LIMIT_BURST", 60)))
 
 	routes.Setup(r, db)
 
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	// Swagger exposes the full API surface (routes, request/response
+	// shapes); harmless to leave public, but there's no reason to serve it
+	// outside development.
+	if os.Getenv("APP_ENV") == "development" {
+		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {

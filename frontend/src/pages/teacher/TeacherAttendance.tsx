@@ -1,81 +1,147 @@
 import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { Tag } from "@carbon/react";
+import { useQueries } from "@tanstack/react-query";
 import { EventSchedule, Search, CheckmarkFilled, Time } from "@carbon/icons-react";
+import { useMyClasses } from "../../queries/useTeachers";
+import { useDailySessions, useSessionRecords, useCreateSession, classSessionsKey } from "../../queries/useAttendance";
+import { attendanceApi, type AttendanceSession } from "../../services/attendance";
+import LoadingSpinner from "../../components/common/LoadingSpinner";
+import ErrorMessage from "../../components/common/ErrorMessage";
 
 const ACCENT = "#406AAF";
 
-type SessionStatus = "Marked" | "Pending";
+function todayISODate(): string {
+  const d = new Date();
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
+}
 
-const SESSIONS: {
-  id: string; date: string; time: string; class: string; classId: string;
-  subject: string; students: number; present: number; absent: number; late: number; status: SessionStatus;
-}[] = [
-  { id: "S-2026-0060", date: "2026-06-26", time: "07:45", class: "10-A", classId: "CL-001", subject: "Mathematics", students: 38, present: 37, absent: 1, late: 0, status: "Marked"  },
-  { id: "S-2026-0061", date: "2026-06-26", time: "09:30", class: "11-A", classId: "CL-003", subject: "Science",     students: 36, present: 0,  absent: 0, late: 0, status: "Pending" },
-  { id: "S-2026-0057", date: "2026-06-25", time: "07:45", class: "10-A", classId: "CL-001", subject: "Mathematics", students: 38, present: 36, absent: 2, late: 0, status: "Marked"  },
-  { id: "S-2026-0058", date: "2026-06-25", time: "09:30", class: "11-A", classId: "CL-003", subject: "Science",     students: 36, present: 34, absent: 2, late: 0, status: "Marked"  },
-  { id: "S-2026-0054", date: "2026-06-24", time: "07:45", class: "10-A", classId: "CL-001", subject: "Mathematics", students: 38, present: 38, absent: 0, late: 0, status: "Marked"  },
-  { id: "S-2026-0055", date: "2026-06-24", time: "09:30", class: "11-A", classId: "CL-003", subject: "Science",     students: 36, present: 35, absent: 1, late: 0, status: "Marked"  },
-  { id: "S-2026-0051", date: "2026-06-23", time: "07:45", class: "10-A", classId: "CL-001", subject: "Mathematics", students: 38, present: 35, absent: 2, late: 1, status: "Marked"  },
-  { id: "S-2026-0052", date: "2026-06-23", time: "09:30", class: "11-A", classId: "CL-003", subject: "Science",     students: 36, present: 33, absent: 3, late: 0, status: "Marked"  },
-];
+function PendingClassAction({ classId, className, gradeName }: { classId: string; className: string; gradeName: string }) {
+  const navigate = useNavigate();
+  const createSession = useCreateSession(classId);
 
-const FILTERS = ["All", "Pending", "Marked"] as const;
+  const handleClick = () => {
+    createSession.mutate(
+      { class_id: classId, date: todayISODate() },
+      { onSuccess: (session) => navigate(`/attendance/sessions/${session.id}/mark`) }
+    );
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={createSession.isPending}
+      style={{ padding: "0.5rem 1rem", background: ACCENT, color: "#fff", border: "none", cursor: "pointer", fontSize: "0.8125rem", fontWeight: 500, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "0.4rem", fontFamily: "inherit" }}
+    >
+      <EventSchedule size={14} /> {createSession.isPending ? "Starting…" : `${gradeName} — ${className}`}
+    </button>
+  );
+}
+
+function SessionRow({ session, className }: { session: AttendanceSession; className: string }) {
+  const { data: records, isLoading } = useSessionRecords(session.id);
+  const present = records?.filter((r) => r.status === "present").length ?? 0;
+  const absent = records?.filter((r) => r.status === "absent").length ?? 0;
+
+  return (
+    <tr>
+      <td className="os-table__mono" style={{ fontSize: "0.75rem" }}>{session.date}</td>
+      <td style={{ fontWeight: 600 }}>{className}</td>
+      <td>
+        {isLoading ? (
+          <span style={{ color: "#8d8d8d" }}>—</span>
+        ) : (
+          <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+            <CheckmarkFilled size={14} style={{ fill: "#24a148" }} />
+            <span style={{ color: "#24a148", fontWeight: 600 }}>{present}</span>
+          </span>
+        )}
+      </td>
+      <td>
+        {isLoading ? (
+          <span style={{ color: "#8d8d8d" }}>—</span>
+        ) : (
+          <span style={{ color: absent > 0 ? "#da1e28" : "#8d8d8d", fontWeight: absent > 0 ? 600 : 400 }}>{absent}</span>
+        )}
+      </td>
+      <td><Tag type="blue" size="sm">Marked</Tag></td>
+      <td>
+        <Link to={`/attendance/sessions/${session.id}/mark`} style={{ color: "#8d8d8d", textDecoration: "none", fontSize: "0.8125rem" }}>
+          View
+        </Link>
+      </td>
+    </tr>
+  );
+}
 
 export default function TeacherAttendance() {
-  const [filter, setFilter] = useState<"All" | SessionStatus>("All");
+  const { classes: myClasses, isLoading, isError, refetch } = useMyClasses();
   const [query, setQuery] = useState("");
 
-  const pending = SESSIONS.filter(s => s.status === "Pending");
-  const marked  = SESSIONS.filter(s => s.status === "Marked");
-
-  const visible = SESSIONS.filter(s => {
-    const matchFilter = filter === "All" || s.status === filter;
-    const matchQuery  = s.class.toLowerCase().includes(query.toLowerCase()) ||
-      s.subject.toLowerCase().includes(query.toLowerCase()) ||
-      s.id.toLowerCase().includes(query.toLowerCase());
-    return matchFilter && matchQuery;
+  const classIds = myClasses.map((c) => c.class_id);
+  const sessionQueries = useQueries({
+    queries: classIds.map((id) => ({
+      queryKey: classSessionsKey(id),
+      queryFn: () => attendanceApi.listSessionsByClass(id),
+      enabled: !!id,
+    })),
   });
+  const { data: dailySessions } = useDailySessions(todayISODate());
+  const todayClassIds = new Set((dailySessions ?? []).map((s) => s.class_id));
+  const pendingToday = myClasses.filter((c) => !todayClassIds.has(c.class_id));
+
+  const allSessions = classIds
+    .flatMap((id, i) => {
+      const cls = myClasses.find((c) => c.class_id === id);
+      return (sessionQueries[i]?.data ?? []).map((s) => ({ session: s, className: cls?.class_name ?? "" }));
+    })
+    .sort((a, b) => b.session.date.localeCompare(a.session.date));
+
+  const visible = allSessions.filter(
+    ({ className, session }) =>
+      className.toLowerCase().includes(query.toLowerCase()) || session.date.includes(query)
+  );
+
+  if (isLoading) return <LoadingSpinner />;
+  if (isError) {
+    return (
+      <div style={{ padding: "2rem" }}>
+        <ErrorMessage message="Failed to load your classes" onRetry={refetch} />
+      </div>
+    );
+  }
 
   return (
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">Attendance</h1>
-          <p className="os-page__subtitle">Your sessions for 2025/2026 · Term 2</p>
+          <p className="os-page__subtitle">Every session you've recorded, across your classes</p>
         </div>
       </div>
 
-      {/* Pending alert */}
-      {pending.length > 0 && (
+      {pendingToday.length > 0 && (
         <div style={{ background: "#fff8e1", border: "1px solid #f1c21b", padding: "0.875rem 1.25rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
           <Time size={18} style={{ fill: "#f1c21b", flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
             <p style={{ margin: "0 0 0.1rem", fontWeight: 600, fontSize: "0.875rem", color: "#6b4c00" }}>
-              {pending.length} session{pending.length > 1 ? "s" : ""} pending today
+              {pendingToday.length} class{pendingToday.length > 1 ? "es" : ""} not marked today
             </p>
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "#8d6300" }}>Mark attendance before the session locks at end of day.</p>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "#8d6300" }}>Start today's session for a class.</p>
           </div>
-          {pending.map(s => (
-            <Link
-              key={s.id}
-              to={`/attendance/sessions/${s.id}/mark`}
-              style={{ padding: "0.5rem 1rem", background: ACCENT, color: "#fff", textDecoration: "none", fontSize: "0.8125rem", fontWeight: 500, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "0.4rem" }}
-            >
-              <EventSchedule size={14} /> {s.class} — {s.subject}
-            </Link>
+          {pendingToday.map((c) => (
+            <PendingClassAction key={c.class_id} classId={c.class_id} className={c.class_name} gradeName={c.grade_name} />
           ))}
         </div>
       )}
 
       {/* Summary stat row */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
         {[
-          { label: "Total Sessions",  value: SESSIONS.length,   color: "#161616" },
-          { label: "Marked",          value: marked.length,     color: "#24a148" },
-          { label: "Pending",         value: pending.length,    color: pending.length > 0 ? "#da1e28" : "#8d8d8d" },
-          { label: "Avg Attendance",  value: "94%",             color: ACCENT    },
+          { label: "Total Sessions", value: allSessions.length, color: "#161616" },
+          { label: "Marked Today", value: todayClassIds.size, color: "#24a148" },
+          { label: "Pending Today", value: pendingToday.length, color: pendingToday.length > 0 ? "#da1e28" : "#8d8d8d" },
         ].map(({ label, value, color }) => (
           <div key={label} style={{ background: "#ffffff", border: "1px solid #e0e0e0", borderTop: `3px solid ${color === "#161616" ? ACCENT : color}`, padding: "1rem 1.25rem" }}>
             <p style={{ margin: "0 0 0.4rem", fontSize: "0.6875rem", fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#525252" }}>{label}</p>
@@ -89,56 +155,21 @@ export default function TeacherAttendance() {
         <div className="os-toolbar">
           <div className="os-search" style={{ maxWidth: "22rem" }}>
             <Search size={16} className="os-search__icon" />
-            <input className="os-search__input" placeholder="Search sessions…" value={query} onChange={e => setQuery(e.target.value)} />
-          </div>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            {FILTERS.map(f => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                style={{ padding: "0.4rem 0.875rem", border: "1px solid", cursor: "pointer", fontSize: "0.8125rem", fontFamily: "inherit", transition: "all 0.15s",
-                  background: filter === f ? ACCENT : "#ffffff",
-                  borderColor: filter === f ? ACCENT : "#e0e0e0",
-                  color: filter === f ? "#ffffff" : "#161616",
-                }}
-              >
-                {f}
-              </button>
-            ))}
+            <input className="os-search__input" placeholder="Search by class or date…" value={query} onChange={e => setQuery(e.target.value)} />
           </div>
         </div>
 
         <table className="os-table">
           <thead>
-            <tr><th>Session</th><th>Date</th><th>Class</th><th>Subject</th><th>Present</th><th>Absent</th><th>Status</th><th></th></tr>
+            <tr><th>Date</th><th>Class</th><th>Present</th><th>Absent</th><th>Status</th><th></th></tr>
           </thead>
           <tbody>
-            {visible.map(s => (
-              <tr key={s.id}>
-                <td className="os-table__mono" style={{ fontSize: "0.75rem" }}>{s.id}</td>
-                <td><span style={{ fontSize: "0.8125rem" }}>{s.date}</span><br /><span style={{ fontSize: "0.6875rem", color: "#8d8d8d" }}>{s.time}</span></td>
-                <td style={{ fontWeight: 600 }}>{s.class}</td>
-                <td className="os-table__muted">{s.subject}</td>
-                <td>
-                  {s.status === "Marked"
-                    ? <span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}><CheckmarkFilled size={14} style={{ fill: "#24a148" }} /><span style={{ color: "#24a148", fontWeight: 600 }}>{s.present}</span></span>
-                    : <span style={{ color: "#8d8d8d" }}>—</span>}
-                </td>
-                <td>
-                  {s.status === "Marked"
-                    ? <span style={{ color: s.absent > 0 ? "#da1e28" : "#8d8d8d", fontWeight: s.absent > 0 ? 600 : 400 }}>{s.absent}</span>
-                    : <span style={{ color: "#8d8d8d" }}>—</span>}
-                </td>
-                <td><Tag type={s.status === "Marked" ? "blue" : "gray"} size="sm">{s.status}</Tag></td>
-                <td>
-                  {s.status === "Pending"
-                    ? <Link to={`/attendance/sessions/${s.id}/mark`} style={{ color: ACCENT, textDecoration: "none", fontSize: "0.8125rem", fontWeight: 500 }}>Mark →</Link>
-                    : <Link to={`/attendance/sessions/${s.id}/mark`} style={{ color: "#8d8d8d", textDecoration: "none", fontSize: "0.8125rem" }}>View</Link>}
-                </td>
-              </tr>
-            ))}
-            {visible.length === 0 && (
-              <tr><td colSpan={8} style={{ textAlign: "center", color: "#8d8d8d", padding: "2.5rem" }}>No sessions found</td></tr>
+            {visible.length === 0 ? (
+              <tr><td colSpan={6} style={{ textAlign: "center", color: "#8d8d8d", padding: "2.5rem" }}>No sessions found</td></tr>
+            ) : (
+              visible.map(({ session, className }) => (
+                <SessionRow key={session.id} session={session} className={className} />
+              ))
             )}
           </tbody>
         </table>

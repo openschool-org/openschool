@@ -43,3 +43,10 @@ func (r *HouseRepository) ListStudentsMissingHouse(ctx context.Context) ([]db.St
 func (r *HouseRepository) UpdateStudentHouse(ctx context.Context, params db.UpdateStudentHouseParams) (db.StudentProfile, error) {
 	return r.queries.UpdateStudentHouse(ctx, params)
 }
+
+func (r *HouseRepository) BulkUpdateStudentHouses(ctx context.Context, studentIDs, houseIDs []uuid.UUID) error {
+	return r.queries.BulkUpdateStudentHouses(ctx, db.BulkUpdateStudentHousesParams{
+		StudentIds: studentIDs,
+		HouseIds:   houseIDs,
+	})
+}

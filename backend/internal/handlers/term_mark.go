@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +16,15 @@ type TermMarkHandler struct {
 
 func NewTermMarkHandler(service *services.TermMarkService) *TermMarkHandler {
 	return &TermMarkHandler{service: service}
+}
+
+// statusForMarkError maps a not-assigned-to-subject failure to 403, so
+// callers can tell "you can't see this" apart from a genuine 404/500.
+func statusForMarkError(err error, fallbackStatus int) int {
+	if errors.Is(err, services.ErrNotAssignedToSubject) {
+		return http.StatusForbidden
+	}
+	return fallbackStatus
 }
 
 // BulkUpsert godoc
@@ -86,9 +96,15 @@ func (h *TermMarkHandler) ListClassMarks(c *gin.Context) {
 		return
 	}
 
-	rows, err := h.service.ListClassMarks(c.Request.Context(), classID, termID, subjectID)
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	rows, err := h.service.ListClassMarks(c.Request.Context(), actor, classID, termID, subjectID)
+	if err != nil {
+		c.JSON(statusForMarkError(err, http.StatusInternalServerError), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -118,9 +134,15 @@ func (h *TermMarkHandler) ListStudentMarks(c *gin.Context) {
 		return
 	}
 
-	rows, err := h.service.ListStudentMarks(c.Request.Context(), studentID, termID)
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	rows, err := h.service.ListStudentMarksForTeacher(c.Request.Context(), actor, studentID, termID)
+	if err != nil {
+		c.JSON(statusForMarkError(err, http.StatusInternalServerError), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -143,8 +165,14 @@ func (h *TermMarkHandler) DeleteMark(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeleteMark(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.service.DeleteMark(c.Request.Context(), actor, id); err != nil {
+		c.JSON(statusForMarkError(err, http.StatusInternalServerError), gin.H{"error": err.Error()})
 		return
 	}
 
