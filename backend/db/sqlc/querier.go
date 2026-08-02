@@ -22,6 +22,10 @@ type Querier interface {
 	AssignGradeToSection(ctx context.Context, arg AssignGradeToSectionParams) error
 	AssignSubjectTeacherToClass(ctx context.Context, arg AssignSubjectTeacherToClassParams) error
 	AssignSubjectToTeacher(ctx context.Context, arg AssignSubjectToTeacherParams) error
+	// Assigns each student_ids[i] to house_ids[i] in a single statement, for
+	// ReassignMissing — avoids one UPDATE round-trip per student when
+	// reassigning houses for an entire cohort at once.
+	BulkUpdateStudentHouses(ctx context.Context, arg BulkUpdateStudentHousesParams) error
 	CopyTimetableEntries(ctx context.Context, arg CopyTimetableEntriesParams) error
 	CountEntriesBySubjectForTimetable(ctx context.Context, timetableID uuid.UUID) ([]CountEntriesBySubjectForTimetableRow, error)
 	CountGroupSubjects(ctx context.Context, groupID uuid.UUID) (int64, error)
@@ -147,6 +151,7 @@ type Querier interface {
 	GetTeacherByID(ctx context.Context, id uuid.UUID) (TeacherProfile, error)
 	GetTeacherByUserID(ctx context.Context, userID uuid.UUID) (TeacherProfile, error)
 	GetTermByID(ctx context.Context, id uuid.UUID) (Term, error)
+	GetTermMarkByID(ctx context.Context, id uuid.UUID) (TermMark, error)
 	GetTimetableByID(ctx context.Context, id uuid.UUID) (Timetable, error)
 	GetTimetableSettingsByYear(ctx context.Context, academicYearID uuid.UUID) (TimetableSetting, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
@@ -195,6 +200,10 @@ type Querier interface {
 	ListGradesBySection(ctx context.Context, gradeSectionID uuid.UUID) ([]Grade, error)
 	ListGroupSubjects(ctx context.Context, groupID uuid.UUID) ([]ListGroupSubjectsRow, error)
 	ListGuardianUserIDsByClass(ctx context.Context, classID uuid.UUID) ([]pgtype.UUID, error)
+	// Distinct guardian user_ids (portal logins only) for a set of students in
+	// one round trip — used to build notification recipient lists without a
+	// ListByStudent call per student (see timetable.go's notifyPublication).
+	ListGuardianUserIDsByStudentIDs(ctx context.Context, studentIds []uuid.UUID) ([]pgtype.UUID, error)
 	// Every guardian on file, for the "link an existing guardian to this
 	// student too" search picker (siblings sharing a guardian).
 	ListGuardians(ctx context.Context) ([]Guardian, error)

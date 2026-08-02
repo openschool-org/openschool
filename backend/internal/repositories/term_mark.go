@@ -28,6 +28,10 @@ func (r *TermMarkRepository) ListStudentMarksByTerm(ctx context.Context, params 
 	return r.queries.ListStudentMarksByTerm(ctx, params)
 }
 
+func (r *TermMarkRepository) GetByID(ctx context.Context, id uuid.UUID) (db.TermMark, error) {
+	return r.queries.GetTermMarkByID(ctx, id)
+}
+
 func (r *TermMarkRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.queries.DeleteTermMark(ctx, id)
 }

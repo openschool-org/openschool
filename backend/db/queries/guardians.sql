@@ -43,6 +43,16 @@ UPDATE student_guardians
 SET is_primary_contact = (guardian_id = $2)
 WHERE student_id = $1;
 
+-- name: ListGuardianUserIDsByStudentIDs :many
+-- Distinct guardian user_ids (portal logins only) for a set of students in
+-- one round trip — used to build notification recipient lists without a
+-- ListByStudent call per student (see timetable.go's notifyPublication).
+SELECT DISTINCT g.user_id
+FROM guardians g
+INNER JOIN student_guardians sg ON sg.guardian_id = g.id
+WHERE sg.student_id = ANY(sqlc.arg(student_ids)::uuid[])
+  AND g.user_id IS NOT NULL;
+
 -- name: ListGuardiansByStudent :many
 SELECT
     g.*,

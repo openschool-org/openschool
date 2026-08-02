@@ -12,6 +12,32 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const bulkUpdateStudentHouses = `-- name: BulkUpdateStudentHouses :exec
+UPDATE student_profiles AS sp
+SET
+    house_id   = data.house_id,
+    updated_at = NOW()
+FROM (
+    SELECT
+        unnest($1::uuid[]) AS student_id,
+        unnest($2::uuid[])   AS house_id
+) AS data
+WHERE sp.id = data.student_id
+`
+
+type BulkUpdateStudentHousesParams struct {
+	StudentIds []uuid.UUID `json:"student_ids"`
+	HouseIds   []uuid.UUID `json:"house_ids"`
+}
+
+// Assigns each student_ids[i] to house_ids[i] in a single statement, for
+// ReassignMissing — avoids one UPDATE round-trip per student when
+// reassigning houses for an entire cohort at once.
+func (q *Queries) BulkUpdateStudentHouses(ctx context.Context, arg BulkUpdateStudentHousesParams) error {
+	_, err := q.db.Exec(ctx, bulkUpdateStudentHouses, arg.StudentIds, arg.HouseIds)
+	return err
+}
+
 const createHouse = `-- name: CreateHouse :one
 INSERT INTO houses (name, code, remainder)
 VALUES ($1, $2, $3)

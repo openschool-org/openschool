@@ -39,3 +39,18 @@ SET
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: BulkUpdateStudentHouses :exec
+-- Assigns each student_ids[i] to house_ids[i] in a single statement, for
+-- ReassignMissing — avoids one UPDATE round-trip per student when
+-- reassigning houses for an entire cohort at once.
+UPDATE student_profiles AS sp
+SET
+    house_id   = data.house_id,
+    updated_at = NOW()
+FROM (
+    SELECT
+        unnest(sqlc.arg(student_ids)::uuid[]) AS student_id,
+        unnest(sqlc.arg(house_ids)::uuid[])   AS house_id
+) AS data
+WHERE sp.id = data.student_id;

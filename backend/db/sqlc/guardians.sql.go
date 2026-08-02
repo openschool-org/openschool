@@ -157,6 +157,37 @@ func (q *Queries) LinkGuardianToStudent(ctx context.Context, arg LinkGuardianToS
 	return err
 }
 
+const listGuardianUserIDsByStudentIDs = `-- name: ListGuardianUserIDsByStudentIDs :many
+SELECT DISTINCT g.user_id
+FROM guardians g
+INNER JOIN student_guardians sg ON sg.guardian_id = g.id
+WHERE sg.student_id = ANY($1::uuid[])
+  AND g.user_id IS NOT NULL
+`
+
+// Distinct guardian user_ids (portal logins only) for a set of students in
+// one round trip — used to build notification recipient lists without a
+// ListByStudent call per student (see timetable.go's notifyPublication).
+func (q *Queries) ListGuardianUserIDsByStudentIDs(ctx context.Context, studentIds []uuid.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listGuardianUserIDsByStudentIDs, studentIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var user_id pgtype.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listGuardians = `-- name: ListGuardians :many
 SELECT id, user_id, full_name, relationship, phone, email, created_at FROM guardians
 ORDER BY full_name ASC

@@ -28,8 +28,14 @@ func Connect(dsn string) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("failed to parse DSN: %w", err)
 	}
 
-	config.MaxConns = envInt32("DB_MAX_CONNS", 10)
-	config.MinConns = envInt32("DB_MIN_CONNS", 2)
+	// Defaults sized for a single school's daily traffic (on the order of a
+	// few thousand users, concentrated in bursts like morning attendance and
+	// end-of-day notifications) rather than a bare-minimum dev default —
+	// Postgres's own default max_connections is 100, so this still leaves
+	// plenty of headroom for migrate/psql/other tools. Override via env for
+	// a specific deployment's measured load.
+	config.MaxConns = envInt32("DB_MAX_CONNS", 25)
+	config.MinConns = envInt32("DB_MIN_CONNS", 5)
 	config.MaxConnLifetime = 30 * time.Minute
 	config.MaxConnIdleTime = 5 * time.Minute
 	config.HealthCheckPeriod = time.Minute

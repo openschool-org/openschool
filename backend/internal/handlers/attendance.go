@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,6 +11,16 @@ import (
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/services"
 )
+
+// statusForAttendanceError maps a not-assigned-to-class failure to 403
+// (distinct from a genuine 404/400), so callers can tell "you can't see
+// this" apart from "this doesn't exist" or "bad input."
+func statusForAttendanceError(err error, notFoundStatus int) int {
+	if errors.Is(err, services.ErrNotAssignedToClass) {
+		return http.StatusForbidden
+	}
+	return notFoundStatus
+}
 
 type AttendanceHandler struct {
 	service *services.AttendanceService
@@ -91,9 +102,15 @@ func (h *AttendanceHandler) GetSession(c *gin.Context) {
 		return
 	}
 
-	session, err := h.service.GetSession(c.Request.Context(), id)
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	session, err := h.service.GetSession(c.Request.Context(), actor, id)
+	if err != nil {
+		c.JSON(statusForAttendanceError(err, http.StatusNotFound), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -117,8 +134,14 @@ func (h *AttendanceHandler) DeleteSession(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeleteSession(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.service.DeleteSession(c.Request.Context(), actor, id); err != nil {
+		c.JSON(statusForAttendanceError(err, http.StatusNotFound), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -233,9 +256,15 @@ func (h *AttendanceHandler) ListBySession(c *gin.Context) {
 		return
 	}
 
-	records, err := h.service.ListBySession(c.Request.Context(), id)
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	records, err := h.service.ListBySession(c.Request.Context(), actor, id)
+	if err != nil {
+		c.JSON(statusForAttendanceError(err, http.StatusInternalServerError), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -259,9 +288,15 @@ func (h *AttendanceHandler) ListByStudent(c *gin.Context) {
 		return
 	}
 
-	records, err := h.service.ListByStudent(c.Request.Context(), id)
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	records, err := h.service.ListByStudentForTeacher(c.Request.Context(), actor, id)
+	if err != nil {
+		c.JSON(statusForAttendanceError(err, http.StatusInternalServerError), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -292,9 +327,15 @@ func (h *AttendanceHandler) GetSummary(c *gin.Context) {
 		return
 	}
 
-	summary, err := h.service.GetSummary(c.Request.Context(), studentID, classID)
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	summary, err := h.service.GetSummaryForTeacher(c.Request.Context(), actor, studentID, classID)
+	if err != nil {
+		c.JSON(statusForAttendanceError(err, http.StatusInternalServerError), gin.H{"error": err.Error()})
 		return
 	}
 

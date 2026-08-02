@@ -59,6 +59,24 @@ func (r *GuardianRepository) ListByStudent(ctx context.Context, studentID uuid.U
 	return r.queries.ListGuardiansByStudent(ctx, studentID)
 }
 
+// ListGuardianUserIDsByStudentIDs resolves every linked-in guardian's local
+// user ID for a batch of students in one round trip (guardians without a
+// provisioned portal login are excluded, since they have no user ID to
+// notify).
+func (r *GuardianRepository) ListGuardianUserIDsByStudentIDs(ctx context.Context, studentIDs []uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.queries.ListGuardianUserIDsByStudentIDs(ctx, studentIDs)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]uuid.UUID, 0, len(rows))
+	for _, row := range rows {
+		if row.Valid {
+			ids = append(ids, uuid.UUID(row.Bytes))
+		}
+	}
+	return ids, nil
+}
+
 func (r *GuardianRepository) GetPrimaryGuardian(ctx context.Context, studentID uuid.UUID) (db.Guardian, error) {
 	return r.queries.GetPrimaryGuardian(ctx, studentID)
 }
