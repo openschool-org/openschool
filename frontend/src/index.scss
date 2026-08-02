@@ -237,7 +237,11 @@ html, body, #root {
   &__accent { color: $os-brand-orange; }
 }
 
-.os-header-icon { fill: #ffffff; }
+.os-header-icon,
+.cds--header__global .cds--header__action svg.os-header-icon {
+  fill: #ffffff !important;
+  color: #ffffff !important;
+}
 
 .os-header-copy-token {
   font-size: 0.75rem;
