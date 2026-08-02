@@ -58,7 +58,7 @@ export default function NotificationsBell() {
         <div
           style={{
             position: "absolute",
-            top: "3rem",
+            top: "calc(100% + 0.75rem)",
             right: 0,
             width: "24rem",
             maxHeight: "28rem",
