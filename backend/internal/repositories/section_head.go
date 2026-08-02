@@ -31,3 +31,21 @@ func (r *SectionHeadRepository) ListByYear(ctx context.Context, academicYearID u
 func (r *SectionHeadRepository) Delete(ctx context.Context, id uuid.UUID) (int64, error) {
 	return r.queries.DeleteSectionHead(ctx, id)
 }
+
+// GetGradeTIC returns the whole-grade TIC's teacher_profiles.id, or
+// pgx.ErrNoRows if none is assigned.
+func (r *SectionHeadRepository) GetGradeTIC(ctx context.Context, academicYearID, gradeID uuid.UUID) (uuid.UUID, error) {
+	return r.queries.GetGradeTICForGrade(ctx, db.GetGradeTICForGradeParams{
+		AcademicYearID: academicYearID,
+		GradeID:        gradeID,
+	})
+}
+
+// ListGradeIDsHeadedByTeacher returns the grades this teacher is the
+// whole-grade TIC for, in the given academic year.
+func (r *SectionHeadRepository) ListGradeIDsHeadedByTeacher(ctx context.Context, teacherID, academicYearID uuid.UUID) ([]uuid.UUID, error) {
+	return r.queries.ListGradeIDsHeadedByTeacher(ctx, db.ListGradeIDsHeadedByTeacherParams{
+		TeacherID:      teacherID,
+		AcademicYearID: academicYearID,
+	})
+}

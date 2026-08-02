@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS timetable_notifications;
+DROP TABLE IF EXISTS timetable_status_history;
+DROP TABLE IF EXISTS timetable_entries;
+DROP TABLE IF EXISTS timetables;
+DROP TABLE IF EXISTS teacher_availability;
+DROP TABLE IF EXISTS subject_period_requirements;
+DROP TABLE IF EXISTS timetable_periods;
+DROP TABLE IF EXISTS timetable_settings;
+DROP TABLE IF EXISTS grade_section_grades;
+DROP TABLE IF EXISTS grade_sections;
+DROP TABLE IF EXISTS classrooms;

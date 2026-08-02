@@ -6,6 +6,9 @@ const NAV = [
   { path: "/",           label: "Home",       exact: true  },
   { path: "/t/classes",  label: "My Classes", exact: false },
   { path: "/t/attendance", label: "Attendance", exact: false },
+  { path: "/t/timetable", label: "My Timetable", exact: true },
+  { path: "/t/timetable/review", label: "Review Timetables", exact: true },
+  { path: "/t/notifications", label: "Notifications", exact: true },
   { path: "/t/profile",  label: "My Profile", exact: false },
 ];
 

@@ -86,6 +86,10 @@ func (r *ClassRepository) IsTeacherAssignedToClass(ctx context.Context, classID,
 	})
 }
 
+func (r *ClassRepository) GetStudentCurrentClass(ctx context.Context, studentID uuid.UUID) (db.GetStudentCurrentClassRow, error) {
+	return r.queries.GetStudentCurrentClass(ctx, studentID)
+}
+
 func (r *ClassRepository) GetStudentCount(ctx context.Context, classID uuid.UUID) (int64, error) {
 	count, err := r.queries.GetClassStudentCount(ctx, classID)
 	return count, err

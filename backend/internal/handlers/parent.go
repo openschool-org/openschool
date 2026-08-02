@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/openschool-org/openschool/internal/services"
+	timetableservices "github.com/openschool-org/openschool/internal/services/timetable"
 )
 
 // ParentHandler serves the self-service endpoints a signed-in guardian uses
@@ -16,10 +17,11 @@ type ParentHandler struct {
 	guardians  *services.GuardianService
 	attendance *services.AttendanceService
 	marks      *services.TermMarkService
+	timetables *timetableservices.TimetableService
 }
 
-func NewParentHandler(guardians *services.GuardianService, attendance *services.AttendanceService, marks *services.TermMarkService) *ParentHandler {
-	return &ParentHandler{guardians: guardians, attendance: attendance, marks: marks}
+func NewParentHandler(guardians *services.GuardianService, attendance *services.AttendanceService, marks *services.TermMarkService, timetables *timetableservices.TimetableService) *ParentHandler {
+	return &ParentHandler{guardians: guardians, attendance: attendance, marks: marks, timetables: timetables}
 }
 
 func (h *ParentHandler) callerID(c *gin.Context) (uuid.UUID, bool) {
@@ -138,4 +140,36 @@ func (h *ParentHandler) ChildMarks(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, marks)
+}
+
+// ChildTimetable godoc
+// @Summary      A linked child's published class timetable
+// @Tags         parent
+// @Produce      json
+// @Param        id   path      string  true  "Student UUID"
+// @Success      200  {object}  map[string]any
+// @Failure      403  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /me/children/{id}/timetable [get]
+func (h *ParentHandler) ChildTimetable(c *gin.Context) {
+	callerID, ok := h.callerID(c)
+	if !ok {
+		return
+	}
+	studentID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	if !h.requireOwnChild(c, callerID, studentID) {
+		return
+	}
+
+	tt, entries, err := h.timetables.GetPublishedForStudent(c.Request.Context(), studentID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no published timetable found for this child's class"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"timetable": tt, "entries": entries})
 }
