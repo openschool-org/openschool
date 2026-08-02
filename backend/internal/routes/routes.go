@@ -6,6 +6,8 @@ import (
 	"github.com/openschool-org/openschool/internal/handlers"
 	"github.com/openschool-org/openschool/internal/middleware"
 	"github.com/openschool-org/openschool/internal/repositories"
+	notificationroutes "github.com/openschool-org/openschool/internal/routes/notifications"
+	timetableroutes "github.com/openschool-org/openschool/internal/routes/timetable"
 	"github.com/openschool-org/openschool/internal/services"
 )
 
@@ -52,9 +54,18 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	RegisterPrefectRoutes(admin, teacherOrAdmin, pool)
 	RegisterTermRoutes(admin, protected, pool)
 	RegisterTermMarkRoutes(teacherOrAdmin, pool)
-	RegisterParentRoutes(parent, pool)
 	RegisterStudentSelfRoutes(student, pool)
 	RegisterTeacherSelfRoutes(teacher, pool)
+
+	timetableroutes.RegisterClassroomRoutes(admin, teacherOrAdmin, pool)
+	timetableroutes.RegisterGradeSectionRoutes(admin, teacherOrAdmin, pool)
+	timetableroutes.RegisterTimetableSettingsRoutes(admin, pool)
+	timetableroutes.RegisterSubjectPeriodRequirementRoutes(admin, teacherOrAdmin, pool)
+	timetableroutes.RegisterTeacherAvailabilityRoutes(admin, teacherOrAdmin, pool)
+	notificationroutes.RegisterTimetableNotificationRoutes(protected, pool)
+	timetableService := timetableroutes.RegisterTimetableRoutes(admin, teacherOrAdmin, teacher, student, pool)
+
+	RegisterParentRoutes(parent, timetableService, pool)
 
 	meHandler := handlers.NewMeHandler(services.NewMeService(repositories.NewUserRepository(pool)))
 	protected.GET("/me", meHandler.Get)

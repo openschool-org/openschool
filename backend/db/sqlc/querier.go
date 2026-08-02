@@ -14,17 +14,26 @@ import (
 type Querier interface {
 	// ── group subjects ──────────────────────────────────────────────────────────
 	AddGroupSubject(ctx context.Context, arg AddGroupSubjectParams) (GroupSubject, error)
+	ApproveTimetable(ctx context.Context, arg ApproveTimetableParams) (Timetable, error)
+	ArchivePublishedForClass(ctx context.Context, arg ArchivePublishedForClassParams) error
+	ArchiveTimetable(ctx context.Context, id uuid.UUID) (Timetable, error)
 	AssignClassMonitors(ctx context.Context, arg AssignClassMonitorsParams) (Class, error)
 	AssignFormTeacher(ctx context.Context, arg AssignFormTeacherParams) (Class, error)
+	AssignGradeToSection(ctx context.Context, arg AssignGradeToSectionParams) error
 	AssignSubjectTeacherToClass(ctx context.Context, arg AssignSubjectTeacherToClassParams) error
 	AssignSubjectToTeacher(ctx context.Context, arg AssignSubjectToTeacherParams) error
+	CopyTimetableEntries(ctx context.Context, arg CopyTimetableEntriesParams) error
+	CountEntriesBySubjectForTimetable(ctx context.Context, timetableID uuid.UUID) ([]CountEntriesBySubjectForTimetableRow, error)
 	CountGroupSubjects(ctx context.Context, groupID uuid.UUID) (int64, error)
 	CountSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID) (int64, error)
+	CountUnreadTimetableNotifications(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountUsersByRole(ctx context.Context, role string) (int64, error)
 	CreateAcademicYear(ctx context.Context, arg CreateAcademicYearParams) (AcademicYear, error)
 	CreateAttendanceSession(ctx context.Context, arg CreateAttendanceSessionParams) (AttendanceSession, error)
 	CreateClass(ctx context.Context, arg CreateClassParams) (Class, error)
+	CreateClassroom(ctx context.Context, arg CreateClassroomParams) (Classroom, error)
 	CreateGrade(ctx context.Context, arg CreateGradeParams) (Grade, error)
+	CreateGradeSection(ctx context.Context, arg CreateGradeSectionParams) (GradeSection, error)
 	CreateGuardian(ctx context.Context, arg CreateGuardianParams) (Guardian, error)
 	CreateHouse(ctx context.Context, arg CreateHouseParams) (House, error)
 	// ── levels ──────────────────────────────────────────────────────────────────
@@ -39,15 +48,23 @@ type Querier interface {
 	CreateStudentProfile(ctx context.Context, arg CreateStudentProfileParams) (StudentProfile, error)
 	CreateStudentSubjectEnrollment(ctx context.Context, arg CreateStudentSubjectEnrollmentParams) (StudentSubjectEnrollment, error)
 	CreateSubject(ctx context.Context, arg CreateSubjectParams) (Subject, error)
+	CreateTeacherAvailability(ctx context.Context, arg CreateTeacherAvailabilityParams) (TeacherAvailability, error)
 	CreateTeacherProfile(ctx context.Context, arg CreateTeacherProfileParams) (TeacherProfile, error)
 	CreateTerm(ctx context.Context, arg CreateTermParams) (Term, error)
+	CreateTimetable(ctx context.Context, arg CreateTimetableParams) (Timetable, error)
+	CreateTimetableNotification(ctx context.Context, arg CreateTimetableNotificationParams) (TimetableNotification, error)
+	CreateTimetablePeriod(ctx context.Context, arg CreateTimetablePeriodParams) (TimetablePeriod, error)
+	CreateTimetableStatusHistory(ctx context.Context, arg CreateTimetableStatusHistoryParams) (TimetableStatusHistory, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeactivateUser(ctx context.Context, id uuid.UUID) (User, error)
 	DeleteAcademicYear(ctx context.Context, id uuid.UUID) (int64, error)
 	// attendance_records cascade with the session
 	DeleteAttendanceSession(ctx context.Context, id uuid.UUID) error
 	DeleteClass(ctx context.Context, id uuid.UUID) error
+	DeleteClassroom(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteDraftTimetable(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteGrade(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteGradeSection(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteHouse(ctx context.Context, id uuid.UUID) (int64, error)
 	// blocked while any of its groups still carry enrollments
 	DeleteLevel(ctx context.Context, id uuid.UUID) (int64, error)
@@ -63,11 +80,15 @@ type Querier interface {
 	DeleteStudentProfile(ctx context.Context, id uuid.UUID) error
 	DeleteStudentSubjectEnrollment(ctx context.Context, arg DeleteStudentSubjectEnrollmentParams) error
 	DeleteSubject(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteSubjectPeriodRequirement(ctx context.Context, id uuid.UUID) error
 	// blocked while the teacher is assigned to teach a class subject, or has
 	// taken an attendance session (both ON DELETE RESTRICT)
 	DeleteTeacher(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteTeacherAvailability(ctx context.Context, id uuid.UUID) error
 	DeleteTerm(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteTermMark(ctx context.Context, id uuid.UUID) error
+	DeleteTimetableEntry(ctx context.Context, arg DeleteTimetableEntryParams) error
+	DeleteTimetablePeriodsBySection(ctx context.Context, gradeSectionID uuid.UUID) error
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	EnrollStudentInClass(ctx context.Context, arg EnrollStudentInClassParams) error
 	// Atomic get-or-create: used to provision the local row for an identity
@@ -84,6 +105,7 @@ type Querier interface {
 	GetClassStudentCount(ctx context.Context, classID uuid.UUID) (int64, error)
 	// the teacher assigned to teach a specific subject to a specific class, if any
 	GetClassSubjectTeacher(ctx context.Context, arg GetClassSubjectTeacherParams) (uuid.UUID, error)
+	GetClassroomByID(ctx context.Context, id uuid.UUID) (Classroom, error)
 	GetCurrentAcademicYear(ctx context.Context) (AcademicYear, error)
 	GetCurrentTerm(ctx context.Context) (Term, error)
 	// ── curriculum tree ─────────────────────────────────────────────────────────
@@ -92,12 +114,20 @@ type Querier interface {
 	GetCurriculumTreeByLevel(ctx context.Context, levelID uuid.UUID) ([]GetCurriculumTreeByLevelRow, error)
 	GetFormTeacherClass(ctx context.Context, formTeacherID pgtype.UUID) (Class, error)
 	GetGradeByID(ctx context.Context, id uuid.UUID) (Grade, error)
+	GetGradeSectionByID(ctx context.Context, id uuid.UUID) (GradeSection, error)
+	// resolves which grade_section a grade belongs to for a given academic year,
+	// used to find the section-level head and the period grid to use
+	GetGradeSectionForGrade(ctx context.Context, arg GetGradeSectionForGradeParams) (GradeSection, error)
+	// the whole-grade TIC (stream_id IS NULL), if any, used for timetable review authorization
+	GetGradeTICForGrade(ctx context.Context, arg GetGradeTICForGradeParams) (uuid.UUID, error)
 	GetGuardianByID(ctx context.Context, id uuid.UUID) (Guardian, error)
 	GetGuardianByUserID(ctx context.Context, userID pgtype.UUID) (Guardian, error)
 	GetHouseByID(ctx context.Context, id uuid.UUID) (House, error)
 	GetLevelByID(ctx context.Context, id uuid.UUID) (Level, error)
+	GetMaxVersionForClass(ctx context.Context, arg GetMaxVersionForClassParams) (int32, error)
 	GetMediumByID(ctx context.Context, id uuid.UUID) (Medium, error)
 	GetPrimaryGuardian(ctx context.Context, studentID uuid.UUID) (Guardian, error)
+	GetPublishedTimetableForClass(ctx context.Context, arg GetPublishedTimetableForClassParams) (Timetable, error)
 	GetSchool(ctx context.Context) (School, error)
 	GetSelectionGroupByID(ctx context.Context, id uuid.UUID) (SelectionGroup, error)
 	GetStreamByID(ctx context.Context, id uuid.UUID) (Stream, error)
@@ -113,6 +143,8 @@ type Querier interface {
 	GetTeacherByID(ctx context.Context, id uuid.UUID) (TeacherProfile, error)
 	GetTeacherByUserID(ctx context.Context, userID uuid.UUID) (TeacherProfile, error)
 	GetTermByID(ctx context.Context, id uuid.UUID) (Term, error)
+	GetTimetableByID(ctx context.Context, id uuid.UUID) (Timetable, error)
+	GetTimetableSettingsByYear(ctx context.Context, academicYearID uuid.UUID) (TimetableSetting, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	// Authorization check: does the signed-in guardian actually have this
@@ -121,6 +153,8 @@ type Querier interface {
 	IsStudentEnrollmentLocked(ctx context.Context, arg IsStudentEnrollmentLockedParams) (bool, error)
 	// true if the teacher is the class's form teacher OR teaches any subject in it
 	IsTeacherAssignedToClass(ctx context.Context, arg IsTeacherAssignedToClassParams) (bool, error)
+	IsTeacherAssignedToSubject(ctx context.Context, arg IsTeacherAssignedToSubjectParams) (bool, error)
+	IsTeacherUnavailable(ctx context.Context, arg IsTeacherUnavailableParams) (bool, error)
 	LinkGuardianToStudent(ctx context.Context, arg LinkGuardianToStudentParams) error
 	ListAcademicYears(ctx context.Context) ([]AcademicYear, error)
 	ListAttendanceBySession(ctx context.Context, sessionID uuid.UUID) ([]ListAttendanceBySessionRow, error)
@@ -135,8 +169,19 @@ type Querier interface {
 	// grid, which needs to show blanks for students not yet marked.
 	ListClassMarksForTermSubject(ctx context.Context, arg ListClassMarksForTermSubjectParams) ([]ListClassMarksForTermSubjectRow, error)
 	ListClassesByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]ListClassesByAcademicYearRow, error)
+	ListClassrooms(ctx context.Context) ([]Classroom, error)
 	ListCurrentClasses(ctx context.Context) ([]ListCurrentClassesRow, error)
+	// every booked (teacher or classroom) cell across other timetables in the
+	// same academic year, used for cross-timetable clash detection
+	ListEntriesForYearExcludingTimetable(ctx context.Context, arg ListEntriesForYearExcludingTimetableParams) ([]ListEntriesForYearExcludingTimetableRow, error)
+	// grades in sections this teacher is the group-level head of, for a given year
+	ListGradeIDsForSectionHeadTeacher(ctx context.Context, arg ListGradeIDsForSectionHeadTeacherParams) ([]uuid.UUID, error)
+	// whole-grade TICs only (stream_id IS NULL) — used to resolve which grades'
+	// timetables this teacher is authorized to review
+	ListGradeIDsHeadedByTeacher(ctx context.Context, arg ListGradeIDsHeadedByTeacherParams) ([]uuid.UUID, error)
+	ListGradeSectionsByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListGradeSectionsByYearRow, error)
 	ListGrades(ctx context.Context) ([]Grade, error)
+	ListGradesBySection(ctx context.Context, gradeSectionID uuid.UUID) ([]Grade, error)
 	ListGroupSubjects(ctx context.Context, groupID uuid.UUID) ([]ListGroupSubjectsRow, error)
 	// Every guardian on file, for the "link an existing guardian to this
 	// student too" search picker (siblings sharing a guardian).
@@ -147,6 +192,8 @@ type Querier interface {
 	ListLevelsByGrade(ctx context.Context, gradeID pgtype.UUID) ([]Level, error)
 	ListMediums(ctx context.Context) ([]Medium, error)
 	ListPrefectsByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListPrefectsByYearRow, error)
+	// every published timetable (any class) the teacher has at least one entry in, for the given year
+	ListPublishedTimetablesForTeacher(ctx context.Context, arg ListPublishedTimetablesForTeacherParams) ([]Timetable, error)
 	ListSectionHeadsByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListSectionHeadsByYearRow, error)
 	ListSelectionGroupsByLevel(ctx context.Context, levelID uuid.UUID) ([]SelectionGroup, error)
 	// everything needed to validate a set of picks against a level in one round trip
@@ -165,18 +212,34 @@ type Querier interface {
 	ListStudentsByGuardianUserID(ctx context.Context, userID pgtype.UUID) ([]ListStudentsByGuardianUserIDRow, error)
 	ListStudentsBySubject(ctx context.Context, arg ListStudentsBySubjectParams) ([]ListStudentsBySubjectRow, error)
 	ListStudentsMissingHouse(ctx context.Context) ([]StudentProfile, error)
+	ListSubjectPeriodRequirementsByGrade(ctx context.Context, arg ListSubjectPeriodRequirementsByGradeParams) ([]ListSubjectPeriodRequirementsByGradeRow, error)
 	ListSubjectTeachersByClass(ctx context.Context, classID uuid.UUID) ([]ListSubjectTeachersByClassRow, error)
 	ListSubjects(ctx context.Context) ([]Subject, error)
 	ListSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID) ([]Subject, error)
+	ListTeacherAvailabilityByTeacherYear(ctx context.Context, arg ListTeacherAvailabilityByTeacherYearParams) ([]TeacherAvailability, error)
+	// a teacher's full weekly schedule across every published timetable, for
+	// the teacher's own "My Timetable" view
+	ListTeacherScheduleForYear(ctx context.Context, arg ListTeacherScheduleForYearParams) ([]ListTeacherScheduleForYearRow, error)
 	// every class+subject a teacher is assigned to teach, across academic years
 	ListTeacherWorkload(ctx context.Context, teacherID uuid.UUID) ([]ListTeacherWorkloadRow, error)
 	ListTeachers(ctx context.Context) ([]TeacherProfile, error)
 	ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID) ([]TeacherProfile, error)
 	ListTermsByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]Term, error)
+	ListTimetableEntriesByTimetable(ctx context.Context, timetableID uuid.UUID) ([]ListTimetableEntriesByTimetableRow, error)
+	ListTimetableNotificationsByUser(ctx context.Context, userID uuid.UUID) ([]TimetableNotification, error)
+	ListTimetablePeriodsBySection(ctx context.Context, gradeSectionID uuid.UUID) ([]TimetablePeriod, error)
+	ListTimetableStatusHistory(ctx context.Context, timetableID uuid.UUID) ([]ListTimetableStatusHistoryRow, error)
+	ListTimetablesByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]ListTimetablesByAcademicYearRow, error)
+	ListTimetablesByClass(ctx context.Context, arg ListTimetablesByClassParams) ([]ListTimetablesByClassRow, error)
+	ListUnderReviewTimetablesForGrades(ctx context.Context, arg ListUnderReviewTimetablesForGradesParams) ([]ListUnderReviewTimetablesForGradesRow, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListUsersByRole(ctx context.Context, role string) ([]User, error)
 	LockStudentEnrollment(ctx context.Context, arg LockStudentEnrollmentParams) error
 	MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error)
+	MarkTimetableNotificationRead(ctx context.Context, arg MarkTimetableNotificationReadParams) error
+	PublishTimetable(ctx context.Context, arg PublishTimetableParams) (Timetable, error)
+	RejectTimetable(ctx context.Context, arg RejectTimetableParams) (Timetable, error)
+	RemoveGradeFromSection(ctx context.Context, arg RemoveGradeFromSectionParams) error
 	RemoveGroupSubject(ctx context.Context, arg RemoveGroupSubjectParams) error
 	RemoveSubjectFromTeacher(ctx context.Context, arg RemoveSubjectFromTeacherParams) error
 	SetCurrentAcademicYear(ctx context.Context, id uuid.UUID) error
@@ -186,11 +249,14 @@ type Querier interface {
 	SetGuardianUserID(ctx context.Context, arg SetGuardianUserIDParams) error
 	SetPrimaryContact(ctx context.Context, arg SetPrimaryContactParams) error
 	SetTeacherActiveStatus(ctx context.Context, arg SetTeacherActiveStatusParams) error
+	SubmitTimetableForReview(ctx context.Context, arg SubmitTimetableForReviewParams) (Timetable, error)
 	UnenrollStudentFromClass(ctx context.Context, arg UnenrollStudentFromClassParams) error
 	UnlinkGuardianFromStudent(ctx context.Context, arg UnlinkGuardianFromStudentParams) error
 	UnlockStudentEnrollment(ctx context.Context, arg UnlockStudentEnrollmentParams) (int64, error)
 	UpdateClass(ctx context.Context, arg UpdateClassParams) (Class, error)
+	UpdateClassroom(ctx context.Context, arg UpdateClassroomParams) (Classroom, error)
 	UpdateGrade(ctx context.Context, arg UpdateGradeParams) (Grade, error)
+	UpdateGradeSection(ctx context.Context, arg UpdateGradeSectionParams) (GradeSection, error)
 	UpdateGuardian(ctx context.Context, arg UpdateGuardianParams) (Guardian, error)
 	UpdateHouse(ctx context.Context, arg UpdateHouseParams) (House, error)
 	UpdateLevel(ctx context.Context, arg UpdateLevelParams) (Level, error)
@@ -204,13 +270,17 @@ type Querier interface {
 	UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error)
 	UpdateTeacherProfile(ctx context.Context, arg UpdateTeacherProfileParams) (TeacherProfile, error)
 	UpdateTerm(ctx context.Context, arg UpdateTermParams) (Term, error)
+	UpdateTimetablePeriod(ctx context.Context, arg UpdateTimetablePeriodParams) (TimetablePeriod, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	// Teacher-in-charge for a whole grade (grades without A/L streams).
 	UpsertGradeSectionHead(ctx context.Context, arg UpsertGradeSectionHeadParams) (SectionHead, error)
 	UpsertPrefect(ctx context.Context, arg UpsertPrefectParams) (Prefect, error)
 	// Teacher-in-charge for one A/L stream within a grade.
 	UpsertStreamSectionHead(ctx context.Context, arg UpsertStreamSectionHeadParams) (SectionHead, error)
+	UpsertSubjectPeriodRequirement(ctx context.Context, arg UpsertSubjectPeriodRequirementParams) (SubjectPeriodRequirement, error)
 	UpsertTermMark(ctx context.Context, arg UpsertTermMarkParams) (TermMark, error)
+	UpsertTimetableEntry(ctx context.Context, arg UpsertTimetableEntryParams) (TimetableEntry, error)
+	UpsertTimetableSettings(ctx context.Context, arg UpsertTimetableSettingsParams) (TimetableSetting, error)
 }
 
 var _ Querier = (*Queries)(nil)

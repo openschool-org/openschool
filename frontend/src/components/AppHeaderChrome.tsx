@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { HeaderName, HeaderGlobalBar, HeaderGlobalAction } from "@carbon/react";
 import { Search } from "@carbon/icons-react";
 import { UserDropdown, useThunderID } from "@thunderid/react";
+import NotificationsBell from "./common/NotificationsBell";
 
 export function AppHeaderBrand() {
   return (
@@ -37,6 +38,7 @@ export function AppHeaderActions() {
           <span className="os-header-copy-token">Copy Token</span>
         </HeaderGlobalAction>
       )}
+      <NotificationsBell />
       <UserDropdown />
     </HeaderGlobalBar>
   );

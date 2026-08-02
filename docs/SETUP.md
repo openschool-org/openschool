@@ -106,7 +106,59 @@ the order a real school would need them:
    teacher can create a session and start marking attendance from the
    class's own page.
 
-## 5. Registering parents, and accessing each portal
+## 5. Setting up the Timetable module
+
+Once grades, classes, subjects and teachers exist, the Timetable module
+(sidebar → **Scheduling**) follows a config → build → review → publish
+pipeline, one class + academic year at a time:
+
+1. **Timetable Settings** (`/timetable-settings`) — the school's default
+   daily operating time for the current academic year: start/end time,
+   number of periods, period duration, default interval duration. This is
+   only a template used to auto-generate a starting period grid — it's
+   never read directly when scheduling.
+2. **Grade Sections** (`/grade-sections`) — group grades into sections that
+   share an interval time (e.g. Primary, Junior Secondary, Senior
+   Secondary, Advanced Level). Each section gets its own period grid
+   (auto-generated from Timetable Settings, then hand-editable via the
+   section's **Periods** button) and its own **Section Head** — a teacher
+   authorized to review timetables for every grade in that section. A
+   grade's per-grade teacher-in-charge (set on `/streams`, see step 1
+   above) can *also* review timetables for that one grade — either is
+   accepted, whichever was assigned.
+3. **Classrooms** (`/classrooms`) — the rooms/labs available to book into a
+   period, used to prevent double-booking a room across classes.
+4. **Subject Period Requirements** (`/subject-requirements`) — pick a
+   grade, then set how many periods/week each subject needs. The validator
+   checks a class's timetable against these before it can be submitted.
+5. **Timetables** (`/timetables`) — pick a class and click **New Draft**
+   (or copy an existing timetable, e.g. last year's, as a starting
+   template), then open it to reach the grid editor.
+6. In the editor, click a period cell to assign a subject, teacher, and
+   optionally a classroom. **Validate** checks for teacher/classroom
+   clashes, teacher unavailability, mismatched subject-teacher
+   assignments, and unmet weekly period requirements before you submit.
+7. **Submit for Review** moves the draft to `under_review` and notifies
+   the class's grade's Section Head (or TIC).
+8. The Section Head reviews it from their own **Review Timetables** page
+   in the teacher portal (`/t/timetable/review`) and either **Approve**s
+   or **Reject**s it with a comment — a rejection sends it back to draft
+   for the admin to fix and resubmit.
+9. Once **Approved**, the admin **Publish**es it. This archives any
+   previously published version for that class, makes the new one active,
+   and notifies every teacher with a period in it, every student in the
+   class, and their guardians.
+10. To revise a published timetable, open it and use **Revise** — this
+    clones it into a new draft version (chained back to the one it
+    replaces) so you can edit and re-run the whole review cycle without
+    losing the published version's history.
+
+Every status change (submit / approve / reject / publish) fires an in-app
+notification — visible via the bell icon in the header for whichever
+teacher, student, or guardian it's aimed at. There's no email/SMS
+delivery.
+
+## 6. Registering parents, and accessing each portal
 
 Admins, teachers, and students all get their ThunderID login automatically
 at the moment their record is created (Setup wizard for the first admin,
@@ -141,9 +193,9 @@ on their token:
 | Role | How the account is created | What they see |
 | --- | --- | --- |
 | Admin | Setup wizard (first one only) | Full admin dashboard — everything in this guide |
-| Teacher | **Teachers** page | Their own dashboard, classes, attendance marking *(currently placeholder data — not wired to real records yet)* |
-| Student | **Students** page | Their own profile, attendance history, and term marks |
-| Parent | A student's **Guardians** tab, per above | A list of their linked children; click into one for that child's attendance and term marks |
+| Teacher | **Teachers** page | Their own dashboard, classes, attendance marking *(dashboard/classes currently placeholder data — not wired to real records yet)*, plus **My Timetable** and, if they're a section head, **Review Timetables** |
+| Student | **Students** page | Their own profile, attendance history, term marks, and (once published) a **Timetable** tab on their dashboard |
+| Parent | A student's **Guardians** tab, per above | A list of their linked children; click into one for that child's attendance, term marks, and (once published) a **Timetable** tab |
 
 A parent or student can only ever see their own (or their own child's)
 data — this is enforced server-side, not just hidden in the UI.
@@ -158,11 +210,15 @@ redo it, but the two pieces live in different systems:
   ```sql
   TRUNCATE TABLE
     academic_years, attendance_records, attendance_sessions, class_students,
-    class_subject_teachers, classes, grades, group_subjects, guardians, houses,
-    levels, mediums, prefects, school, section_heads, selection_groups,
+    class_subject_teachers, classes, classrooms, grade_section_grades,
+    grade_sections, grades, group_subjects, guardians, houses, levels,
+    mediums, prefects, school, section_heads, selection_groups,
     stream_groups, streams, student_guardians, student_profiles,
-    student_siblings, student_subject_enrollments, subjects,
-    teacher_profiles, teacher_subjects, term_marks, terms, users
+    student_siblings, student_subject_enrollments, subject_period_requirements,
+    subjects, teacher_availability, teacher_profiles, teacher_subjects,
+    term_marks, terms, timetable_entries, timetable_notifications,
+    timetable_periods, timetable_settings, timetable_status_history,
+    timetables, users
   RESTART IDENTITY CASCADE;
   ```
   This does **not** delete the corresponding identities (student/teacher/
@@ -179,3 +235,5 @@ redo it, but the two pieces live in different systems:
 | Stuck being redirected to `/school-setup` no matter what you do | No `school` row exists yet — this is correct behavior, not a bug. Finish the wizard's first step (it only needs a name) to clear the redirect. |
 | `schema_validation_failed` (`USR-1019`) creating a student/teacher | An identity-provider-side user-type schema field doesn't match what the backend sends — see the equivalent entry in `THUNDERID.md`'s troubleshooting table. |
 | Wizard's Classes step doesn't offer A/L streams | Grade 12 and/or 13 weren't ticked in the Grades step — streams only appear for whichever of those two were selected. |
+| Timetable won't "Validate" clean / "Submit for Review" fails with "No section head assigned for this grade" | The class's grade has neither a per-grade TIC (`/streams`) nor a Grade Section group head (`/grade-sections`) assigned for the current academic year — assign one of the two, then retry. |
+| Timetable editor shows "No grade section configured" / "No periods configured" | The class's grade hasn't been added to a Grade Section yet, or that section's period grid hasn't been generated — go to `/grade-sections`, add the grade, and click **Periods → Regenerate from Timetable Settings** (configure `/timetable-settings` first if that's also empty). |

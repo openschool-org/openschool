@@ -38,12 +38,20 @@ import Notifications from "./pages/admin/notifications/Notifications";
 import SettingsPage from "./pages/admin/settings/Settings";
 import SchoolSetup from "./pages/admin/setup/SchoolSetup";
 import NotFound from "./pages/NotFound";
+import Classrooms from "./pages/admin/timetable/Classrooms";
+import GradeSections from "./pages/admin/timetable/GradeSections";
+import TimetableSettings from "./pages/admin/timetable/TimetableSettings";
+import SubjectRequirements from "./pages/admin/timetable/SubjectRequirements";
+import Timetables from "./pages/admin/timetable/Timetables";
+import TimetableEditor from "./pages/admin/timetable/TimetableEditor";
 
 // Teacher pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import TeacherClasses from "./pages/teacher/TeacherClasses";
 import TeacherAttendance from "./pages/teacher/TeacherAttendance";
 import TeacherProfile from "./pages/teacher/TeacherProfile";
+import TeacherTimetable from "./pages/teacher/TeacherTimetable";
+import TimetableReview from "./pages/teacher/TimetableReview";
 
 // Parent pages
 import ParentDashboard from "./pages/parent/ParentDashboard";
@@ -92,6 +100,9 @@ function App() {
           <Route index element={<TeacherDashboard />} />
           <Route path="/t/classes" element={<TeacherClasses />} />
           <Route path="/t/attendance" element={<TeacherAttendance />} />
+          <Route path="/t/timetable" element={<TeacherTimetable />} />
+          <Route path="/t/timetable/review" element={<TimetableReview />} />
+          <Route path="/timetables/:id" element={<TimetableEditor />} />
           <Route path="/t/profile" element={<TeacherProfile />} />
           <Route
             path="/attendance/sessions/:id/mark"
@@ -145,6 +156,12 @@ function App() {
           <Route path="/academic-years" element={<AcademicYears />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/timetables" element={<Timetables />} />
+          <Route path="/timetables/:id" element={<TimetableEditor />} />
+          <Route path="/grade-sections" element={<GradeSections />} />
+          <Route path="/classrooms" element={<Classrooms />} />
+          <Route path="/subject-requirements" element={<SubjectRequirements />} />
+          <Route path="/timetable-settings" element={<TimetableSettings />} />
           <Route path="*" element={<NotFound />} />
           </Route>
         </>

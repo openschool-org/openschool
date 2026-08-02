@@ -22,6 +22,11 @@ import {
   Notification,
   UserFollow,
   Trophy,
+  Table,
+  Category,
+  Location,
+  Rule,
+  SettingsAdjust,
 } from "@carbon/icons-react";
 import { AxiosError } from "axios";
 import { useSchool } from "../queries/useSchool";
@@ -57,6 +62,16 @@ const NAV_GROUPS: {
       { path: "/subjects", label: "Subjects", Icon: Book },
       { path: "/curriculum", label: "Curriculum", Icon: Layers },
       { path: "/mediums", label: "Mediums", Icon: Language },
+    ],
+  },
+  {
+    label: "Scheduling",
+    items: [
+      { path: "/timetables", label: "Timetables", Icon: Table },
+      { path: "/grade-sections", label: "Grade Sections", Icon: Category },
+      { path: "/classrooms", label: "Classrooms", Icon: Location },
+      { path: "/subject-requirements", label: "Subject Requirements", Icon: Rule },
+      { path: "/timetable-settings", label: "Timetable Settings", Icon: SettingsAdjust },
     ],
   },
   {
