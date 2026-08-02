@@ -34,7 +34,6 @@ import ClassDetail from "./pages/admin/classes/ClassDetail";
 import Attendance from "./pages/admin/attendance/Attendance";
 import AttendanceMark from "./pages/admin/attendance/AttendanceMark";
 import AcademicYears from "./pages/admin/academic-years/AcademicYears";
-import Notifications from "./pages/admin/notifications/Notifications";
 import SettingsPage from "./pages/admin/settings/Settings";
 import SchoolSetup from "./pages/admin/setup/SchoolSetup";
 import NotFound from "./pages/NotFound";
@@ -59,6 +58,10 @@ import ChildDetail from "./pages/parent/ChildDetail";
 
 // Student pages
 import StudentDashboard from "./pages/student/StudentDashboard";
+
+// Shared notifications pages (all portals)
+import NotificationComposer from "./pages/notifications/NotificationComposer";
+import NotificationCenter from "./pages/notifications/NotificationCenter";
 
 function App() {
   useApi();
@@ -103,6 +106,8 @@ function App() {
           <Route path="/t/timetable" element={<TeacherTimetable />} />
           <Route path="/t/timetable/review" element={<TimetableReview />} />
           <Route path="/timetables/:id" element={<TimetableEditor />} />
+          <Route path="/t/notifications" element={<NotificationComposer />} />
+          <Route path="/notification-center" element={<NotificationCenter />} />
           <Route path="/t/profile" element={<TeacherProfile />} />
           <Route
             path="/attendance/sessions/:id/mark"
@@ -154,7 +159,8 @@ function App() {
             element={<AttendanceMark />}
           />
           <Route path="/academic-years" element={<AcademicYears />} />
-          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/notifications" element={<NotificationComposer />} />
+          <Route path="/notification-center" element={<NotificationCenter />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/timetables" element={<Timetables />} />
           <Route path="/timetables/:id" element={<TimetableEditor />} />
@@ -176,6 +182,7 @@ function App() {
         >
           <Route index element={<ParentDashboard />} />
           <Route path="/p/children/:id" element={<ChildDetail />} />
+          <Route path="/notification-center" element={<NotificationCenter />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       ) : role === "student" ? (
@@ -188,6 +195,7 @@ function App() {
           }
         >
           <Route index element={<StudentDashboard />} />
+          <Route path="/notification-center" element={<NotificationCenter />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       ) : (

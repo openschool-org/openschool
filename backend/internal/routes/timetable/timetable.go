@@ -15,7 +15,16 @@ import (
 // TimetableService so RegisterParentRoutes can compose it into the
 // guardian's child-timetable endpoint.
 func RegisterTimetableRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, teacher *gin.RouterGroup, student *gin.RouterGroup, pool *pgxpool.Pool) *services.TimetableService {
-	notifications := notificationsservices.NewNotificationService(notificationsrepositories.NewTimetableNotificationRepository(pool))
+	notifications := notificationsservices.NewNotificationService(
+		notificationsrepositories.NewNotificationRepository(pool),
+		rootrepositories.NewClassRepository(pool),
+		repositories.NewGradeSectionRepository(pool),
+		rootrepositories.NewSectionHeadRepository(pool),
+		rootrepositories.NewTeacherRepository(pool),
+		rootrepositories.NewStudentRepository(pool),
+		rootrepositories.NewGuardianRepository(pool),
+		rootrepositories.NewSchoolRepository(pool),
+	)
 	service := services.NewTimetableService(
 		repositories.NewTimetableRepository(pool),
 		rootrepositories.NewClassRepository(pool),

@@ -158,7 +158,60 @@ notification — visible via the bell icon in the header for whichever
 teacher, student, or guardian it's aimed at. There's no email/SMS
 delivery.
 
-## 6. Registering parents, and accessing each portal
+## 6. Sending notifications
+
+Notifications are **in-app only** — there's no SMS, email, or WhatsApp
+channel. Every notification is composed once and can target any
+combination of audiences; the Notification Center then shows each
+recipient their own copy.
+
+1. Admins compose from **Notifications** in the sidebar (`/notifications`);
+   teachers get the same composer in their own portal nav
+   (`/t/notifications`) — one shared page, with what you're allowed to
+   send scoped server-side by role (see below).
+2. Fill in a **Title**, **Message**, a **Category** (General, Academic,
+   Examination, Attendance, Timetable, Events, Sports, Meetings, Fee
+   Reminder, Emergency, Discipline, Holidays), and a **Priority** (Normal /
+   Important / Urgent).
+3. Under **Send To**, add one or more recipient rules — they combine, so
+   you can mix and match:
+   - **Everyone** — every user in the system (admin only).
+   - **By Grade** — every student, guardian, and teacher connected to that
+     grade, for the current academic year.
+   - **By Class** — students in that class, their guardians, and its
+     assigned teacher(s).
+   - **By Grade Section** — expands to every grade in that section (the
+     same Grade Sections configured for the Timetable module above),
+     resolved the same way as "By Grade".
+   - **By Subject** — either the teachers who teach it, or the students
+     taking it.
+   - **Specific Student / Guardian / Teacher** — search and pick one
+     individual; only they receive it.
+4. **Send Now** delivers immediately. **Save as Draft** keeps it editable
+   — drafts show up in the sidebar with **Send** and **Delete** actions,
+   so you can prepare a notification and send it later by hand (there's
+   no automatic "Schedule for Later" yet — see below).
+5. Once sent, click an entry under **Recently Sent** to see its
+   recipient / read / unread counts.
+
+**Role scope:** a teacher can only target audiences they're actually
+responsible for — their own classes (as form teacher or subject teacher),
+any grade or grade section they're the TIC/section head of (the same
+assignment used for timetable review approval), subjects they teach, and
+the students/guardians that fall under those. "Everyone" and any
+grade/class outside their own assignments are rejected server-side, not
+just hidden in the composer UI. Admins can target anything.
+
+**Notification Center:** every signed-in user (any role) has one,
+reachable via the bell icon in the header or its "View all" link
+(`/notification-center`) — Unread / Read / Archived tabs, a text search,
+and a category filter.
+
+Not supported yet: scheduled sending (only Send Now / Save as Draft) and
+file attachments — both need their own infrastructure and were
+deliberately left for a follow-up.
+
+## 7. Registering parents, and accessing each portal
 
 Admins, teachers, and students all get their ThunderID login automatically
 at the moment their record is created (Setup wizard for the first admin,
@@ -192,10 +245,13 @@ on their token:
 
 | Role | How the account is created | What they see |
 | --- | --- | --- |
-| Admin | Setup wizard (first one only) | Full admin dashboard — everything in this guide |
-| Teacher | **Teachers** page | Their own dashboard, classes, attendance marking *(dashboard/classes currently placeholder data — not wired to real records yet)*, plus **My Timetable** and, if they're a section head, **Review Timetables** |
-| Student | **Students** page | Their own profile, attendance history, term marks, and (once published) a **Timetable** tab on their dashboard |
-| Parent | A student's **Guardians** tab, per above | A list of their linked children; click into one for that child's attendance, term marks, and (once published) a **Timetable** tab |
+| Admin | Setup wizard (first one only) | Full admin dashboard — everything in this guide, including sending notifications to anyone |
+| Teacher | **Teachers** page | Their own dashboard, classes, attendance marking *(dashboard/classes currently placeholder data — not wired to real records yet)*, plus **My Timetable**, **Review Timetables** if they're a section head, and **Notifications** scoped to their own classes/grades/subjects |
+| Student | **Students** page | Their own profile, attendance history, term marks, (once published) a **Timetable** tab on their dashboard, and their **Notification Center** |
+| Parent | A student's **Guardians** tab, per above | A list of their linked children; click into one for that child's attendance, term marks, and (once published) a **Timetable** tab; plus their own **Notification Center** |
+
+Every role also gets the header bell / Notification Center — see
+[Sending notifications](#6-sending-notifications) above.
 
 A parent or student can only ever see their own (or their own child's)
 data — this is enforced server-side, not just hidden in the UI.
@@ -212,13 +268,13 @@ redo it, but the two pieces live in different systems:
     academic_years, attendance_records, attendance_sessions, class_students,
     class_subject_teachers, classes, classrooms, grade_section_grades,
     grade_sections, grades, group_subjects, guardians, houses, levels,
-    mediums, prefects, school, section_heads, selection_groups,
-    stream_groups, streams, student_guardians, student_profiles,
-    student_siblings, student_subject_enrollments, subject_period_requirements,
-    subjects, teacher_availability, teacher_profiles, teacher_subjects,
-    term_marks, terms, timetable_entries, timetable_notifications,
-    timetable_periods, timetable_settings, timetable_status_history,
-    timetables, users
+    mediums, notification_recipients, notifications, prefects, school,
+    section_heads, selection_groups, stream_groups, streams,
+    student_guardians, student_profiles, student_siblings,
+    student_subject_enrollments, subject_period_requirements, subjects,
+    teacher_availability, teacher_profiles, teacher_subjects, term_marks,
+    terms, timetable_entries, timetable_periods, timetable_settings,
+    timetable_status_history, timetables, users
   RESTART IDENTITY CASCADE;
   ```
   This does **not** delete the corresponding identities (student/teacher/
@@ -237,3 +293,6 @@ redo it, but the two pieces live in different systems:
 | Wizard's Classes step doesn't offer A/L streams | Grade 12 and/or 13 weren't ticked in the Grades step — streams only appear for whichever of those two were selected. |
 | Timetable won't "Validate" clean / "Submit for Review" fails with "No section head assigned for this grade" | The class's grade has neither a per-grade TIC (`/streams`) nor a Grade Section group head (`/grade-sections`) assigned for the current academic year — assign one of the two, then retry. |
 | Timetable editor shows "No grade section configured" / "No periods configured" | The class's grade hasn't been added to a Grade Section yet, or that section's period grid hasn't been generated — go to `/grade-sections`, add the grade, and click **Periods → Regenerate from Timetable Settings** (configure `/timetable-settings` first if that's also empty). |
+| A teacher can't send a notification to a grade/class/subject they clearly teach | Their assignment isn't recorded where the notification permission check looks: form teacher / `class_subject_teachers` for a class, `teacher_subjects` for a subject, or TIC (`/streams`) / Grade Section head (`/grade-sections`) for a grade. Fix the underlying assignment rather than the notification itself — sending permission is always derived from it, never granted directly. |
+| "Everyone" option is missing from a teacher's recipient picker | Expected — only admins can send school-wide notifications. |
+| A sent notification's read/unread count looks frozen | Counts reflect `notification_recipients` at send time; a user added to a class/grade *after* a notification was sent does not retroactively become a recipient of it — only future notifications will include them. |

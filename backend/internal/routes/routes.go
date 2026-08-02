@@ -62,7 +62,7 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	timetableroutes.RegisterTimetableSettingsRoutes(admin, pool)
 	timetableroutes.RegisterSubjectPeriodRequirementRoutes(admin, teacherOrAdmin, pool)
 	timetableroutes.RegisterTeacherAvailabilityRoutes(admin, teacherOrAdmin, pool)
-	notificationroutes.RegisterTimetableNotificationRoutes(protected, pool)
+	notificationroutes.RegisterNotificationRoutes(teacherOrAdmin, protected, pool)
 	timetableService := timetableroutes.RegisterTimetableRoutes(admin, teacherOrAdmin, teacher, student, pool)
 
 	RegisterParentRoutes(parent, timetableService, pool)

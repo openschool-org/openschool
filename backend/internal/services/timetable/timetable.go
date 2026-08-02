@@ -395,11 +395,13 @@ func (s *TimetableService) Submit(ctx context.Context, id, submittedByUserID uui
 
 	if class, err := s.classRepo.GetByID(ctx, tt.ClassID); err == nil {
 		reviewers, _ := s.resolveAuthorizedReviewerIDs(ctx, class.GradeID, tt.AcademicYearID)
+		var reviewerUserIDs []uuid.UUID
 		for _, reviewerID := range reviewers {
 			if teacher, err := s.teacherRepo.GetByID(ctx, reviewerID); err == nil {
-				s.notifications.Notify(ctx, teacher.UserID, &id, "submitted", fmt.Sprintf("A timetable for %s is waiting for your review.", class.Name))
+				reviewerUserIDs = append(reviewerUserIDs, teacher.UserID)
 			}
 		}
+		_ = s.notifications.SendDirect(ctx, "Timetable Submitted for Review", fmt.Sprintf("A timetable for %s is waiting for your review.", class.Name), "timetable", "normal", submittedByUserID, reviewerUserIDs)
 	}
 
 	return updated, nil
@@ -436,7 +438,7 @@ func (s *TimetableService) Approve(ctx context.Context, id, reviewerUserID uuid.
 
 	fromStatus := "under_review"
 	_, _ = s.repo.AddStatusHistory(ctx, id, &fromStatus, "approved", reviewerUserID, comment)
-	s.notifications.Notify(ctx, tt.CreatedBy, &id, "approved", fmt.Sprintf("The timetable for %s was approved.", class.Name))
+	_ = s.notifications.SendDirect(ctx, "Timetable Approved", fmt.Sprintf("The timetable for %s was approved.", class.Name), "timetable", "normal", reviewerUserID, []uuid.UUID{tt.CreatedBy})
 
 	return updated, nil
 }
@@ -472,7 +474,7 @@ func (s *TimetableService) Reject(ctx context.Context, id, reviewerUserID uuid.U
 
 	fromStatus := "under_review"
 	_, _ = s.repo.AddStatusHistory(ctx, id, &fromStatus, "rejected", reviewerUserID, comment)
-	s.notifications.Notify(ctx, tt.CreatedBy, &id, "rejected", fmt.Sprintf("The timetable for %s was rejected: %s", class.Name, comment))
+	_ = s.notifications.SendDirect(ctx, "Timetable Rejected", fmt.Sprintf("The timetable for %s was rejected: %s", class.Name, comment), "timetable", "important", reviewerUserID, []uuid.UUID{tt.CreatedBy})
 
 	return updated, nil
 }
@@ -497,17 +499,26 @@ func (s *TimetableService) Publish(ctx context.Context, id, publishedByUserID uu
 	fromStatus := "approved"
 	_, _ = s.repo.AddStatusHistory(ctx, id, &fromStatus, "published", publishedByUserID, "")
 
-	s.notifyPublication(ctx, updated)
+	s.notifyPublication(ctx, updated, publishedByUserID)
 
 	return updated, nil
 }
 
-func (s *TimetableService) notifyPublication(ctx context.Context, tt db.Timetable) {
+func (s *TimetableService) notifyPublication(ctx context.Context, tt db.Timetable, publishedByUserID uuid.UUID) {
 	class, err := s.classRepo.GetByID(ctx, tt.ClassID)
 	if err != nil {
 		return
 	}
 	message := fmt.Sprintf("The timetable for %s has been published.", class.Name)
+
+	seen := make(map[uuid.UUID]bool)
+	var userIDs []uuid.UUID
+	add := func(id uuid.UUID) {
+		if !seen[id] {
+			seen[id] = true
+			userIDs = append(userIDs, id)
+		}
+	}
 
 	entries, _ := s.repo.ListEntries(ctx, tt.ID)
 	notifiedTeachers := make(map[uuid.UUID]bool)
@@ -521,22 +532,24 @@ func (s *TimetableService) notifyPublication(ctx context.Context, tt db.Timetabl
 		}
 		notifiedTeachers[teacherProfileID] = true
 		if teacher, err := s.teacherRepo.GetByID(ctx, teacherProfileID); err == nil {
-			s.notifications.Notify(ctx, teacher.UserID, &tt.ID, "published", message)
+			add(teacher.UserID)
 		}
 	}
 
 	students, _ := s.studentRepo.ListByClass(ctx, tt.ClassID)
 	for _, student := range students {
 		if student.UserID.Valid {
-			s.notifications.Notify(ctx, uuid.UUID(student.UserID.Bytes), &tt.ID, "published", message)
+			add(uuid.UUID(student.UserID.Bytes))
 		}
 		guardians, _ := s.guardianRepo.ListByStudent(ctx, student.ID)
 		for _, guardian := range guardians {
 			if guardian.UserID.Valid {
-				s.notifications.Notify(ctx, uuid.UUID(guardian.UserID.Bytes), &tt.ID, "published", message)
+				add(uuid.UUID(guardian.UserID.Bytes))
 			}
 		}
 	}
+
+	_ = s.notifications.SendDirect(ctx, "Timetable Published", message, "timetable", "normal", publishedByUserID, userIDs)
 }
 
 // Read views for teacher / student / parent portals

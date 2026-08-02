@@ -133,6 +133,30 @@ type Medium struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type Notification struct {
+	ID             uuid.UUID          `json:"id"`
+	Title          string             `json:"title"`
+	Message        string             `json:"message"`
+	Category       string             `json:"category"`
+	Priority       string             `json:"priority"`
+	Status         string             `json:"status"`
+	RecipientRules []byte             `json:"recipient_rules"`
+	CreatedBy      uuid.UUID          `json:"created_by"`
+	SentAt         pgtype.Timestamptz `json:"sent_at"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
+type NotificationRecipient struct {
+	ID             uuid.UUID          `json:"id"`
+	NotificationID uuid.UUID          `json:"notification_id"`
+	UserID         uuid.UUID          `json:"user_id"`
+	IsRead         bool               `json:"is_read"`
+	ReadAt         pgtype.Timestamptz `json:"read_at"`
+	IsArchived     bool               `json:"is_archived"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type Prefect struct {
 	ID             uuid.UUID          `json:"id"`
 	AcademicYearID uuid.UUID          `json:"academic_year_id"`
@@ -324,16 +348,6 @@ type TimetableEntry struct {
 	ClassroomID  pgtype.UUID        `json:"classroom_id"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
-}
-
-type TimetableNotification struct {
-	ID          uuid.UUID          `json:"id"`
-	UserID      uuid.UUID          `json:"user_id"`
-	TimetableID pgtype.UUID        `json:"timetable_id"`
-	Type        string             `json:"type"`
-	Message     string             `json:"message"`
-	IsRead      bool               `json:"is_read"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type TimetablePeriod struct {
