@@ -80,12 +80,12 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 	}
 
 	idpUser, err := s.idp.CreateUser(ctx, "parent", map[string]interface{}{
-		"username":     req.Username,
-		"email":        guardian.Email.String,
-		"given_name":   req.GivenName,
-		"family_name":  req.FamilyName,
-		"phone_number": guardian.Phone,
-		"password":     req.Password,
+		"username":    req.Username,
+		"email":       guardian.Email.String,
+		"given_name":  req.GivenName,
+		"family_name": req.FamilyName,
+		"phone":       guardian.Phone,
+		"password":    req.Password,
 	})
 	if err != nil {
 		return db.Guardian{}, fmt.Errorf("failed to create identity provider account: %w", err)
