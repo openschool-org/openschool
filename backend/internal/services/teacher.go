@@ -20,12 +20,13 @@ var (
 )
 
 type TeacherService struct {
-	repo *repositories.TeacherRepository
-	idp  identity.Provider
+	repo     *repositories.TeacherRepository
+	idp      identity.Provider
+	houseSvc *HouseService
 }
 
-func NewTeacherService(repo *repositories.TeacherRepository, idp identity.Provider) *TeacherService {
-	return &TeacherService{repo: repo, idp: idp}
+func NewTeacherService(repo *repositories.TeacherRepository, idp identity.Provider, houseSvc *HouseService) *TeacherService {
+	return &TeacherService{repo: repo, idp: idp, houseSvc: houseSvc}
 }
 
 func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTeacherRequest) (db.TeacherProfile, error) {
@@ -72,6 +73,11 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		log.Printf("CreateTeacher: failed to assign teacher role to %s: %v", idpUser.ID, err)
 	}
 
+	houseID := pgtype.UUID{}
+	if id, ok := s.houseSvc.PickForTeacher(ctx); ok {
+		houseID = pgtype.UUID{Bytes: id, Valid: true}
+	}
+
 	// create teacher profile
 	profile, err := s.repo.Create(ctx, db.CreateTeacherProfileParams{
 		UserID:         userID,
@@ -81,6 +87,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
 		Title:          pgtype.Text{String: req.Title, Valid: req.Title != ""},
 		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
+		HouseID:        houseID,
 	})
 	if err != nil {
 		rollbackIDPUser(ctx, s.idp, "CreateTeacher", idpUser.ID)
@@ -135,6 +142,24 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 		Title:          pgtype.Text{String: req.Title, Valid: req.Title != ""},
 		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
 	})
+}
+
+// UpdateTeacherHouse is the System-Administrator-only override for moving a
+// teacher to a different house once one is assigned. It delegates to
+// HouseService so every change is audit-logged.
+func (s *TeacherService) UpdateTeacherHouse(ctx context.Context, id uuid.UUID, houseID string, actorID uuid.UUID) (db.TeacherProfile, error) {
+	return s.houseSvc.ChangeTeacherHouse(ctx, id, houseID, actorID)
+}
+
+var validEmploymentStatuses = map[string]bool{"active": true, "resigned": true, "transferred": true}
+
+// SetEmploymentStatus marks a teacher active, resigned, or transferred —
+// separate from is_active (which tracks subject assignment, not employment).
+func (s *TeacherService) SetEmploymentStatus(ctx context.Context, id uuid.UUID, status string) (db.TeacherProfile, error) {
+	if !validEmploymentStatuses[status] {
+		return db.TeacherProfile{}, fmt.Errorf("invalid status %q — must be active, resigned or transferred", status)
+	}
+	return s.repo.UpdateEmploymentStatus(ctx, id, status)
 }
 
 func (s *TeacherService) DeleteTeacher(ctx context.Context, id uuid.UUID) error {

@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
+	notificationsservices "github.com/openschool-org/openschool/internal/services/notifications"
 )
 
 // ErrNotAssignedToClass is returned when a teacher tries to create a
@@ -17,15 +19,39 @@ import (
 // or don't teach any subject in.
 var ErrNotAssignedToClass = errors.New("you are not assigned to teach this class")
 
+// ErrSessionLocked is returned when a non-admin tries to edit an
+// attendance session more than 24 hours after it was taken.
+var ErrSessionLocked = errors.New("this attendance session is locked — more than 24 hours have passed since it was taken; ask an administrator to edit it")
+
+// attendanceLockWindow is how long a session stays editable by the
+// teacher who took it before requiring administrator override.
+const attendanceLockWindow = 24 * time.Hour
+
 type AttendanceService struct {
-	repo        *repositories.AttendanceRepository
-	userRepo    *repositories.UserRepository
-	teacherRepo *repositories.TeacherRepository
-	classRepo   *repositories.ClassRepository
+	repo          *repositories.AttendanceRepository
+	userRepo      *repositories.UserRepository
+	teacherRepo   *repositories.TeacherRepository
+	classRepo     *repositories.ClassRepository
+	studentRepo   *repositories.StudentRepository
+	guardianRepo  *repositories.GuardianRepository
+	notifications *notificationsservices.NotificationService
+	audit         *AuditService
 }
 
-func NewAttendanceService(repo *repositories.AttendanceRepository, userRepo *repositories.UserRepository, teacherRepo *repositories.TeacherRepository, classRepo *repositories.ClassRepository) *AttendanceService {
-	return &AttendanceService{repo: repo, userRepo: userRepo, teacherRepo: teacherRepo, classRepo: classRepo}
+func NewAttendanceService(
+	repo *repositories.AttendanceRepository,
+	userRepo *repositories.UserRepository,
+	teacherRepo *repositories.TeacherRepository,
+	classRepo *repositories.ClassRepository,
+	studentRepo *repositories.StudentRepository,
+	guardianRepo *repositories.GuardianRepository,
+	notifications *notificationsservices.NotificationService,
+	audit *AuditService,
+) *AttendanceService {
+	return &AttendanceService{
+		repo: repo, userRepo: userRepo, teacherRepo: teacherRepo, classRepo: classRepo,
+		studentRepo: studentRepo, guardianRepo: guardianRepo, notifications: notifications, audit: audit,
+	}
 }
 
 // authorizeTeacherForClass ensures the acting user, if a teacher, is the
@@ -49,6 +75,12 @@ func (s *AttendanceService) authorizeTeacherForClass(ctx context.Context, actor 
 		return ErrNotAssignedToClass
 	}
 	return nil
+}
+
+// isLocked reports whether more than attendanceLockWindow has passed since
+// the session was taken.
+func isLocked(session db.AttendanceSession) bool {
+	return time.Since(session.CreatedAt.Time) > attendanceLockWindow
 }
 
 // authenticated user creating the session (taken from jwt)
@@ -137,7 +169,20 @@ func (s *AttendanceService) DeleteSession(ctx context.Context, actor Actor, id u
 	if err := s.authorizeTeacherForClass(ctx, actor, session.ClassID); err != nil {
 		return err
 	}
-	return s.repo.DeleteSession(ctx, id)
+
+	locked := isLocked(session)
+	if locked && actor.Role != "admin" {
+		return ErrSessionLocked
+	}
+
+	if err := s.repo.DeleteSession(ctx, id); err != nil {
+		return err
+	}
+
+	if locked && s.audit != nil {
+		_ = s.audit.Record(ctx, "attendance_session", id, "deleted_after_lock", actor.ID, session, nil, "")
+	}
+	return nil
 }
 
 func (s *AttendanceService) ListSessionsByClass(ctx context.Context, classID uuid.UUID) ([]db.AttendanceSession, error) {
@@ -162,6 +207,16 @@ func (s *AttendanceService) MarkAttendance(ctx context.Context, actor Actor, ses
 		return err
 	}
 
+	locked := isLocked(session)
+	if locked && actor.Role != "admin" {
+		return ErrSessionLocked
+	}
+
+	takenBy, err := s.resolveActingUser(ctx, actor)
+	if err != nil {
+		return err
+	}
+
 	for _, record := range req.Records {
 		studentID, err := uuid.Parse(record.StudentID)
 		if err != nil {
@@ -172,13 +227,53 @@ func (s *AttendanceService) MarkAttendance(ctx context.Context, actor Actor, ses
 			return fmt.Errorf("invalid status: %s — must be present, absent, late or excused", record.Status)
 		}
 
-		_, err = s.repo.MarkAttendance(ctx, sessionID, studentID, record.Status, record.Note)
+		previous, prevErr := s.repo.GetRecord(ctx, sessionID, studentID)
+		hadPrevious := prevErr == nil
+		if prevErr != nil && !errors.Is(prevErr, pgx.ErrNoRows) {
+			return fmt.Errorf("failed to check existing attendance for student %s: %w", record.StudentID, prevErr)
+		}
+
+		updated, err := s.repo.MarkAttendance(ctx, sessionID, studentID, record.Status, record.Note)
 		if err != nil {
 			return fmt.Errorf("failed to mark attendance for student %s: %w", record.StudentID, err)
+		}
+
+		if locked && s.audit != nil {
+			_ = s.audit.Record(ctx, "attendance_record", updated.ID, "edited_after_lock", actor.ID, previous, updated, req.Reason)
+		}
+
+		becameAbsent := record.Status == "absent" && (!hadPrevious || previous.Status != "absent")
+		if becameAbsent {
+			s.notifyGuardiansOfAbsence(ctx, session, studentID, takenBy)
 		}
 	}
 
 	return nil
+}
+
+// notifyGuardiansOfAbsence sends an in-app notification to the student's
+// guardian(s) when they're newly marked absent. Failures are logged but
+// never block the attendance write — a missed notification shouldn't
+// prevent a teacher from recording attendance.
+func (s *AttendanceService) notifyGuardiansOfAbsence(ctx context.Context, session db.AttendanceSession, studentID, takenBy uuid.UUID) {
+	guardianUserIDs, err := s.guardianRepo.ListGuardianUserIDsByStudentIDs(ctx, []uuid.UUID{studentID})
+	if err != nil || len(guardianUserIDs) == 0 {
+		return
+	}
+
+	student, err := s.studentRepo.GetByID(ctx, studentID)
+	if err != nil {
+		return
+	}
+	class, err := s.classRepo.GetByID(ctx, session.ClassID)
+	if err != nil {
+		return
+	}
+
+	title := "Absence recorded"
+	message := fmt.Sprintf("%s was marked absent on %s in class %s.", student.FullName, session.Date.Time.Format("2006-01-02"), class.Name)
+
+	_ = s.notifications.SendDirect(ctx, title, message, "attendance", "normal", takenBy, guardianUserIDs)
 }
 
 func (s *AttendanceService) ListBySession(ctx context.Context, actor Actor, sessionID uuid.UUID) ([]db.ListAttendanceBySessionRow, error) {

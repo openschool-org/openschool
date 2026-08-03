@@ -34,6 +34,18 @@ type AttendanceSession struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type AuditLog struct {
+	ID         uuid.UUID          `json:"id"`
+	EntityType string             `json:"entity_type"`
+	EntityID   uuid.UUID          `json:"entity_id"`
+	Action     string             `json:"action"`
+	ActorID    pgtype.UUID        `json:"actor_id"`
+	Before     []byte             `json:"before"`
+	After      []byte             `json:"after"`
+	Reason     pgtype.Text        `json:"reason"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+}
+
 type Class struct {
 	ID             uuid.UUID          `json:"id"`
 	GradeID        uuid.UUID          `json:"grade_id"`
@@ -115,8 +127,8 @@ type House struct {
 	ID        uuid.UUID          `json:"id"`
 	Name      string             `json:"name"`
 	Code      pgtype.Text        `json:"code"`
-	Remainder int32              `json:"remainder"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Color     string             `json:"color"`
 }
 
 type Level struct {
@@ -223,18 +235,19 @@ type StudentGuardian struct {
 }
 
 type StudentProfile struct {
-	ID             uuid.UUID          `json:"id"`
-	UserID         pgtype.UUID        `json:"user_id"`
-	FullName       string             `json:"full_name"`
-	IndexNumber    string             `json:"index_number"`
-	Address        pgtype.Text        `json:"address"`
-	Phone          pgtype.Text        `json:"phone"`
-	Whatsapp       pgtype.Text        `json:"whatsapp"`
-	SpecialRemarks pgtype.Text        `json:"special_remarks"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	Gender         pgtype.Text        `json:"gender"`
-	HouseID        pgtype.UUID        `json:"house_id"`
+	ID               uuid.UUID          `json:"id"`
+	UserID           pgtype.UUID        `json:"user_id"`
+	FullName         string             `json:"full_name"`
+	IndexNumber      string             `json:"index_number"`
+	Address          pgtype.Text        `json:"address"`
+	Phone            pgtype.Text        `json:"phone"`
+	Whatsapp         pgtype.Text        `json:"whatsapp"`
+	SpecialRemarks   pgtype.Text        `json:"special_remarks"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	Gender           pgtype.Text        `json:"gender"`
+	HouseID          pgtype.UUID        `json:"house_id"`
+	EnrollmentStatus string             `json:"enrollment_status"`
 }
 
 type StudentSibling struct {
@@ -278,17 +291,19 @@ type TeacherAvailability struct {
 }
 
 type TeacherProfile struct {
-	ID             uuid.UUID          `json:"id"`
-	UserID         uuid.UUID          `json:"user_id"`
-	FullName       string             `json:"full_name"`
-	EmployeeNumber string             `json:"employee_number"`
-	JoinedDate     pgtype.Date        `json:"joined_date"`
-	Phone          pgtype.Text        `json:"phone"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	Title          pgtype.Text        `json:"title"`
-	Gender         pgtype.Text        `json:"gender"`
-	IsActive       bool               `json:"is_active"`
+	ID               uuid.UUID          `json:"id"`
+	UserID           uuid.UUID          `json:"user_id"`
+	FullName         string             `json:"full_name"`
+	EmployeeNumber   string             `json:"employee_number"`
+	JoinedDate       pgtype.Date        `json:"joined_date"`
+	Phone            pgtype.Text        `json:"phone"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	Title            pgtype.Text        `json:"title"`
+	Gender           pgtype.Text        `json:"gender"`
+	IsActive         bool               `json:"is_active"`
+	HouseID          pgtype.UUID        `json:"house_id"`
+	EmploymentStatus string             `json:"employment_status"`
 }
 
 type TeacherSubject struct {

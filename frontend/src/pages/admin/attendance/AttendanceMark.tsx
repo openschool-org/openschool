@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router";
-import { Button, Tag } from "@carbon/react";
+import { Button, Tag, InlineNotification, TextInput } from "@carbon/react";
 import {
   ArrowLeft,
   Save,
@@ -98,13 +98,18 @@ export default function AttendanceMark() {
   const { role } = useRole();
   const markAttendance = useMarkAttendance(id);
 
-  // Admins view attendance but do not mark it — teachers do the marking.
-  const readOnly = role === "admin";
+  const isAdmin = role === "admin";
+  // A session becomes read-only for teachers 24h after it was taken —
+  // admins can always mark/edit, whether or not the session is locked.
+  const locked = !!session?.created_at && new Date().getTime() - new Date(session.created_at).getTime() > 24 * 60 * 60 * 1000;
+  const readOnly = locked && !isAdmin;
+  const isOverride = locked && isAdmin;
 
   const [statuses, setStatuses] = useState<Record<string, Status>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [saved, setSaved] = useState(false);
+  const [reason, setReason] = useState("");
 
   // Seed local edit state from whatever has already been marked for this
   // session. Adjusted during render (React's recommended pattern for "sync an
@@ -165,7 +170,7 @@ export default function AttendanceMark() {
       }));
 
     markAttendance.mutate(
-      { records: recordsToSend },
+      { records: recordsToSend, reason: isOverride ? reason.trim() || undefined : undefined },
       {
         onSuccess: () => {
           setSaved(true);
@@ -230,6 +235,27 @@ export default function AttendanceMark() {
       </div>
 
       <div style={{ padding: "1.5rem 2rem" }}>
+        {locked && !isAdmin && (
+          <InlineNotification
+            kind="warning"
+            title="This session is locked"
+            subtitle="More than 24 hours have passed since it was taken. Ask an administrator to edit it."
+            lowContrast
+            hideCloseButton
+            style={{ maxWidth: "100%", marginBottom: "1.5rem" }}
+          />
+        )}
+        {isOverride && (
+          <InlineNotification
+            kind="info"
+            title="Editing a locked session"
+            subtitle="This session is more than 24 hours old. As an administrator you can still edit it — please note a reason below; the change will be recorded in the audit log."
+            lowContrast
+            hideCloseButton
+            style={{ maxWidth: "100%", marginBottom: "1.5rem" }}
+          />
+        )}
+
         {/* Summary bar */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem", marginBottom: "1.5rem" }}>
           {[
@@ -416,7 +442,18 @@ export default function AttendanceMark() {
 
         {/* Footer actions */}
         {!readOnly && (
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "1rem 0", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "1rem 0" }}>
+        {isOverride && (
+          <TextInput
+            id="attendance-override-reason"
+            labelText="Reason for editing this locked session"
+            placeholder="e.g. Corrected after guardian phone call"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            style={{ maxWidth: "28rem" }}
+          />
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
           {summary.unmarked > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8125rem", color: "#7d5a00" }}>
               <Warning size={16} style={{ fill: "#f1c21b" }} />
@@ -444,6 +481,7 @@ export default function AttendanceMark() {
           >
             {markAttendance.isPending ? "Saving…" : "Save Attendance"}
           </Button>
+        </div>
         </div>
         )}
       </div>

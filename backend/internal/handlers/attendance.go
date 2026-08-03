@@ -19,6 +19,9 @@ func statusForAttendanceError(err error, notFoundStatus int) int {
 	if errors.Is(err, services.ErrNotAssignedToClass) {
 		return http.StatusForbidden
 	}
+	if errors.Is(err, services.ErrSessionLocked) {
+		return http.StatusLocked
+	}
 	return notFoundStatus
 }
 
@@ -232,7 +235,7 @@ func (h *AttendanceHandler) MarkAttendance(c *gin.Context) {
 	}
 
 	if err := h.service.MarkAttendance(c.Request.Context(), actor, id, req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(statusForAttendanceError(err, http.StatusBadRequest), gin.H{"error": err.Error()})
 		return
 	}
 

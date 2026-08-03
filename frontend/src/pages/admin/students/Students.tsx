@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Search, Add, Edit, TrashCan } from "@carbon/icons-react";
-import { Button, IconButton, Select, SelectItem, Pagination } from "@carbon/react";
+import { Button, IconButton, Select, SelectItem, Pagination, Tag } from "@carbon/react";
 import { useStudents, useDeleteStudent } from "../../../queries/useStudents";
 import { useGrades } from "../../../queries/useGrades";
 import { useHouses } from "../../../queries/useHouses";
@@ -21,6 +21,7 @@ const STUDENT_TABLE_HEADERS = [
   "House",
   "Phone",
   "WhatsApp",
+  "Status",
   "Actions",
 ];
 
@@ -187,6 +188,7 @@ export default function Students() {
                   <th>House</th>
                   <th>Phone</th>
                   <th>WhatsApp</th>
+                  <th>Status</th>
                   <th style={{ width: "6rem", textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
@@ -205,6 +207,13 @@ export default function Students() {
                     <td className="os-table__muted">{s.house_name ?? "-"}</td>
                     <td className="os-table__muted">{s.phone ?? "-"}</td>
                     <td className="os-table__muted">{s.whatsapp ?? "-"}</td>
+                    <td>
+                      {s.enrollment_status === "active" ? (
+                        <Tag type="green" size="sm">Active</Tag>
+                      ) : (
+                        <Tag type="red" size="sm">Left</Tag>
+                      )}
+                    </td>
                     <td>
                       <div
                         style={{

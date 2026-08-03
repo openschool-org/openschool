@@ -4,6 +4,7 @@ import type {
   CreateTeacherRequest,
   UpdateTeacherRequest,
   TeacherWorkloadRow,
+  TeacherEmploymentStatus,
 } from "../services/teacher";
 
 export const TEACHERS_KEY = ["teachers"];
@@ -105,6 +106,30 @@ export const useUpdateTeacher = () => {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateTeacherRequest }) =>
       teacherApi.update(id, data),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: TEACHERS_KEY });
+      queryClient.invalidateQueries({ queryKey: teacherKey(id) });
+    },
+  });
+};
+
+export const useUpdateTeacherEmploymentStatus = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: TeacherEmploymentStatus }) =>
+      teacherApi.updateEmploymentStatus(id, status),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: TEACHERS_KEY });
+      queryClient.invalidateQueries({ queryKey: teacherKey(id) });
+    },
+  });
+};
+
+export const useUpdateTeacherHouse = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, houseId }: { id: string; houseId: string }) =>
+      teacherApi.updateHouse(id, houseId),
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: TEACHERS_KEY });
       queryClient.invalidateQueries({ queryKey: teacherKey(id) });

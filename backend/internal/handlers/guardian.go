@@ -36,13 +36,13 @@ func (h *GuardianHandler) Create(c *gin.Context) {
 		return
 	}
 
-	guardian, err := h.service.CreateGuardian(c.Request.Context(), req)
+	guardian, duplicates, err := h.service.CreateGuardian(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, guardian)
+	c.JSON(http.StatusCreated, gin.H{"guardian": guardian, "possible_duplicates": duplicates})
 }
 
 // GetByID godoc
@@ -73,20 +73,73 @@ func (h *GuardianHandler) GetByID(c *gin.Context) {
 
 // List godoc
 // @Summary      List all guardians
-// @Description  Every guardian on file, for the "link existing guardian" search picker
+// @Description  Every guardian on file, optionally filtered by name/phone/email — used by the directory and the "link existing guardian" search picker
 // @Tags         guardians
 // @Produce      json
+// @Param        search query string false "Filter by name/phone/email"
+// @Param        orphans query bool false "Only guardians linked to no student"
 // @Success      200 {array} models.GuardianResponse
 // @Security     BearerAuth
 // @Router       /guardians [get]
 func (h *GuardianHandler) List(c *gin.Context) {
-	guardians, err := h.service.ListGuardians(c.Request.Context())
+	orphansOnly := c.Query("orphans") == "true"
+	guardians, err := h.service.ListGuardians(c.Request.Context(), c.Query("search"), orphansOnly)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, guardians)
+}
+
+// ListStudents godoc
+// @Summary      List a guardian's linked students
+// @Description  Every student linked to this guardian, regardless of portal-login status — for the guardian directory
+// @Tags         guardians
+// @Produce      json
+// @Param        id path string true "Guardian ID"
+// @Success      200 {array} models.StudentResponse
+// @Security     BearerAuth
+// @Router       /guardians/{id}/students [get]
+func (h *GuardianHandler) ListStudents(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	students, err := h.service.ListStudentsFor(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, students)
+}
+
+// ListNotifications godoc
+// @Summary      List a guardian's notification history
+// @Description  Notifications sent to this guardian's portal account (empty if they don't have one)
+// @Tags         guardians
+// @Produce      json
+// @Param        id path string true "Guardian ID"
+// @Success      200 {array} notificationsmodels.MyNotificationResponse
+// @Security     BearerAuth
+// @Router       /guardians/{id}/notifications [get]
+func (h *GuardianHandler) ListNotifications(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	notifications, err := h.service.ListNotifications(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, notifications)
 }
 
 // Update godoc
@@ -121,6 +174,39 @@ func (h *GuardianHandler) Update(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, guardian)
+}
+
+// Delete godoc
+// @Summary      Delete guardian
+// @Description  Delete a guardian record outright — blocked while linked to any student
+// @Tags         guardians
+// @Produce      json
+// @Param        id path string true "Guardian ID"
+// @Success      200 {object} map[string]string
+// @Failure      404 {object} map[string]string
+// @Failure      409 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /guardians/{id} [delete]
+func (h *GuardianHandler) Delete(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	if err := h.service.DeleteGuardian(c.Request.Context(), id); err != nil {
+		switch {
+		case errors.Is(err, services.ErrGuardianNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		case errors.Is(err, services.ErrGuardianInUse):
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "guardian deleted"})
 }
 
 // LinkToStudent godoc

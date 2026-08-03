@@ -191,7 +191,47 @@ func (h *StudentHandler) UpdateHouse(c *gin.Context) {
 		return
 	}
 
-	student, err := h.service.UpdateStudentHouse(c.Request.Context(), id, req.HouseID)
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	student, err := h.service.UpdateStudentHouse(c.Request.Context(), id, req.HouseID, actor.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, student)
+}
+
+// UpdateEnrollmentStatus godoc
+// @Summary      Update student enrollment status
+// @Description  Mark a student active or left (withdrawn/transferred out of the school)
+// @Tags         students
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "Student ID"
+// @Param        request body models.UpdateStudentEnrollmentStatusRequest true "Status"
+// @Success      200 {object} models.StudentResponse
+// @Failure      400 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /students/{id}/enrollment-status [put]
+func (h *StudentHandler) UpdateEnrollmentStatus(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var req models.UpdateStudentEnrollmentStatusRequest
+	if err := bindStrict(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	student, err := h.service.SetEnrollmentStatus(c.Request.Context(), id, req.Status)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

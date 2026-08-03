@@ -16,15 +16,24 @@ import {
   useTeacherSubjects,
   useDeleteTeacher,
   useUpdateTeacher,
+  useUpdateTeacherHouse,
+  useUpdateTeacherEmploymentStatus,
 } from "../../../queries/useTeachers";
+import { useHouses } from "../../../queries/useHouses";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import ProfileBanner from "../../../components/common/ProfileBanner";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
-import type { Teacher, TeacherTitle } from "../../../services/teacher";
+import type { Teacher, TeacherTitle, TeacherEmploymentStatus } from "../../../services/teacher";
 
 const TITLES: TeacherTitle[] = ["Mr", "Miss", "Mrs", "Ms", "Dr", "Von", "Prof"];
+
+const EMPLOYMENT_STATUSES: { value: TeacherEmploymentStatus; label: string }[] = [
+  { value: "active", label: "Active" },
+  { value: "resigned", label: "Resigned" },
+  { value: "transferred", label: "Transferred" },
+];
 
 function teacherToForm(t: Teacher) {
   const [given, ...rest] = t.full_name.trim().split(/\s+/);
@@ -46,6 +55,9 @@ export default function TeacherDetail() {
   const { data: subjects } = useTeacherSubjects(id);
   const deleteTeacher = useDeleteTeacher();
   const updateTeacher = useUpdateTeacher();
+  const updateHouse = useUpdateTeacherHouse();
+  const updateStatus = useUpdateTeacherEmploymentStatus();
+  const { data: houses } = useHouses();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [editing, setEditing] = useState(
@@ -120,7 +132,11 @@ export default function TeacherDetail() {
     <div style={{ background: "#f4f4f4", minHeight: "calc(100vh - 3rem)" }}>
       <ProfileBanner
         name={teacher.full_name}
-        meta={teacher.employee_number}
+        meta={
+          teacher.employment_status === "active"
+            ? teacher.employee_number
+            : `${teacher.employee_number} · ${EMPLOYMENT_STATUSES.find((s) => s.value === teacher.employment_status)?.label}`
+        }
         actions={
           editing ? (
             <>
@@ -324,6 +340,68 @@ export default function TeacherDetail() {
                 No subjects assigned.
               </span>
             )}
+          </div>
+        </div>
+
+        <div className="os-section">
+          <div className="os-section__header">
+            <h2 className="os-section__title">House</h2>
+          </div>
+          <div className="os-section__body">
+            {(() => {
+              const current = houses?.find((h) => h.id === teacher.house_id);
+              return current ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: "0.75rem",
+                      height: "0.75rem",
+                      borderRadius: "50%",
+                      backgroundColor: current.color,
+                    }}
+                  />
+                  <span style={{ fontSize: "0.875rem", fontWeight: 600 }}>{current.name}</span>
+                </div>
+              ) : null;
+            })()}
+            <Select
+              id="teacher-house"
+              labelText="Assigned house"
+              helperText="Assigned automatically to keep houses balanced. Only a System Administrator can change it — every change is recorded in the audit log."
+              value={teacher.house_id ?? ""}
+              disabled={updateHouse.isPending}
+              onChange={(e) =>
+                updateHouse.mutate({ id: teacher.id, houseId: e.target.value })
+              }
+            >
+              <SelectItem value="" text="No house" />
+              {houses?.map((h) => (
+                <SelectItem key={h.id} value={h.id} text={h.name} />
+              ))}
+            </Select>
+          </div>
+        </div>
+
+        <div className="os-section">
+          <div className="os-section__header">
+            <h2 className="os-section__title">Employment Status</h2>
+          </div>
+          <div className="os-section__body">
+            <Select
+              id="teacher-employment-status"
+              labelText="Status"
+              helperText="Mark resigned or transferred when a teacher leaves the school."
+              value={teacher.employment_status}
+              disabled={updateStatus.isPending}
+              onChange={(e) =>
+                updateStatus.mutate({ id: teacher.id, status: e.target.value as TeacherEmploymentStatus })
+              }
+            >
+              {EMPLOYMENT_STATUSES.map((s) => (
+                <SelectItem key={s.value} value={s.value} text={s.label} />
+              ))}
+            </Select>
           </div>
         </div>
       </div>

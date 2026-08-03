@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Search, Add, Edit, TrashCan } from "@carbon/icons-react";
-import { Button, IconButton, InlineNotification, Pagination } from "@carbon/react";
+import { Button, IconButton, InlineNotification, Pagination, Tag } from "@carbon/react";
 import { useTeachers, useDeleteTeacher } from "../../../queries/useTeachers";
 import type { Teacher } from "../../../services/teacher";
 import { usePagination } from "../../../hooks/usePagination";
@@ -11,7 +11,7 @@ import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 
-const TEACHER_TABLE_HEADERS = ["Employee No.", "Full Name", "Phone", "Joined Date", "Actions"];
+const TEACHER_TABLE_HEADERS = ["Employee No.", "Full Name", "Phone", "Joined Date", "Status", "Actions"];
 
 export default function Teachers() {
   const navigate = useNavigate();
@@ -101,6 +101,7 @@ export default function Teachers() {
                   <th>Full Name</th>
                   <th>Phone</th>
                   <th>Joined Date</th>
+                  <th>Status</th>
                   <th style={{ width: "6rem", textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
@@ -117,6 +118,15 @@ export default function Teachers() {
                     </td>
                     <td className="os-table__muted">{t.phone ?? "-"}</td>
                     <td className="os-table__muted">{t.joined_date ?? "-"}</td>
+                    <td>
+                      {t.employment_status === "active" ? (
+                        <Tag type="green" size="sm">Active</Tag>
+                      ) : t.employment_status === "resigned" ? (
+                        <Tag type="red" size="sm">Resigned</Tag>
+                      ) : (
+                        <Tag type="magenta" size="sm">Transferred</Tag>
+                      )}
+                    </td>
                     <td>
                       <div
                         style={{

@@ -30,6 +30,10 @@ type AssignSubjectToTeacherRequest struct {
 	SubjectID string `json:"subject_id" binding:"required"`
 }
 
+type UpdateTeacherEmploymentStatusRequest struct {
+	Status string `json:"status" binding:"required,oneof=active resigned transferred"`
+}
+
 type TeacherResponse struct {
 	ID             string `json:"id"`
 	UserID         string `json:"user_id"`

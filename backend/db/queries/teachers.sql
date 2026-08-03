@@ -6,15 +6,24 @@ INSERT INTO teacher_profiles (
     joined_date,
     phone,
     title,
-    gender
+    gender,
+    house_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
 RETURNING *;
 
 -- name: GetTeacherByID :one
 SELECT * FROM teacher_profiles
 WHERE id = $1;
+
+-- name: UpdateTeacherEmploymentStatus :one
+UPDATE teacher_profiles
+SET
+    employment_status = $2,
+    updated_at        = NOW()
+WHERE id = $1
+RETURNING *;
 
 -- name: GetTeacherByUserID :one
 SELECT * FROM teacher_profiles

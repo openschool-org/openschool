@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { houseApi } from "../services/house";
 import type { CreateHouseRequest } from "../services/house";
 import { STUDENTS_KEY } from "./useStudents";
+import { TEACHERS_KEY } from "./useTeachers";
 
 export const HOUSES_KEY = ["houses"];
 
@@ -48,6 +49,16 @@ export const useReassignMissingHouses = () => {
     mutationFn: () => houseApi.reassignMissing(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });
+    },
+  });
+};
+
+export const useReassignMissingStaffHouses = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => houseApi.reassignMissingStaff(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TEACHERS_KEY });
     },
   });
 };

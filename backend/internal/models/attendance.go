@@ -13,6 +13,9 @@ type AttendanceRecord struct {
 
 type MarkAttendanceRequest struct {
 	Records []AttendanceRecord `json:"records" binding:"required"`
+	// Reason is required by convention (not enforced here) when an admin
+	// edits a session after its 24h lock — recorded in the audit log.
+	Reason string `json:"reason"`
 }
 
 type AttendanceSessionResponse struct {

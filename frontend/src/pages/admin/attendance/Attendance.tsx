@@ -45,7 +45,7 @@ export default function Attendance() {
   const { data: sessions, isLoading, isError, refetch } = useDailySessions(date);
   const deleteSession = useDeleteSession();
   const { role } = useRole();
-  const readOnly = role === "admin";
+  const isAdmin = role === "admin";
   const [toDelete, setToDelete] = useState<DailySession | null>(null);
 
   const handleDelete = () => {
@@ -170,6 +170,7 @@ export default function Attendance() {
                 <tbody>
                   {sessions.map((s) => {
                     const isMarked = s.marked_count > 0;
+                    const isLocked = !!s.created_at && new Date().getTime() - new Date(s.created_at).getTime() > 24 * 60 * 60 * 1000;
                     return (
                       <tr key={s.id}>
                         <td style={{ fontWeight: 600 }}>{s.class_name}</td>
@@ -179,14 +180,21 @@ export default function Attendance() {
                           {s.marked_count} / {s.enrolled_count}
                         </td>
                         <td>
-                          <Tag type={isMarked ? "blue" : "gray"} size="sm">
-                            {isMarked ? (
-                              <CheckmarkFilled size={12} style={{ marginRight: "4px", verticalAlign: "middle" }} />
-                            ) : (
-                              <WarningFilled size={12} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+                          <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap" }}>
+                            <Tag type={isMarked ? "blue" : "gray"} size="sm">
+                              {isMarked ? (
+                                <CheckmarkFilled size={12} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+                              ) : (
+                                <WarningFilled size={12} style={{ marginRight: "4px", verticalAlign: "middle" }} />
+                              )}
+                              {isMarked ? "Marked" : "Pending"}
+                            </Tag>
+                            {isLocked && (
+                              <Tag type="magenta" size="sm">
+                                Locked
+                              </Tag>
                             )}
-                            {isMarked ? "Marked" : "Pending"}
-                          </Tag>
+                          </div>
                         </td>
                         <td>
                           <div
@@ -197,18 +205,25 @@ export default function Attendance() {
                               justifyContent: "flex-end",
                             }}
                           >
-                            <Button
-                              kind={isMarked || readOnly ? "ghost" : "primary"}
-                              size="sm"
-                              as={Link}
-                              to={`/attendance/sessions/${s.id}/mark`}
-                              style={{
-                                whiteSpace: "nowrap",
-                                ...(isMarked || readOnly ? { color: "#406AAF" } : {}),
-                              }}
-                            >
-                              {readOnly ? "View" : isMarked ? "View" : "Mark"}
-                            </Button>
+                            {(() => {
+                              // Teachers lose mark access once a session is
+                              // locked; admins can always mark/edit.
+                              const rowReadOnly = isLocked && !isAdmin;
+                              return (
+                                <Button
+                                  kind={isMarked || rowReadOnly ? "ghost" : "primary"}
+                                  size="sm"
+                                  as={Link}
+                                  to={`/attendance/sessions/${s.id}/mark`}
+                                  style={{
+                                    whiteSpace: "nowrap",
+                                    ...(isMarked || rowReadOnly ? { color: "#406AAF" } : {}),
+                                  }}
+                                >
+                                  {rowReadOnly ? "View" : isMarked ? "View" : "Mark"}
+                                </Button>
+                              );
+                            })()}
                             <Button
                               kind="danger--ghost"
                               size="sm"

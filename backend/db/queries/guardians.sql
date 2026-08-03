@@ -13,11 +13,54 @@ RETURNING *;
 SELECT * FROM guardians
 WHERE id = $1;
 
+-- name: DeleteGuardian :execrows
+-- Blocked while linked to any student, since student_guardians cascades on
+-- delete and silently unlinking a shared guardian from every child would be
+-- surprising — admins must unlink each student first.
+DELETE FROM guardians AS g
+WHERE g.id = $1
+AND g.id NOT IN (
+    SELECT DISTINCT guardian_id FROM student_guardians
+);
+
 -- name: ListGuardians :many
--- Every guardian on file, for the "link an existing guardian to this
--- student too" search picker (siblings sharing a guardian).
+-- Every guardian on file, optionally filtered by a search term matched
+-- against name/phone/email and/or restricted to "orphans" (linked to no
+-- student — e.g. their last child left the school). Used both by the
+-- guardian directory and the "link an existing guardian to this student
+-- too" search picker (siblings sharing a guardian).
+SELECT g.* FROM guardians g
+WHERE (
+    sqlc.narg(search)::text IS NULL
+    OR g.full_name ILIKE '%' || sqlc.narg(search) || '%'
+    OR g.phone      ILIKE '%' || sqlc.narg(search) || '%'
+    OR g.email      ILIKE '%' || sqlc.narg(search) || '%'
+  )
+  AND (
+    sqlc.narg(orphans_only)::bool IS NOT TRUE
+    OR NOT EXISTS (SELECT 1 FROM student_guardians sg WHERE sg.guardian_id = g.id)
+  )
+ORDER BY g.full_name ASC;
+
+-- name: FindGuardianDuplicateCandidates :many
+-- Near-matches by phone or email, surfaced as a soft warning ("this
+-- guardian may already exist") when creating a new guardian record —
+-- never hard-blocked, since a shared home phone across two guardians is
+-- legitimate.
 SELECT * FROM guardians
+WHERE phone = $1
+   OR (sqlc.narg(email)::text IS NOT NULL AND email = sqlc.narg(email))
 ORDER BY full_name ASC;
+
+-- name: ListStudentsByGuardianID :many
+-- Linked students for the guardian directory's "children" column — works
+-- regardless of whether the guardian has a portal login (unlike
+-- ListStudentsByGuardianUserID, which requires one).
+SELECT sp.*
+FROM student_profiles sp
+INNER JOIN student_guardians sg ON sg.student_id = sp.id
+WHERE sg.guardian_id = $1
+ORDER BY sp.full_name ASC;
 
 -- name: UpdateGuardian :one
 UPDATE guardians

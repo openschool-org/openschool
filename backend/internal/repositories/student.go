@@ -41,6 +41,13 @@ func (r *StudentRepository) Update(ctx context.Context, params db.UpdateStudentP
 	return r.queries.UpdateStudentProfile(ctx, params)
 }
 
+func (r *StudentRepository) UpdateEnrollmentStatus(ctx context.Context, id uuid.UUID, status string) (db.StudentProfile, error) {
+	return r.queries.UpdateStudentEnrollmentStatus(ctx, db.UpdateStudentEnrollmentStatusParams{
+		ID:               id,
+		EnrollmentStatus: status,
+	})
+}
+
 func (r *StudentRepository) GetWithClass(ctx context.Context, id uuid.UUID) (db.GetStudentWithClassRow, error) {
 	return r.queries.GetStudentWithClass(ctx, id)
 }
@@ -65,10 +72,3 @@ func (r *StudentRepository) DeleteUser(ctx context.Context, id uuid.UUID) error 
 	return r.queries.DeleteUser(ctx, id)
 }
 
-func (r *StudentRepository) ListHouses(ctx context.Context) ([]db.House, error) {
-	return r.queries.ListHouses(ctx)
-}
-
-func (r *StudentRepository) UpdateHouse(ctx context.Context, params db.UpdateStudentHouseParams) (db.StudentProfile, error) {
-	return r.queries.UpdateStudentHouse(ctx, params)
-}

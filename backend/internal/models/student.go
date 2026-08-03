@@ -27,6 +27,10 @@ type UpdateStudentRequest struct {
 	Gender         string `json:"gender" binding:"omitempty,oneof=male female"`
 }
 
+type UpdateStudentEnrollmentStatusRequest struct {
+	Status string `json:"status" binding:"required,oneof=active left"`
+}
+
 type StudentResponse struct {
 	ID             string `json:"id"`
 	UserID         string `json:"user_id"`

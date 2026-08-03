@@ -5,7 +5,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/openschool-org/openschool/internal/handlers"
 	"github.com/openschool-org/openschool/internal/repositories"
+	notificationsrepositories "github.com/openschool-org/openschool/internal/repositories/notifications"
+	timetablerepositories "github.com/openschool-org/openschool/internal/repositories/timetable"
 	"github.com/openschool-org/openschool/internal/services"
+	notificationsservices "github.com/openschool-org/openschool/internal/services/notifications"
 )
 
 func RegisterAttendanceRoutes(teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
@@ -13,7 +16,20 @@ func RegisterAttendanceRoutes(teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Poo
 	userRepo := repositories.NewUserRepository(pool)
 	teacherRepo := repositories.NewTeacherRepository(pool)
 	classRepo := repositories.NewClassRepository(pool)
-	service := services.NewAttendanceService(repo, userRepo, teacherRepo, classRepo)
+	studentRepo := repositories.NewStudentRepository(pool)
+	guardianRepo := repositories.NewGuardianRepository(pool)
+	notifications := notificationsservices.NewNotificationService(
+		notificationsrepositories.NewNotificationRepository(pool),
+		classRepo,
+		timetablerepositories.NewGradeSectionRepository(pool),
+		repositories.NewSectionHeadRepository(pool),
+		teacherRepo,
+		studentRepo,
+		guardianRepo,
+		repositories.NewSchoolRepository(pool),
+	)
+	auditSvc := services.NewAuditService(repositories.NewAuditRepository(pool))
+	service := services.NewAttendanceService(repo, userRepo, teacherRepo, classRepo, studentRepo, guardianRepo, notifications, auditSvc)
 	handler := handlers.NewAttendanceHandler(service)
 
 	teacherOrAdmin.POST("/attendance/sessions", handler.CreateSession)

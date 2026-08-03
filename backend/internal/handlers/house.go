@@ -110,3 +110,13 @@ func (h *HouseHandler) ReassignMissing(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"assigned": assigned})
 }
+
+func (h *HouseHandler) ReassignMissingStaff(c *gin.Context) {
+	assigned, err := h.service.ReassignMissingStaff(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"assigned": assigned})
+}

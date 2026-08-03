@@ -22,10 +22,6 @@ type Querier interface {
 	AssignGradeToSection(ctx context.Context, arg AssignGradeToSectionParams) error
 	AssignSubjectTeacherToClass(ctx context.Context, arg AssignSubjectTeacherToClassParams) error
 	AssignSubjectToTeacher(ctx context.Context, arg AssignSubjectToTeacherParams) error
-	// Assigns each student_ids[i] to house_ids[i] in a single statement, for
-	// ReassignMissing — avoids one UPDATE round-trip per student when
-	// reassigning houses for an entire cohort at once.
-	BulkUpdateStudentHouses(ctx context.Context, arg BulkUpdateStudentHousesParams) error
 	CopyTimetableEntries(ctx context.Context, arg CopyTimetableEntriesParams) error
 	CountEntriesBySubjectForTimetable(ctx context.Context, timetableID uuid.UUID) ([]CountEntriesBySubjectForTimetableRow, error)
 	CountGroupSubjects(ctx context.Context, groupID uuid.UUID) (int64, error)
@@ -34,6 +30,7 @@ type Querier interface {
 	CountUsersByRole(ctx context.Context, role string) (int64, error)
 	CreateAcademicYear(ctx context.Context, arg CreateAcademicYearParams) (AcademicYear, error)
 	CreateAttendanceSession(ctx context.Context, arg CreateAttendanceSessionParams) (AttendanceSession, error)
+	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error)
 	CreateClass(ctx context.Context, arg CreateClassParams) (Class, error)
 	CreateClassroom(ctx context.Context, arg CreateClassroomParams) (Classroom, error)
 	CreateGrade(ctx context.Context, arg CreateGradeParams) (Grade, error)
@@ -71,6 +68,10 @@ type Querier interface {
 	DeleteDraftTimetable(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteGrade(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteGradeSection(ctx context.Context, id uuid.UUID) (int64, error)
+	// Blocked while linked to any student, since student_guardians cascades on
+	// delete and silently unlinking a shared guardian from every child would be
+	// surprising — admins must unlink each student first.
+	DeleteGuardian(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteHouse(ctx context.Context, id uuid.UUID) (int64, error)
 	// blocked while any of its groups still carry enrollments
 	DeleteLevel(ctx context.Context, id uuid.UUID) (int64, error)
@@ -102,6 +103,11 @@ type Querier interface {
 	// than DO NOTHING) is required so RETURNING always yields a row, whether
 	// this call created it or another concurrent request already did.
 	EnsureUserExists(ctx context.Context, arg EnsureUserExistsParams) (User, error)
+	// Near-matches by phone or email, surfaced as a soft warning ("this
+	// guardian may already exist") when creating a new guardian record —
+	// never hard-blocked, since a shared home phone across two guardians is
+	// legitimate.
+	FindGuardianDuplicateCandidates(ctx context.Context, arg FindGuardianDuplicateCandidatesParams) ([]Guardian, error)
 	GetAcademicYearByID(ctx context.Context, id uuid.UUID) (AcademicYear, error)
 	GetAttendanceRecord(ctx context.Context, arg GetAttendanceRecordParams) (AttendanceRecord, error)
 	GetAttendanceSessionByClassAndDate(ctx context.Context, arg GetAttendanceSessionByClassAndDateParams) (AttendanceSession, error)
@@ -179,6 +185,10 @@ type Querier interface {
 	// grade and teacher resolved, plus enough counts to show marked/pending and
 	// how many of the enrolled students have a record so far
 	ListAttendanceSessionsByDate(ctx context.Context, date pgtype.Date) ([]ListAttendanceSessionsByDateRow, error)
+	// entity_type/entity_id are optional filters (pass a zero UUID / empty
+	// string to skip that filter — checked in the repository layer, since
+	// sqlc.narg with a nullable uuid comparison reads awkwardly here).
+	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]ListAuditLogsRow, error)
 	ListClassIDsByGrade(ctx context.Context, arg ListClassIDsByGradeParams) ([]uuid.UUID, error)
 	// Every student in the class, with their mark for this term+subject if one
 	// has been entered yet (NULL columns otherwise) — powers the marks-entry
@@ -204,9 +214,12 @@ type Querier interface {
 	// one round trip — used to build notification recipient lists without a
 	// ListByStudent call per student (see timetable.go's notifyPublication).
 	ListGuardianUserIDsByStudentIDs(ctx context.Context, studentIds []uuid.UUID) ([]pgtype.UUID, error)
-	// Every guardian on file, for the "link an existing guardian to this
-	// student too" search picker (siblings sharing a guardian).
-	ListGuardians(ctx context.Context) ([]Guardian, error)
+	// Every guardian on file, optionally filtered by a search term matched
+	// against name/phone/email and/or restricted to "orphans" (linked to no
+	// student — e.g. their last child left the school). Used both by the
+	// guardian directory and the "link an existing guardian to this student
+	// too" search picker (siblings sharing a guardian).
+	ListGuardians(ctx context.Context, arg ListGuardiansParams) ([]Guardian, error)
 	ListGuardiansByStudent(ctx context.Context, studentID uuid.UUID) ([]ListGuardiansByStudentRow, error)
 	ListHouses(ctx context.Context) ([]House, error)
 	ListLevels(ctx context.Context) ([]Level, error)
@@ -244,6 +257,10 @@ type Querier interface {
 	ListStudents(ctx context.Context) ([]ListStudentsRow, error)
 	ListStudentsByClass(ctx context.Context, classID uuid.UUID) ([]StudentProfile, error)
 	ListStudentsByGroup(ctx context.Context, arg ListStudentsByGroupParams) ([]ListStudentsByGroupRow, error)
+	// Linked students for the guardian directory's "children" column — works
+	// regardless of whether the guardian has a portal login (unlike
+	// ListStudentsByGuardianUserID, which requires one).
+	ListStudentsByGuardianID(ctx context.Context, guardianID uuid.UUID) ([]StudentProfile, error)
 	// The signed-in parent's linked children, for the parent portal.
 	ListStudentsByGuardianUserID(ctx context.Context, userID pgtype.UUID) ([]ListStudentsByGuardianUserIDRow, error)
 	ListStudentsBySubject(ctx context.Context, arg ListStudentsBySubjectParams) ([]ListStudentsBySubjectRow, error)
@@ -263,6 +280,7 @@ type Querier interface {
 	ListTeacherWorkload(ctx context.Context, teacherID uuid.UUID) ([]ListTeacherWorkloadRow, error)
 	ListTeachers(ctx context.Context) ([]TeacherProfile, error)
 	ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID) ([]TeacherProfile, error)
+	ListTeachersMissingHouse(ctx context.Context) ([]TeacherProfile, error)
 	ListTermsByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]Term, error)
 	ListTimetableEntriesByTimetable(ctx context.Context, timetableID uuid.UUID) ([]ListTimetableEntriesByTimetableRow, error)
 	ListTimetablePeriodsBySection(ctx context.Context, gradeSectionID uuid.UUID) ([]TimetablePeriod, error)
@@ -276,6 +294,13 @@ type Querier interface {
 	MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error)
 	MarkNotificationRecipientRead(ctx context.Context, arg MarkNotificationRecipientReadParams) error
 	MarkNotificationSent(ctx context.Context, id uuid.UUID) (Notification, error)
+	// Picks whichever house currently has the fewest students, breaking ties
+	// randomly. A newly-created house has zero members and so is naturally
+	// preferred until it catches up — no manual remainder bookkeeping needed.
+	PickBalancedHouseForStudent(ctx context.Context) (uuid.UUID, error)
+	// Same balancing logic as PickBalancedHouseForStudent, but against the
+	// teacher_profiles pool — staff and students are balanced independently.
+	PickBalancedHouseForTeacher(ctx context.Context) (uuid.UUID, error)
 	PublishTimetable(ctx context.Context, arg PublishTimetableParams) (Timetable, error)
 	RejectTimetable(ctx context.Context, arg RejectTimetableParams) (Timetable, error)
 	RemoveGradeFromSection(ctx context.Context, arg RemoveGradeFromSectionParams) error
@@ -306,9 +331,12 @@ type Querier interface {
 	UpdateSelectionGroup(ctx context.Context, arg UpdateSelectionGroupParams) (SelectionGroup, error)
 	UpdateStream(ctx context.Context, arg UpdateStreamParams) (Stream, error)
 	UpdateStreamGroup(ctx context.Context, arg UpdateStreamGroupParams) (StreamGroup, error)
+	UpdateStudentEnrollmentStatus(ctx context.Context, arg UpdateStudentEnrollmentStatusParams) (StudentProfile, error)
 	UpdateStudentHouse(ctx context.Context, arg UpdateStudentHouseParams) (StudentProfile, error)
 	UpdateStudentProfile(ctx context.Context, arg UpdateStudentProfileParams) (StudentProfile, error)
 	UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error)
+	UpdateTeacherEmploymentStatus(ctx context.Context, arg UpdateTeacherEmploymentStatusParams) (TeacherProfile, error)
+	UpdateTeacherHouse(ctx context.Context, arg UpdateTeacherHouseParams) (TeacherProfile, error)
 	UpdateTeacherProfile(ctx context.Context, arg UpdateTeacherProfileParams) (TeacherProfile, error)
 	UpdateTerm(ctx context.Context, arg UpdateTermParams) (Term, error)
 	UpdateTimetablePeriod(ctx context.Context, arg UpdateTimetablePeriodParams) (TimetablePeriod, error)

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Button,
   Tag,
@@ -12,14 +12,17 @@ import {
   ModalBody,
   ModalFooter,
 } from "@carbon/react";
-import { Add, UserFollow, Locked } from "@carbon/icons-react";
+import { Add, UserFollow, Locked, Search } from "@carbon/icons-react";
 import {
   useGuardiansByStudent,
   useAddGuardian,
   useUnlinkGuardian,
   useSetPrimaryGuardian,
   useProvisionGuardianLogin,
+  useSearchGuardians,
+  useLinkGuardian,
 } from "../../../queries/useGuardians";
+import { GUARDIAN_RELATIONSHIPS } from "../../../services/guardian";
 import type { GuardianRelationship, GuardianWithPrimary } from "../../../services/guardian";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import EmptyState from "../../../components/common/EmptyState";
@@ -28,12 +31,7 @@ import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 // A student can have at most 2 guardians on file.
 const MAX_GUARDIANS = 2;
 
-const RELATIONSHIPS: { value: GuardianRelationship; label: string }[] = [
-  { value: "father", label: "Father" },
-  { value: "mother", label: "Mother" },
-  { value: "guardian", label: "Guardian" },
-  { value: "other", label: "Other" },
-];
+const RELATIONSHIPS = GUARDIAN_RELATIONSHIPS;
 
 const EMPTY_GUARDIAN_FORM = {
   full_name: "",
@@ -44,12 +42,42 @@ const EMPTY_GUARDIAN_FORM = {
 
 const EMPTY_LOGIN_FORM = { given_name: "", family_name: "", username: "", password: "" };
 
-function AddGuardianModal({ studentId, onClose }: { studentId: string; onClose: () => void }) {
+function useDebounced<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+function AddGuardianModal({
+  studentId,
+  existingGuardianIds,
+  onClose,
+}: {
+  studentId: string;
+  existingGuardianIds: string[];
+  onClose: () => void;
+}) {
+  const [step, setStep] = useState<"search" | "create">("search");
+  const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounced(query, 300);
+  const search = useSearchGuardians(debouncedQuery);
+  const linkGuardian = useLinkGuardian(studentId);
+
   const addGuardian = useAddGuardian(studentId);
   const [form, setForm] = useState(EMPTY_GUARDIAN_FORM);
   const [touched, setTouched] = useState<{ full_name?: boolean; phone?: boolean }>({});
+  const [created, setCreated] = useState<{ name: string; duplicates: number } | null>(null);
 
   const isValid = form.full_name.trim().length > 0 && form.phone.trim().length > 0;
+
+  const results = (search.data ?? []).filter((g) => !existingGuardianIds.includes(g.id));
+
+  const handleLink = (guardianId: string) => {
+    linkGuardian.mutate({ guardianId, isPrimaryContact: false }, { onSuccess: onClose });
+  };
 
   const handleAdd = () => {
     setTouched({ full_name: true, phone: true });
@@ -64,71 +92,171 @@ function AddGuardianModal({ studentId, onClose }: { studentId: string; onClose: 
         },
         isPrimaryContact: false,
       },
-      { onSuccess: onClose },
+      {
+        onSuccess: (result) => {
+          if (result.possible_duplicates.length > 0) {
+            // Guardian was created and linked, but shares a phone/email with
+            // an existing record — surface it instead of silently closing,
+            // since it may mean the admin meant to link the existing one.
+            setCreated({ name: result.guardian.full_name, duplicates: result.possible_duplicates.length });
+          } else {
+            onClose();
+          }
+        },
+      },
     );
   };
 
   return (
     <ComposedModal open size="sm" onClose={onClose}>
-      <ModalHeader title="Add guardian" />
+      <ModalHeader title={step === "search" ? "Add guardian" : "Create new guardian"} />
       <ModalBody>
-        {addGuardian.isError && (
+        {created && (
           <InlineNotification
-            kind="error"
-            title="Error"
-            subtitle={getErrorMessage(addGuardian.error, "Failed to add guardian")}
+            kind="warning"
+            title="Possible duplicate"
+            subtitle={`${created.name} was added, but ${created.duplicates} existing guardian(s) share the same phone or email. Check the Guardians directory if this might be the same person.`}
             lowContrast
             hideCloseButton
             style={{ marginBottom: "1rem", maxWidth: "100%" }}
           />
         )}
-        <div style={{ display: "grid", gap: "1rem" }}>
-          <TextInput
-            id="guardian-name"
-            labelText="Full Name"
-            value={form.full_name}
-            onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
-            onBlur={() => setTouched((t) => ({ ...t, full_name: true }))}
-            invalid={!!touched.full_name && !form.full_name.trim()}
-            invalidText="A name is required."
-          />
-          <Select
-            id="guardian-relationship"
-            labelText="Relationship"
-            value={form.relationship}
-            onChange={(e) =>
-              setForm((f) => ({ ...f, relationship: e.target.value as GuardianRelationship }))
-            }
-          >
-            {RELATIONSHIPS.map((r) => (
-              <SelectItem key={r.value} value={r.value} text={r.label} />
-            ))}
-          </Select>
-          <TextInput
-            id="guardian-phone"
-            labelText="Phone"
-            value={form.phone}
-            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-            onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
-            invalid={!!touched.phone && !form.phone.trim()}
-            invalidText="A phone number is required."
-          />
-          <TextInput
-            id="guardian-email"
-            labelText="Email (optional, needed to provision a portal login later)"
-            type="email"
-            value={form.email}
-            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-          />
-        </div>
+
+        {step === "search" && !created && (
+          <>
+            <p style={{ fontSize: "0.8125rem", color: "#525252", margin: "0 0 1rem" }}>
+              Search first — siblings often share a guardian already on file.
+            </p>
+            <div className="os-search" style={{ marginBottom: "1rem" }}>
+              <Search size={16} className="os-search__icon" />
+              <input
+                className="os-search__input"
+                placeholder="Search by name, phone, or email…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            {query.trim().length > 0 && (
+              <div style={{ display: "grid", gap: "0.5rem", marginBottom: "1rem" }}>
+                {results.length === 0 && !search.isLoading && (
+                  <p style={{ fontSize: "0.8125rem", color: "#8d8d8d" }}>No matching guardians found.</p>
+                )}
+                {results.map((g) => (
+                  <div
+                    key={g.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "0.625rem 0.875rem",
+                      border: "1px solid #e0e0e0",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: "0.8125rem" }}>{g.full_name}</div>
+                      <div style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>{g.phone}</div>
+                    </div>
+                    <Button size="sm" kind="tertiary" onClick={() => handleLink(g.id)} disabled={linkGuardian.isPending}>
+                      Link
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {linkGuardian.isError && (
+              <InlineNotification
+                kind="error"
+                title="Error"
+                subtitle={getErrorMessage(linkGuardian.error, "Failed to link guardian")}
+                lowContrast
+                hideCloseButton
+                style={{ marginBottom: "1rem", maxWidth: "100%" }}
+              />
+            )}
+          </>
+        )}
+
+        {step === "create" && !created && (
+          <>
+            {addGuardian.isError && (
+              <InlineNotification
+                kind="error"
+                title="Error"
+                subtitle={getErrorMessage(addGuardian.error, "Failed to add guardian")}
+                lowContrast
+                hideCloseButton
+                style={{ marginBottom: "1rem", maxWidth: "100%" }}
+              />
+            )}
+            <div style={{ display: "grid", gap: "1rem" }}>
+              <TextInput
+                id="guardian-name"
+                labelText="Full Name"
+                value={form.full_name}
+                onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
+                onBlur={() => setTouched((t) => ({ ...t, full_name: true }))}
+                invalid={!!touched.full_name && !form.full_name.trim()}
+                invalidText="A name is required."
+              />
+              <Select
+                id="guardian-relationship"
+                labelText="Relationship"
+                value={form.relationship}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, relationship: e.target.value as GuardianRelationship }))
+                }
+              >
+                {RELATIONSHIPS.map((r) => (
+                  <SelectItem key={r.value} value={r.value} text={r.label} />
+                ))}
+              </Select>
+              <TextInput
+                id="guardian-phone"
+                labelText="Phone"
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
+                invalid={!!touched.phone && !form.phone.trim()}
+                invalidText="A phone number is required."
+              />
+              <TextInput
+                id="guardian-email"
+                labelText="Email (optional, needed to provision a portal login later)"
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              />
+            </div>
+          </>
+        )}
       </ModalBody>
       <ModalFooter>
-        <Button kind="secondary" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button kind="primary" onClick={handleAdd} disabled={!isValid || addGuardian.isPending}>
-          {addGuardian.isPending ? "Adding…" : "Add Guardian"}
-        </Button>
+        {created ? (
+          <Button kind="primary" onClick={onClose}>
+            Done
+          </Button>
+        ) : step === "search" ? (
+          <>
+            <Button kind="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button kind="tertiary" onClick={() => setStep("create")}>
+              None of these — create new
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button kind="secondary" onClick={() => setStep("search")}>
+              Back to search
+            </Button>
+            <Button kind="primary" onClick={handleAdd} disabled={!isValid || addGuardian.isPending}>
+              {addGuardian.isPending ? "Adding…" : "Add Guardian"}
+            </Button>
+          </>
+        )}
       </ModalFooter>
     </ComposedModal>
   );
@@ -369,7 +497,13 @@ export default function StudentGuardians({ studentId }: { studentId: string }) {
         )}
       </div>
 
-      {addOpen && <AddGuardianModal studentId={studentId} onClose={() => setAddOpen(false)} />}
+      {addOpen && (
+        <AddGuardianModal
+          studentId={studentId}
+          existingGuardianIds={(guardians ?? []).map((g) => g.id)}
+          onClose={() => setAddOpen(false)}
+        />
+      )}
       {loginFor && (
         <ProvisionLoginModal
           studentId={studentId}
