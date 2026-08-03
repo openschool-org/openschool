@@ -29,21 +29,27 @@ Every still-open finding from the (now-removed) codebase audit, tracked here so 
 
 ## Phase 1 — Session timeout, house colors, audit-log foundation
 
+**Status: mostly done.** Audit-log foundation and house colors are implemented and committed. Session timeout is the one item still outstanding.
+
 **Why first:** small and self-contained, and the audit-log table it introduces is reused by every later phase that needs a change history (house reassignment, attendance-lock overrides, promotion, staff moves).
 
-- **Session timeout (frontend):** add an idle-timeout hook (e.g. `useIdleLogout`) wired near `ProtectedRoute` — debounced pointer/keyboard activity listener resetting a 30-minute timer; on expiry, call `useThunderID().signOut()` and redirect to `/signin`. Check whether `@thunderid/react`'s provider config already exposes a token-lifecycle/idle option before hand-rolling the timer.
-- **Audit-log infrastructure (backend, net-new):** no audit logging exists anywhere in the codebase today. Add an `audit_logs` table (`actor_user_id`, `action`, `entity_type`, `entity_id`, `metadata jsonb`, `created_at`) via migration, plus a small `internal/services/auditlog` package exposing `Record(ctx, actor, action, entityType, entityID, meta)`. This becomes the shared primitive every later "must be recorded in the audit log" requirement (house changes, attendance-lock overrides, promotions, staff reassignment) calls into — build it once here.
-- **House colors:** `houses` table and `ReassignMissing()` round-robin assignment already exist (`internal/services/house.go`); add a `color` column via migration, extend `CreateHouseRequest`/the service/the existing `Houses.tsx` modal form (already has the Carbon `ComposedModal` pattern to extend — no new UI convention needed). Call the new audit-log helper from manual reassignment (already admin-only via the existing route).
+- ⬜ **Session timeout (frontend) — not started.** Add an idle-timeout hook (e.g. `useIdleLogout`) wired near `ProtectedRoute` — debounced pointer/keyboard activity listener resetting a 30-minute timer; on expiry, call `useThunderID().signOut()` and redirect to `/signin`. Check whether `@thunderid/react`'s provider config already exposes a token-lifecycle/idle option before hand-rolling the timer.
+- ✅ **Audit-log infrastructure (backend) — done.** `audit_logs` table added via migration `000023` (`entity_type`, `entity_id`, `action`, `actor_id`, `before`/`after` jsonb, `reason`, `created_at`), plus `internal/services/audit.go` (`AuditService.Record`/`List`) and `internal/repositories/audit.go`. Wired into house changes and attendance-lock overrides (see Phase 3). Exposed read-only at `GET /audit-logs` (admin-only) with a matching **Audit Log** tab in Settings.
+- ✅ **House colors — done, and the assignment algorithm was corrected along the way.** Added `houses.color`; extended `CreateHouseRequest`/`Houses.tsx`'s existing modal with a color picker + swatches. The old `ReassignMissing()` round-robin (index-number `mod` a manually-configured `remainder` per house) was replaced with a **least-populated-house + random-tiebreak** query (`PickBalancedHouseForStudent`/`PickBalancedHouseForTeacher`) — it self-balances without admin-maintained remainder config and automatically pulls newly-added houses into rotation. Manual house changes go through `HouseService.ChangeStudentHouse`/`ChangeTeacherHouse`, which call the audit-log helper (admin-only routes, unchanged).
+  - **Also done, ahead of Phase 6:** staff (teacher) houses now mirror student houses — `teacher_profiles.house_id`, auto-assigned on hire from a separate balance pool, admin-only manual override via `PUT /teachers/:id/house`, audited the same way.
 
 ---
 
 ## Phase 2 — Guardian directory & shared-guardian support
 
+**Status: done**, plus edit/delete support that wasn't in the original scope.
+
 **Why the schema work is smaller than it looks:** the `student_guardians` many-to-many junction already supports one guardian linked to multiple students and one student having multiple guardians — the core data-model ask in the feature request is already met. What's missing is discoverability (search) and a real UI surface (today guardians only appear inline on a student's detail page).
 
-- **Backend:** add a real search query to `ListGuardians` (name/phone/email `ILIKE`) — today it's an unfiltered flat list used only as the "link existing guardian" picker.
-- **Frontend:** new `/guardians` route + list page under the People nav group, built with the existing CRUD convention (`ComposedModal` forms, `ConfirmDeleteModal`, `EmptyState`, `InlineNotification` — see `StudentGuardians.tsx`). Wire the "link an existing guardian to another student" flow to the currently-dead `useLinkGuardian` hook, distinct from the create+link combo `useAddGuardian` already in use.
-- **Guardian detail view:** surface notification history and portal-authentication status (data already available via `ProvisionLogin` results and existing notification recipient records — no new domain concept, just a new view assembling existing data).
+- ✅ **Backend — done.** `ListGuardians` now takes an optional `search` param (`ILIKE` across name/phone/email). Added `ListStudentsByGuardianID` (works without a portal login), `FindGuardianDuplicateCandidates` (soft duplicate warning by phone/email at create time — never a hard block), and `DELETE /guardians/:id` (blocked while linked to any student, since the M:N junction cascades on delete and silently unlinking a shared guardian from every child would be surprising).
+- ✅ **Frontend — done.** `/guardians` route + `GuardiansDirectory.tsx` under the People nav group, using the existing CRUD convention (`ComposedModal` forms, `ConfirmDeleteModal`, `EmptyState`, `InlineNotification`). The "link an existing guardian to another student" flow now uses `useLinkGuardian` directly, as a first step in `StudentGuardians.tsx`'s add-guardian modal (search first, "none of these — create new" as the fallback) — the create+link combo `useAddGuardian` is now the fallback path, not the only path.
+- ✅ **Guardian detail view — done.** Notification history (`GET /guardians/:id/notifications`, reusing the existing `ListMyNotifications` query with an arbitrary user id) and portal-authentication status (`user_id` presence) are both shown in the directory's detail panel.
+- ✅ **Edit/delete (not originally scoped, added on request):** the directory's detail panel now has Edit (reuses `UpdateGuardianRequest`) and Delete (`useDeleteGuardian`, surfaces the backend's in-use block with a clear "unlink first" message) actions.
 
 ---
 
@@ -103,3 +109,9 @@ Per the decision above, this does **not** touch ThunderID or the base `role` col
 | 5 — Promotion & class reassignment | Phase 4 | 6 |
 | 6 — Staff & profile expansion | Phase 4 | 5 |
 | 7 — Analytics & CRUD polish | 1–6 (touches most modules) | — |
+
+
+
+### New features to built 
+- Every member has password reset Feature And working Correctly with onetime password. initial accout creation. 
+- In the Student,s Gaurdians, Teachers Add a new feature to see the orphans Gaurdians without children. Teachers Resigned or transfers from school, Students leave the school And make them inactive accordingly                                                                                          

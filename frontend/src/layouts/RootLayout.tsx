@@ -21,6 +21,7 @@ import {
   Calendar,
   Notification,
   UserFollow,
+  UserAdmin,
   Trophy,
   Table,
   Category,
@@ -49,6 +50,7 @@ const NAV_GROUPS: {
     label: "People",
     items: [
       { path: "/students", label: "Students", Icon: UserMultiple },
+      { path: "/guardians", label: "Guardians", Icon: UserAdmin },
       { path: "/teachers", label: "Teachers", Icon: Education },
       { path: "/prefects", label: "School Prefects", Icon: Trophy },
     ],

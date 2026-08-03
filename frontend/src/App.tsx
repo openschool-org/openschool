@@ -17,6 +17,7 @@ import Dashboard from "./pages/admin/dashboard/Dashboard";
 import Students from "./pages/admin/students/Students";
 import AddStudent from "./pages/admin/students/AddStudent";
 import StudentDetail from "./pages/admin/students/StudentDetail";
+import GuardiansDirectory from "./pages/admin/guardians/GuardiansDirectory";
 import Teachers from "./pages/admin/teachers/Teachers";
 import AddTeacher from "./pages/admin/teachers/AddTeacher";
 import TeacherDetail from "./pages/admin/teachers/TeacherDetail";
@@ -139,6 +140,7 @@ function App() {
           <Route path="/students" element={<Students />} />
           <Route path="/students/new" element={<AddStudent />} />
           <Route path="/students/:id" element={<StudentDetail />} />
+          <Route path="/guardians" element={<GuardiansDirectory />} />
           <Route path="/teachers" element={<Teachers />} />
           <Route path="/teachers/new" element={<AddTeacher />} />
           <Route path="/teachers/:id" element={<TeacherDetail />} />

@@ -25,12 +25,39 @@ func (r *GuardianRepository) GetByID(ctx context.Context, id uuid.UUID) (db.Guar
 	return r.queries.GetGuardianByID(ctx, id)
 }
 
-func (r *GuardianRepository) List(ctx context.Context) ([]db.Guardian, error) {
-	return r.queries.ListGuardians(ctx)
+// List returns every guardian, optionally filtered by a search term matched
+// against name/phone/email (pass "" for no filter) and/or restricted to
+// orphans — guardians linked to no student.
+func (r *GuardianRepository) List(ctx context.Context, search string, orphansOnly bool) ([]db.Guardian, error) {
+	return r.queries.ListGuardians(ctx, db.ListGuardiansParams{
+		Search:      pgtype.Text{String: search, Valid: search != ""},
+		OrphansOnly: pgtype.Bool{Bool: orphansOnly, Valid: orphansOnly},
+	})
+}
+
+// FindDuplicateCandidates returns guardians that share the given phone (or
+// email, if provided) — a soft "this may already exist" signal surfaced at
+// create time, never a hard block.
+func (r *GuardianRepository) FindDuplicateCandidates(ctx context.Context, phone, email string) ([]db.Guardian, error) {
+	return r.queries.FindGuardianDuplicateCandidates(ctx, db.FindGuardianDuplicateCandidatesParams{
+		Phone: phone,
+		Email: pgtype.Text{String: email, Valid: email != ""},
+	})
+}
+
+// ListStudentsByGuardianID returns the students linked to a guardian,
+// regardless of whether that guardian has a portal login — used by the
+// guardian directory's "children" column.
+func (r *GuardianRepository) ListStudentsByGuardianID(ctx context.Context, guardianID uuid.UUID) ([]db.StudentProfile, error) {
+	return r.queries.ListStudentsByGuardianID(ctx, guardianID)
 }
 
 func (r *GuardianRepository) Update(ctx context.Context, params db.UpdateGuardianParams) (db.Guardian, error) {
 	return r.queries.UpdateGuardian(ctx, params)
+}
+
+func (r *GuardianRepository) Delete(ctx context.Context, id uuid.UUID) (int64, error) {
+	return r.queries.DeleteGuardian(ctx, id)
 }
 
 func (r *GuardianRepository) LinkToStudent(ctx context.Context, studentID uuid.UUID, guardianID uuid.UUID, isPrimary bool) error {

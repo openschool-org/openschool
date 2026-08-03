@@ -1,6 +1,15 @@
 import api from "../lib/api";
+import type { Student } from "./student";
+import type { MyNotification } from "./notifications/notification";
 
 export type GuardianRelationship = "father" | "mother" | "guardian" | "other";
+
+export const GUARDIAN_RELATIONSHIPS: { value: GuardianRelationship; label: string }[] = [
+  { value: "father", label: "Father" },
+  { value: "mother", label: "Mother" },
+  { value: "guardian", label: "Guardian" },
+  { value: "other", label: "Other" },
+];
 
 // Matches db.Guardian JSON shape returned by the backend
 export interface Guardian {
@@ -24,6 +33,13 @@ export interface CreateGuardianRequest {
   email?: string;
 }
 
+export interface CreateGuardianResult {
+  guardian: Guardian;
+  possible_duplicates: Guardian[];
+}
+
+export type UpdateGuardianRequest = CreateGuardianRequest;
+
 export interface ProvisionGuardianLoginRequest {
   username: string;
   password: string;
@@ -32,15 +48,34 @@ export interface ProvisionGuardianLoginRequest {
 }
 
 export const guardianApi = {
-  list: () => api.get<Guardian[]>("/guardians").then((r) => r.data),
+  list: (search?: string, orphansOnly?: boolean) =>
+    api
+      .get<Guardian[]>("/guardians", {
+        params: {
+          ...(search ? { search } : {}),
+          ...(orphansOnly ? { orphans: "true" } : {}),
+        },
+      })
+      .then((r) => r.data),
 
   listByStudent: (studentId: string) =>
     api
       .get<GuardianWithPrimary[]>(`/students/${studentId}/guardians`)
       .then((r) => r.data),
 
+  listStudents: (guardianId: string) =>
+    api.get<Student[]>(`/guardians/${guardianId}/students`).then((r) => r.data),
+
+  listNotifications: (guardianId: string) =>
+    api.get<MyNotification[]>(`/guardians/${guardianId}/notifications`).then((r) => r.data),
+
   create: (data: CreateGuardianRequest) =>
-    api.post<Guardian>("/guardians", data).then((r) => r.data),
+    api.post<CreateGuardianResult>("/guardians", data).then((r) => r.data),
+
+  update: (id: string, data: UpdateGuardianRequest) =>
+    api.put<Guardian>(`/guardians/${id}`, data).then((r) => r.data),
+
+  remove: (id: string) => api.delete(`/guardians/${id}`).then((r) => r.data),
 
   linkToStudent: (studentId: string, guardianId: string, isPrimaryContact: boolean) =>
     api

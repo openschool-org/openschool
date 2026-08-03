@@ -10,7 +10,10 @@ import (
 
 func RegisterHouseRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewHouseRepository(pool)
-	service := services.NewHouseService(repo)
+	studentRepo := repositories.NewStudentRepository(pool)
+	teacherRepo := repositories.NewTeacherRepository(pool)
+	auditSvc := services.NewAuditService(repositories.NewAuditRepository(pool))
+	service := services.NewHouseService(repo, studentRepo, teacherRepo, auditSvc)
 	handler := handlers.NewHouseHandler(service)
 
 	admin.POST("/houses", handler.Create)
@@ -19,4 +22,5 @@ func RegisterHouseRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup
 	admin.PUT("/houses/:id", handler.Update)
 	admin.DELETE("/houses/:id", handler.Delete)
 	admin.POST("/houses/reassign-missing", handler.ReassignMissing)
+	admin.POST("/houses/reassign-missing-staff", handler.ReassignMissingStaff)
 }

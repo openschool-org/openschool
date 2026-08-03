@@ -14,12 +14,13 @@ import (
 )
 
 type StudentService struct {
-	repo *repositories.StudentRepository
-	idp  identity.Provider
+	repo     *repositories.StudentRepository
+	idp      identity.Provider
+	houseSvc *HouseService
 }
 
-func NewStudentService(repo *repositories.StudentRepository, idp identity.Provider) *StudentService {
-	return &StudentService{repo: repo, idp: idp}
+func NewStudentService(repo *repositories.StudentRepository, idp identity.Provider, houseSvc *HouseService) *StudentService {
+	return &StudentService{repo: repo, idp: idp, houseSvc: houseSvc}
 }
 
 func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStudentRequest) (db.StudentProfile, error) {
@@ -66,10 +67,8 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 	}
 
 	houseID := pgtype.UUID{}
-	if houses, err := s.repo.ListHouses(ctx); err == nil {
-		if id, ok := houseForIndex(req.IndexNumber, houses); ok {
-			houseID = pgtype.UUID{Bytes: id, Valid: true}
-		}
+	if id, ok := s.houseSvc.PickForStudent(ctx); ok {
+		houseID = pgtype.UUID{Bytes: id, Valid: true}
 	}
 
 	// create student profile
@@ -151,20 +150,22 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 	})
 }
 
-func (s *StudentService) UpdateStudentHouse(ctx context.Context, id uuid.UUID, houseID string) (db.StudentProfile, error) {
-	house := pgtype.UUID{}
-	if houseID != "" {
-		parsed, err := uuid.Parse(houseID)
-		if err != nil {
-			return db.StudentProfile{}, fmt.Errorf("invalid house id")
-		}
-		house = pgtype.UUID{Bytes: parsed, Valid: true}
-	}
+var validEnrollmentStatuses = map[string]bool{"active": true, "left": true}
 
-	return s.repo.UpdateHouse(ctx, db.UpdateStudentHouseParams{
-		ID:      id,
-		HouseID: house,
-	})
+// SetEnrollmentStatus marks a student active or left (e.g. withdrawn/
+// transferred out of the school).
+func (s *StudentService) SetEnrollmentStatus(ctx context.Context, id uuid.UUID, status string) (db.StudentProfile, error) {
+	if !validEnrollmentStatuses[status] {
+		return db.StudentProfile{}, fmt.Errorf("invalid status %q — must be active or left", status)
+	}
+	return s.repo.UpdateEnrollmentStatus(ctx, id, status)
+}
+
+// UpdateStudentHouse is the System-Administrator-only override for moving a
+// student to a different house once one is assigned. It delegates to
+// HouseService so every change is audit-logged.
+func (s *StudentService) UpdateStudentHouse(ctx context.Context, id uuid.UUID, houseID string, actorID uuid.UUID) (db.StudentProfile, error) {
+	return s.houseSvc.ChangeStudentHouse(ctx, id, houseID, actorID)
 }
 
 func (s *StudentService) DeleteStudent(ctx context.Context, id uuid.UUID) error {

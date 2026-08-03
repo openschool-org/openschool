@@ -58,6 +58,13 @@ func (r *AttendanceRepository) MarkAttendance(ctx context.Context, sessionID uui
 	})
 }
 
+// GetRecord returns the existing attendance record for a session+student,
+// or pgx.ErrNoRows if the student hasn't been marked yet this session —
+// used to detect status transitions (e.g. into "absent") before upserting.
+func (r *AttendanceRepository) GetRecord(ctx context.Context, sessionID, studentID uuid.UUID) (db.AttendanceRecord, error) {
+	return r.queries.GetAttendanceRecord(ctx, db.GetAttendanceRecordParams{SessionID: sessionID, StudentID: studentID})
+}
+
 func (r *AttendanceRepository) ListBySession(ctx context.Context, sessionID uuid.UUID) ([]db.ListAttendanceBySessionRow, error) {
 	return r.queries.ListAttendanceBySession(ctx, sessionID)
 }

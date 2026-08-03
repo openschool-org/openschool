@@ -125,6 +125,80 @@ func (h *TeacherHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusOK, teacher)
 }
 
+// UpdateHouse godoc
+// @Summary      Update teacher house
+// @Description  Assign or clear a teacher's house (System Administrator only)
+// @Tags         teachers
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "Teacher ID"
+// @Param        request body models.UpdateTeacherHouseRequest true "House assignment"
+// @Success      200 {object} models.TeacherResponse
+// @Failure      400 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /teachers/{id}/house [put]
+func (h *TeacherHandler) UpdateHouse(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var req models.UpdateTeacherHouseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	teacher, err := h.service.UpdateTeacherHouse(c.Request.Context(), id, req.HouseID, actor.ID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, teacher)
+}
+
+// UpdateEmploymentStatus godoc
+// @Summary      Update teacher employment status
+// @Description  Mark a teacher active, resigned, or transferred
+// @Tags         teachers
+// @Accept       json
+// @Produce      json
+// @Param        id path string true "Teacher ID"
+// @Param        request body models.UpdateTeacherEmploymentStatusRequest true "Status"
+// @Success      200 {object} models.TeacherResponse
+// @Failure      400 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /teachers/{id}/employment-status [put]
+func (h *TeacherHandler) UpdateEmploymentStatus(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var req models.UpdateTeacherEmploymentStatusRequest
+	if err := bindStrict(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	teacher, err := h.service.SetEmploymentStatus(c.Request.Context(), id, req.Status)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, teacher)
+}
+
 // Delete godoc
 // @Summary      Delete teacher
 // @Description  Delete a teacher profile and ThunderID user account

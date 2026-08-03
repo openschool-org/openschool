@@ -12,53 +12,27 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const bulkUpdateStudentHouses = `-- name: BulkUpdateStudentHouses :exec
-UPDATE student_profiles AS sp
-SET
-    house_id   = data.house_id,
-    updated_at = NOW()
-FROM (
-    SELECT
-        unnest($1::uuid[]) AS student_id,
-        unnest($2::uuid[])   AS house_id
-) AS data
-WHERE sp.id = data.student_id
-`
-
-type BulkUpdateStudentHousesParams struct {
-	StudentIds []uuid.UUID `json:"student_ids"`
-	HouseIds   []uuid.UUID `json:"house_ids"`
-}
-
-// Assigns each student_ids[i] to house_ids[i] in a single statement, for
-// ReassignMissing — avoids one UPDATE round-trip per student when
-// reassigning houses for an entire cohort at once.
-func (q *Queries) BulkUpdateStudentHouses(ctx context.Context, arg BulkUpdateStudentHousesParams) error {
-	_, err := q.db.Exec(ctx, bulkUpdateStudentHouses, arg.StudentIds, arg.HouseIds)
-	return err
-}
-
 const createHouse = `-- name: CreateHouse :one
-INSERT INTO houses (name, code, remainder)
+INSERT INTO houses (name, code, color)
 VALUES ($1, $2, $3)
-RETURNING id, name, code, remainder, created_at
+RETURNING id, name, code, created_at, color
 `
 
 type CreateHouseParams struct {
-	Name      string      `json:"name"`
-	Code      pgtype.Text `json:"code"`
-	Remainder int32       `json:"remainder"`
+	Name  string      `json:"name"`
+	Code  pgtype.Text `json:"code"`
+	Color string      `json:"color"`
 }
 
 func (q *Queries) CreateHouse(ctx context.Context, arg CreateHouseParams) (House, error) {
-	row := q.db.QueryRow(ctx, createHouse, arg.Name, arg.Code, arg.Remainder)
+	row := q.db.QueryRow(ctx, createHouse, arg.Name, arg.Code, arg.Color)
 	var i House
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Code,
-		&i.Remainder,
 		&i.CreatedAt,
+		&i.Color,
 	)
 	return i, err
 }
@@ -68,6 +42,9 @@ DELETE FROM houses AS h
 WHERE h.id = $1
 AND h.id NOT IN (
     SELECT DISTINCT house_id FROM student_profiles WHERE house_id IS NOT NULL
+)
+AND h.id NOT IN (
+    SELECT DISTINCT house_id FROM teacher_profiles WHERE house_id IS NOT NULL
 )
 `
 
@@ -80,7 +57,7 @@ func (q *Queries) DeleteHouse(ctx context.Context, id uuid.UUID) (int64, error) 
 }
 
 const getHouseByID = `-- name: GetHouseByID :one
-SELECT id, name, code, remainder, created_at FROM houses
+SELECT id, name, code, created_at, color FROM houses
 WHERE id = $1
 `
 
@@ -91,15 +68,15 @@ func (q *Queries) GetHouseByID(ctx context.Context, id uuid.UUID) (House, error)
 		&i.ID,
 		&i.Name,
 		&i.Code,
-		&i.Remainder,
 		&i.CreatedAt,
+		&i.Color,
 	)
 	return i, err
 }
 
 const listHouses = `-- name: ListHouses :many
-SELECT id, name, code, remainder, created_at FROM houses
-ORDER BY remainder ASC, name ASC
+SELECT id, name, code, created_at, color FROM houses
+ORDER BY name ASC
 `
 
 func (q *Queries) ListHouses(ctx context.Context) ([]House, error) {
@@ -115,8 +92,8 @@ func (q *Queries) ListHouses(ctx context.Context) ([]House, error) {
 			&i.ID,
 			&i.Name,
 			&i.Code,
-			&i.Remainder,
 			&i.CreatedAt,
+			&i.Color,
 		); err != nil {
 			return nil, err
 		}
@@ -129,7 +106,7 @@ func (q *Queries) ListHouses(ctx context.Context) ([]House, error) {
 }
 
 const listStudentsMissingHouse = `-- name: ListStudentsMissingHouse :many
-SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id FROM student_profiles
+SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status FROM student_profiles
 WHERE house_id IS NULL
 ORDER BY index_number ASC
 `
@@ -156,6 +133,7 @@ func (q *Queries) ListStudentsMissingHouse(ctx context.Context) ([]StudentProfil
 			&i.UpdatedAt,
 			&i.Gender,
 			&i.HouseID,
+			&i.EnrollmentStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -167,21 +145,104 @@ func (q *Queries) ListStudentsMissingHouse(ctx context.Context) ([]StudentProfil
 	return items, nil
 }
 
+const listTeachersMissingHouse = `-- name: ListTeachersMissingHouse :many
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status FROM teacher_profiles
+WHERE house_id IS NULL
+ORDER BY employee_number ASC
+`
+
+func (q *Queries) ListTeachersMissingHouse(ctx context.Context) ([]TeacherProfile, error) {
+	rows, err := q.db.Query(ctx, listTeachersMissingHouse)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TeacherProfile{}
+	for rows.Next() {
+		var i TeacherProfile
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FullName,
+			&i.EmployeeNumber,
+			&i.JoinedDate,
+			&i.Phone,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Title,
+			&i.Gender,
+			&i.IsActive,
+			&i.HouseID,
+			&i.EmploymentStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pickBalancedHouseForStudent = `-- name: PickBalancedHouseForStudent :one
+SELECT h.id FROM houses h
+LEFT JOIN (
+    SELECT house_id, COUNT(*) AS cnt
+    FROM student_profiles
+    WHERE house_id IS NOT NULL
+    GROUP BY house_id
+) c ON c.house_id = h.id
+ORDER BY COALESCE(c.cnt, 0) ASC, RANDOM()
+LIMIT 1
+`
+
+// Picks whichever house currently has the fewest students, breaking ties
+// randomly. A newly-created house has zero members and so is naturally
+// preferred until it catches up — no manual remainder bookkeeping needed.
+func (q *Queries) PickBalancedHouseForStudent(ctx context.Context) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, pickBalancedHouseForStudent)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const pickBalancedHouseForTeacher = `-- name: PickBalancedHouseForTeacher :one
+SELECT h.id FROM houses h
+LEFT JOIN (
+    SELECT house_id, COUNT(*) AS cnt
+    FROM teacher_profiles
+    WHERE house_id IS NOT NULL
+    GROUP BY house_id
+) c ON c.house_id = h.id
+ORDER BY COALESCE(c.cnt, 0) ASC, RANDOM()
+LIMIT 1
+`
+
+// Same balancing logic as PickBalancedHouseForStudent, but against the
+// teacher_profiles pool — staff and students are balanced independently.
+func (q *Queries) PickBalancedHouseForTeacher(ctx context.Context) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, pickBalancedHouseForTeacher)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const updateHouse = `-- name: UpdateHouse :one
 UPDATE houses
 SET
-    name      = $2,
-    code      = $3,
-    remainder = $4
+    name  = $2,
+    code  = $3,
+    color = $4
 WHERE id = $1
-RETURNING id, name, code, remainder, created_at
+RETURNING id, name, code, created_at, color
 `
 
 type UpdateHouseParams struct {
-	ID        uuid.UUID   `json:"id"`
-	Name      string      `json:"name"`
-	Code      pgtype.Text `json:"code"`
-	Remainder int32       `json:"remainder"`
+	ID    uuid.UUID   `json:"id"`
+	Name  string      `json:"name"`
+	Code  pgtype.Text `json:"code"`
+	Color string      `json:"color"`
 }
 
 func (q *Queries) UpdateHouse(ctx context.Context, arg UpdateHouseParams) (House, error) {
@@ -189,15 +250,15 @@ func (q *Queries) UpdateHouse(ctx context.Context, arg UpdateHouseParams) (House
 		arg.ID,
 		arg.Name,
 		arg.Code,
-		arg.Remainder,
+		arg.Color,
 	)
 	var i House
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
 		&i.Code,
-		&i.Remainder,
 		&i.CreatedAt,
+		&i.Color,
 	)
 	return i, err
 }
@@ -208,7 +269,7 @@ SET
     house_id   = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id
+RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status
 `
 
 type UpdateStudentHouseParams struct {
@@ -232,6 +293,42 @@ func (q *Queries) UpdateStudentHouse(ctx context.Context, arg UpdateStudentHouse
 		&i.UpdatedAt,
 		&i.Gender,
 		&i.HouseID,
+		&i.EnrollmentStatus,
+	)
+	return i, err
+}
+
+const updateTeacherHouse = `-- name: UpdateTeacherHouse :one
+UPDATE teacher_profiles
+SET
+    house_id   = $2,
+    updated_at = NOW()
+WHERE id = $1
+RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status
+`
+
+type UpdateTeacherHouseParams struct {
+	ID      uuid.UUID   `json:"id"`
+	HouseID pgtype.UUID `json:"house_id"`
+}
+
+func (q *Queries) UpdateTeacherHouse(ctx context.Context, arg UpdateTeacherHouseParams) (TeacherProfile, error) {
+	row := q.db.QueryRow(ctx, updateTeacherHouse, arg.ID, arg.HouseID)
+	var i TeacherProfile
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.FullName,
+		&i.EmployeeNumber,
+		&i.JoinedDate,
+		&i.Phone,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Title,
+		&i.Gender,
+		&i.IsActive,
+		&i.HouseID,
+		&i.EmploymentStatus,
 	)
 	return i, err
 }

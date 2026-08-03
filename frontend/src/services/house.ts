@@ -4,14 +4,14 @@ export interface House {
   id: string;
   name: string;
   code: string | null;
-  remainder: number;
+  color: string;
   created_at: string;
 }
 
 export interface CreateHouseRequest {
   name: string;
   code?: string;
-  remainder: number;
+  color: string;
 }
 
 export const houseApi = {
@@ -28,5 +28,10 @@ export const houseApi = {
   reassignMissing: () =>
     api
       .post<{ assigned: number }>("/houses/reassign-missing")
+      .then((r) => r.data),
+
+  reassignMissingStaff: () =>
+    api
+      .post<{ assigned: number }>("/houses/reassign-missing-staff")
       .then((r) => r.data),
 };

@@ -40,6 +40,13 @@ func (r *TeacherRepository) Delete(ctx context.Context, id uuid.UUID) (int64, er
 	return r.queries.DeleteTeacher(ctx, id)
 }
 
+func (r *TeacherRepository) UpdateEmploymentStatus(ctx context.Context, id uuid.UUID, status string) (db.TeacherProfile, error) {
+	return r.queries.UpdateTeacherEmploymentStatus(ctx, db.UpdateTeacherEmploymentStatusParams{
+		ID:               id,
+		EmploymentStatus: status,
+	})
+}
+
 func (r *TeacherRepository) AssignSubject(ctx context.Context, teacherID uuid.UUID, subjectID uuid.UUID) error {
 	return r.queries.AssignSubjectToTeacher(ctx, db.AssignSubjectToTeacherParams{
 		TeacherID: teacherID,

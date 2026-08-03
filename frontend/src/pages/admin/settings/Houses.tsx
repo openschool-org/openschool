@@ -3,7 +3,6 @@ import { Add } from "@carbon/icons-react";
 import {
   Button,
   TextInput,
-  NumberInput,
   Tag,
   InlineNotification,
   ComposedModal,
@@ -18,12 +17,15 @@ import {
   useUpdateHouse,
   useDeleteHouse,
   useReassignMissingHouses,
+  useReassignMissingStaffHouses,
 } from "../../../queries/useHouses";
 import type { House } from "../../../services/house";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+
+const DEFAULT_COLOR = "#0f62fe";
 
 function HouseRowSkeleton() {
   return (
@@ -36,7 +38,7 @@ function HouseRowSkeleton() {
         gap: "1rem",
       }}
     >
-      <SkeletonText width="5.5rem" />
+      <SkeletonText width="1.5rem" />
       <SkeletonText width="30%" />
     </div>
   );
@@ -48,48 +50,27 @@ export default function Houses() {
   const updateHouse = useUpdateHouse();
   const deleteHouse = useDeleteHouse();
   const reassign = useReassignMissingHouses();
+  const reassignStaff = useReassignMissingStaffHouses();
 
   const [modal, setModal] = useState<"create" | "edit" | null>(null);
   const [editing, setEditing] = useState<House | null>(null);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
-  const [remainder, setRemainder] = useState(0);
+  const [color, setColor] = useState(DEFAULT_COLOR);
   const [toDelete, setToDelete] = useState<House | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [touched, setTouched] = useState<{ name?: boolean }>({});
 
-  const count = houses?.length ?? 0;
-
   const ordered = useMemo(() => {
     if (!houses) return [];
-    return [...houses].sort(
-      (a, b) => a.remainder - b.remainder || a.name.localeCompare(b.name),
-    );
+    return [...houses].sort((a, b) => a.name.localeCompare(b.name));
   }, [houses]);
-
-  const mappingIssues = useMemo(() => {
-    if (count === 0) return [] as string[];
-    const issues: string[] = [];
-    const seen = new Map<number, number>();
-    ordered.forEach((h) => seen.set(h.remainder, (seen.get(h.remainder) ?? 0) + 1));
-    seen.forEach((n, r) => {
-      if (r < 0 || r >= count) issues.push(`Remainder ${r} is outside 0–${count - 1}`);
-      if (n > 1) issues.push(`Remainder ${r} is used by ${n} houses`);
-    });
-    for (let r = 0; r < count; r++) {
-      if (!seen.has(r)) issues.push(`Remainder ${r} has no house`);
-    }
-    return issues;
-  }, [ordered, count]);
 
   const openCreate = () => {
     createHouse.reset();
     setName("");
     setCode("");
-    const used = new Set(ordered.map((h) => h.remainder));
-    let next = 0;
-    while (used.has(next)) next++;
-    setRemainder(next);
+    setColor(DEFAULT_COLOR);
     setEditing(null);
     setTouched({});
     setModal("create");
@@ -99,7 +80,7 @@ export default function Houses() {
     updateHouse.reset();
     setName(h.name);
     setCode(h.code ?? "");
-    setRemainder(h.remainder);
+    setColor(h.color || DEFAULT_COLOR);
     setEditing(h);
     setTouched({});
     setModal("edit");
@@ -111,7 +92,7 @@ export default function Houses() {
     const data = {
       name: name.trim(),
       code: code.trim() || undefined,
-      remainder,
+      color,
     };
     if (modal === "create") {
       createHouse.mutate(data, { onSuccess: () => setModal(null) });
@@ -143,8 +124,9 @@ export default function Houses() {
             Houses
           </h2>
           <p className="os-page__subtitle" style={{ marginTop: "0.25rem" }}>
-            A student is assigned by <strong>index number mod {count || "N"}</strong>
-            {" "}(N = number of houses). Set which house each remainder maps to.
+            New students and staff are assigned automatically to whichever
+            house currently has the fewest members, with random tie-breaks —
+            no manual configuration needed as houses are added.
           </p>
         </div>
         <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>
@@ -162,7 +144,7 @@ export default function Houses() {
           title="Could not delete house"
           subtitle={getErrorMessage(
             deleteHouse.error,
-            "The house may be assigned to a student.",
+            "The house may be assigned to a student or teacher.",
           )}
           lowContrast
           onClose={() => deleteHouse.reset()}
@@ -170,42 +152,42 @@ export default function Houses() {
         />
       )}
 
-      {!isLoading && !isError && mappingIssues.length > 0 && (
-        <InlineNotification
-          kind="warning"
-          title="Remainder mapping needs attention"
-          subtitle={mappingIssues.join(" · ")}
-          lowContrast
-          hideCloseButton
-          style={{ maxWidth: "100%", marginBottom: "1rem" }}
-        />
-      )}
-
-      {reassign.isSuccess && (
+      {(reassign.isSuccess || reassignStaff.isSuccess) && (
         <InlineNotification
           kind="success"
           title="Houses assigned"
-          subtitle={`${reassign.data.assigned} student(s) without a house were assigned.`}
+          subtitle={[
+            reassign.data && `${reassign.data.assigned} student(s)`,
+            reassignStaff.data && `${reassignStaff.data.assigned} staff member(s)`,
+          ]
+            .filter(Boolean)
+            .join(" and ") + " assigned a house."}
           lowContrast
-          onClose={() => reassign.reset()}
+          onClose={() => {
+            reassign.reset();
+            reassignStaff.reset();
+          }}
           style={{ maxWidth: "100%", marginBottom: "1rem" }}
         />
       )}
 
-      {reassign.isError && (
+      {(reassign.isError || reassignStaff.isError) && (
         <InlineNotification
           kind="error"
           title="Could not re-assign"
-          subtitle={getErrorMessage(reassign.error, "Please try again.")}
+          subtitle={getErrorMessage(reassign.error ?? reassignStaff.error, "Please try again.")}
           lowContrast
-          onClose={() => reassign.reset()}
+          onClose={() => {
+            reassign.reset();
+            reassignStaff.reset();
+          }}
           style={{ maxWidth: "100%", marginBottom: "1rem" }}
         />
       )}
 
       <div className="os-section">
         <div className="os-section__header">
-          <h2 className="os-section__title">Remainder mapping</h2>
+          <h2 className="os-section__title">Houses</h2>
           {houses && (
             <span style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>
               {houses.length} total
@@ -224,7 +206,7 @@ export default function Houses() {
         {!isLoading && !isError && ordered.length === 0 && (
           <EmptyState
             title="No houses yet"
-            description="Add the houses this school uses, giving each a remainder. Students are then assigned automatically by their index number."
+            description="Add the houses this school uses. Students and staff are then assigned automatically, balanced across whichever houses exist."
             action={
               <Button renderIcon={Add} kind="primary" onClick={openCreate}>
                 Add House
@@ -251,17 +233,17 @@ export default function Houses() {
                 onMouseLeave={() => setHovered(null)}
               >
                 <span
+                  aria-hidden
                   style={{
-                    minWidth: "5.5rem",
-                    fontSize: "0.75rem",
-                    color: "#8d8d8d",
+                    display: "inline-block",
+                    width: "1rem",
+                    height: "1rem",
+                    borderRadius: "50%",
+                    backgroundColor: h.color,
+                    border: "1px solid rgba(0,0,0,0.1)",
+                    flexShrink: 0,
                   }}
-                >
-                  Remainder{" "}
-                  <span style={{ color: "#406AAF", fontWeight: 600 }}>
-                    {h.remainder}
-                  </span>
-                </span>
+                />
 
                 <span
                   style={{
@@ -298,7 +280,7 @@ export default function Houses() {
       </div>
 
       {ordered.length > 0 && (
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
           <Button
             kind="tertiary"
             size="md"
@@ -307,10 +289,20 @@ export default function Houses() {
           >
             {reassign.isPending
               ? "Assigning…"
-              : "Re-assign all students without a house"}
+              : "Re-assign students without a house"}
+          </Button>
+          <Button
+            kind="tertiary"
+            size="md"
+            disabled={reassignStaff.isPending}
+            onClick={() => reassignStaff.mutate()}
+          >
+            {reassignStaff.isPending
+              ? "Assigning…"
+              : "Re-assign staff without a house"}
           </Button>
           <span style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>
-            Useful after setting up houses - students added earlier get a house.
+            Useful after setting up houses — people added earlier get one too.
           </span>
         </div>
       )}
@@ -344,22 +336,34 @@ export default function Houses() {
           />
           <TextInput
             id="house-code"
-            labelText="Short code / colour (optional)"
-            placeholder="e.g. VJ or Blue"
+            labelText="Short code (optional)"
+            placeholder="e.g. VJ"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             style={{ marginBottom: "1rem" }}
           />
-          <NumberInput
-            id="house-remainder"
-            label="Remainder"
-            helperText={`index number mod ${Math.max(count, 1)} equals this value for students in this house (0 to ${Math.max(count, 1) - 1}).`}
-            min={0}
-            value={remainder}
-            onChange={(_e, { value }) =>
-              setRemainder(value === "" ? 0 : Number(value))
-            }
-          />
+          <div>
+            <label htmlFor="house-color" style={{ fontSize: "0.75rem", display: "block", marginBottom: "0.5rem" }}>
+              Color
+            </label>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+              <input
+                id="house-color"
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                style={{ width: "3rem", height: "2.5rem", padding: 0, border: "1px solid #8d8d8d", cursor: "pointer" }}
+              />
+              <TextInput
+                id="house-color-hex"
+                labelText=""
+                hideLabel
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                style={{ maxWidth: "8rem" }}
+              />
+            </div>
+          </div>
         </ModalBody>
         <ModalFooter>
           <Button kind="secondary" onClick={() => setModal(null)}>
@@ -383,7 +387,7 @@ export default function Houses() {
         description={
           <>
             Delete <strong>{toDelete?.name}</strong>? This is blocked while a
-            student is assigned to it.
+            student or teacher is assigned to it.
           </>
         }
         isPending={deleteHouse.isPending}
