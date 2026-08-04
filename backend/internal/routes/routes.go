@@ -52,6 +52,7 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	RegisterGuardianRoutes(admin, teacherOrAdmin, pool)
 	RegisterSectionHeadRoutes(admin, teacherOrAdmin, pool)
 	RegisterPrefectRoutes(admin, teacherOrAdmin, pool)
+	RegisterPositionRoutes(admin, teacherOrAdmin, pool)
 	RegisterTermRoutes(admin, protected, pool)
 	RegisterTermMarkRoutes(teacherOrAdmin, pool)
 	RegisterStudentSelfRoutes(student, pool)

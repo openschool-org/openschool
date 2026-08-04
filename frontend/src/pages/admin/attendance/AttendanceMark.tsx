@@ -7,6 +7,7 @@ import {
   CheckmarkFilled,
   CloseFilled,
   Time,
+  Certificate,
   Search,
   UserMultiple,
   Warning,
@@ -21,7 +22,7 @@ import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import type { AttendanceRecordRow } from "../../../services/attendance";
 
-type Status = "present" | "absent" | "late" | null;
+type Status = "present" | "absent" | "late" | "excused" | null;
 
 const STATUS_STYLES: Record<
   NonNullable<Status>,
@@ -30,6 +31,7 @@ const STATUS_STYLES: Record<
   present: { bg: "#defbe6", border: "#24a148", color: "#0e6027", label: "Present" },
   absent: { bg: "#fff1f1", border: "#da1e28", color: "#a2191f", label: "Absent" },
   late: { bg: "#fdf6dd", border: "#f1c21b", color: "#7d5a00", label: "Late" },
+  excused: { bg: "#f6f2ff", border: "#8a3ffc", color: "#6929c4", label: "Excused" },
 };
 
 function StatusButton({
@@ -68,6 +70,9 @@ function StatusButton({
       {value === "late" && (
         <Time size={12} style={{ marginRight: "4px", fill: selected ? cfg.color : "#8d8d8d", verticalAlign: "middle" }} />
       )}
+      {value === "excused" && (
+        <Certificate size={12} style={{ marginRight: "4px", fill: selected ? cfg.color : "#8d8d8d", verticalAlign: "middle" }} />
+      )}
       {cfg.label}
     </button>
   );
@@ -77,7 +82,7 @@ function recordsToState(records: AttendanceRecordRow[]) {
   const statuses: Record<string, Status> = {};
   const notes: Record<string, string> = {};
   for (const r of records) {
-    if (r.status === "present" || r.status === "absent" || r.status === "late") {
+    if (r.status === "present" || r.status === "absent" || r.status === "late" || r.status === "excused") {
       statuses[r.student_id] = r.status;
     }
     if (r.note) notes[r.student_id] = r.note;
@@ -155,6 +160,7 @@ export default function AttendanceMark() {
       present: Object.values(statuses).filter((v) => v === "present").length,
       absent: Object.values(statuses).filter((v) => v === "absent").length,
       late: Object.values(statuses).filter((v) => v === "late").length,
+      excused: Object.values(statuses).filter((v) => v === "excused").length,
       unmarked: (students ?? []).length - Object.values(statuses).filter(Boolean).length,
     }),
     [statuses, students],
@@ -257,11 +263,12 @@ export default function AttendanceMark() {
         )}
 
         {/* Summary bar */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.75rem", marginBottom: "1.5rem" }}>
           {[
             { label: "Present", count: summary.present, color: "#24a148" },
             { label: "Absent", count: summary.absent, color: "#da1e28" },
             { label: "Late", count: summary.late, color: "#7d5a00" },
+            { label: "Excused", count: summary.excused, color: "#6929c4" },
             { label: "Unmarked", count: summary.unmarked, color: "#525252" },
           ].map(({ label, count, color }) => (
             <div
@@ -391,7 +398,7 @@ export default function AttendanceMark() {
                             )
                           ) : (
                             <div style={{ display: "flex", gap: "0.375rem" }}>
-                              {(["present", "absent", "late"] as const).map((s) => (
+                              {(["present", "absent", "late", "excused"] as const).map((s) => (
                                 <StatusButton
                                   key={s}
                                   value={s}
@@ -407,7 +414,7 @@ export default function AttendanceMark() {
                             <span style={{ fontSize: "0.75rem", color: notes[student.id] ? "#525252" : "#c6c6c6" }}>
                               {notes[student.id] || "—"}
                             </span>
-                          ) : status === "absent" || status === "late" ? (
+                          ) : status === "absent" || status === "late" || status === "excused" ? (
                             <input
                               placeholder="Optional note…"
                               value={notes[student.id] ?? ""}

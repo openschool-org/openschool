@@ -290,6 +290,15 @@ type TeacherAvailability struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
+type TeacherPosition struct {
+	ID                uuid.UUID          `json:"id"`
+	TeacherID         uuid.UUID          `json:"teacher_id"`
+	Position          string             `json:"position"`
+	NotifyWholeSchool bool               `json:"notify_whole_school"`
+	ScopeNote         pgtype.Text        `json:"scope_note"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
 type TeacherProfile struct {
 	ID               uuid.UUID          `json:"id"`
 	UserID           uuid.UUID          `json:"user_id"`
@@ -406,4 +415,9 @@ type User struct {
 	IsActive  bool               `json:"is_active"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type VicePrincipalGradeScope struct {
+	PositionID uuid.UUID `json:"position_id"`
+	GradeID    uuid.UUID `json:"grade_id"`
 }

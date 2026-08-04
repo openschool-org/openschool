@@ -22,6 +22,7 @@ import {
   Notification,
   UserFollow,
   UserAdmin,
+  UserRole,
   Trophy,
   Table,
   Category,
@@ -53,6 +54,7 @@ const NAV_GROUPS: {
       { path: "/guardians", label: "Guardians", Icon: UserAdmin },
       { path: "/teachers", label: "Teachers", Icon: Education },
       { path: "/prefects", label: "School Prefects", Icon: Trophy },
+      { path: "/positions", label: "Leadership Positions", Icon: UserRole },
     ],
   },
   {

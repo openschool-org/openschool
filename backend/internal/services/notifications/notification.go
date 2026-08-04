@@ -32,6 +32,7 @@ type NotificationService struct {
 	studentRepo      *rootrepositories.StudentRepository
 	guardianRepo     *rootrepositories.GuardianRepository
 	schoolRepo       *rootrepositories.SchoolRepository
+	positionRepo     *rootrepositories.PositionRepository
 }
 
 func NewNotificationService(
@@ -43,10 +44,12 @@ func NewNotificationService(
 	studentRepo *rootrepositories.StudentRepository,
 	guardianRepo *rootrepositories.GuardianRepository,
 	schoolRepo *rootrepositories.SchoolRepository,
+	positionRepo *rootrepositories.PositionRepository,
 ) *NotificationService {
 	return &NotificationService{
 		repo: repo, classRepo: classRepo, gradeSectionRepo: gradeSectionRepo, sectionHeadRepo: sectionHeadRepo,
 		teacherRepo: teacherRepo, studentRepo: studentRepo, guardianRepo: guardianRepo, schoolRepo: schoolRepo,
+		positionRepo: positionRepo,
 	}
 }
 
@@ -117,6 +120,11 @@ func (s *NotificationService) isTeacherAuthorizedForGrade(ctx context.Context, t
 	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return false, err
 	}
+	if authorized, err := s.positionRepo.IsVicePrincipalAuthorizedForGrade(ctx, teacherID, gradeID); err != nil {
+		return false, err
+	} else if authorized {
+		return true, nil
+	}
 	return false, nil
 }
 
@@ -134,6 +142,14 @@ func (s *NotificationService) authorizeSender(ctx context.Context, callerRole st
 	teacher, err := s.teacherRepo.GetByUserID(ctx, callerUserID)
 	if err != nil {
 		return fmt.Errorf("no teacher profile linked to this account")
+	}
+
+	// Principal has the same reach as admin, including RuleEveryone. This is
+	// a permanent appointment, not scoped to an academic year.
+	if isPrincipal, err := s.positionRepo.IsPrincipal(ctx, teacher.ID); err != nil {
+		return err
+	} else if isPrincipal {
+		return nil
 	}
 
 	for _, rule := range rules {

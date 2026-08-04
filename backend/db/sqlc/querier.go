@@ -92,11 +92,15 @@ type Querier interface {
 	// taken an attendance session (both ON DELETE RESTRICT)
 	DeleteTeacher(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteTeacherAvailability(ctx context.Context, id uuid.UUID) error
+	DeleteTeacherPosition(ctx context.Context, id uuid.UUID) (int64, error)
+	// used when promoting a Vice Principal to Principal, to clear the old row.
+	DeleteTeacherPositionByTeacherAndType(ctx context.Context, arg DeleteTeacherPositionByTeacherAndTypeParams) error
 	DeleteTerm(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteTermMark(ctx context.Context, id uuid.UUID) error
 	DeleteTimetableEntry(ctx context.Context, arg DeleteTimetableEntryParams) error
 	DeleteTimetablePeriodsBySection(ctx context.Context, gradeSectionID uuid.UUID) error
 	DeleteUser(ctx context.Context, id uuid.UUID) error
+	DeleteVicePrincipalScopes(ctx context.Context, positionID uuid.UUID) error
 	EnrollStudentInClass(ctx context.Context, arg EnrollStudentInClassParams) error
 	// Atomic get-or-create: used to provision the local row for an identity
 	// that just authenticated for the first time. The no-op DO UPDATE (rather
@@ -156,20 +160,38 @@ type Querier interface {
 	GetTeacherByEmployeeNumber(ctx context.Context, employeeNumber string) (TeacherProfile, error)
 	GetTeacherByID(ctx context.Context, id uuid.UUID) (TeacherProfile, error)
 	GetTeacherByUserID(ctx context.Context, userID uuid.UUID) (TeacherProfile, error)
+	// the position row a teacher holds, if any — a teacher can hold at most one
+	// of principal/vice_principal (enforced by idx_teacher_positions_teacher_position_unique
+	// covering both position values, since RankForTeacher only needs to know
+	// whichever one exists).
+	GetTeacherPosition(ctx context.Context, teacherID uuid.UUID) (TeacherPosition, error)
 	GetTermByID(ctx context.Context, id uuid.UUID) (Term, error)
 	GetTermMarkByID(ctx context.Context, id uuid.UUID) (TermMark, error)
 	GetTimetableByID(ctx context.Context, id uuid.UUID) (Timetable, error)
 	GetTimetableSettingsByYear(ctx context.Context, academicYearID uuid.UUID) (TimetableSetting, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	InsertVicePrincipalScope(ctx context.Context, arg InsertVicePrincipalScopeParams) error
+	// used by PositionService.RankForTeacher to detect "Class Teacher" rank,
+	// since that's classes.form_teacher_id rather than a teacher_positions row.
+	// Section Head/Class Teacher/Subject Teacher stay year-scoped (they're
+	// per-class/per-grade assignments that legitimately change each year),
+	// unlike Principal/Vice Principal above.
+	IsFormTeacherOfAnyClass(ctx context.Context, arg IsFormTeacherOfAnyClassParams) (bool, error)
 	// Authorization check: does the signed-in guardian actually have this
 	// student linked to them? Used to gate GET /me/children/:id/... routes.
 	IsGuardianOfStudent(ctx context.Context, arg IsGuardianOfStudentParams) (bool, error)
+	IsPrincipal(ctx context.Context, teacherID uuid.UUID) (bool, error)
 	IsStudentEnrollmentLocked(ctx context.Context, arg IsStudentEnrollmentLockedParams) (bool, error)
+	// used by PositionService.RankForTeacher to detect "Subject Teacher" rank.
+	IsSubjectTeacherOfAnyClass(ctx context.Context, arg IsSubjectTeacherOfAnyClassParams) (bool, error)
 	// true if the teacher is the class's form teacher OR teaches any subject in it
 	IsTeacherAssignedToClass(ctx context.Context, arg IsTeacherAssignedToClassParams) (bool, error)
 	IsTeacherAssignedToSubject(ctx context.Context, arg IsTeacherAssignedToSubjectParams) (bool, error)
 	IsTeacherUnavailable(ctx context.Context, arg IsTeacherUnavailableParams) (bool, error)
+	// true if the teacher is a Vice Principal with either notify_whole_school =
+	// TRUE or the given grade in their scope.
+	IsVicePrincipalAuthorizedForGrade(ctx context.Context, arg IsVicePrincipalAuthorizedForGradeParams) (bool, error)
 	LinkGuardianToStudent(ctx context.Context, arg LinkGuardianToStudentParams) error
 	ListAcademicYears(ctx context.Context) ([]AcademicYear, error)
 	ListAllSentNotifications(ctx context.Context) ([]ListAllSentNotificationsRow, error)
@@ -270,6 +292,7 @@ type Querier interface {
 	ListSubjects(ctx context.Context) ([]Subject, error)
 	ListSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID) ([]Subject, error)
 	ListTeacherAvailabilityByTeacherYear(ctx context.Context, arg ListTeacherAvailabilityByTeacherYearParams) ([]TeacherAvailability, error)
+	ListTeacherPositions(ctx context.Context) ([]ListTeacherPositionsRow, error)
 	// a teacher's full weekly schedule across every published timetable, for
 	// the teacher's own "My Timetable" view
 	ListTeacherScheduleForYear(ctx context.Context, arg ListTeacherScheduleForYearParams) ([]ListTeacherScheduleForYearRow, error)
@@ -290,6 +313,7 @@ type Querier interface {
 	ListUnderReviewTimetablesForGrades(ctx context.Context, arg ListUnderReviewTimetablesForGradesParams) ([]ListUnderReviewTimetablesForGradesRow, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListUsersByRole(ctx context.Context, role string) ([]User, error)
+	ListVicePrincipalScopeGrades(ctx context.Context, positionID uuid.UUID) ([]ListVicePrincipalScopeGradesRow, error)
 	LockStudentEnrollment(ctx context.Context, arg LockStudentEnrollmentParams) error
 	MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error)
 	MarkNotificationRecipientRead(ctx context.Context, arg MarkNotificationRecipientReadParams) error
@@ -344,12 +368,16 @@ type Querier interface {
 	// Teacher-in-charge for a whole grade (grades without A/L streams).
 	UpsertGradeSectionHead(ctx context.Context, arg UpsertGradeSectionHeadParams) (SectionHead, error)
 	UpsertPrefect(ctx context.Context, arg UpsertPrefectParams) (Prefect, error)
+	// Swaps who the Principal is (at most one row can ever exist — permanent
+	// until resignation/promotion, not renewed per year).
+	UpsertPrincipal(ctx context.Context, teacherID uuid.UUID) (TeacherPosition, error)
 	// Teacher-in-charge for one A/L stream within a grade.
 	UpsertStreamSectionHead(ctx context.Context, arg UpsertStreamSectionHeadParams) (SectionHead, error)
 	UpsertSubjectPeriodRequirement(ctx context.Context, arg UpsertSubjectPeriodRequirementParams) (SubjectPeriodRequirement, error)
 	UpsertTermMark(ctx context.Context, arg UpsertTermMarkParams) (TermMark, error)
 	UpsertTimetableEntry(ctx context.Context, arg UpsertTimetableEntryParams) (TimetableEntry, error)
 	UpsertTimetableSettings(ctx context.Context, arg UpsertTimetableSettingsParams) (TimetableSetting, error)
+	UpsertVicePrincipal(ctx context.Context, arg UpsertVicePrincipalParams) (TeacherPosition, error)
 }
 
 var _ Querier = (*Queries)(nil)

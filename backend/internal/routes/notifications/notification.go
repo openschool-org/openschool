@@ -23,6 +23,7 @@ func RegisterNotificationRoutes(teacherOrAdmin *gin.RouterGroup, protected *gin.
 		rootrepositories.NewStudentRepository(pool),
 		rootrepositories.NewGuardianRepository(pool),
 		rootrepositories.NewSchoolRepository(pool),
+		rootrepositories.NewPositionRepository(pool),
 	)
 	handler := handlers.NewNotificationHandler(service)
 

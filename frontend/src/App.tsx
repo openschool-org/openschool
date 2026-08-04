@@ -24,6 +24,7 @@ import TeacherDetail from "./pages/admin/teachers/TeacherDetail";
 import Classes from "./pages/admin/classes/Classes";
 import Streams from "./pages/admin/streams/Streams";
 import Prefects from "./pages/admin/prefects/Prefects";
+import Positions from "./pages/admin/positions/Positions";
 import AddClass from "./pages/admin/classes/AddClass";
 import Subjects from "./pages/admin/subjects/Subjects";
 import AddSubject from "./pages/admin/subjects/AddSubject";
@@ -46,7 +47,7 @@ import Timetables from "./pages/admin/timetable/Timetables";
 import TimetableEditor from "./pages/admin/timetable/TimetableEditor";
 
 // Teacher pages
-import TeacherDashboard from "./pages/teacher/TeacherDashboard";
+import TeacherDashboard from "./pages/teacher/dashboard/TeacherDashboard";
 import TeacherClasses from "./pages/teacher/TeacherClasses";
 import TeacherAttendance from "./pages/teacher/TeacherAttendance";
 import TeacherProfile from "./pages/teacher/TeacherProfile";
@@ -149,6 +150,7 @@ function App() {
           <Route path="/classes/:id" element={<ClassDetail />} />
           <Route path="/streams" element={<Streams />} />
           <Route path="/prefects" element={<Prefects />} />
+          <Route path="/positions" element={<Positions />} />
           <Route path="/subjects" element={<Subjects />} />
           <Route path="/subjects/new" element={<AddSubject />} />
           <Route path="/grades" element={<Grades />} />

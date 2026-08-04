@@ -24,6 +24,7 @@ func RegisterTimetableRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterG
 		rootrepositories.NewStudentRepository(pool),
 		rootrepositories.NewGuardianRepository(pool),
 		rootrepositories.NewSchoolRepository(pool),
+		rootrepositories.NewPositionRepository(pool),
 	)
 	service := services.NewTimetableService(
 		repositories.NewTimetableRepository(pool),
