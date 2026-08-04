@@ -36,6 +36,7 @@ import ClassDetail from "./pages/admin/classes/ClassDetail";
 import Attendance from "./pages/admin/attendance/Attendance";
 import AttendanceMark from "./pages/admin/attendance/AttendanceMark";
 import AcademicYears from "./pages/admin/academic-years/AcademicYears";
+import Promotion from "./pages/admin/promotion/Promotion";
 import SettingsPage from "./pages/admin/settings/Settings";
 import SchoolSetup from "./pages/admin/setup/SchoolSetup";
 import NotFound from "./pages/NotFound";
@@ -163,6 +164,7 @@ function App() {
             element={<AttendanceMark />}
           />
           <Route path="/academic-years" element={<AcademicYears />} />
+          <Route path="/promotion" element={<Promotion />} />
           <Route path="/notifications" element={<NotificationComposer />} />
           <Route path="/notification-center" element={<NotificationCenter />} />
           <Route path="/settings" element={<SettingsPage />} />

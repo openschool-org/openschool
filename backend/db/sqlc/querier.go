@@ -22,7 +22,19 @@ type Querier interface {
 	AssignGradeToSection(ctx context.Context, arg AssignGradeToSectionParams) error
 	AssignSubjectTeacherToClass(ctx context.Context, arg AssignSubjectTeacherToClassParams) error
 	AssignSubjectToTeacher(ctx context.Context, arg AssignSubjectToTeacherParams) error
+	// clears any existing enrollment (in any class) for these students in this
+	// academic year, so BulkInsertClassStudents can freely (re)assign them —
+	// safe to re-run, since promotion is a preview-then-commit workflow.
+	BulkDeleteClassStudentsForYear(ctx context.Context, arg BulkDeleteClassStudentsForYearParams) error
+	// the first batched UNNEST-based bulk write in the codebase — one
+	// round-trip for the whole assignment set instead of a per-student loop.
+	// Paired via WITH ORDINALITY rather than the two-array UNNEST(a, b) form,
+	// since sqlc's static analyzer doesn't resolve that overload.
+	BulkInsertClassStudents(ctx context.Context, arg BulkInsertClassStudentsParams) error
 	CopyTimetableEntries(ctx context.Context, arg CopyTimetableEntriesParams) error
+	// validates that every target class ID a commit request references
+	// actually belongs to the target academic year, before writing anything.
+	CountClassesInYearByIDs(ctx context.Context, arg CountClassesInYearByIDsParams) (int64, error)
 	CountEntriesBySubjectForTimetable(ctx context.Context, timetableID uuid.UUID) ([]CountEntriesBySubjectForTimetableRow, error)
 	CountGroupSubjects(ctx context.Context, groupID uuid.UUID) (int64, error)
 	CountMyUnreadNotifications(ctx context.Context, userID uuid.UUID) (int64, error)
@@ -107,6 +119,9 @@ type Querier interface {
 	// than DO NOTHING) is required so RETURNING always yields a row, whether
 	// this call created it or another concurrent request already did.
 	EnsureUserExists(ctx context.Context, arg EnsureUserExistsParams) (User, error)
+	// same-name carryover suggestion (e.g. "6A" -> "7A"); ErrNoRows means no
+	// suggestion, the frontend leaves the target class blank for a manual pick.
+	FindClassByGradeAndName(ctx context.Context, arg FindClassByGradeAndNameParams) (Class, error)
 	// Near-matches by phone or email, surfaced as a soft warning ("this
 	// guardian may already exist") when creating a new guardian record —
 	// never hard-blocked, since a shared home phone across two guardians is
@@ -142,6 +157,10 @@ type Querier interface {
 	GetLevelByID(ctx context.Context, id uuid.UUID) (Level, error)
 	GetMaxVersionForClass(ctx context.Context, arg GetMaxVersionForClassParams) (int32, error)
 	GetMediumByID(ctx context.Context, id uuid.UUID) (Medium, error)
+	// the grade with the smallest sort_order greater than the given grade's;
+	// pgx.ErrNoRows means the given grade is the top grade (no promotion target
+	// — the student is graduating, not being promoted to a new class).
+	GetNextGrade(ctx context.Context, id uuid.UUID) (Grade, error)
 	GetNotificationByID(ctx context.Context, id uuid.UUID) (Notification, error)
 	GetNotificationRecipientStats(ctx context.Context, notificationID uuid.UUID) (GetNotificationRecipientStatsRow, error)
 	GetPrimaryGuardian(ctx context.Context, studentID uuid.UUID) (Guardian, error)
@@ -194,6 +213,9 @@ type Querier interface {
 	IsVicePrincipalAuthorizedForGrade(ctx context.Context, arg IsVicePrincipalAuthorizedForGradeParams) (bool, error)
 	LinkGuardianToStudent(ctx context.Context, arg LinkGuardianToStudentParams) error
 	ListAcademicYears(ctx context.Context) ([]AcademicYear, error)
+	// every actively-enrolled student's current class/grade for an academic
+	// year — the source list for a promotion/reassignment preview.
+	ListActiveStudentsForYear(ctx context.Context, academicYearID uuid.UUID) ([]ListActiveStudentsForYearRow, error)
 	ListAllSentNotifications(ctx context.Context) ([]ListAllSentNotificationsRow, error)
 	// Recipient-resolution queries for the notification composer. Each rule
 	// type in a notification's recipient_rules resolves through one or more
@@ -272,6 +294,12 @@ type Querier interface {
 	// teacher_id/teacher_name are NULL if the student's current-year class has
 	// no assigned teacher for that subject (or the student has no current class)
 	ListStudentMarksByTerm(ctx context.Context, arg ListStudentMarksByTermParams) ([]ListStudentMarksByTermRow, error)
+	// per-student total marks for one term, across every subject they have a
+	// mark for — a manual-distribution sort aid, not an auto-ranking algorithm.
+	// cast to float8 rather than leaving as numeric — sqlc's static analyzer
+	// (no live DB connection) mis-infers a bare SUM(numeric) as int64, which
+	// would silently truncate marks with a fractional part.
+	ListStudentTotalMarksForTerm(ctx context.Context, arg ListStudentTotalMarksForTermParams) ([]ListStudentTotalMarksForTermRow, error)
 	ListStudentUserIDsByClass(ctx context.Context, classID uuid.UUID) ([]pgtype.UUID, error)
 	// students enrolled in the subject as a curriculum elective, plus students
 	// in any class where the subject is compulsorily taught

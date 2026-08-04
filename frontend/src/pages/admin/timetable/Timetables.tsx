@@ -1,14 +1,33 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Add } from "@carbon/icons-react";
-import { Button, Tag, InlineNotification, SkeletonText } from "@carbon/react";
+import {
+  Button,
+  Tag,
+  InlineNotification,
+  SkeletonText,
+  OverflowMenu,
+  OverflowMenuItem,
+  ComposedModal,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "@carbon/react";
 import { useCurrentAcademicYear } from "../../../queries/useAcademicYears";
 import { useCurrentClasses } from "../../../queries/useClasses";
-import { useTimetablesByYear, useCreateTimetable } from "../../../queries/timetable/useTimetables";
+import {
+  useTimetablesByYear,
+  useCreateTimetable,
+  useCopyTimetable,
+  useReviseTimetable,
+  useDeleteTimetable,
+} from "../../../queries/timetable/useTimetables";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EntityCombobox from "../../../components/common/EntityCombobox";
+import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import type { TimetableWithClass } from "../../../services/timetable/timetable";
 
 const STATUS_TAG: Record<string, { type: "gray" | "blue" | "green" | "teal" | "red" | "magenta"; label: string }> = {
   draft: { type: "gray", label: "Draft" },
@@ -26,8 +45,15 @@ export default function Timetables() {
   const yearId = currentYear?.id ?? "";
   const { data: timetables, isLoading, isError, refetch } = useTimetablesByYear(yearId);
   const createTimetable = useCreateTimetable();
+  const copyTimetable = useCopyTimetable();
+  const reviseTimetable = useReviseTimetable();
+  const deleteTimetable = useDeleteTimetable();
 
   const [newClassId, setNewClassId] = useState("");
+
+  const [copySource, setCopySource] = useState<TimetableWithClass | null>(null);
+  const [copyTargetClassId, setCopyTargetClassId] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<TimetableWithClass | null>(null);
 
   const handleCreate = () => {
     if (!yearId || !newClassId) return;
@@ -35,6 +61,24 @@ export default function Timetables() {
       { academic_year_id: yearId, class_id: newClassId },
       { onSuccess: (tt) => navigate(`/timetables/${tt.id}`) },
     );
+  };
+
+  const openCopy = (t: TimetableWithClass) => {
+    copyTimetable.reset();
+    setCopyTargetClassId("");
+    setCopySource(t);
+  };
+
+  const handleCopy = () => {
+    if (!yearId || !copySource || !copyTargetClassId) return;
+    copyTimetable.mutate(
+      { academic_year_id: yearId, class_id: copyTargetClassId, source_timetable_id: copySource.id },
+      { onSuccess: (tt) => navigate(`/timetables/${tt.id}`) },
+    );
+  };
+
+  const handleRevise = (t: TimetableWithClass) => {
+    reviseTimetable.mutate(t.id, { onSuccess: (tt) => navigate(`/timetables/${tt.id}`) });
   };
 
   return (
@@ -78,6 +122,26 @@ export default function Timetables() {
             style={{ maxWidth: "100%", marginBottom: "1rem" }}
           />
         )}
+        {reviseTimetable.isError && (
+          <InlineNotification
+            kind="error"
+            title="Could not revise timetable"
+            subtitle={getErrorMessage(reviseTimetable.error)}
+            lowContrast
+            onClose={() => reviseTimetable.reset()}
+            style={{ maxWidth: "100%", marginBottom: "1rem" }}
+          />
+        )}
+        {deleteTimetable.isError && (
+          <InlineNotification
+            kind="error"
+            title="Could not delete timetable"
+            subtitle={getErrorMessage(deleteTimetable.error)}
+            lowContrast
+            onClose={() => deleteTimetable.reset()}
+            style={{ maxWidth: "100%", marginBottom: "1rem" }}
+          />
+        )}
 
         {!currentYear ? (
           <EmptyState title="No current academic year" description="Set an academic year as current first." />
@@ -96,6 +160,7 @@ export default function Timetables() {
                 <th>Version</th>
                 <th>Status</th>
                 <th>Updated</th>
+                <th style={{ width: "3rem" }} />
               </tr>
             </thead>
             <tbody>
@@ -110,12 +175,83 @@ export default function Timetables() {
                     </Tag>
                   </td>
                   <td>{t.updated_at ? new Date(t.updated_at).toLocaleString() : "-"}</td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <OverflowMenu size="sm" flipped>
+                      <OverflowMenuItem itemText="Copy to another class" onClick={() => openCopy(t)} />
+                      {t.status === "published" && (
+                        <OverflowMenuItem itemText="Revise (new draft)" onClick={() => handleRevise(t)} />
+                      )}
+                      <OverflowMenuItem
+                        itemText="Delete"
+                        isDelete
+                        onClick={() => {
+                          deleteTimetable.reset();
+                          setDeleteTarget(t);
+                        }}
+                      />
+                    </OverflowMenu>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
+
+      <ComposedModal open={!!copySource} size="sm" onClose={() => setCopySource(null)}>
+        <ModalHeader title="Copy timetable" />
+        <ModalBody>
+          {copyTimetable.isError && (
+            <InlineNotification
+              kind="error"
+              title="Error"
+              subtitle={getErrorMessage(copyTimetable.error, "Failed to copy timetable")}
+              lowContrast
+              hideCloseButton
+              style={{ marginBottom: "1rem", maxWidth: "100%" }}
+            />
+          )}
+          <p style={{ fontSize: "0.8125rem", color: "#525252", marginBottom: "1rem" }}>
+            Copies {copySource?.grade_name} — {copySource?.class_name}'s periods into a new draft for another class —
+            a new academic year is exactly when this is useful (e.g. carrying 6A's timetable over to 7A).
+          </p>
+          <EntityCombobox
+            id="copy-target-class"
+            labelText="Target class"
+            items={classes ?? []}
+            selectedId={copyTargetClassId}
+            onSelect={setCopyTargetClassId}
+            getId={(c) => c.id}
+            itemToString={(c) => `${c.grade_name} - ${c.name}`}
+            placeholder="Search classes…"
+          />
+        </ModalBody>
+        <ModalFooter>
+          <Button kind="secondary" onClick={() => setCopySource(null)}>
+            Cancel
+          </Button>
+          <Button kind="primary" onClick={handleCopy} disabled={!copyTargetClassId || copyTimetable.isPending}>
+            {copyTimetable.isPending ? "Copying…" : "Copy"}
+          </Button>
+        </ModalFooter>
+      </ComposedModal>
+
+      <ConfirmDeleteModal
+        open={!!deleteTarget}
+        title="Delete timetable"
+        description={
+          <>
+            Delete the {deleteTarget?.grade_name} — {deleteTarget?.class_name} v{deleteTarget?.version} timetable?
+            This cannot be undone.
+          </>
+        }
+        isPending={deleteTimetable.isPending}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          deleteTimetable.mutate(deleteTarget.id, { onSuccess: () => setDeleteTarget(null) });
+        }}
+      />
     </div>
   );
 }

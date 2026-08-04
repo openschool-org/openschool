@@ -8,6 +8,8 @@ export const CLASSES_KEY = ["classes"];
 export const CURRENT_CLASSES_KEY = ["classes", "current"];
 export const STREAMS_KEY = ["streams"];
 
+export const classesByYearKey = (academicYearId: string) => ["classes", "by-year", academicYearId];
+
 export const classKey = (id: string) => ["classes", id];
 export const classStudentsKey = (id: string) => ["classes", id, "students"];
 export const classSubjectTeachersKey = (id: string) => [
@@ -26,6 +28,16 @@ export const useCurrentClasses = () =>
   useQuery({
     queryKey: CURRENT_CLASSES_KEY,
     queryFn: classApi.listCurrent,
+  });
+
+// Classes for an arbitrary (possibly not-yet-current) academic year — used
+// by the promotion/reassignment flow to list target classes in a new year
+// that hasn't been published yet.
+export const useClassesByAcademicYear = (academicYearId: string) =>
+  useQuery({
+    queryKey: classesByYearKey(academicYearId),
+    queryFn: () => classApi.listByAcademicYear(academicYearId),
+    enabled: !!academicYearId,
   });
 
 export const useCreateClass = () => {

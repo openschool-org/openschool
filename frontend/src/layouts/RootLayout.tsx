@@ -24,6 +24,7 @@ import {
   UserAdmin,
   UserRole,
   Trophy,
+  Renew,
   Table,
   Category,
   Location,
@@ -83,6 +84,7 @@ const NAV_GROUPS: {
     items: [
       { path: "/attendance", label: "Attendance", Icon: EventSchedule },
       { path: "/academic-years", label: "Academic Years", Icon: Calendar },
+      { path: "/promotion", label: "Promotion", Icon: Renew },
       { path: "/notifications", label: "Notifications", Icon: Notification },
     ],
   },
