@@ -1,5 +1,7 @@
 import api from "../lib/api";
 
+export type StudentEnrollmentStatus = "active" | "left";
+
 export interface Student {
   id: string;
   user_id: string | null;
@@ -10,6 +12,7 @@ export interface Student {
   whatsapp: string | null;
   special_remarks: string | null;
   gender: string | null;
+  enrollment_status: StudentEnrollmentStatus;
   created_at: string | null;
   updated_at: string | null;
   class_name: string | null;
@@ -69,6 +72,10 @@ export const studentApi = {
       .put<Student>(`/students/${id}/house`, { house_id: houseId })
       .then((r) => r.data),
 
-  remove: (id: string) =>
-    api.delete(`/students/${id}`).then((r) => r.data),
+  updateEnrollmentStatus: (id: string, status: StudentEnrollmentStatus) =>
+    api
+      .put<Student>(`/students/${id}/enrollment-status`, { status })
+      .then((r) => r.data),
+
+  remove: (id: string) => api.delete(`/students/${id}`).then((r) => r.data),
 };

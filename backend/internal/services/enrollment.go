@@ -14,6 +14,12 @@ import (
 var (
 	ErrLevelHasNoGroups  = errors.New("level has no selection groups configured")
 	ErrEnrollmentInvalid = errors.New("enrollment picks failed validation")
+	// ErrEnrollmentLocked applies uniformly to Submit and Delete, for both the
+	// student self-service path and the admin path — once locked, changing
+	// picks always requires an explicit admin Unlock first.
+	ErrEnrollmentLocked    = errors.New("subject selection is locked and can no longer be changed — ask an admin to unlock it")
+	ErrEnrollmentEmpty     = errors.New("submit at least one pick before confirming")
+	ErrEnrollmentNotLocked = errors.New("subject selection is not locked")
 )
 
 type EnrollmentService struct {
@@ -128,6 +134,14 @@ func (s *EnrollmentService) Submit(ctx context.Context, studentID uuid.UUID, req
 		return nil, errors.New("invalid level_id")
 	}
 
+	locked, err := s.IsLocked(ctx, studentID, levelID, academicYearID)
+	if err != nil {
+		return nil, err
+	}
+	if locked {
+		return nil, ErrEnrollmentLocked
+	}
+
 	validationErrs, err := s.Validate(ctx, levelID, req.Picks)
 	if err != nil {
 		return nil, err
@@ -202,13 +216,110 @@ func (s *EnrollmentService) ListByStudent(ctx context.Context, studentID, academ
 	return resp, nil
 }
 
+// Delete removes a single pick. The group's level is resolved internally to
+// check the lock — a locked selection can't be edited this way either,
+// closing the loophole that would otherwise let a single-pick delete bypass
+// Submit's lock check.
 func (s *EnrollmentService) Delete(ctx context.Context, studentID, academicYearID, groupID, subjectID uuid.UUID) error {
+	group, err := s.curriculum.GetSelectionGroupByID(ctx, groupID)
+	if err != nil {
+		return fmt.Errorf("selection group not found: %w", err)
+	}
+
+	locked, err := s.IsLocked(ctx, studentID, group.LevelID, academicYearID)
+	if err != nil {
+		return err
+	}
+	if locked {
+		return ErrEnrollmentLocked
+	}
+
 	return s.repo.Delete(ctx, db.DeleteStudentSubjectEnrollmentParams{
 		StudentID:      studentID,
 		AcademicYearID: academicYearID,
 		GroupID:        groupID,
 		SubjectID:      subjectID,
 	})
+}
+
+// IsLocked reports whether the student's picks for this level+year are
+// confirmed and locked.
+func (s *EnrollmentService) IsLocked(ctx context.Context, studentID, levelID, academicYearID uuid.UUID) (bool, error) {
+	return s.repo.IsLocked(ctx, db.IsStudentEnrollmentLockedParams{
+		StudentID:      studentID,
+		LevelID:        levelID,
+		AcademicYearID: academicYearID,
+	})
+}
+
+// Confirm locks the student's current picks for a level+year so Submit and
+// Delete refuse further changes until an admin calls Unlock. Requires at
+// least one pick already submitted.
+func (s *EnrollmentService) Confirm(ctx context.Context, studentID, levelID, academicYearID uuid.UUID) error {
+	picks, err := s.repo.ListByStudentAndLevel(ctx, db.ListStudentEnrollmentsByLevelParams{
+		StudentID:      studentID,
+		AcademicYearID: academicYearID,
+		LevelID:        levelID,
+	})
+	if err != nil {
+		return err
+	}
+	if len(picks) == 0 {
+		return ErrEnrollmentEmpty
+	}
+
+	return s.repo.Lock(ctx, db.LockStudentEnrollmentParams{
+		StudentID:      studentID,
+		LevelID:        levelID,
+		AcademicYearID: academicYearID,
+	})
+}
+
+// Unlock is admin-only: removes the lock so the student's picks can be
+// changed again via Submit/Delete.
+func (s *EnrollmentService) Unlock(ctx context.Context, studentID, levelID, academicYearID uuid.UUID) error {
+	rows, err := s.repo.Unlock(ctx, db.UnlockStudentEnrollmentParams{
+		StudentID:      studentID,
+		LevelID:        levelID,
+		AcademicYearID: academicYearID,
+	})
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrEnrollmentNotLocked
+	}
+	return nil
+}
+
+// ListByStudentAndLevel lists a student's picks scoped to one level+year —
+// what the self-service "current selection" view shows before confirming.
+func (s *EnrollmentService) ListByStudentAndLevel(ctx context.Context, studentID, levelID, academicYearID uuid.UUID) ([]models.EnrollmentResponse, error) {
+	rows, err := s.repo.ListByStudentAndLevel(ctx, db.ListStudentEnrollmentsByLevelParams{
+		StudentID:      studentID,
+		AcademicYearID: academicYearID,
+		LevelID:        levelID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	resp := make([]models.EnrollmentResponse, len(rows))
+	for i, r := range rows {
+		resp[i] = models.EnrollmentResponse{
+			StudentID:      r.StudentID.String(),
+			AcademicYearID: r.AcademicYearID.String(),
+			GroupID:        r.GroupID.String(),
+			GroupLabel:     r.GroupLabel,
+			SubjectID:      r.SubjectID.String(),
+			SubjectName:    r.SubjectName,
+			SubjectCode:    r.SubjectCode,
+			MediumID:       uuidString(r.MediumID),
+			MediumName:     textString(r.MediumName),
+			EnrolledAt:     r.EnrolledAt.Time.String(),
+		}
+	}
+	return resp, nil
 }
 
 func (s *EnrollmentService) ListStudentsBySubject(ctx context.Context, subjectID, academicYearID uuid.UUID) ([]models.EnrolledStudentResponse, error) {

@@ -30,6 +30,10 @@ type AssignSubjectToTeacherRequest struct {
 	SubjectID string `json:"subject_id" binding:"required"`
 }
 
+type UpdateTeacherEmploymentStatusRequest struct {
+	Status string `json:"status" binding:"required,oneof=active resigned transferred"`
+}
+
 type TeacherResponse struct {
 	ID             string `json:"id"`
 	UserID         string `json:"user_id"`
@@ -39,7 +43,9 @@ type TeacherResponse struct {
 	Phone          string `json:"phone"`
 	Title          string `json:"title"`
 	Gender         string `json:"gender"`
-	CreatedAt      string `json:"created_at"`
+	// IsActive is true once the teacher has at least one assigned subject.
+	IsActive  bool   `json:"is_active"`
+	CreatedAt string `json:"created_at"`
 }
 
 type TeacherSubjectResponse struct {

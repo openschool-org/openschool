@@ -114,6 +114,10 @@ func (h *EnrollmentHandler) Submit(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		}
+		if errors.Is(err, services.ErrEnrollmentLocked) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -189,11 +193,58 @@ func (h *EnrollmentHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.service.Delete(c.Request.Context(), studentID, academicYearID, groupID, subjectID); err != nil {
+		if errors.Is(err, services.ErrEnrollmentLocked) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "enrollment removed"})
+}
+
+// Unlock godoc
+// @Summary      Unlock a student's confirmed subject selection
+// @Description  Admin-only: removes the lock so the student's picks for this level+year can be changed again
+// @Tags         enrollments
+// @Produce      json
+// @Param        id                path      string  true  "Student UUID"
+// @Param        level_id          path      string  true  "Level UUID"
+// @Param        academic_year_id  query     string  true  "Academic year UUID"
+// @Success      200               {object}  map[string]string
+// @Failure      400               {object}  map[string]string
+// @Failure      404               {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /students/{id}/enrollments/lock/{level_id} [delete]
+func (h *EnrollmentHandler) Unlock(c *gin.Context) {
+	studentID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid student id"})
+		return
+	}
+
+	levelID, err := uuid.Parse(c.Param("level_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid level id"})
+		return
+	}
+
+	academicYearID, ok := requireAcademicYear(c)
+	if !ok {
+		return
+	}
+
+	if err := h.service.Unlock(c.Request.Context(), studentID, levelID, academicYearID); err != nil {
+		if errors.Is(err, services.ErrEnrollmentNotLocked) {
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "subject selection unlocked"})
 }
 
 // ListStudentsBySubject godoc

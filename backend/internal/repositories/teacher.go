@@ -40,6 +40,13 @@ func (r *TeacherRepository) Delete(ctx context.Context, id uuid.UUID) (int64, er
 	return r.queries.DeleteTeacher(ctx, id)
 }
 
+func (r *TeacherRepository) UpdateEmploymentStatus(ctx context.Context, id uuid.UUID, status string) (db.TeacherProfile, error) {
+	return r.queries.UpdateTeacherEmploymentStatus(ctx, db.UpdateTeacherEmploymentStatusParams{
+		ID:               id,
+		EmploymentStatus: status,
+	})
+}
+
 func (r *TeacherRepository) AssignSubject(ctx context.Context, teacherID uuid.UUID, subjectID uuid.UUID) error {
 	return r.queries.AssignSubjectToTeacher(ctx, db.AssignSubjectToTeacherParams{
 		TeacherID: teacherID,
@@ -56,6 +63,25 @@ func (r *TeacherRepository) RemoveSubject(ctx context.Context, teacherID uuid.UU
 
 func (r *TeacherRepository) ListSubjects(ctx context.Context, teacherID uuid.UUID) ([]db.Subject, error) {
 	return r.queries.ListSubjectsByTeacher(ctx, teacherID)
+}
+
+func (r *TeacherRepository) CountSubjects(ctx context.Context, teacherID uuid.UUID) (int64, error) {
+	return r.queries.CountSubjectsByTeacher(ctx, teacherID)
+}
+
+func (r *TeacherRepository) SetActiveStatus(ctx context.Context, teacherID uuid.UUID, isActive bool) error {
+	return r.queries.SetTeacherActiveStatus(ctx, db.SetTeacherActiveStatusParams{
+		ID:       teacherID,
+		IsActive: isActive,
+	})
+}
+
+func (r *TeacherRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (db.TeacherProfile, error) {
+	return r.queries.GetTeacherByUserID(ctx, userID)
+}
+
+func (r *TeacherRepository) ListWorkload(ctx context.Context, teacherID uuid.UUID) ([]db.ListTeacherWorkloadRow, error) {
+	return r.queries.ListTeacherWorkload(ctx, teacherID)
 }
 
 func (r *TeacherRepository) CreateUser(ctx context.Context, params db.CreateUserParams) (db.User, error) {

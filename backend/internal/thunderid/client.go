@@ -47,10 +47,7 @@ type CreateUserRequest struct {
 }
 
 type ThunderIDUser struct {
-	ID         string                 `json:"id"`
-	OuID       string                 `json:"ouId"`
-	Type       string                 `json:"type"`
-	Attributes map[string]interface{} `json:"attributes"`
+	ID string `json:"id"`
 }
 
 func (c *Client) getAccessToken(ctx context.Context) (string, error) {

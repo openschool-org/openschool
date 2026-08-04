@@ -280,6 +280,50 @@ const docTemplate = `{
             }
         },
         "/attendance/sessions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Cross-class attendance dashboard: every session on one date, with class/grade/teacher resolved and marked/enrolled counts",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attendance"
+                ],
+                "summary": "List sessions for a date",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Date, YYYY-MM-DD",
+                        "name": "date",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.AttendanceSessionResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -356,6 +400,50 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.AttendanceSessionResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a session and every attendance record already written for it",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attendance"
+                ],
+                "summary": "Delete attendance session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "404": {
@@ -807,6 +895,179 @@ const docTemplate = `{
                 }
             }
         },
+        "/classes/{id}/marks": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Every student in the class with their mark, if entered, for the given term and subject",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "marks"
+                ],
+                "summary": "List a class's marks for a term/subject",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Class UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Term UUID",
+                        "name": "term_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Subject UUID",
+                        "name": "subject_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upserts one term-test mark per student for a given term and subject",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "marks"
+                ],
+                "summary": "Record term marks for a class",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Class UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Marks",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.BulkUpsertMarksRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/classes/{id}/monitors": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Set the girl and/or boy monitor for a class; omit or send null to clear a slot",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "classes"
+                ],
+                "summary": "Assign class monitors",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Class ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Monitor details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AssignClassMonitorsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ClassResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/classes/{id}/students": {
             "get": {
                 "security": [
@@ -1047,6 +1308,122 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/curriculum/preset": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Idempotently creates subjects, levels, and selection groups for the standard Grade 1-13 curriculum, scoped to whichever grades exist in this school",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "Seed the Sri Lankan national curriculum",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/services.PresetSummary"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/curriculum/preset/preview": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Computes exactly what Run would create, without writing anything — for admin review before committing",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "Preview the Sri Lankan national curriculum preset",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/services.PresetSummary"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/enrollments/validate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Dry run: checks picks against every group of the level without saving",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "enrollments"
+                ],
+                "summary": "Validate enrollment picks",
+                "parameters": [
+                    {
+                        "description": "Proposed picks",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SubmitEnrollmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.EnrollmentValidationResponse"
                         }
                     },
                     "400": {
@@ -1311,26 +1688,184 @@ const docTemplate = `{
                 }
             }
         },
-        "/grades/{id}/buckets": {
+        "/groups/{group_id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "Update selection group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group UUID",
+                        "name": "group_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Group info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateSelectionGroupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SelectionGroupResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Blocked while enrollments reference the group",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "Delete selection group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group UUID",
+                        "name": "group_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/groups/{group_id}/students": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retrieve all elective subject buckets for a grade",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "grade-subjects"
+                    "enrollments"
                 ],
-                "summary": "List subject buckets",
+                "summary": "List students enrolled through a group",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Grade UUID",
-                        "name": "id",
+                        "description": "Group UUID",
+                        "name": "group_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Academic year UUID",
+                        "name": "academic_year_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.EnrolledStudentResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/groups/{group_id}/subjects": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "List a group's subjects",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Group UUID",
+                        "name": "group_id",
                         "in": "path",
                         "required": true
                     }
@@ -1341,16 +1876,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/models.SubjectBucketResponse"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                                "$ref": "#/definitions/models.GroupSubjectResponse"
                             }
                         }
                     },
@@ -1371,7 +1897,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create an elective subject bucket for a grade",
+                "description": "Upserts the subject's medium restriction and prerequisite note",
                 "consumes": [
                     "application/json"
                 ],
@@ -1379,24 +1905,24 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "grade-subjects"
+                    "curriculum"
                 ],
-                "summary": "Create subject bucket",
+                "summary": "Add subject to group",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Grade UUID",
-                        "name": "id",
+                        "description": "Group UUID",
+                        "name": "group_id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Bucket details",
+                        "description": "Group subject info",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.CreateSubjectBucketRequest"
+                            "$ref": "#/definitions/models.AddGroupSubjectRequest"
                         }
                     }
                 ],
@@ -1404,128 +1930,6 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/models.SubjectBucketResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/grades/{id}/buckets/{bucket_id}/subjects": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve all subjects available in an elective bucket",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "grade-subjects"
-                ],
-                "summary": "List bucket options",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Grade UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Bucket UUID",
-                        "name": "bucket_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.SubjectResponse"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Add a subject as an option in an elective bucket",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "grade-subjects"
-                ],
-                "summary": "Add subject to bucket",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Grade UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Bucket UUID",
-                        "name": "bucket_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Subject details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.AddSubjectToBucketRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
                             "type": "object",
                             "additionalProperties": {
                                 "type": "string"
@@ -1544,137 +1948,25 @@ const docTemplate = `{
                 }
             }
         },
-        "/grades/{id}/subjects": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieve all subjects assigned to a specific grade",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "grade-subjects"
-                ],
-                "summary": "List subjects for grade",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Grade UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.SubjectResponse"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Assign a subject to be offered at a specific grade",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "grade-subjects"
-                ],
-                "summary": "Assign subject to grade",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Grade UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Subject details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.AssignSubjectToGradeRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/grades/{id}/subjects/{subject_id}": {
+        "/groups/{group_id}/subjects/{subject_id}": {
             "delete": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Remove a subject assignment from a specific grade",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "grade-subjects"
+                    "curriculum"
                 ],
-                "summary": "Remove subject from grade",
+                "summary": "Remove subject from group",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Grade UUID",
-                        "name": "id",
+                        "description": "Group UUID",
+                        "name": "group_id",
                         "in": "path",
                         "required": true
                     },
@@ -1709,6 +2001,32 @@ const docTemplate = `{
             }
         },
         "/guardians": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Every guardian on file, for the \"link existing guardian\" search picker",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "guardians"
+                ],
+                "summary": "List all guardians",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.GuardianResponse"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "security": [
                     {
@@ -1842,6 +2160,1339 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/guardians/{id}/provision-login": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates an identity-provider account for an existing guardian and links it, giving them parent-portal access",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "guardians"
+                ],
+                "summary": "Provision a parent portal login for a guardian",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Guardian ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Login details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ProvisionGuardianLoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.GuardianResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/levels": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Optionally filtered by grade via ?grade_id=",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "List levels",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Grade UUID",
+                        "name": "grade_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.LevelResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create an admin-defined curriculum level",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "Create level",
+                "parameters": [
+                    {
+                        "description": "Level info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateLevelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.LevelResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/levels/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "Get level",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Level UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.LevelResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "Update level",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Level UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Level info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateLevelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.LevelResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Blocked while any of the level's groups still carry enrollments",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "Delete level",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Level UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/levels/{id}/duplicate": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Copy a level with all its selection groups and their subjects, under a new label",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "Duplicate level",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Source level UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New level info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.DuplicateLevelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.LevelResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/levels/{id}/groups": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "List selection groups of a level",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Level UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SelectionGroupResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "A pool the student picks between min_select and max_select subjects from",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "Create selection group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Level UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Group info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateSelectionGroupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.SelectionGroupResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/levels/{id}/tree": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "A level with its selection groups and each group's subjects nested",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "Get curriculum tree",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Level UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CurriculumTreeResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/marks/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "marks"
+                ],
+                "summary": "Delete a recorded mark",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Term mark UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the signed-in identity's claims, provisioning a local user row on first sign-in",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "me"
+                ],
+                "summary": "Current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/children": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parent"
+                ],
+                "summary": "List the signed-in parent's children",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/me/children/{id}/attendance": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parent"
+                ],
+                "summary": "A linked child's attendance history",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Student UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/me/children/{id}/marks": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "parent"
+                ],
+                "summary": "A linked child's term marks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Student UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Term UUID",
+                        "name": "term_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/me/student": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "student"
+                ],
+                "summary": "The signed-in student's own profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/me/student/attendance": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "student"
+                ],
+                "summary": "The signed-in student's own attendance history",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/me/student/enrollments": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "student"
+                ],
+                "summary": "The signed-in student's own subject picks for a level",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Level UUID",
+                        "name": "level_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Academic year UUID",
+                        "name": "academic_year_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.EnrollmentResponse"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Validates then replaces the student's picks for a level+year; rejected if already confirmed/locked",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "student"
+                ],
+                "summary": "Submit the signed-in student's own subject picks",
+                "parameters": [
+                    {
+                        "description": "Picks",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SubmitEnrollmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.EnrollmentValidationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/models.EnrollmentValidationResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/me/student/enrollments/confirm": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Once confirmed, picks for this level+year can't be changed until an admin unlocks them",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "student"
+                ],
+                "summary": "Confirm and lock the signed-in student's subject picks",
+                "parameters": [
+                    {
+                        "description": "Level + academic year",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ConfirmEnrollmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/me/student/marks": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "student"
+                ],
+                "summary": "The signed-in student's own term marks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Term UUID",
+                        "name": "term_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/me/teacher": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "teacher"
+                ],
+                "summary": "The signed-in teacher's own profile",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/mediums": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "List mediums",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.MediumResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a school-defined medium of instruction",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "Create medium",
+                "parameters": [
+                    {
+                        "description": "Medium info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateMediumRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.MediumResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/mediums/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "Update medium",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Medium UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Medium info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateMediumRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.MediumResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Blocked while the medium is referenced by a group subject or enrollment",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "curriculum"
+                ],
+                "summary": "Delete medium",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Medium UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/prefects": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "prefects"
+                ],
+                "summary": "List prefects for an academic year",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Academic year UUID",
+                        "name": "academic_year_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upserts the prefect rank for a student in an academic year",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "prefects"
+                ],
+                "summary": "Appoint (or re-appoint) a student as a prefect",
+                "parameters": [
+                    {
+                        "description": "Appointment",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AssignPrefectRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/prefects/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "prefects"
+                ],
+                "summary": "Remove a prefect appointment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Prefect UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1990,6 +3641,235 @@ const docTemplate = `{
                             "type": "object",
                             "additionalProperties": {
                                 "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/section-heads": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "section-heads"
+                ],
+                "summary": "List section heads for an academic year",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Academic year UUID",
+                        "name": "academic_year_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upserts the TIC for a grade, or for one A/L stream within a grade when stream_id is set",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "section-heads"
+                ],
+                "summary": "Assign a teacher-in-charge (section head)",
+                "parameters": [
+                    {
+                        "description": "Assignment",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AssignSectionHeadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/section-heads/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "section-heads"
+                ],
+                "summary": "Remove a section head assignment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Section head UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/setup/admin": {
+            "post": {
+                "description": "One-time bootstrap: only succeeds while no admin account exists",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "setup"
+                ],
+                "summary": "Register the first admin account",
+                "parameters": [
+                    {
+                        "description": "Admin details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.RegisterAdminRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/setup/status": {
+            "get": {
+                "description": "Reports whether an admin account still needs to be registered",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "setup"
+                ],
+                "summary": "Check first-run setup status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "boolean"
                             }
                         }
                     }
@@ -2876,6 +4756,252 @@ const docTemplate = `{
                 }
             }
         },
+        "/students/{id}/enrollments": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "enrollments"
+                ],
+                "summary": "List a student's subjects",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Student UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Academic year UUID",
+                        "name": "academic_year_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.EnrollmentResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Validates then replaces the student's picks for that level and academic year",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "enrollments"
+                ],
+                "summary": "Submit enrollment picks",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Student UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Picks",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SubmitEnrollmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.EnrollmentValidationResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/models.EnrollmentValidationResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/students/{id}/enrollments/lock/{level_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Admin-only: removes the lock so the student's picks for this level+year can be changed again",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "enrollments"
+                ],
+                "summary": "Unlock a student's confirmed subject selection",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Student UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Level UUID",
+                        "name": "level_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Academic year UUID",
+                        "name": "academic_year_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/students/{id}/enrollments/{group_id}/{subject_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "enrollments"
+                ],
+                "summary": "Remove one enrollment pick",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Student UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group UUID",
+                        "name": "group_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Subject UUID",
+                        "name": "subject_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Academic year UUID",
+                        "name": "academic_year_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/students/{id}/guardians": {
             "get": {
                 "security": [
@@ -3084,67 +5210,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/students/{id}/selections": {
-            "get": {
+        "/students/{id}/house": {
+            "put": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Retrieve all subject selections for a student",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "student-selections"
-                ],
-                "summary": "List student subject selections",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Student UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.StudentSubjectSelectionResponse"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Set or update a student's subject choice for a given bucket (upsert)",
+                "description": "Assign or clear a student's house",
                 "consumes": [
                     "application/json"
                 ],
@@ -3152,24 +5225,24 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "student-selections"
+                    "students"
                 ],
-                "summary": "Upsert student subject selection",
+                "summary": "Update student house",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Student UUID",
+                        "description": "Student ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Selection",
+                        "description": "House assignment",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.UpsertStudentSubjectSelectionRequest"
+                            "$ref": "#/definitions/models.UpdateStudentHouseRequest"
                         }
                     }
                 ],
@@ -3177,10 +5250,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/models.StudentResponse"
                         }
                     },
                     "400": {
@@ -3195,21 +5265,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/students/{id}/selections/{bucket_id}": {
-            "delete": {
+        "/students/{id}/marks": {
+            "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Remove a student's subject selection for a specific bucket",
+                "description": "Every subject mark recorded for the student in the given term",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "student-selections"
+                    "marks"
                 ],
-                "summary": "Delete student subject selection",
+                "summary": "List a student's marks for a term",
                 "parameters": [
                     {
                         "type": "string",
@@ -3220,9 +5290,9 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Bucket UUID",
-                        "name": "bucket_id",
-                        "in": "path",
+                        "description": "Term UUID",
+                        "name": "term_id",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -3230,9 +5300,10 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
                             }
                         }
                     },
@@ -3488,6 +5559,58 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/subjects/{id}/students": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "enrollments"
+                ],
+                "summary": "List students taking a subject",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Subject UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Academic year UUID",
+                        "name": "academic_year_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.EnrolledStudentResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -3884,6 +6007,351 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/teachers/{id}/workload": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Every class+subject a teacher is assigned to teach, across academic years",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "teachers"
+                ],
+                "summary": "Get teacher workload",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Teacher ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": true
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/terms": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve all terms for an academic year, ordered by sort_order",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "terms"
+                ],
+                "summary": "List terms",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Academic year UUID",
+                        "name": "academic_year_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.TermResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new term within an academic year",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "terms"
+                ],
+                "summary": "Create term",
+                "parameters": [
+                    {
+                        "description": "Term info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateTermRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.TermResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/terms/current": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve the term marked as current",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "terms"
+                ],
+                "summary": "Get current term",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.TermResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/terms/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update a term's name, dates, or sort order by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "terms"
+                ],
+                "summary": "Update term",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Term UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Term info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UpdateTermRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.TermResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a term by ID; blocked if marks have been recorded against it",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "terms"
+                ],
+                "summary": "Delete term",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Term UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/terms/{id}/set-current": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mark a term as the current one; clears the previous current",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "terms"
+                ],
+                "summary": "Set current term",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Term UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -3910,13 +6378,33 @@ const docTemplate = `{
                 }
             }
         },
-        "models.AddSubjectToBucketRequest": {
+        "models.AddGroupSubjectRequest": {
             "type": "object",
             "required": [
                 "subject_id"
             ],
             "properties": {
+                "medium_id": {
+                    "type": "string"
+                },
+                "prerequisite_note": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
                 "subject_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.AssignClassMonitorsRequest": {
+            "type": "object",
+            "properties": {
+                "boy_monitor_id": {
+                    "type": "string"
+                },
+                "girl_monitor_id": {
                     "type": "string"
                 }
             }
@@ -3927,6 +6415,53 @@ const docTemplate = `{
                 "teacher_id"
             ],
             "properties": {
+                "teacher_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.AssignPrefectRequest": {
+            "type": "object",
+            "required": [
+                "academic_year_id",
+                "rank",
+                "student_id"
+            ],
+            "properties": {
+                "academic_year_id": {
+                    "type": "string"
+                },
+                "rank": {
+                    "type": "string",
+                    "enum": [
+                        "junior",
+                        "senior",
+                        "deputy_head",
+                        "head"
+                    ]
+                },
+                "student_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.AssignSectionHeadRequest": {
+            "type": "object",
+            "required": [
+                "academic_year_id",
+                "grade_id",
+                "teacher_id"
+            ],
+            "properties": {
+                "academic_year_id": {
+                    "type": "string"
+                },
+                "grade_id": {
+                    "type": "string"
+                },
+                "stream_id": {
+                    "type": "string"
+                },
                 "teacher_id": {
                     "type": "string"
                 }
@@ -3943,17 +6478,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "teacher_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.AssignSubjectToGradeRequest": {
-            "type": "object",
-            "required": [
-                "subject_id"
-            ],
-            "properties": {
-                "subject_id": {
                     "type": "string"
                 }
             }
@@ -4053,16 +6577,45 @@ const docTemplate = `{
                 }
             }
         },
+        "models.BulkUpsertMarksRequest": {
+            "type": "object",
+            "required": [
+                "entries",
+                "subject_id",
+                "term_id"
+            ],
+            "properties": {
+                "entries": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/models.MarkEntry"
+                    }
+                },
+                "subject_id": {
+                    "type": "string"
+                },
+                "term_id": {
+                    "type": "string"
+                }
+            }
+        },
         "models.ClassResponse": {
             "type": "object",
             "properties": {
                 "academic_year_id": {
                     "type": "string"
                 },
+                "boy_monitor_id": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
                 "form_teacher_id": {
+                    "type": "string"
+                },
+                "girl_monitor_id": {
                     "type": "string"
                 },
                 "grade_id": {
@@ -4091,10 +6644,16 @@ const docTemplate = `{
                 "academic_year_label": {
                     "type": "string"
                 },
+                "boy_monitor_id": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
                 "form_teacher_id": {
+                    "type": "string"
+                },
+                "girl_monitor_id": {
                     "type": "string"
                 },
                 "grade_id": {
@@ -4113,6 +6672,21 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "stream_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ConfirmEnrollmentRequest": {
+            "type": "object",
+            "required": [
+                "academic_year_id",
+                "level_id"
+            ],
+            "properties": {
+                "academic_year_id": {
+                    "type": "string"
+                },
+                "level_id": {
                     "type": "string"
                 }
             }
@@ -4218,6 +6792,34 @@ const docTemplate = `{
                 }
             }
         },
+        "models.CreateLevelRequest": {
+            "type": "object",
+            "required": [
+                "label"
+            ],
+            "properties": {
+                "grade_id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.CreateMediumRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "models.CreateSchoolRequest": {
             "type": "object",
             "required": [
@@ -4230,6 +6832,12 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "grade_from": {
+                    "type": "integer"
+                },
+                "grade_to": {
+                    "type": "integer"
+                },
                 "logo_url": {
                     "type": "string"
                 },
@@ -4238,6 +6846,28 @@ const docTemplate = `{
                 },
                 "phone": {
                     "type": "string"
+                }
+            }
+        },
+        "models.CreateSelectionGroupRequest": {
+            "type": "object",
+            "required": [
+                "label"
+            ],
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "max_select": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "min_select": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "sort_order": {
+                    "type": "integer"
                 }
             }
         },
@@ -4263,17 +6893,6 @@ const docTemplate = `{
                 }
             }
         },
-        "models.CreateSubjectBucketRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "models.CreateSubjectRequest": {
             "type": "object",
             "required": [
@@ -4285,6 +6904,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "type": {
                     "type": "string"
                 }
             }
@@ -4301,7 +6923,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
-                    "description": "ThunderID fields",
+                    "description": "Identity provider account fields",
                     "type": "string"
                 },
                 "employee_number": {
@@ -4311,6 +6933,13 @@ const docTemplate = `{
                 "family_name": {
                     "type": "string"
                 },
+                "gender": {
+                    "type": "string",
+                    "enum": [
+                        "male",
+                        "female"
+                    ]
+                },
                 "given_name": {
                     "type": "string"
                 },
@@ -4318,10 +6947,220 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "password": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 8
                 },
                 "phone_number": {
                     "type": "string"
+                },
+                "title": {
+                    "type": "string",
+                    "enum": [
+                        "Mr",
+                        "Miss",
+                        "Mrs",
+                        "Ms",
+                        "Dr",
+                        "Von",
+                        "Prof"
+                    ]
+                }
+            }
+        },
+        "models.CreateTermRequest": {
+            "type": "object",
+            "required": [
+                "academic_year_id",
+                "end_date",
+                "name",
+                "start_date"
+            ],
+            "properties": {
+                "academic_year_id": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "start_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CurriculumGroupResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "max_select": {
+                    "type": "integer"
+                },
+                "min_select": {
+                    "type": "integer"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "subjects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.GroupSubjectResponse"
+                    }
+                }
+            }
+        },
+        "models.CurriculumTreeResponse": {
+            "type": "object",
+            "properties": {
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.CurriculumGroupResponse"
+                    }
+                },
+                "level": {
+                    "$ref": "#/definitions/models.LevelResponse"
+                }
+            }
+        },
+        "models.DuplicateLevelRequest": {
+            "type": "object",
+            "required": [
+                "label"
+            ],
+            "properties": {
+                "grade_id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.EnrolledStudentResponse": {
+            "type": "object",
+            "properties": {
+                "enrolled_at": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "group_id": {
+                    "type": "string"
+                },
+                "group_label": {
+                    "type": "string"
+                },
+                "index_number": {
+                    "type": "string"
+                },
+                "medium_id": {
+                    "type": "string"
+                },
+                "medium_name": {
+                    "type": "string"
+                },
+                "student_id": {
+                    "type": "string"
+                },
+                "subject_code": {
+                    "type": "string"
+                },
+                "subject_id": {
+                    "type": "string"
+                },
+                "subject_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.EnrollmentPick": {
+            "type": "object",
+            "required": [
+                "group_id",
+                "subject_id"
+            ],
+            "properties": {
+                "group_id": {
+                    "type": "string"
+                },
+                "medium_id": {
+                    "type": "string"
+                },
+                "subject_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.EnrollmentResponse": {
+            "type": "object",
+            "properties": {
+                "academic_year_id": {
+                    "type": "string"
+                },
+                "enrolled_at": {
+                    "type": "string"
+                },
+                "group_id": {
+                    "type": "string"
+                },
+                "group_label": {
+                    "type": "string"
+                },
+                "level_id": {
+                    "type": "string"
+                },
+                "level_label": {
+                    "type": "string"
+                },
+                "medium_id": {
+                    "type": "string"
+                },
+                "medium_name": {
+                    "type": "string"
+                },
+                "student_id": {
+                    "type": "string"
+                },
+                "subject_code": {
+                    "type": "string"
+                },
+                "subject_id": {
+                    "type": "string"
+                },
+                "subject_name": {
+                    "type": "string"
+                },
+                "subject_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.EnrollmentValidationResponse": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.GroupValidationError"
+                    }
+                },
+                "valid": {
+                    "type": "boolean"
                 }
             }
         },
@@ -4339,6 +7178,49 @@ const docTemplate = `{
                 },
                 "sort_order": {
                     "type": "integer"
+                }
+            }
+        },
+        "models.GroupSubjectResponse": {
+            "type": "object",
+            "properties": {
+                "medium_id": {
+                    "type": "string"
+                },
+                "medium_name": {
+                    "type": "string"
+                },
+                "prerequisite_note": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "subject_code": {
+                    "type": "string"
+                },
+                "subject_id": {
+                    "type": "string"
+                },
+                "subject_name": {
+                    "type": "string"
+                },
+                "subject_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.GroupValidationError": {
+            "type": "object",
+            "properties": {
+                "group_id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
                 }
             }
         },
@@ -4391,6 +7273,26 @@ const docTemplate = `{
                 }
             }
         },
+        "models.LevelResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "grade_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.LinkGuardianRequest": {
             "type": "object",
             "required": [
@@ -4419,6 +7321,92 @@ const docTemplate = `{
                 }
             }
         },
+        "models.MarkEntry": {
+            "type": "object",
+            "required": [
+                "student_id"
+            ],
+            "properties": {
+                "marks": {
+                    "type": "number"
+                },
+                "max_marks": {
+                    "type": "number"
+                },
+                "student_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.MediumResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ProvisionGuardianLoginRequest": {
+            "type": "object",
+            "required": [
+                "family_name",
+                "given_name",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "family_name": {
+                    "type": "string"
+                },
+                "given_name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.RegisterAdminRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "family_name",
+                "given_name",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "family_name": {
+                    "type": "string"
+                },
+                "given_name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 8
+                },
+                "phone_number": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "models.SchoolResponse": {
             "type": "object",
             "properties": {
@@ -4431,6 +7419,12 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "grade_from": {
+                    "type": "integer"
+                },
+                "grade_to": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -4442,6 +7436,32 @@ const docTemplate = `{
                 },
                 "phone": {
                     "type": "string"
+                }
+            }
+        },
+        "models.SelectionGroupResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "level_id": {
+                    "type": "string"
+                },
+                "max_select": {
+                    "type": "integer"
+                },
+                "min_select": {
+                    "type": "integer"
+                },
+                "sort_order": {
+                    "type": "integer"
                 }
             }
         },
@@ -4488,6 +7508,9 @@ const docTemplate = `{
                 "full_name": {
                     "type": "string"
                 },
+                "gender": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -4508,26 +7531,6 @@ const docTemplate = `{
                 }
             }
         },
-        "models.StudentSubjectSelectionResponse": {
-            "type": "object",
-            "properties": {
-                "bucket_id": {
-                    "type": "string"
-                },
-                "bucket_name": {
-                    "type": "string"
-                },
-                "subject_code": {
-                    "type": "string"
-                },
-                "subject_id": {
-                    "type": "string"
-                },
-                "subject_name": {
-                    "type": "string"
-                }
-            }
-        },
         "models.StudentWithClassResponse": {
             "type": "object",
             "properties": {
@@ -4544,6 +7547,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "full_name": {
+                    "type": "string"
+                },
+                "gender": {
                     "type": "string"
                 },
                 "grade_name": {
@@ -4569,23 +7575,6 @@ const docTemplate = `{
                 }
             }
         },
-        "models.SubjectBucketResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "grade_id": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "models.SubjectResponse": {
             "type": "object",
             "properties": {
@@ -4599,6 +7588,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "type": {
                     "type": "string"
                 }
             }
@@ -4623,6 +7615,27 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SubmitEnrollmentRequest": {
+            "type": "object",
+            "required": [
+                "academic_year_id",
+                "level_id"
+            ],
+            "properties": {
+                "academic_year_id": {
+                    "type": "string"
+                },
+                "level_id": {
+                    "type": "string"
+                },
+                "picks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.EnrollmentPick"
+                    }
+                }
+            }
+        },
         "models.TeacherResponse": {
             "type": "object",
             "properties": {
@@ -4635,13 +7648,23 @@ const docTemplate = `{
                 "full_name": {
                     "type": "string"
                 },
+                "gender": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
+                },
+                "is_active": {
+                    "description": "IsActive is true once the teacher has at least one assigned subject.",
+                    "type": "boolean"
                 },
                 "joined_date": {
                     "type": "string"
                 },
                 "phone": {
+                    "type": "string"
+                },
+                "title": {
                     "type": "string"
                 },
                 "user_id": {
@@ -4659,6 +7682,35 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TermResponse": {
+            "type": "object",
+            "properties": {
+                "academic_year_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_current": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "start_date": {
                     "type": "string"
                 }
             }
@@ -4713,6 +7765,34 @@ const docTemplate = `{
                 }
             }
         },
+        "models.UpdateLevelRequest": {
+            "type": "object",
+            "required": [
+                "label"
+            ],
+            "properties": {
+                "grade_id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.UpdateMediumRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "models.UpdateSchoolRequest": {
             "type": "object",
             "required": [
@@ -4725,6 +7805,12 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "grade_from": {
+                    "type": "integer"
+                },
+                "grade_to": {
+                    "type": "integer"
+                },
                 "logo_url": {
                     "type": "string"
                 },
@@ -4733,6 +7819,28 @@ const docTemplate = `{
                 },
                 "phone": {
                     "type": "string"
+                }
+            }
+        },
+        "models.UpdateSelectionGroupRequest": {
+            "type": "object",
+            "required": [
+                "label"
+            ],
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "max_select": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "min_select": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "sort_order": {
+                    "type": "integer"
                 }
             }
         },
@@ -4758,6 +7866,14 @@ const docTemplate = `{
                 }
             }
         },
+        "models.UpdateStudentHouseRequest": {
+            "type": "object",
+            "properties": {
+                "house_id": {
+                    "type": "string"
+                }
+            }
+        },
         "models.UpdateStudentRequest": {
             "type": "object",
             "required": [
@@ -4770,6 +7886,13 @@ const docTemplate = `{
                 },
                 "family_name": {
                     "type": "string"
+                },
+                "gender": {
+                    "type": "string",
+                    "enum": [
+                        "male",
+                        "female"
+                    ]
                 },
                 "given_name": {
                     "type": "string"
@@ -4797,6 +7920,9 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "type": {
+                    "type": "string"
                 }
             }
         },
@@ -4814,26 +7940,112 @@ const docTemplate = `{
                 "family_name": {
                     "type": "string"
                 },
+                "gender": {
+                    "type": "string",
+                    "enum": [
+                        "male",
+                        "female"
+                    ]
+                },
                 "given_name": {
                     "type": "string"
                 },
                 "phone_number": {
                     "type": "string"
+                },
+                "title": {
+                    "type": "string",
+                    "enum": [
+                        "Mr",
+                        "Miss",
+                        "Mrs",
+                        "Ms",
+                        "Dr",
+                        "Von",
+                        "Prof"
+                    ]
                 }
             }
         },
-        "models.UpsertStudentSubjectSelectionRequest": {
+        "models.UpdateTermRequest": {
             "type": "object",
             "required": [
-                "bucket_id",
-                "subject_id"
+                "end_date",
+                "name",
+                "start_date"
             ],
             "properties": {
-                "bucket_id": {
+                "end_date": {
                     "type": "string"
                 },
-                "subject_id": {
+                "name": {
                     "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "start_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "services.PresetLevelPreview": {
+            "type": "object",
+            "properties": {
+                "already_exists": {
+                    "type": "boolean"
+                },
+                "grade_number": {
+                    "type": "integer"
+                },
+                "groups_to_add": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "subjects_to_link": {
+                    "type": "integer"
+                }
+            }
+        },
+        "services.PresetSummary": {
+            "type": "object",
+            "properties": {
+                "dry_run": {
+                    "type": "boolean"
+                },
+                "grades_covered": {
+                    "description": "grade numbers this preset has content for, present in this school",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "grades_skipped": {
+                    "description": "grade numbers with no matching Grade row",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "groups_created": {
+                    "type": "integer"
+                },
+                "levels": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/services.PresetLevelPreview"
+                    }
+                },
+                "levels_created": {
+                    "type": "integer"
+                },
+                "links_created": {
+                    "type": "integer"
+                },
+                "subjects_created": {
+                    "type": "integer"
                 }
             }
         }

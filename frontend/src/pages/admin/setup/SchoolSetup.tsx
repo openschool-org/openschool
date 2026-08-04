@@ -63,6 +63,7 @@ const GRADE_MAX = 13;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const STEPS = ["School", "Houses", "Grades", "Classes", "Mediums", "Done"] as const;
+const HOUSE_COLOR_PALETTE = ["#0f62fe", "#da1e28", "#24a148", "#f1c21b", "#8a3ffc", "#ff832b"];
 
 function StepShell({
   icon: Icon,
@@ -173,7 +174,7 @@ export default function SchoolSetup() {
     !gradeRangeInvalid;
 
   // ── Step 1: Houses ───────────────────────────────────────────────────────
-  const [houses, setHouses] = useState([{ name: "", code: "" }]);
+  const [houses, setHouses] = useState([{ name: "", code: "", color: HOUSE_COLOR_PALETTE[0] }]);
   const [housesSkipped, setHousesSkipped] = useState(false);
 
   // ── Step 2: Grades ───────────────────────────────────────────────────────
@@ -272,7 +273,7 @@ export default function SchoolSetup() {
             await createHouse.mutateAsync({
               name: named[i].name.trim(),
               code: named[i].code.trim() || undefined,
-              remainder: i,
+              color: named[i].color,
             });
           }
         }
@@ -528,7 +529,7 @@ export default function SchoolSetup() {
 
         {/* ── Step 1: Houses ─────────────────────────────────────────── */}
         {step === 1 && (
-          <StepShell icon={Home} title="Houses" subtitle="Optional - students are auto-assigned a house by index number.">
+          <StepShell icon={Home} title="Houses" subtitle="Optional - students and staff are auto-assigned to whichever house has the fewest members.">
             {houses.map((h, i) => (
               <RepeatableRow
                 key={i}
@@ -554,13 +555,29 @@ export default function SchoolSetup() {
                     setHouses((hs) => hs.map((row, idx) => (idx === i ? { ...row, code: e.target.value } : row)))
                   }
                 />
+                <div>
+                  <label htmlFor={`house-color-${i}`} style={{ fontSize: "0.75rem", display: "block", marginBottom: "0.25rem" }}>
+                    Color
+                  </label>
+                  <input
+                    id={`house-color-${i}`}
+                    type="color"
+                    value={h.color}
+                    onChange={(e) =>
+                      setHouses((hs) => hs.map((row, idx) => (idx === i ? { ...row, color: e.target.value } : row)))
+                    }
+                    style={{ width: "2.5rem", height: "2.5rem", padding: 0, border: "1px solid #8d8d8d", cursor: "pointer" }}
+                  />
+                </div>
               </RepeatableRow>
             ))}
             <Button
               kind="ghost"
               size="sm"
               renderIcon={Add}
-              onClick={() => setHouses((hs) => [...hs, { name: "", code: "" }])}
+              onClick={() =>
+                setHouses((hs) => [...hs, { name: "", code: "", color: HOUSE_COLOR_PALETTE[hs.length % HOUSE_COLOR_PALETTE.length] }])
+              }
             >
               Add another house
             </Button>

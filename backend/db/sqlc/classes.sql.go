@@ -313,6 +313,24 @@ func (q *Queries) GetClassStudentCount(ctx context.Context, classID uuid.UUID) (
 	return count, err
 }
 
+const getClassSubjectTeacher = `-- name: GetClassSubjectTeacher :one
+SELECT teacher_id FROM class_subject_teachers
+WHERE class_id = $1 AND subject_id = $2
+`
+
+type GetClassSubjectTeacherParams struct {
+	ClassID   uuid.UUID `json:"class_id"`
+	SubjectID uuid.UUID `json:"subject_id"`
+}
+
+// the teacher assigned to teach a specific subject to a specific class, if any
+func (q *Queries) GetClassSubjectTeacher(ctx context.Context, arg GetClassSubjectTeacherParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getClassSubjectTeacher, arg.ClassID, arg.SubjectID)
+	var teacher_id uuid.UUID
+	err := row.Scan(&teacher_id)
+	return teacher_id, err
+}
+
 const getGradeByID = `-- name: GetGradeByID :one
 SELECT id, name, sort_order, created_at FROM grades
 WHERE id = $1
@@ -402,6 +420,28 @@ func (q *Queries) GetStudentCurrentClass(ctx context.Context, studentID uuid.UUI
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const isTeacherAssignedToClass = `-- name: IsTeacherAssignedToClass :one
+SELECT EXISTS (
+    SELECT 1 FROM classes WHERE id = $1 AND form_teacher_id = $2
+    UNION
+    SELECT 1 FROM class_subject_teachers WHERE class_id = $1 AND teacher_id = $3
+) AS assigned
+`
+
+type IsTeacherAssignedToClassParams struct {
+	ID            uuid.UUID   `json:"id"`
+	FormTeacherID pgtype.UUID `json:"form_teacher_id"`
+	TeacherID     uuid.UUID   `json:"teacher_id"`
+}
+
+// true if the teacher is the class's form teacher OR teaches any subject in it
+func (q *Queries) IsTeacherAssignedToClass(ctx context.Context, arg IsTeacherAssignedToClassParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isTeacherAssignedToClass, arg.ID, arg.FormTeacherID, arg.TeacherID)
+	var assigned bool
+	err := row.Scan(&assigned)
+	return assigned, err
 }
 
 const listClassesByAcademicYear = `-- name: ListClassesByAcademicYear :many

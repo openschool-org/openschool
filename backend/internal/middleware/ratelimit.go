@@ -3,33 +3,63 @@ package middleware
 import (
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
 )
 
+// evictAfter is how long a client IP can go without a request before its
+// limiter is dropped. Generous relative to sweepInterval so a client
+// polling every few minutes never gets evicted mid-session.
+const evictAfter = 30 * time.Minute
+
+// sweepInterval is how often the eviction pass runs.
+const sweepInterval = 10 * time.Minute
+
+type limiterEntry struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
 // RateLimit throttles requests per client IP with a token-bucket limiter.
-// It's meant for unauthenticated, state-changing endpoints (e.g. first-run
-// admin registration) that have no auth check in front of them to otherwise
-// stop someone from hammering the identity provider or the database.
-//
-// The per-IP limiter map is never evicted; for a self-hosted app at this
-// scale that's an acceptable tradeoff, but it isn't meant for a
-// high-cardinality public deployment.
+// Originally written for a single unauthenticated, state-changing endpoint
+// (first-run admin registration) — now also used API-wide (see
+// cmd/api/main.go), so unlike a single low-traffic route, the set of
+// distinct client IPs here can grow into the thousands over a school day.
+// A background sweep evicts limiters idle for more than evictAfter so
+// memory tracks *active* clients, not every IP ever seen since the process
+// started.
 func RateLimit(rps float64, burst int) gin.HandlerFunc {
 	var mu sync.Mutex
-	limiters := make(map[string]*rate.Limiter)
+	limiters := make(map[string]*limiterEntry)
 
 	limiterFor := func(key string) *rate.Limiter {
 		mu.Lock()
 		defer mu.Unlock()
-		l, ok := limiters[key]
+		e, ok := limiters[key]
 		if !ok {
-			l = rate.NewLimiter(rate.Limit(rps), burst)
-			limiters[key] = l
+			e = &limiterEntry{limiter: rate.NewLimiter(rate.Limit(rps), burst)}
+			limiters[key] = e
 		}
-		return l
+		e.lastSeen = time.Now()
+		return e.limiter
 	}
+
+	go func() {
+		ticker := time.NewTicker(sweepInterval)
+		defer ticker.Stop()
+		for range ticker.C {
+			cutoff := time.Now().Add(-evictAfter)
+			mu.Lock()
+			for key, e := range limiters {
+				if e.lastSeen.Before(cutoff) {
+					delete(limiters, key)
+				}
+			}
+			mu.Unlock()
+		}
+	}()
 
 	return func(c *gin.Context) {
 		if !limiterFor(c.ClientIP()).Allow() {

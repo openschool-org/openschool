@@ -84,6 +84,21 @@ WHERE sse.subject_id = $1
   AND sse.academic_year_id = $2
 ORDER BY sp.full_name ASC;
 
+-- name: LockStudentEnrollment :exec
+INSERT INTO student_enrollment_locks (student_id, level_id, academic_year_id)
+VALUES ($1, $2, $3)
+ON CONFLICT DO NOTHING;
+
+-- name: UnlockStudentEnrollment :execrows
+DELETE FROM student_enrollment_locks
+WHERE student_id = $1 AND level_id = $2 AND academic_year_id = $3;
+
+-- name: IsStudentEnrollmentLocked :one
+SELECT EXISTS (
+    SELECT 1 FROM student_enrollment_locks
+    WHERE student_id = $1 AND level_id = $2 AND academic_year_id = $3
+) AS locked;
+
 -- name: ListStudentsByGroup :many
 SELECT
     sp.id           AS student_id,

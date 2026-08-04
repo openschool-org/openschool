@@ -21,10 +21,11 @@ import {
   useStudentWithClass,
   useUpdateStudent,
   useUpdateStudentHouse,
+  useUpdateStudentEnrollmentStatus,
   useDeleteStudent,
 } from "../../../queries/useStudents";
 import { useHouses } from "../../../queries/useHouses";
-import type { StudentWithClass } from "../../../services/student";
+import type { StudentWithClass, StudentEnrollmentStatus } from "../../../services/student";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
@@ -34,6 +35,11 @@ import SubjectEnrollment from "./SubjectEnrollment";
 import StudentGuardians from "./StudentGuardians";
 
 type Gender = "" | "male" | "female";
+
+const ENROLLMENT_STATUSES: { value: StudentEnrollmentStatus; label: string }[] = [
+  { value: "active", label: "Active" },
+  { value: "left", label: "Left the school" },
+];
 
 function studentToForm(s: StudentWithClass) {
   const [given, ...rest] = s.full_name.trim().split(/\s+/);
@@ -56,6 +62,7 @@ export default function StudentDetail() {
     useStudentWithClass(id);
   const updateStudent = useUpdateStudent();
   const updateHouse = useUpdateStudentHouse();
+  const updateStatus = useUpdateStudentEnrollmentStatus();
   const deleteStudent = useDeleteStudent();
   const { data: houses } = useHouses();
 
@@ -332,10 +339,27 @@ export default function StudentDetail() {
             <h2 className="os-section__title">House</h2>
           </div>
           <div className="os-section__body">
+            {(() => {
+              const current = houses?.find((h) => h.id === student.house_id);
+              return current ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: "0.75rem",
+                      height: "0.75rem",
+                      borderRadius: "50%",
+                      backgroundColor: current.color,
+                    }}
+                  />
+                  <span style={{ fontSize: "0.875rem", fontWeight: 600 }}>{current.name}</span>
+                </div>
+              ) : null;
+            })()}
             <Select
               id="student-house"
               labelText="Assigned house"
-              helperText="Assigned automatically from the index number; change it here if needed."
+              helperText="Assigned automatically to keep houses balanced. Only a System Administrator can change it — every change is recorded in the audit log."
               value={student.house_id ?? ""}
               disabled={updateHouse.isPending}
               onChange={(e) =>
@@ -345,6 +369,28 @@ export default function StudentDetail() {
               <SelectItem value="" text="No house" />
               {houses?.map((h) => (
                 <SelectItem key={h.id} value={h.id} text={h.name} />
+              ))}
+            </Select>
+          </div>
+        </div>
+
+        <div className="os-section">
+          <div className="os-section__header">
+            <h2 className="os-section__title">Enrollment Status</h2>
+          </div>
+          <div className="os-section__body">
+            <Select
+              id="student-enrollment-status"
+              labelText="Status"
+              helperText="Mark as left when a student leaves the school."
+              value={student.enrollment_status}
+              disabled={updateStatus.isPending}
+              onChange={(e) =>
+                updateStatus.mutate({ id: student.id, status: e.target.value as StudentEnrollmentStatus })
+              }
+            >
+              {ENROLLMENT_STATUSES.map((s) => (
+                <SelectItem key={s.value} value={s.value} text={s.label} />
               ))}
             </Select>
           </div>

@@ -29,6 +29,8 @@ export interface ChildMark {
   subject_id: string;
   subject_name: string;
   subject_code: string;
+  teacher_id: string | null;
+  teacher_name: string | null;
 }
 
 export const parentApi = {

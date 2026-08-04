@@ -94,6 +94,26 @@ func (q *Queries) DeleteStudentSubjectEnrollment(ctx context.Context, arg Delete
 	return err
 }
 
+const isStudentEnrollmentLocked = `-- name: IsStudentEnrollmentLocked :one
+SELECT EXISTS (
+    SELECT 1 FROM student_enrollment_locks
+    WHERE student_id = $1 AND level_id = $2 AND academic_year_id = $3
+) AS locked
+`
+
+type IsStudentEnrollmentLockedParams struct {
+	StudentID      uuid.UUID `json:"student_id"`
+	LevelID        uuid.UUID `json:"level_id"`
+	AcademicYearID uuid.UUID `json:"academic_year_id"`
+}
+
+func (q *Queries) IsStudentEnrollmentLocked(ctx context.Context, arg IsStudentEnrollmentLockedParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isStudentEnrollmentLocked, arg.StudentID, arg.LevelID, arg.AcademicYearID)
+	var locked bool
+	err := row.Scan(&locked)
+	return locked, err
+}
+
 const listStudentEnrollments = `-- name: ListStudentEnrollments :many
 SELECT
     sse.student_id,
@@ -375,4 +395,40 @@ func (q *Queries) ListStudentsBySubject(ctx context.Context, arg ListStudentsByS
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockStudentEnrollment = `-- name: LockStudentEnrollment :exec
+INSERT INTO student_enrollment_locks (student_id, level_id, academic_year_id)
+VALUES ($1, $2, $3)
+ON CONFLICT DO NOTHING
+`
+
+type LockStudentEnrollmentParams struct {
+	StudentID      uuid.UUID `json:"student_id"`
+	LevelID        uuid.UUID `json:"level_id"`
+	AcademicYearID uuid.UUID `json:"academic_year_id"`
+}
+
+func (q *Queries) LockStudentEnrollment(ctx context.Context, arg LockStudentEnrollmentParams) error {
+	_, err := q.db.Exec(ctx, lockStudentEnrollment, arg.StudentID, arg.LevelID, arg.AcademicYearID)
+	return err
+}
+
+const unlockStudentEnrollment = `-- name: UnlockStudentEnrollment :execrows
+DELETE FROM student_enrollment_locks
+WHERE student_id = $1 AND level_id = $2 AND academic_year_id = $3
+`
+
+type UnlockStudentEnrollmentParams struct {
+	StudentID      uuid.UUID `json:"student_id"`
+	LevelID        uuid.UUID `json:"level_id"`
+	AcademicYearID uuid.UUID `json:"academic_year_id"`
+}
+
+func (q *Queries) UnlockStudentEnrollment(ctx context.Context, arg UnlockStudentEnrollmentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, unlockStudentEnrollment, arg.StudentID, arg.LevelID, arg.AcademicYearID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

@@ -34,3 +34,14 @@ ORDER BY g.sort_order ASC, s.name ASC NULLS FIRST;
 
 -- name: DeleteSectionHead :execrows
 DELETE FROM section_heads WHERE id = $1;
+
+-- name: GetGradeTICForGrade :one
+-- the whole-grade TIC (stream_id IS NULL), if any, used for timetable review authorization
+SELECT teacher_id FROM section_heads
+WHERE academic_year_id = $1 AND grade_id = $2 AND stream_id IS NULL;
+
+-- name: ListGradeIDsHeadedByTeacher :many
+-- whole-grade TICs only (stream_id IS NULL) — used to resolve which grades'
+-- timetables this teacher is authorized to review
+SELECT grade_id FROM section_heads
+WHERE teacher_id = $1 AND academic_year_id = $2 AND stream_id IS NULL;

@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -10,12 +12,47 @@ import (
 	"github.com/openschool-org/openschool/internal/services"
 )
 
+// statusForAttendanceError maps a not-assigned-to-class failure to 403
+// (distinct from a genuine 404/400), so callers can tell "you can't see
+// this" apart from "this doesn't exist" or "bad input."
+func statusForAttendanceError(err error, notFoundStatus int) int {
+	if errors.Is(err, services.ErrNotAssignedToClass) {
+		return http.StatusForbidden
+	}
+	if errors.Is(err, services.ErrSessionLocked) {
+		return http.StatusLocked
+	}
+	return notFoundStatus
+}
+
 type AttendanceHandler struct {
 	service *services.AttendanceService
 }
 
 func NewAttendanceHandler(service *services.AttendanceService) *AttendanceHandler {
 	return &AttendanceHandler{service: service}
+}
+
+// actorFromContext builds a services.Actor from the JWT claims AuthMiddleware
+// already put on the gin context. Shared by any handler that needs to know
+// who's acting, not just who's authenticated (e.g. for assignment checks).
+func actorFromContext(c *gin.Context) (services.Actor, error) {
+	id, err := uuid.Parse(c.GetString("userID"))
+	if err != nil {
+		return services.Actor{}, fmt.Errorf("invalid caller identity")
+	}
+
+	var roleList []string
+	if roles, ok := c.Get("roles"); ok {
+		roleList, _ = roles.([]string)
+	}
+
+	return services.Actor{
+		ID:       id,
+		Email:    c.GetString("email"),
+		FullName: strings.TrimSpace(c.GetString("given_name") + " " + c.GetString("family_name")),
+		Role:     services.ResolveAppRole(roleList),
+	}, nil
 }
 
 // CreateSession godoc
@@ -36,34 +73,10 @@ func (h *AttendanceHandler) CreateSession(c *gin.Context) {
 		return
 	}
 
-	takenByID, err := uuid.Parse(c.GetString("userID"))
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid user"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
-	}
-
-	role := ""
-	if roles, ok := c.Get("roles"); ok {
-		if roleList, ok := roles.([]string); ok {
-			for _, candidate := range []string{"admin", "teacher", "student", "parent"} {
-				for _, r := range roleList {
-					if r == candidate {
-						role = candidate
-						break
-					}
-				}
-				if role != "" {
-					break
-				}
-			}
-		}
-	}
-
-	actor := services.Actor{
-		ID:       takenByID,
-		Email:    c.GetString("email"),
-		FullName: strings.TrimSpace(c.GetString("given_name") + " " + c.GetString("family_name")),
-		Role:     role,
 	}
 
 	session, err := h.service.CreateSession(c.Request.Context(), actor, req)
@@ -92,9 +105,15 @@ func (h *AttendanceHandler) GetSession(c *gin.Context) {
 		return
 	}
 
-	session, err := h.service.GetSession(c.Request.Context(), id)
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "session not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	session, err := h.service.GetSession(c.Request.Context(), actor, id)
+	if err != nil {
+		c.JSON(statusForAttendanceError(err, http.StatusNotFound), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -118,8 +137,14 @@ func (h *AttendanceHandler) DeleteSession(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeleteSession(c.Request.Context(), id); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.service.DeleteSession(c.Request.Context(), actor, id); err != nil {
+		c.JSON(statusForAttendanceError(err, http.StatusNotFound), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -203,8 +228,14 @@ func (h *AttendanceHandler) MarkAttendance(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.MarkAttendance(c.Request.Context(), id, req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.service.MarkAttendance(c.Request.Context(), actor, id, req); err != nil {
+		c.JSON(statusForAttendanceError(err, http.StatusBadRequest), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -228,9 +259,15 @@ func (h *AttendanceHandler) ListBySession(c *gin.Context) {
 		return
 	}
 
-	records, err := h.service.ListBySession(c.Request.Context(), id)
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	records, err := h.service.ListBySession(c.Request.Context(), actor, id)
+	if err != nil {
+		c.JSON(statusForAttendanceError(err, http.StatusInternalServerError), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -254,9 +291,15 @@ func (h *AttendanceHandler) ListByStudent(c *gin.Context) {
 		return
 	}
 
-	records, err := h.service.ListByStudent(c.Request.Context(), id)
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	records, err := h.service.ListByStudentForTeacher(c.Request.Context(), actor, id)
+	if err != nil {
+		c.JSON(statusForAttendanceError(err, http.StatusInternalServerError), gin.H{"error": err.Error()})
 		return
 	}
 
@@ -287,9 +330,15 @@ func (h *AttendanceHandler) GetSummary(c *gin.Context) {
 		return
 	}
 
-	summary, err := h.service.GetSummary(c.Request.Context(), studentID, classID)
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	summary, err := h.service.GetSummaryForTeacher(c.Request.Context(), actor, studentID, classID)
+	if err != nil {
+		c.JSON(statusForAttendanceError(err, http.StatusInternalServerError), gin.H{"error": err.Error()})
 		return
 	}
 

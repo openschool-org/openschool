@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router";
-import { Button, Tag } from "@carbon/react";
+import { Button, Tag, InlineNotification, TextInput } from "@carbon/react";
 import {
   ArrowLeft,
   Save,
   CheckmarkFilled,
   CloseFilled,
   Time,
+  Certificate,
   Search,
   UserMultiple,
   Warning,
@@ -21,7 +22,7 @@ import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import type { AttendanceRecordRow } from "../../../services/attendance";
 
-type Status = "present" | "absent" | "late" | null;
+type Status = "present" | "absent" | "late" | "excused" | null;
 
 const STATUS_STYLES: Record<
   NonNullable<Status>,
@@ -30,6 +31,7 @@ const STATUS_STYLES: Record<
   present: { bg: "#defbe6", border: "#24a148", color: "#0e6027", label: "Present" },
   absent: { bg: "#fff1f1", border: "#da1e28", color: "#a2191f", label: "Absent" },
   late: { bg: "#fdf6dd", border: "#f1c21b", color: "#7d5a00", label: "Late" },
+  excused: { bg: "#f6f2ff", border: "#8a3ffc", color: "#6929c4", label: "Excused" },
 };
 
 function StatusButton({
@@ -68,6 +70,9 @@ function StatusButton({
       {value === "late" && (
         <Time size={12} style={{ marginRight: "4px", fill: selected ? cfg.color : "#8d8d8d", verticalAlign: "middle" }} />
       )}
+      {value === "excused" && (
+        <Certificate size={12} style={{ marginRight: "4px", fill: selected ? cfg.color : "#8d8d8d", verticalAlign: "middle" }} />
+      )}
       {cfg.label}
     </button>
   );
@@ -77,7 +82,7 @@ function recordsToState(records: AttendanceRecordRow[]) {
   const statuses: Record<string, Status> = {};
   const notes: Record<string, string> = {};
   for (const r of records) {
-    if (r.status === "present" || r.status === "absent" || r.status === "late") {
+    if (r.status === "present" || r.status === "absent" || r.status === "late" || r.status === "excused") {
       statuses[r.student_id] = r.status;
     }
     if (r.note) notes[r.student_id] = r.note;
@@ -98,13 +103,18 @@ export default function AttendanceMark() {
   const { role } = useRole();
   const markAttendance = useMarkAttendance(id);
 
-  // Admins view attendance but do not mark it — teachers do the marking.
-  const readOnly = role === "admin";
+  const isAdmin = role === "admin";
+  // A session becomes read-only for teachers 24h after it was taken —
+  // admins can always mark/edit, whether or not the session is locked.
+  const locked = !!session?.created_at && new Date().getTime() - new Date(session.created_at).getTime() > 24 * 60 * 60 * 1000;
+  const readOnly = locked && !isAdmin;
+  const isOverride = locked && isAdmin;
 
   const [statuses, setStatuses] = useState<Record<string, Status>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [saved, setSaved] = useState(false);
+  const [reason, setReason] = useState("");
 
   // Seed local edit state from whatever has already been marked for this
   // session. Adjusted during render (React's recommended pattern for "sync an
@@ -150,6 +160,7 @@ export default function AttendanceMark() {
       present: Object.values(statuses).filter((v) => v === "present").length,
       absent: Object.values(statuses).filter((v) => v === "absent").length,
       late: Object.values(statuses).filter((v) => v === "late").length,
+      excused: Object.values(statuses).filter((v) => v === "excused").length,
       unmarked: (students ?? []).length - Object.values(statuses).filter(Boolean).length,
     }),
     [statuses, students],
@@ -165,7 +176,7 @@ export default function AttendanceMark() {
       }));
 
     markAttendance.mutate(
-      { records: recordsToSend },
+      { records: recordsToSend, reason: isOverride ? reason.trim() || undefined : undefined },
       {
         onSuccess: () => {
           setSaved(true);
@@ -230,12 +241,34 @@ export default function AttendanceMark() {
       </div>
 
       <div style={{ padding: "1.5rem 2rem" }}>
+        {locked && !isAdmin && (
+          <InlineNotification
+            kind="warning"
+            title="This session is locked"
+            subtitle="More than 24 hours have passed since it was taken. Ask an administrator to edit it."
+            lowContrast
+            hideCloseButton
+            style={{ maxWidth: "100%", marginBottom: "1.5rem" }}
+          />
+        )}
+        {isOverride && (
+          <InlineNotification
+            kind="info"
+            title="Editing a locked session"
+            subtitle="This session is more than 24 hours old. As an administrator you can still edit it — please note a reason below; the change will be recorded in the audit log."
+            lowContrast
+            hideCloseButton
+            style={{ maxWidth: "100%", marginBottom: "1.5rem" }}
+          />
+        )}
+
         {/* Summary bar */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem", marginBottom: "1.5rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.75rem", marginBottom: "1.5rem" }}>
           {[
             { label: "Present", count: summary.present, color: "#24a148" },
             { label: "Absent", count: summary.absent, color: "#da1e28" },
             { label: "Late", count: summary.late, color: "#7d5a00" },
+            { label: "Excused", count: summary.excused, color: "#6929c4" },
             { label: "Unmarked", count: summary.unmarked, color: "#525252" },
           ].map(({ label, count, color }) => (
             <div
@@ -365,7 +398,7 @@ export default function AttendanceMark() {
                             )
                           ) : (
                             <div style={{ display: "flex", gap: "0.375rem" }}>
-                              {(["present", "absent", "late"] as const).map((s) => (
+                              {(["present", "absent", "late", "excused"] as const).map((s) => (
                                 <StatusButton
                                   key={s}
                                   value={s}
@@ -381,7 +414,7 @@ export default function AttendanceMark() {
                             <span style={{ fontSize: "0.75rem", color: notes[student.id] ? "#525252" : "#c6c6c6" }}>
                               {notes[student.id] || "—"}
                             </span>
-                          ) : status === "absent" || status === "late" ? (
+                          ) : status === "absent" || status === "late" || status === "excused" ? (
                             <input
                               placeholder="Optional note…"
                               value={notes[student.id] ?? ""}
@@ -416,7 +449,18 @@ export default function AttendanceMark() {
 
         {/* Footer actions */}
         {!readOnly && (
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "1rem 0", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "1rem 0" }}>
+        {isOverride && (
+          <TextInput
+            id="attendance-override-reason"
+            labelText="Reason for editing this locked session"
+            placeholder="e.g. Corrected after guardian phone call"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            style={{ maxWidth: "28rem" }}
+          />
+        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
           {summary.unmarked > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8125rem", color: "#7d5a00" }}>
               <Warning size={16} style={{ fill: "#f1c21b" }} />
@@ -444,6 +488,7 @@ export default function AttendanceMark() {
           >
             {markAttendance.isPending ? "Saving…" : "Save Attendance"}
           </Button>
+        </div>
         </div>
         )}
       </div>

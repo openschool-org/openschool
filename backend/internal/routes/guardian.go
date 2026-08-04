@@ -5,18 +5,35 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/openschool-org/openschool/internal/handlers"
 	"github.com/openschool-org/openschool/internal/repositories"
+	notificationsrepositories "github.com/openschool-org/openschool/internal/repositories/notifications"
+	timetablerepositories "github.com/openschool-org/openschool/internal/repositories/timetable"
 	"github.com/openschool-org/openschool/internal/services"
+	notificationsservices "github.com/openschool-org/openschool/internal/services/notifications"
 )
 
 func RegisterGuardianRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewGuardianRepository(pool)
-	service := services.NewGuardianService(repo, repositories.NewUserRepository(pool), newIdentityProvider())
+	notifications := notificationsservices.NewNotificationService(
+		notificationsrepositories.NewNotificationRepository(pool),
+		repositories.NewClassRepository(pool),
+		timetablerepositories.NewGradeSectionRepository(pool),
+		repositories.NewSectionHeadRepository(pool),
+		repositories.NewTeacherRepository(pool),
+		repositories.NewStudentRepository(pool),
+		repo,
+		repositories.NewSchoolRepository(pool),
+		repositories.NewPositionRepository(pool),
+	)
+	service := services.NewGuardianService(repo, repositories.NewUserRepository(pool), newIdentityProvider(), notifications)
 	handler := handlers.NewGuardianHandler(service)
 
 	admin.POST("/guardians", handler.Create)
 	teacherOrAdmin.GET("/guardians", handler.List)
 	teacherOrAdmin.GET("/guardians/:id", handler.GetByID)
+	teacherOrAdmin.GET("/guardians/:id/students", handler.ListStudents)
+	admin.GET("/guardians/:id/notifications", handler.ListNotifications)
 	admin.PUT("/guardians/:id", handler.Update)
+	admin.DELETE("/guardians/:id", handler.Delete)
 	admin.POST("/students/:id/guardians", handler.LinkToStudent)
 	admin.DELETE("/students/:id/guardians/:guardian_id", handler.UnlinkFromStudent)
 	teacherOrAdmin.GET("/students/:id/guardians", handler.ListByStudent)

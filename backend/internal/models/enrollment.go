@@ -15,6 +15,13 @@ type EnrollmentPick struct {
 	MediumID  string `json:"medium_id"`
 }
 
+// ConfirmEnrollmentRequest locks a student's already-submitted picks for one
+// level+year so they can no longer be changed without an admin unlocking.
+type ConfirmEnrollmentRequest struct {
+	AcademicYearID string `json:"academic_year_id" binding:"required"`
+	LevelID        string `json:"level_id" binding:"required"`
+}
+
 // GroupValidationError reports one group whose pick count or membership is wrong.
 type GroupValidationError struct {
 	GroupID string `json:"group_id"`

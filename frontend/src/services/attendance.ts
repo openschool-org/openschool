@@ -30,6 +30,9 @@ export interface MarkAttendanceRequest {
     status: "present" | "absent" | "late" | "excused";
     note?: string;
   }[];
+  // Required by convention when an admin edits a session after its 24h
+  // lock — recorded in the audit log.
+  reason?: string;
 }
 
 export interface DailySession extends AttendanceSession {

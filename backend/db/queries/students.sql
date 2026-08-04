@@ -18,6 +18,14 @@ RETURNING *;
 SELECT * FROM student_profiles
 WHERE id = $1;
 
+-- name: UpdateStudentEnrollmentStatus :one
+UPDATE student_profiles
+SET
+    enrollment_status = $2,
+    updated_at        = NOW()
+WHERE id = $1
+RETURNING *;
+
 -- name: GetStudentByIndexNumber :one
 SELECT * FROM student_profiles
 WHERE index_number = $1;

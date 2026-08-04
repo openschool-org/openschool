@@ -8,6 +8,7 @@ import {
 } from "@carbon/react";
 import {
   Dashboard,
+  Home,
   UserMultiple,
   Education,
   Building,
@@ -20,32 +21,48 @@ import {
   Calendar,
   Notification,
   UserFollow,
+  UserAdmin,
+  UserRole,
   Trophy,
+  Renew,
+  Table,
+  Category,
+  Location,
+  Rule,
+  SettingsAdjust,
 } from "@carbon/icons-react";
 import { AxiosError } from "axios";
 import { useSchool } from "../queries/useSchool";
-import { AppHeaderBrand, AppHeaderActions } from "../components/AppHeaderChrome";
+import {
+  AppHeaderBrand,
+  AppHeaderActions,
+} from "../components/AppHeaderChrome";
 
 // Grouped so the sidebar reads as "who, what, when" instead of one flat
 // alphabet-soup list — each group gets a small uppercase label + divider.
-const NAV_GROUPS: { label: string; items: { path: string; label: string; Icon: typeof Dashboard }[] }[] = [
+const NAV_GROUPS: {
+  label: string;
+  items: { path: string; label: string; Icon: typeof Dashboard }[];
+}[] = [
   {
     label: "Overview",
-    items: [{ path: "/", label: "Dashboard", Icon: Dashboard }],
+    items: [{ path: "/", label: "Overview", Icon: Home }],
   },
   {
     label: "People",
     items: [
       { path: "/students", label: "Students", Icon: UserMultiple },
+      { path: "/guardians", label: "Guardians", Icon: UserAdmin },
       { path: "/teachers", label: "Teachers", Icon: Education },
       { path: "/prefects", label: "School Prefects", Icon: Trophy },
+      { path: "/positions", label: "Leadership Positions", Icon: UserRole },
     ],
   },
   {
     label: "Academics",
     items: [
       { path: "/classes", label: "Classes", Icon: Building },
-      { path: "/streams", label: "Streams & Section Heads", Icon: UserFollow },
+      { path: "/streams", label: "Streams", Icon: UserFollow },
       { path: "/grades", label: "Grades", Icon: Grid },
       { path: "/subjects", label: "Subjects", Icon: Book },
       { path: "/curriculum", label: "Curriculum", Icon: Layers },
@@ -53,10 +70,21 @@ const NAV_GROUPS: { label: string; items: { path: string; label: string; Icon: t
     ],
   },
   {
+    label: "Scheduling",
+    items: [
+      { path: "/timetables", label: "Timetables", Icon: Table },
+      { path: "/grade-sections", label: "Grade Sections", Icon: Category },
+      { path: "/classrooms", label: "Classrooms", Icon: Location },
+      { path: "/subject-requirements", label: "Subject Requirements", Icon: Rule },
+      { path: "/timetable-settings", label: "Timetable Settings", Icon: SettingsAdjust },
+    ],
+  },
+  {
     label: "Operations",
     items: [
       { path: "/attendance", label: "Attendance", Icon: EventSchedule },
       { path: "/academic-years", label: "Academic Years", Icon: Calendar },
+      { path: "/promotion", label: "Promotion", Icon: Renew },
       { path: "/notifications", label: "Notifications", Icon: Notification },
     ],
   },
@@ -70,7 +98,8 @@ export default function RootLayout() {
   const location = useLocation();
 
   const { isLoading: schoolLoading, error: schoolError } = useSchool();
-  const noSchoolYet = schoolError instanceof AxiosError && schoolError.response?.status === 404;
+  const noSchoolYet =
+    schoolError instanceof AxiosError && schoolError.response?.status === 404;
 
   if (!schoolLoading && noSchoolYet && location.pathname !== "/school-setup") {
     return <Navigate to="/school-setup" replace />;

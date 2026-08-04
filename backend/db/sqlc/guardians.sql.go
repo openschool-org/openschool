@@ -51,6 +51,69 @@ func (q *Queries) CreateGuardian(ctx context.Context, arg CreateGuardianParams) 
 	return i, err
 }
 
+const deleteGuardian = `-- name: DeleteGuardian :execrows
+DELETE FROM guardians AS g
+WHERE g.id = $1
+AND g.id NOT IN (
+    SELECT DISTINCT guardian_id FROM student_guardians
+)
+`
+
+// Blocked while linked to any student, since student_guardians cascades on
+// delete and silently unlinking a shared guardian from every child would be
+// surprising — admins must unlink each student first.
+func (q *Queries) DeleteGuardian(ctx context.Context, id uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteGuardian, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const findGuardianDuplicateCandidates = `-- name: FindGuardianDuplicateCandidates :many
+SELECT id, user_id, full_name, relationship, phone, email, created_at FROM guardians
+WHERE phone = $1
+   OR ($2::text IS NOT NULL AND email = $2)
+ORDER BY full_name ASC
+`
+
+type FindGuardianDuplicateCandidatesParams struct {
+	Phone string      `json:"phone"`
+	Email pgtype.Text `json:"email"`
+}
+
+// Near-matches by phone or email, surfaced as a soft warning ("this
+// guardian may already exist") when creating a new guardian record —
+// never hard-blocked, since a shared home phone across two guardians is
+// legitimate.
+func (q *Queries) FindGuardianDuplicateCandidates(ctx context.Context, arg FindGuardianDuplicateCandidatesParams) ([]Guardian, error) {
+	rows, err := q.db.Query(ctx, findGuardianDuplicateCandidates, arg.Phone, arg.Email)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Guardian{}
+	for rows.Next() {
+		var i Guardian
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FullName,
+			&i.Relationship,
+			&i.Phone,
+			&i.Email,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getGuardianByID = `-- name: GetGuardianByID :one
 SELECT id, user_id, full_name, relationship, phone, email, created_at FROM guardians
 WHERE id = $1
@@ -157,15 +220,64 @@ func (q *Queries) LinkGuardianToStudent(ctx context.Context, arg LinkGuardianToS
 	return err
 }
 
-const listGuardians = `-- name: ListGuardians :many
-SELECT id, user_id, full_name, relationship, phone, email, created_at FROM guardians
-ORDER BY full_name ASC
+const listGuardianUserIDsByStudentIDs = `-- name: ListGuardianUserIDsByStudentIDs :many
+SELECT DISTINCT g.user_id
+FROM guardians g
+INNER JOIN student_guardians sg ON sg.guardian_id = g.id
+WHERE sg.student_id = ANY($1::uuid[])
+  AND g.user_id IS NOT NULL
 `
 
-// Every guardian on file, for the "link an existing guardian to this
-// student too" search picker (siblings sharing a guardian).
-func (q *Queries) ListGuardians(ctx context.Context) ([]Guardian, error) {
-	rows, err := q.db.Query(ctx, listGuardians)
+// Distinct guardian user_ids (portal logins only) for a set of students in
+// one round trip — used to build notification recipient lists without a
+// ListByStudent call per student (see timetable.go's notifyPublication).
+func (q *Queries) ListGuardianUserIDsByStudentIDs(ctx context.Context, studentIds []uuid.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listGuardianUserIDsByStudentIDs, studentIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var user_id pgtype.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listGuardians = `-- name: ListGuardians :many
+SELECT g.id, g.user_id, g.full_name, g.relationship, g.phone, g.email, g.created_at FROM guardians g
+WHERE (
+    $1::text IS NULL
+    OR g.full_name ILIKE '%' || $1 || '%'
+    OR g.phone      ILIKE '%' || $1 || '%'
+    OR g.email      ILIKE '%' || $1 || '%'
+  )
+  AND (
+    $2::bool IS NOT TRUE
+    OR NOT EXISTS (SELECT 1 FROM student_guardians sg WHERE sg.guardian_id = g.id)
+  )
+ORDER BY g.full_name ASC
+`
+
+type ListGuardiansParams struct {
+	Search      pgtype.Text `json:"search"`
+	OrphansOnly pgtype.Bool `json:"orphans_only"`
+}
+
+// Every guardian on file, optionally filtered by a search term matched
+// against name/phone/email and/or restricted to "orphans" (linked to no
+// student — e.g. their last child left the school). Used both by the
+// guardian directory and the "link an existing guardian to this student
+// too" search picker (siblings sharing a guardian).
+func (q *Queries) ListGuardians(ctx context.Context, arg ListGuardiansParams) ([]Guardian, error) {
+	rows, err := q.db.Query(ctx, listGuardians, arg.Search, arg.OrphansOnly)
 	if err != nil {
 		return nil, err
 	}
@@ -242,9 +354,54 @@ func (q *Queries) ListGuardiansByStudent(ctx context.Context, studentID uuid.UUI
 	return items, nil
 }
 
+const listStudentsByGuardianID = `-- name: ListStudentsByGuardianID :many
+SELECT sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status
+FROM student_profiles sp
+INNER JOIN student_guardians sg ON sg.student_id = sp.id
+WHERE sg.guardian_id = $1
+ORDER BY sp.full_name ASC
+`
+
+// Linked students for the guardian directory's "children" column — works
+// regardless of whether the guardian has a portal login (unlike
+// ListStudentsByGuardianUserID, which requires one).
+func (q *Queries) ListStudentsByGuardianID(ctx context.Context, guardianID uuid.UUID) ([]StudentProfile, error) {
+	rows, err := q.db.Query(ctx, listStudentsByGuardianID, guardianID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []StudentProfile{}
+	for rows.Next() {
+		var i StudentProfile
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FullName,
+			&i.IndexNumber,
+			&i.Address,
+			&i.Phone,
+			&i.Whatsapp,
+			&i.SpecialRemarks,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Gender,
+			&i.HouseID,
+			&i.EnrollmentStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listStudentsByGuardianUserID = `-- name: ListStudentsByGuardianUserID :many
 SELECT
-    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id,
+    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status,
     c.id     AS class_id,
     c.name   AS class_name,
     gr.name  AS grade_name
@@ -260,21 +417,22 @@ ORDER BY sp.full_name ASC
 `
 
 type ListStudentsByGuardianUserIDRow struct {
-	ID             uuid.UUID          `json:"id"`
-	UserID         pgtype.UUID        `json:"user_id"`
-	FullName       string             `json:"full_name"`
-	IndexNumber    string             `json:"index_number"`
-	Address        pgtype.Text        `json:"address"`
-	Phone          pgtype.Text        `json:"phone"`
-	Whatsapp       pgtype.Text        `json:"whatsapp"`
-	SpecialRemarks pgtype.Text        `json:"special_remarks"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
-	Gender         pgtype.Text        `json:"gender"`
-	HouseID        pgtype.UUID        `json:"house_id"`
-	ClassID        pgtype.UUID        `json:"class_id"`
-	ClassName      pgtype.Text        `json:"class_name"`
-	GradeName      pgtype.Text        `json:"grade_name"`
+	ID               uuid.UUID          `json:"id"`
+	UserID           pgtype.UUID        `json:"user_id"`
+	FullName         string             `json:"full_name"`
+	IndexNumber      string             `json:"index_number"`
+	Address          pgtype.Text        `json:"address"`
+	Phone            pgtype.Text        `json:"phone"`
+	Whatsapp         pgtype.Text        `json:"whatsapp"`
+	SpecialRemarks   pgtype.Text        `json:"special_remarks"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	Gender           pgtype.Text        `json:"gender"`
+	HouseID          pgtype.UUID        `json:"house_id"`
+	EnrollmentStatus string             `json:"enrollment_status"`
+	ClassID          pgtype.UUID        `json:"class_id"`
+	ClassName        pgtype.Text        `json:"class_name"`
+	GradeName        pgtype.Text        `json:"grade_name"`
 }
 
 // The signed-in parent's linked children, for the parent portal.
@@ -300,6 +458,7 @@ func (q *Queries) ListStudentsByGuardianUserID(ctx context.Context, userID pgtyp
 			&i.UpdatedAt,
 			&i.Gender,
 			&i.HouseID,
+			&i.EnrollmentStatus,
 			&i.ClassID,
 			&i.ClassName,
 			&i.GradeName,

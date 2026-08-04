@@ -3,6 +3,7 @@ import { studentApi } from "../services/student";
 import type {
   CreateStudentRequest,
   UpdateStudentRequest,
+  StudentEnrollmentStatus,
 } from "../services/student";
 
 export const STUDENTS_KEY = ["students"];
@@ -57,6 +58,19 @@ export const useUpdateStudentHouse = () => {
   return useMutation({
     mutationFn: ({ id, houseId }: { id: string; houseId: string }) =>
       studentApi.updateHouse(id, houseId),
+    onSuccess: (_data, { id }) => {
+      queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });
+      queryClient.invalidateQueries({ queryKey: studentKey(id) });
+      queryClient.invalidateQueries({ queryKey: studentClassKey(id) });
+    },
+  });
+};
+
+export const useUpdateStudentEnrollmentStatus = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: StudentEnrollmentStatus }) =>
+      studentApi.updateEnrollmentStatus(id, status),
     onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: STUDENTS_KEY });
       queryClient.invalidateQueries({ queryKey: studentKey(id) });

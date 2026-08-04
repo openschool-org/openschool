@@ -20,12 +20,13 @@ var (
 )
 
 type TeacherService struct {
-	repo *repositories.TeacherRepository
-	idp  identity.Provider
+	repo     *repositories.TeacherRepository
+	idp      identity.Provider
+	houseSvc *HouseService
 }
 
-func NewTeacherService(repo *repositories.TeacherRepository, idp identity.Provider) *TeacherService {
-	return &TeacherService{repo: repo, idp: idp}
+func NewTeacherService(repo *repositories.TeacherRepository, idp identity.Provider, houseSvc *HouseService) *TeacherService {
+	return &TeacherService{repo: repo, idp: idp, houseSvc: houseSvc}
 }
 
 func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTeacherRequest) (db.TeacherProfile, error) {
@@ -35,12 +36,12 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		return db.TeacherProfile{}, fmt.Errorf("employee number already exists")
 	}
 
-	asgardeoUser, err := s.idp.CreateUser(ctx, "teacher", map[string]interface{}{
+	idpUser, err := s.idp.CreateUser(ctx, "teacher", map[string]interface{}{
 		"username":        req.Email,
 		"email":           req.Email,
 		"given_name":      req.GivenName,
 		"family_name":     req.FamilyName,
-		"phone_number":    req.PhoneNumber,
+		"phone":           req.PhoneNumber,
 		"employee_number": req.EmployeeNumber,
 		"password":        req.Password,
 	})
@@ -48,7 +49,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		return db.TeacherProfile{}, fmt.Errorf("failed to create identity provider user: %w", err)
 	}
 
-	userID, err := uuid.Parse(asgardeoUser.ID)
+	userID, err := uuid.Parse(idpUser.ID)
 	if err != nil {
 		return db.TeacherProfile{}, fmt.Errorf("invalid identity provider user ID: %w", err)
 	}
@@ -63,15 +64,18 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		Role:     "teacher",
 	})
 	if err != nil {
-		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
-			log.Printf("CreateTeacher: failed to roll back identity provider user %s after error: %v (identity provider account now orphaned)", asgardeoUser.ID, delErr)
-		}
+		rollbackIDPUser(ctx, s.idp, "CreateTeacher", idpUser.ID)
 		return db.TeacherProfile{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
 	// assign teacher role in the identity provider
-	if err := s.idp.AssignRole(ctx, identity.RoleID("teacher"), asgardeoUser.ID); err != nil {
-		log.Printf("CreateTeacher: failed to assign teacher role to %s: %v", asgardeoUser.ID, err)
+	if err := s.idp.AssignRole(ctx, identity.RoleID("teacher"), idpUser.ID); err != nil {
+		log.Printf("CreateTeacher: failed to assign teacher role to %s: %v", idpUser.ID, err)
+	}
+
+	houseID := pgtype.UUID{}
+	if id, ok := s.houseSvc.PickForTeacher(ctx); ok {
+		houseID = pgtype.UUID{Bytes: id, Valid: true}
 	}
 
 	// create teacher profile
@@ -83,10 +87,12 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
 		Title:          pgtype.Text{String: req.Title, Valid: req.Title != ""},
 		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
+		HouseID:        houseID,
 	})
 	if err != nil {
-		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
-			log.Printf("CreateTeacher: failed to roll back identity provider user %s after error: %v (identity provider account now orphaned)", asgardeoUser.ID, delErr)
+		rollbackIDPUser(ctx, s.idp, "CreateTeacher", idpUser.ID)
+		if delErr := s.repo.DeleteUser(ctx, userID); delErr != nil {
+			log.Printf("CreateTeacher: failed to roll back local user row %s after error: %v (local user now orphaned)", userID, delErr)
 		}
 		return db.TeacherProfile{}, fmt.Errorf("failed to create teacher profile: %w", err)
 	}
@@ -121,7 +127,7 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 		"email":           user.Email,
 		"given_name":      req.GivenName,
 		"family_name":     req.FamilyName,
-		"phone_number":    req.PhoneNumber,
+		"phone":           req.PhoneNumber,
 		"employee_number": req.EmployeeNumber,
 	})
 	if err != nil {
@@ -136,6 +142,24 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 		Title:          pgtype.Text{String: req.Title, Valid: req.Title != ""},
 		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
 	})
+}
+
+// UpdateTeacherHouse is the System-Administrator-only override for moving a
+// teacher to a different house once one is assigned. It delegates to
+// HouseService so every change is audit-logged.
+func (s *TeacherService) UpdateTeacherHouse(ctx context.Context, id uuid.UUID, houseID string, actorID uuid.UUID) (db.TeacherProfile, error) {
+	return s.houseSvc.ChangeTeacherHouse(ctx, id, houseID, actorID)
+}
+
+var validEmploymentStatuses = map[string]bool{"active": true, "resigned": true, "transferred": true}
+
+// SetEmploymentStatus marks a teacher active, resigned, or transferred —
+// separate from is_active (which tracks subject assignment, not employment).
+func (s *TeacherService) SetEmploymentStatus(ctx context.Context, id uuid.UUID, status string) (db.TeacherProfile, error) {
+	if !validEmploymentStatuses[status] {
+		return db.TeacherProfile{}, fmt.Errorf("invalid status %q — must be active, resigned or transferred", status)
+	}
+	return s.repo.UpdateEmploymentStatus(ctx, id, status)
 }
 
 func (s *TeacherService) DeleteTeacher(ctx context.Context, id uuid.UUID) error {
@@ -165,16 +189,39 @@ func (s *TeacherService) DeleteTeacher(ctx context.Context, id uuid.UUID) error 
 	return nil
 }
 
+// AssignSubject gives the teacher a subject qualification. A teacher becomes
+// an active teaching staff member as soon as they have at least one subject.
 func (s *TeacherService) AssignSubject(ctx context.Context, teacherID uuid.UUID, req models.AssignSubjectToTeacherRequest) error {
 	subjectID, err := uuid.Parse(req.SubjectID)
 	if err != nil {
 		return fmt.Errorf("invalid subject id")
 	}
-	return s.repo.AssignSubject(ctx, teacherID, subjectID)
+	if err := s.repo.AssignSubject(ctx, teacherID, subjectID); err != nil {
+		return err
+	}
+	return s.repo.SetActiveStatus(ctx, teacherID, true)
 }
 
+// RemoveSubject revokes a subject qualification. A teacher with no subjects
+// left cannot be an active teaching staff member, per business rule.
 func (s *TeacherService) RemoveSubject(ctx context.Context, teacherID uuid.UUID, subjectID uuid.UUID) error {
-	return s.repo.RemoveSubject(ctx, teacherID, subjectID)
+	if err := s.repo.RemoveSubject(ctx, teacherID, subjectID); err != nil {
+		return err
+	}
+
+	remaining, err := s.repo.CountSubjects(ctx, teacherID)
+	if err != nil {
+		return err
+	}
+	if remaining == 0 {
+		return s.repo.SetActiveStatus(ctx, teacherID, false)
+	}
+	return nil
+}
+
+// GetWorkload lists every class+subject a teacher is assigned to teach.
+func (s *TeacherService) GetWorkload(ctx context.Context, teacherID uuid.UUID) ([]db.ListTeacherWorkloadRow, error) {
+	return s.repo.ListWorkload(ctx, teacherID)
 }
 
 func (s *TeacherService) ListSubjects(ctx context.Context, teacherID uuid.UUID) ([]db.Subject, error) {

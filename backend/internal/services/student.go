@@ -14,12 +14,13 @@ import (
 )
 
 type StudentService struct {
-	repo *repositories.StudentRepository
-	idp  identity.Provider
+	repo     *repositories.StudentRepository
+	idp      identity.Provider
+	houseSvc *HouseService
 }
 
-func NewStudentService(repo *repositories.StudentRepository, idp identity.Provider) *StudentService {
-	return &StudentService{repo: repo, idp: idp}
+func NewStudentService(repo *repositories.StudentRepository, idp identity.Provider, houseSvc *HouseService) *StudentService {
+	return &StudentService{repo: repo, idp: idp, houseSvc: houseSvc}
 }
 
 func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStudentRequest) (db.StudentProfile, error) {
@@ -29,19 +30,19 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		return db.StudentProfile{}, fmt.Errorf("index number already exists")
 	}
 
-	asgardeoUser, err := s.idp.CreateUser(ctx, "student", map[string]interface{}{
+	idpUser, err := s.idp.CreateUser(ctx, "student", map[string]interface{}{
 		"username":     req.IndexNumber,
 		"email":        req.Email,
 		"given_name":   req.GivenName,
 		"family_name":  req.FamilyName,
-		"phone_number": req.PhoneNumber,
+		"phone":        req.PhoneNumber,
 		"password":     req.Password,
 	})
 	if err != nil {
 		return db.StudentProfile{}, fmt.Errorf("failed to create identity provider user: %w", err)
 	}
 
-	userID, err := uuid.Parse(asgardeoUser.ID)
+	userID, err := uuid.Parse(idpUser.ID)
 	if err != nil {
 		return db.StudentProfile{}, fmt.Errorf("invalid identity provider user ID: %w", err)
 	}
@@ -56,22 +57,18 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		Role:     "student",
 	})
 	if err != nil {
-		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
-			log.Printf("CreateStudent: failed to roll back identity provider user %s after error: %v (identity provider account now orphaned)", asgardeoUser.ID, delErr)
-		}
+		rollbackIDPUser(ctx, s.idp, "CreateStudent", idpUser.ID)
 		return db.StudentProfile{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
 	// assign student role in the identity provider
-	if err := s.idp.AssignRole(ctx, identity.RoleID("student"), asgardeoUser.ID); err != nil {
-		log.Printf("CreateStudent: failed to assign student role to %s: %v", asgardeoUser.ID, err)
+	if err := s.idp.AssignRole(ctx, identity.RoleID("student"), idpUser.ID); err != nil {
+		log.Printf("CreateStudent: failed to assign student role to %s: %v", idpUser.ID, err)
 	}
 
 	houseID := pgtype.UUID{}
-	if houses, err := s.repo.ListHouses(ctx); err == nil {
-		if id, ok := houseForIndex(req.IndexNumber, houses); ok {
-			houseID = pgtype.UUID{Bytes: id, Valid: true}
-		}
+	if id, ok := s.houseSvc.PickForStudent(ctx); ok {
+		houseID = pgtype.UUID{Bytes: id, Valid: true}
 	}
 
 	// create student profile
@@ -87,8 +84,9 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		HouseID:        houseID,
 	})
 	if err != nil {
-		if delErr := s.idp.DeleteUser(ctx, asgardeoUser.ID); delErr != nil {
-			log.Printf("CreateStudent: failed to roll back identity provider user %s after error: %v (identity provider account now orphaned)", asgardeoUser.ID, delErr)
+		rollbackIDPUser(ctx, s.idp, "CreateStudent", idpUser.ID)
+		if delErr := s.repo.DeleteUser(ctx, userID); delErr != nil {
+			log.Printf("CreateStudent: failed to roll back local user row %s after error: %v (local user now orphaned)", userID, delErr)
 		}
 		return db.StudentProfile{}, fmt.Errorf("failed to create student profile: %w", err)
 	}
@@ -134,7 +132,7 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 		"email":        user.Email,
 		"given_name":   req.GivenName,
 		"family_name":  req.FamilyName,
-		"phone_number": req.PhoneNumber,
+		"phone":        req.PhoneNumber,
 	})
 	if err != nil {
 		fmt.Printf("warning: failed to update identity provider user: %v\n", err)
@@ -152,20 +150,22 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 	})
 }
 
-func (s *StudentService) UpdateStudentHouse(ctx context.Context, id uuid.UUID, houseID string) (db.StudentProfile, error) {
-	house := pgtype.UUID{}
-	if houseID != "" {
-		parsed, err := uuid.Parse(houseID)
-		if err != nil {
-			return db.StudentProfile{}, fmt.Errorf("invalid house id")
-		}
-		house = pgtype.UUID{Bytes: parsed, Valid: true}
-	}
+var validEnrollmentStatuses = map[string]bool{"active": true, "left": true}
 
-	return s.repo.UpdateHouse(ctx, db.UpdateStudentHouseParams{
-		ID:      id,
-		HouseID: house,
-	})
+// SetEnrollmentStatus marks a student active or left (e.g. withdrawn/
+// transferred out of the school).
+func (s *StudentService) SetEnrollmentStatus(ctx context.Context, id uuid.UUID, status string) (db.StudentProfile, error) {
+	if !validEnrollmentStatuses[status] {
+		return db.StudentProfile{}, fmt.Errorf("invalid status %q — must be active or left", status)
+	}
+	return s.repo.UpdateEnrollmentStatus(ctx, id, status)
+}
+
+// UpdateStudentHouse is the System-Administrator-only override for moving a
+// student to a different house once one is assigned. It delegates to
+// HouseService so every change is audit-logged.
+func (s *StudentService) UpdateStudentHouse(ctx context.Context, id uuid.UUID, houseID string, actorID uuid.UUID) (db.StudentProfile, error) {
+	return s.houseSvc.ChangeStudentHouse(ctx, id, houseID, actorID)
 }
 
 func (s *StudentService) DeleteStudent(ctx context.Context, id uuid.UUID) error {
@@ -174,27 +174,22 @@ func (s *StudentService) DeleteStudent(ctx context.Context, id uuid.UUID) error 
 		return fmt.Errorf("student not found")
 	}
 
-	// Delete the identity provider account first and abort on failure
-	if student.UserID.Valid {
-		userID := uuid.UUID(student.UserID.Bytes)
+	if err := s.repo.DeleteStudent(ctx, id); err != nil {
+		return fmt.Errorf("failed to delete student profile: %w", err)
+	}
 
-		if err := s.idp.DeleteUser(ctx, userID.String()); err != nil {
-			return fmt.Errorf("failed to delete identity provider user: %w", err)
-		}
-
-		if err := s.repo.DeleteStudent(ctx, id); err != nil {
-			return fmt.Errorf("failed to delete student profile: %w", err)
-		}
-
-		if err := s.repo.DeleteUser(ctx, userID); err != nil {
-			return fmt.Errorf("failed to delete user record: %w", err)
-		}
-
+	if !student.UserID.Valid {
 		return nil
 	}
 
-	if err := s.repo.DeleteStudent(ctx, id); err != nil {
-		return fmt.Errorf("failed to delete student profile: %w", err)
+	userID := uuid.UUID(student.UserID.Bytes)
+
+	if err := s.repo.DeleteUser(ctx, userID); err != nil {
+		return fmt.Errorf("failed to delete user record: %w", err)
+	}
+
+	if err := s.idp.DeleteUser(ctx, userID.String()); err != nil {
+		return fmt.Errorf("student profile deleted locally but failed to delete identity provider user (account is now orphaned and must be removed manually): %w", err)
 	}
 
 	return nil

@@ -4,41 +4,93 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/google/uuid"
 	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/identity"
 	"github.com/openschool-org/openschool/internal/models"
+	notificationsmodels "github.com/openschool-org/openschool/internal/models/notifications"
 	"github.com/openschool-org/openschool/internal/repositories"
+	notificationsservices "github.com/openschool-org/openschool/internal/services/notifications"
 )
 
 var (
 	ErrGuardianNotFound           = errors.New("guardian not found")
 	ErrGuardianAlreadyProvisioned = errors.New("this guardian already has a portal login")
 	ErrGuardianMissingEmail       = errors.New("guardian must have an email on file before provisioning a login")
+	ErrGuardianInUse              = errors.New("guardian is linked to a student — unlink them first")
 )
 
 type GuardianService struct {
-	repo  *repositories.GuardianRepository
-	users *repositories.UserRepository
-	idp   identity.Provider
+	repo          *repositories.GuardianRepository
+	users         *repositories.UserRepository
+	idp           identity.Provider
+	notifications *notificationsservices.NotificationService
 }
 
-func NewGuardianService(repo *repositories.GuardianRepository, users *repositories.UserRepository, idp identity.Provider) *GuardianService {
-	return &GuardianService{repo: repo, users: users, idp: idp}
+func NewGuardianService(repo *repositories.GuardianRepository, users *repositories.UserRepository, idp identity.Provider, notifications *notificationsservices.NotificationService) *GuardianService {
+	return &GuardianService{repo: repo, users: users, idp: idp, notifications: notifications}
 }
 
-func (s *GuardianService) CreateGuardian(ctx context.Context, req models.CreateGuardianRequest) (db.Guardian, error) {
-	return s.repo.CreateWithNullable(ctx, req.FullName, req.Relationship, req.Phone, req.Email)
+// CreateGuardian creates a new guardian record and also returns any
+// existing guardians that share the same phone/email — a soft duplicate
+// warning the caller can surface ("link this one instead?") without ever
+// being blocked from creating a legitimate second record (e.g. a shared
+// home phone).
+func (s *GuardianService) CreateGuardian(ctx context.Context, req models.CreateGuardianRequest) (db.Guardian, []db.Guardian, error) {
+	duplicates, err := s.repo.FindDuplicateCandidates(ctx, req.Phone, req.Email)
+	if err != nil {
+		return db.Guardian{}, nil, err
+	}
+	guardian, err := s.repo.CreateWithNullable(ctx, req.FullName, req.Relationship, req.Phone, req.Email)
+	if err != nil {
+		return db.Guardian{}, nil, err
+	}
+	return guardian, duplicates, nil
 }
 
 func (s *GuardianService) GetGuardian(ctx context.Context, id uuid.UUID) (db.Guardian, error) {
 	return s.repo.GetByID(ctx, id)
 }
 
-func (s *GuardianService) ListGuardians(ctx context.Context) ([]db.Guardian, error) {
-	return s.repo.List(ctx)
+func (s *GuardianService) ListGuardians(ctx context.Context, search string, orphansOnly bool) ([]db.Guardian, error) {
+	return s.repo.List(ctx, search, orphansOnly)
+}
+
+func (s *GuardianService) ListStudentsFor(ctx context.Context, guardianID uuid.UUID) ([]db.StudentProfile, error) {
+	return s.repo.ListStudentsByGuardianID(ctx, guardianID)
+}
+
+// DeleteGuardian removes a guardian record outright. Blocked while linked
+// to any student — the caller must unlink each one first, since silently
+// cascading the delete would remove a shared guardian from every child at
+// once.
+func (s *GuardianService) DeleteGuardian(ctx context.Context, id uuid.UUID) error {
+	rows, err := s.repo.Delete(ctx, id)
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		if _, err := s.repo.GetByID(ctx, id); err != nil {
+			return ErrGuardianNotFound
+		}
+		return ErrGuardianInUse
+	}
+	return nil
+}
+
+// ListNotifications returns the notification history for a guardian's
+// portal account (empty if they don't have one yet) — for the directory's
+// "notification history" panel.
+func (s *GuardianService) ListNotifications(ctx context.Context, guardianID uuid.UUID) ([]notificationsmodels.MyNotificationResponse, error) {
+	guardian, err := s.repo.GetByID(ctx, guardianID)
+	if err != nil {
+		return nil, err
+	}
+	if !guardian.UserID.Valid {
+		return []notificationsmodels.MyNotificationResponse{}, nil
+	}
+	return s.notifications.ListMine(ctx, uuid.UUID(guardian.UserID.Bytes))
 }
 
 func (s *GuardianService) UpdateGuardian(ctx context.Context, id uuid.UUID, req models.UpdateGuardianRequest) (db.Guardian, error) {
@@ -81,12 +133,12 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 	}
 
 	idpUser, err := s.idp.CreateUser(ctx, "parent", map[string]interface{}{
-		"username":     req.Username,
-		"email":        guardian.Email.String,
-		"given_name":   req.GivenName,
-		"family_name":  req.FamilyName,
-		"phone_number": guardian.Phone,
-		"password":     req.Password,
+		"username":    req.Username,
+		"email":       guardian.Email.String,
+		"given_name":  req.GivenName,
+		"family_name": req.FamilyName,
+		"phone":       guardian.Phone,
+		"password":    req.Password,
 	})
 	if err != nil {
 		return db.Guardian{}, fmt.Errorf("failed to create identity provider account: %w", err)
@@ -106,16 +158,12 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 		FullName: guardian.FullName,
 		Role:     "parent",
 	}); err != nil {
-		if delErr := s.idp.DeleteUser(ctx, idpUser.ID); delErr != nil {
-			log.Printf("ProvisionLogin: failed to roll back identity provider user %s: %v", idpUser.ID, delErr)
-		}
+		rollbackIDPUser(ctx, s.idp, "ProvisionLogin", idpUser.ID)
 		return db.Guardian{}, fmt.Errorf("failed to create local user record: %w", err)
 	}
 
 	if err := s.repo.SetUserID(ctx, guardianID, userID); err != nil {
-		if delErr := s.idp.DeleteUser(ctx, idpUser.ID); delErr != nil {
-			log.Printf("ProvisionLogin: failed to roll back identity provider user %s: %v", idpUser.ID, delErr)
-		}
+		rollbackIDPUser(ctx, s.idp, "ProvisionLogin", idpUser.ID)
 		return db.Guardian{}, fmt.Errorf("failed to link guardian record: %w", err)
 	}
 

@@ -5,8 +5,65 @@ import { ArrowLeft } from "@carbon/icons-react";
 import { useMyChildren, useChildAttendance, useChildMarks } from "../../queries/useParent";
 import { useCurrentAcademicYear } from "../../queries/useAcademicYears";
 import { useTerms } from "../../queries/useTerms";
+import { useChildTimetable } from "../../queries/timetable/useTimetables";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import EmptyState from "../../components/common/EmptyState";
+
+const WEEKDAYS = [
+  { value: 1, label: "Monday" },
+  { value: 2, label: "Tuesday" },
+  { value: 3, label: "Wednesday" },
+  { value: 4, label: "Thursday" },
+  { value: 5, label: "Friday" },
+];
+
+function TimetableTab({ studentId }: { studentId: string }) {
+  const { data, isLoading, isError } = useChildTimetable(studentId);
+
+  if (isLoading) return <LoadingSpinner />;
+  if (isError || !data) {
+    return (
+      <EmptyState
+        title="No published timetable yet"
+        description="This child's class timetable will appear here once it's published."
+      />
+    );
+  }
+
+  return (
+    <div style={{ display: "grid", gap: "1rem" }}>
+      {WEEKDAYS.map((day) => {
+        const entries = data.entries
+          .filter((e) => e.day_of_week === day.value)
+          .sort((a, b) => a.period_number - b.period_number);
+        if (entries.length === 0) return null;
+        return (
+          <div key={day.value}>
+            <h3 style={{ fontSize: "0.875rem", fontWeight: 600, margin: "0 0 0.5rem" }}>{day.label}</h3>
+            <table className="os-table os-table--no-hover">
+              <thead>
+                <tr>
+                  <th style={{ width: "6rem" }}>Period</th>
+                  <th>Subject</th>
+                  <th>Teacher</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((e) => (
+                  <tr key={e.id}>
+                    <td>P{e.period_number}</td>
+                    <td>{e.subject_name ?? "—"}</td>
+                    <td>{e.teacher_name ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const STATUS_TAG: Record<string, "green" | "red" | "warm-gray" | "blue"> = {
   present: "green",
@@ -83,6 +140,7 @@ function MarksTab({ studentId }: { studentId: string }) {
           <thead>
             <tr>
               <th>Subject</th>
+              <th>Teacher</th>
               <th style={{ textAlign: "right" }}>Marks</th>
             </tr>
           </thead>
@@ -93,6 +151,7 @@ function MarksTab({ studentId }: { studentId: string }) {
                   {m.subject_name}{" "}
                   <span className="os-table__muted">({m.subject_code})</span>
                 </td>
+                <td className="os-table__muted">{m.teacher_name || "—"}</td>
                 <td style={{ textAlign: "right", fontWeight: 600 }}>
                   {m.marks} / {m.max_marks}
                 </td>
@@ -156,6 +215,7 @@ export default function ChildDetail() {
           <TabList aria-label="Child sections">
             <Tab>Attendance</Tab>
             <Tab>Marks</Tab>
+            <Tab>Timetable</Tab>
           </TabList>
           <TabPanels>
             <TabPanel style={{ padding: 0 }}>
@@ -173,6 +233,16 @@ export default function ChildDetail() {
                 </div>
                 <div className="os-section__body">
                   <MarksTab studentId={child.id} />
+                </div>
+              </div>
+            </TabPanel>
+            <TabPanel style={{ padding: 0 }}>
+              <div className="os-section" style={{ marginTop: "1rem" }}>
+                <div className="os-section__header">
+                  <h2 className="os-section__title">Timetable</h2>
+                </div>
+                <div className="os-section__body">
+                  <TimetableTab studentId={child.id} />
                 </div>
               </div>
             </TabPanel>

@@ -24,6 +24,56 @@ func (q *Queries) DeleteSectionHead(ctx context.Context, id uuid.UUID) (int64, e
 	return result.RowsAffected(), nil
 }
 
+const getGradeTICForGrade = `-- name: GetGradeTICForGrade :one
+SELECT teacher_id FROM section_heads
+WHERE academic_year_id = $1 AND grade_id = $2 AND stream_id IS NULL
+`
+
+type GetGradeTICForGradeParams struct {
+	AcademicYearID uuid.UUID `json:"academic_year_id"`
+	GradeID        uuid.UUID `json:"grade_id"`
+}
+
+// the whole-grade TIC (stream_id IS NULL), if any, used for timetable review authorization
+func (q *Queries) GetGradeTICForGrade(ctx context.Context, arg GetGradeTICForGradeParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getGradeTICForGrade, arg.AcademicYearID, arg.GradeID)
+	var teacher_id uuid.UUID
+	err := row.Scan(&teacher_id)
+	return teacher_id, err
+}
+
+const listGradeIDsHeadedByTeacher = `-- name: ListGradeIDsHeadedByTeacher :many
+SELECT grade_id FROM section_heads
+WHERE teacher_id = $1 AND academic_year_id = $2 AND stream_id IS NULL
+`
+
+type ListGradeIDsHeadedByTeacherParams struct {
+	TeacherID      uuid.UUID `json:"teacher_id"`
+	AcademicYearID uuid.UUID `json:"academic_year_id"`
+}
+
+// whole-grade TICs only (stream_id IS NULL) — used to resolve which grades'
+// timetables this teacher is authorized to review
+func (q *Queries) ListGradeIDsHeadedByTeacher(ctx context.Context, arg ListGradeIDsHeadedByTeacherParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listGradeIDsHeadedByTeacher, arg.TeacherID, arg.AcademicYearID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var grade_id uuid.UUID
+		if err := rows.Scan(&grade_id); err != nil {
+			return nil, err
+		}
+		items = append(items, grade_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSectionHeadsByYear = `-- name: ListSectionHeadsByYear :many
 SELECT
     sh.id,

@@ -4,7 +4,6 @@ import {
   NumberInput,
   Select,
   SelectItem,
-  Toggle,
   Tabs,
   TabList,
   Tab,
@@ -21,6 +20,7 @@ import ErrorMessage from "../../../components/common/ErrorMessage";
 import { useSchool, useUpdateSchool, useCreateSchool } from "../../../queries/useSchool";
 import type { School } from "../../../services/school";
 import Houses from "./Houses";
+import AuditLog from "./AuditLog";
 
 type SettingsForm = SchoolFormValues & {
   grade_from: number | "";
@@ -143,6 +143,7 @@ export default function SettingsPage() {
         <TabList aria-label="Settings sections">
           <Tab>General</Tab>
           <Tab>Houses</Tab>
+          <Tab>Audit Log</Tab>
         </TabList>
         <TabPanels>
           <TabPanel style={{ padding: 0 }}>
@@ -263,22 +264,18 @@ export default function SettingsPage() {
 
       <div className="os-section">
         <div className="os-section__header">
-          <h2 className="os-section__title">Attendance Settings</h2>
+          <h2 className="os-section__title">Attendance</h2>
         </div>
         <div className="os-section__body">
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             {[
-              { id: "att-late",   label: "Allow Late marking",           sub: "Mark students as Late instead of just Absent" },
-              { id: "att-notify", label: "Absence notifications",        sub: "Notify guardians when a student is marked absent" },
-              { id: "att-lock",   label: "Lock sessions after 24 hours", sub: "Prevent editing attendance after the next day" },
-            ].map(({ id, label, sub }) => (
-              <div key={id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.75rem 0", borderBottom: "1px solid #f4f4f4" }}>
-                <div>
-                  <p style={{ margin: "0 0 0.15rem", fontSize: "0.875rem", fontWeight: 500, color: "#161616" }}>{label}</p>
-                  <p style={{ margin: 0, fontSize: "0.75rem", color: "#525252" }}>{sub}</p>
-                </div>
-                <Toggle id={id} labelA="Off" labelB="On" defaultToggled={id === "att-late"} disabled={!editing} hideLabel />
-              </div>
+              "Teachers can mark students Present, Late, or Absent.",
+              "Guardians are notified automatically when a student is marked absent.",
+              "Sessions become read-only 24 hours after being taken — a System Administrator can still edit past that point, and every such edit is recorded in the audit log.",
+            ].map((text) => (
+              <p key={text} style={{ margin: 0, fontSize: "0.8125rem", color: "#525252" }}>
+                {text}
+              </p>
             ))}
           </div>
         </div>
@@ -315,6 +312,11 @@ export default function SettingsPage() {
           <TabPanel style={{ padding: 0 }}>
             <div style={{ marginTop: "1rem" }}>
               <Houses />
+            </div>
+          </TabPanel>
+          <TabPanel style={{ padding: 0 }}>
+            <div style={{ marginTop: "1rem" }}>
+              <AuditLog />
             </div>
           </TabPanel>
         </TabPanels>

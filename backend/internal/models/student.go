@@ -1,7 +1,7 @@
 package models
 
 type CreateStudentRequest struct {
-	// Asgardeo account fields
+	// ThunderID account fields
 	Email       string `json:"email" binding:"required,email"`
 	GivenName   string `json:"given_name" binding:"required"`
 	FamilyName  string `json:"family_name" binding:"required"`
@@ -25,6 +25,10 @@ type UpdateStudentRequest struct {
 	WhatsApp       string `json:"whatsapp"`
 	SpecialRemarks string `json:"special_remarks"`
 	Gender         string `json:"gender" binding:"omitempty,oneof=male female"`
+}
+
+type UpdateStudentEnrollmentStatusRequest struct {
+	Status string `json:"status" binding:"required,oneof=active left"`
 }
 
 type StudentResponse struct {

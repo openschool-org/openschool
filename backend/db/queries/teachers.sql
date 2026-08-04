@@ -6,15 +6,24 @@ INSERT INTO teacher_profiles (
     joined_date,
     phone,
     title,
-    gender
+    gender,
+    house_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
 RETURNING *;
 
 -- name: GetTeacherByID :one
 SELECT * FROM teacher_profiles
 WHERE id = $1;
+
+-- name: UpdateTeacherEmploymentStatus :one
+UPDATE teacher_profiles
+SET
+    employment_status = $2,
+    updated_at        = NOW()
+WHERE id = $1
+RETURNING *;
 
 -- name: GetTeacherByUserID :one
 SELECT * FROM teacher_profiles
@@ -64,6 +73,33 @@ FROM subjects s
 INNER JOIN teacher_subjects ts ON ts.subject_id = s.id
 WHERE ts.teacher_id = $1
 ORDER BY s.name ASC;
+
+-- name: CountSubjectsByTeacher :one
+SELECT COUNT(*) FROM teacher_subjects WHERE teacher_id = $1;
+
+-- name: SetTeacherActiveStatus :exec
+UPDATE teacher_profiles
+SET is_active = $2, updated_at = NOW()
+WHERE id = $1;
+
+-- name: ListTeacherWorkload :many
+-- every class+subject a teacher is assigned to teach, across academic years
+SELECT
+    s.id           AS subject_id,
+    s.name         AS subject_name,
+    c.id           AS class_id,
+    c.name         AS class_name,
+    g.name         AS grade_name,
+    ay.id          AS academic_year_id,
+    ay.label       AS academic_year_label,
+    ay.is_current  AS academic_year_is_current
+FROM class_subject_teachers cst
+INNER JOIN classes c         ON c.id = cst.class_id
+INNER JOIN grades g          ON g.id = c.grade_id
+INNER JOIN subjects s        ON s.id = cst.subject_id
+INNER JOIN academic_years ay ON ay.id = c.academic_year_id
+WHERE cst.teacher_id = $1
+ORDER BY ay.is_current DESC, s.name ASC, g.sort_order ASC, c.name ASC;
 
 -- name: GetFormTeacherClass :one
 SELECT
