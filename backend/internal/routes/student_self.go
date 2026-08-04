@@ -25,6 +25,7 @@ func RegisterStudentSelfRoutes(student *gin.RouterGroup, pool *pgxpool.Pool) {
 		studentsRepo,
 		guardianRepo,
 		repositories.NewSchoolRepository(pool),
+		repositories.NewPositionRepository(pool),
 	)
 	auditSvc := services.NewAuditService(repositories.NewAuditRepository(pool))
 	attendanceService := services.NewAttendanceService(repositories.NewAttendanceRepository(pool), repositories.NewUserRepository(pool), teacherRepo, classRepo, studentsRepo, guardianRepo, notifications, auditSvc)

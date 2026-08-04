@@ -22,7 +22,9 @@ import {
   Notification,
   UserFollow,
   UserAdmin,
+  UserRole,
   Trophy,
+  Renew,
   Table,
   Category,
   Location,
@@ -53,6 +55,7 @@ const NAV_GROUPS: {
       { path: "/guardians", label: "Guardians", Icon: UserAdmin },
       { path: "/teachers", label: "Teachers", Icon: Education },
       { path: "/prefects", label: "School Prefects", Icon: Trophy },
+      { path: "/positions", label: "Leadership Positions", Icon: UserRole },
     ],
   },
   {
@@ -81,6 +84,7 @@ const NAV_GROUPS: {
     items: [
       { path: "/attendance", label: "Attendance", Icon: EventSchedule },
       { path: "/academic-years", label: "Academic Years", Icon: Calendar },
+      { path: "/promotion", label: "Promotion", Icon: Renew },
       { path: "/notifications", label: "Notifications", Icon: Notification },
     ],
   },

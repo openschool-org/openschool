@@ -27,6 +27,7 @@ func RegisterAttendanceRoutes(teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Poo
 		studentRepo,
 		guardianRepo,
 		repositories.NewSchoolRepository(pool),
+		repositories.NewPositionRepository(pool),
 	)
 	auditSvc := services.NewAuditService(repositories.NewAuditRepository(pool))
 	service := services.NewAttendanceService(repo, userRepo, teacherRepo, classRepo, studentRepo, guardianRepo, notifications, auditSvc)

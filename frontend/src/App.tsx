@@ -24,6 +24,7 @@ import TeacherDetail from "./pages/admin/teachers/TeacherDetail";
 import Classes from "./pages/admin/classes/Classes";
 import Streams from "./pages/admin/streams/Streams";
 import Prefects from "./pages/admin/prefects/Prefects";
+import Positions from "./pages/admin/positions/Positions";
 import AddClass from "./pages/admin/classes/AddClass";
 import Subjects from "./pages/admin/subjects/Subjects";
 import AddSubject from "./pages/admin/subjects/AddSubject";
@@ -35,6 +36,7 @@ import ClassDetail from "./pages/admin/classes/ClassDetail";
 import Attendance from "./pages/admin/attendance/Attendance";
 import AttendanceMark from "./pages/admin/attendance/AttendanceMark";
 import AcademicYears from "./pages/admin/academic-years/AcademicYears";
+import Promotion from "./pages/admin/promotion/Promotion";
 import SettingsPage from "./pages/admin/settings/Settings";
 import SchoolSetup from "./pages/admin/setup/SchoolSetup";
 import NotFound from "./pages/NotFound";
@@ -46,7 +48,7 @@ import Timetables from "./pages/admin/timetable/Timetables";
 import TimetableEditor from "./pages/admin/timetable/TimetableEditor";
 
 // Teacher pages
-import TeacherDashboard from "./pages/teacher/TeacherDashboard";
+import TeacherDashboard from "./pages/teacher/dashboard/TeacherDashboard";
 import TeacherClasses from "./pages/teacher/TeacherClasses";
 import TeacherAttendance from "./pages/teacher/TeacherAttendance";
 import TeacherProfile from "./pages/teacher/TeacherProfile";
@@ -149,6 +151,7 @@ function App() {
           <Route path="/classes/:id" element={<ClassDetail />} />
           <Route path="/streams" element={<Streams />} />
           <Route path="/prefects" element={<Prefects />} />
+          <Route path="/positions" element={<Positions />} />
           <Route path="/subjects" element={<Subjects />} />
           <Route path="/subjects/new" element={<AddSubject />} />
           <Route path="/grades" element={<Grades />} />
@@ -161,6 +164,7 @@ function App() {
             element={<AttendanceMark />}
           />
           <Route path="/academic-years" element={<AcademicYears />} />
+          <Route path="/promotion" element={<Promotion />} />
           <Route path="/notifications" element={<NotificationComposer />} />
           <Route path="/notification-center" element={<NotificationCenter />} />
           <Route path="/settings" element={<SettingsPage />} />

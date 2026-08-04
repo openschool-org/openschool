@@ -22,6 +22,7 @@ func RegisterGuardianRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGr
 		repositories.NewStudentRepository(pool),
 		repo,
 		repositories.NewSchoolRepository(pool),
+		repositories.NewPositionRepository(pool),
 	)
 	service := services.NewGuardianService(repo, repositories.NewUserRepository(pool), newIdentityProvider(), notifications)
 	handler := handlers.NewGuardianHandler(service)

@@ -36,6 +36,8 @@ import type {
 import { getErrorMessage } from "../../lib/errorMessage";
 import EntityCombobox from "../../components/common/EntityCombobox";
 import EmptyState from "../../components/common/EmptyState";
+import { useRole } from "../../hooks/useRole";
+import { useMyPosition } from "../../queries/usePositions";
 
 const ACCENT = "#406AAF";
 
@@ -50,7 +52,13 @@ const RULE_TYPES: { value: RecipientRuleType; label: string }[] = [
   { value: "teacher", label: "Specific Teacher" },
 ];
 
-function RecipientPicker({ onAdd }: { onAdd: (rule: RecipientRule) => void }) {
+function RecipientPicker({
+  onAdd,
+  canBroadcastEveryone,
+}: {
+  onAdd: (rule: RecipientRule) => void;
+  canBroadcastEveryone: boolean;
+}) {
   const { data: currentYear } = useCurrentAcademicYear();
   const { data: grades } = useGrades();
   const { data: classes } = useCurrentClasses();
@@ -65,6 +73,8 @@ function RecipientPicker({ onAdd }: { onAdd: (rule: RecipientRule) => void }) {
   const [subjectAudience, setSubjectAudience] = useState<"students" | "teachers">("students");
 
   const reset = () => setSelectedId("");
+
+  const availableRuleTypes = canBroadcastEveryone ? RULE_TYPES : RULE_TYPES.filter((r) => r.value !== "everyone");
 
   const handleAdd = () => {
     if (ruleType === "everyone") {
@@ -109,9 +119,9 @@ function RecipientPicker({ onAdd }: { onAdd: (rule: RecipientRule) => void }) {
         id="recipient-rule-type"
         titleText="Recipient type"
         label="Choose…"
-        items={RULE_TYPES}
+        items={availableRuleTypes}
         itemToString={(item) => (item as (typeof RULE_TYPES)[number])?.label ?? ""}
-        selectedItem={RULE_TYPES.find((r) => r.value === ruleType)}
+        selectedItem={availableRuleTypes.find((r) => r.value === ruleType)}
         onChange={({ selectedItem }) => {
           setRuleType((selectedItem as (typeof RULE_TYPES)[number]).value);
           reset();
@@ -285,6 +295,12 @@ export default function NotificationComposer() {
   const [priority, setPriority] = useState<NotificationPriority>("normal");
   const [rules, setRules] = useState<RecipientRule[]>([]);
 
+  const { role } = useRole();
+  const { data: myPosition } = useMyPosition(role === "teacher");
+  // Everyone-broadcast mirrors the backend's authorizeSender: admin always,
+  // a teacher only when Principal or a whole-school-granted Vice Principal.
+  const canBroadcastEveryone = role === "admin" || !!myPosition?.notify_whole_school;
+
   const create = useCreateNotification();
   const { data: sent, isLoading: sentLoading } = useSentNotifications();
   const { data: drafts } = useDraftNotifications();
@@ -322,7 +338,12 @@ export default function NotificationComposer() {
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">Notifications</h1>
-          <p className="os-page__subtitle">Send in-app announcements to any combination of grades, classes, subjects, or individuals.</p>
+          <p className="os-page__subtitle">
+            Send in-app announcements to any combination of grades, classes, subjects, or individuals.
+            {role === "teacher" && myPosition && myPosition.rank_label !== "Teacher" && (
+              <> Sending as <strong>{myPosition.rank_label}</strong>{canBroadcastEveryone ? " — whole-school reach." : "."}</>
+            )}
+          </p>
         </div>
       </div>
 
@@ -404,7 +425,7 @@ export default function NotificationComposer() {
                   ))}
                 </div>
               )}
-              <RecipientPicker onAdd={(rule) => setRules((r) => [...r, rule])} />
+              <RecipientPicker onAdd={(rule) => setRules((r) => [...r, rule])} canBroadcastEveryone={canBroadcastEveryone} />
             </div>
 
             <div style={{ display: "flex", gap: "0.75rem" }}>

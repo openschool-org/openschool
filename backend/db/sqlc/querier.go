@@ -22,7 +22,19 @@ type Querier interface {
 	AssignGradeToSection(ctx context.Context, arg AssignGradeToSectionParams) error
 	AssignSubjectTeacherToClass(ctx context.Context, arg AssignSubjectTeacherToClassParams) error
 	AssignSubjectToTeacher(ctx context.Context, arg AssignSubjectToTeacherParams) error
+	// clears any existing enrollment (in any class) for these students in this
+	// academic year, so BulkInsertClassStudents can freely (re)assign them —
+	// safe to re-run, since promotion is a preview-then-commit workflow.
+	BulkDeleteClassStudentsForYear(ctx context.Context, arg BulkDeleteClassStudentsForYearParams) error
+	// the first batched UNNEST-based bulk write in the codebase — one
+	// round-trip for the whole assignment set instead of a per-student loop.
+	// Paired via WITH ORDINALITY rather than the two-array UNNEST(a, b) form,
+	// since sqlc's static analyzer doesn't resolve that overload.
+	BulkInsertClassStudents(ctx context.Context, arg BulkInsertClassStudentsParams) error
 	CopyTimetableEntries(ctx context.Context, arg CopyTimetableEntriesParams) error
+	// validates that every target class ID a commit request references
+	// actually belongs to the target academic year, before writing anything.
+	CountClassesInYearByIDs(ctx context.Context, arg CountClassesInYearByIDsParams) (int64, error)
 	CountEntriesBySubjectForTimetable(ctx context.Context, timetableID uuid.UUID) ([]CountEntriesBySubjectForTimetableRow, error)
 	CountGroupSubjects(ctx context.Context, groupID uuid.UUID) (int64, error)
 	CountMyUnreadNotifications(ctx context.Context, userID uuid.UUID) (int64, error)
@@ -92,17 +104,24 @@ type Querier interface {
 	// taken an attendance session (both ON DELETE RESTRICT)
 	DeleteTeacher(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteTeacherAvailability(ctx context.Context, id uuid.UUID) error
+	DeleteTeacherPosition(ctx context.Context, id uuid.UUID) (int64, error)
+	// used when promoting a Vice Principal to Principal, to clear the old row.
+	DeleteTeacherPositionByTeacherAndType(ctx context.Context, arg DeleteTeacherPositionByTeacherAndTypeParams) error
 	DeleteTerm(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteTermMark(ctx context.Context, id uuid.UUID) error
 	DeleteTimetableEntry(ctx context.Context, arg DeleteTimetableEntryParams) error
 	DeleteTimetablePeriodsBySection(ctx context.Context, gradeSectionID uuid.UUID) error
 	DeleteUser(ctx context.Context, id uuid.UUID) error
+	DeleteVicePrincipalScopes(ctx context.Context, positionID uuid.UUID) error
 	EnrollStudentInClass(ctx context.Context, arg EnrollStudentInClassParams) error
 	// Atomic get-or-create: used to provision the local row for an identity
 	// that just authenticated for the first time. The no-op DO UPDATE (rather
 	// than DO NOTHING) is required so RETURNING always yields a row, whether
 	// this call created it or another concurrent request already did.
 	EnsureUserExists(ctx context.Context, arg EnsureUserExistsParams) (User, error)
+	// same-name carryover suggestion (e.g. "6A" -> "7A"); ErrNoRows means no
+	// suggestion, the frontend leaves the target class blank for a manual pick.
+	FindClassByGradeAndName(ctx context.Context, arg FindClassByGradeAndNameParams) (Class, error)
 	// Near-matches by phone or email, surfaced as a soft warning ("this
 	// guardian may already exist") when creating a new guardian record —
 	// never hard-blocked, since a shared home phone across two guardians is
@@ -138,6 +157,10 @@ type Querier interface {
 	GetLevelByID(ctx context.Context, id uuid.UUID) (Level, error)
 	GetMaxVersionForClass(ctx context.Context, arg GetMaxVersionForClassParams) (int32, error)
 	GetMediumByID(ctx context.Context, id uuid.UUID) (Medium, error)
+	// the grade with the smallest sort_order greater than the given grade's;
+	// pgx.ErrNoRows means the given grade is the top grade (no promotion target
+	// — the student is graduating, not being promoted to a new class).
+	GetNextGrade(ctx context.Context, id uuid.UUID) (Grade, error)
 	GetNotificationByID(ctx context.Context, id uuid.UUID) (Notification, error)
 	GetNotificationRecipientStats(ctx context.Context, notificationID uuid.UUID) (GetNotificationRecipientStatsRow, error)
 	GetPrimaryGuardian(ctx context.Context, studentID uuid.UUID) (Guardian, error)
@@ -156,22 +179,43 @@ type Querier interface {
 	GetTeacherByEmployeeNumber(ctx context.Context, employeeNumber string) (TeacherProfile, error)
 	GetTeacherByID(ctx context.Context, id uuid.UUID) (TeacherProfile, error)
 	GetTeacherByUserID(ctx context.Context, userID uuid.UUID) (TeacherProfile, error)
+	// the position row a teacher holds, if any — a teacher can hold at most one
+	// of principal/vice_principal (enforced by idx_teacher_positions_teacher_position_unique
+	// covering both position values, since RankForTeacher only needs to know
+	// whichever one exists).
+	GetTeacherPosition(ctx context.Context, teacherID uuid.UUID) (TeacherPosition, error)
 	GetTermByID(ctx context.Context, id uuid.UUID) (Term, error)
 	GetTermMarkByID(ctx context.Context, id uuid.UUID) (TermMark, error)
 	GetTimetableByID(ctx context.Context, id uuid.UUID) (Timetable, error)
 	GetTimetableSettingsByYear(ctx context.Context, academicYearID uuid.UUID) (TimetableSetting, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	InsertVicePrincipalScope(ctx context.Context, arg InsertVicePrincipalScopeParams) error
+	// used by PositionService.RankForTeacher to detect "Class Teacher" rank,
+	// since that's classes.form_teacher_id rather than a teacher_positions row.
+	// Section Head/Class Teacher/Subject Teacher stay year-scoped (they're
+	// per-class/per-grade assignments that legitimately change each year),
+	// unlike Principal/Vice Principal above.
+	IsFormTeacherOfAnyClass(ctx context.Context, arg IsFormTeacherOfAnyClassParams) (bool, error)
 	// Authorization check: does the signed-in guardian actually have this
 	// student linked to them? Used to gate GET /me/children/:id/... routes.
 	IsGuardianOfStudent(ctx context.Context, arg IsGuardianOfStudentParams) (bool, error)
+	IsPrincipal(ctx context.Context, teacherID uuid.UUID) (bool, error)
 	IsStudentEnrollmentLocked(ctx context.Context, arg IsStudentEnrollmentLockedParams) (bool, error)
+	// used by PositionService.RankForTeacher to detect "Subject Teacher" rank.
+	IsSubjectTeacherOfAnyClass(ctx context.Context, arg IsSubjectTeacherOfAnyClassParams) (bool, error)
 	// true if the teacher is the class's form teacher OR teaches any subject in it
 	IsTeacherAssignedToClass(ctx context.Context, arg IsTeacherAssignedToClassParams) (bool, error)
 	IsTeacherAssignedToSubject(ctx context.Context, arg IsTeacherAssignedToSubjectParams) (bool, error)
 	IsTeacherUnavailable(ctx context.Context, arg IsTeacherUnavailableParams) (bool, error)
+	// true if the teacher is a Vice Principal with either notify_whole_school =
+	// TRUE or the given grade in their scope.
+	IsVicePrincipalAuthorizedForGrade(ctx context.Context, arg IsVicePrincipalAuthorizedForGradeParams) (bool, error)
 	LinkGuardianToStudent(ctx context.Context, arg LinkGuardianToStudentParams) error
 	ListAcademicYears(ctx context.Context) ([]AcademicYear, error)
+	// every actively-enrolled student's current class/grade for an academic
+	// year — the source list for a promotion/reassignment preview.
+	ListActiveStudentsForYear(ctx context.Context, academicYearID uuid.UUID) ([]ListActiveStudentsForYearRow, error)
 	ListAllSentNotifications(ctx context.Context) ([]ListAllSentNotificationsRow, error)
 	// Recipient-resolution queries for the notification composer. Each rule
 	// type in a notification's recipient_rules resolves through one or more
@@ -250,6 +294,12 @@ type Querier interface {
 	// teacher_id/teacher_name are NULL if the student's current-year class has
 	// no assigned teacher for that subject (or the student has no current class)
 	ListStudentMarksByTerm(ctx context.Context, arg ListStudentMarksByTermParams) ([]ListStudentMarksByTermRow, error)
+	// per-student total marks for one term, across every subject they have a
+	// mark for — a manual-distribution sort aid, not an auto-ranking algorithm.
+	// cast to float8 rather than leaving as numeric — sqlc's static analyzer
+	// (no live DB connection) mis-infers a bare SUM(numeric) as int64, which
+	// would silently truncate marks with a fractional part.
+	ListStudentTotalMarksForTerm(ctx context.Context, arg ListStudentTotalMarksForTermParams) ([]ListStudentTotalMarksForTermRow, error)
 	ListStudentUserIDsByClass(ctx context.Context, classID uuid.UUID) ([]pgtype.UUID, error)
 	// students enrolled in the subject as a curriculum elective, plus students
 	// in any class where the subject is compulsorily taught
@@ -270,6 +320,7 @@ type Querier interface {
 	ListSubjects(ctx context.Context) ([]Subject, error)
 	ListSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID) ([]Subject, error)
 	ListTeacherAvailabilityByTeacherYear(ctx context.Context, arg ListTeacherAvailabilityByTeacherYearParams) ([]TeacherAvailability, error)
+	ListTeacherPositions(ctx context.Context) ([]ListTeacherPositionsRow, error)
 	// a teacher's full weekly schedule across every published timetable, for
 	// the teacher's own "My Timetable" view
 	ListTeacherScheduleForYear(ctx context.Context, arg ListTeacherScheduleForYearParams) ([]ListTeacherScheduleForYearRow, error)
@@ -290,6 +341,7 @@ type Querier interface {
 	ListUnderReviewTimetablesForGrades(ctx context.Context, arg ListUnderReviewTimetablesForGradesParams) ([]ListUnderReviewTimetablesForGradesRow, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListUsersByRole(ctx context.Context, role string) ([]User, error)
+	ListVicePrincipalScopeGrades(ctx context.Context, positionID uuid.UUID) ([]ListVicePrincipalScopeGradesRow, error)
 	LockStudentEnrollment(ctx context.Context, arg LockStudentEnrollmentParams) error
 	MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error)
 	MarkNotificationRecipientRead(ctx context.Context, arg MarkNotificationRecipientReadParams) error
@@ -344,12 +396,16 @@ type Querier interface {
 	// Teacher-in-charge for a whole grade (grades without A/L streams).
 	UpsertGradeSectionHead(ctx context.Context, arg UpsertGradeSectionHeadParams) (SectionHead, error)
 	UpsertPrefect(ctx context.Context, arg UpsertPrefectParams) (Prefect, error)
+	// Swaps who the Principal is (at most one row can ever exist — permanent
+	// until resignation/promotion, not renewed per year).
+	UpsertPrincipal(ctx context.Context, teacherID uuid.UUID) (TeacherPosition, error)
 	// Teacher-in-charge for one A/L stream within a grade.
 	UpsertStreamSectionHead(ctx context.Context, arg UpsertStreamSectionHeadParams) (SectionHead, error)
 	UpsertSubjectPeriodRequirement(ctx context.Context, arg UpsertSubjectPeriodRequirementParams) (SubjectPeriodRequirement, error)
 	UpsertTermMark(ctx context.Context, arg UpsertTermMarkParams) (TermMark, error)
 	UpsertTimetableEntry(ctx context.Context, arg UpsertTimetableEntryParams) (TimetableEntry, error)
 	UpsertTimetableSettings(ctx context.Context, arg UpsertTimetableSettingsParams) (TimetableSetting, error)
+	UpsertVicePrincipal(ctx context.Context, arg UpsertVicePrincipalParams) (TeacherPosition, error)
 }
 
 var _ Querier = (*Queries)(nil)

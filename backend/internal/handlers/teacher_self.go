@@ -6,19 +6,22 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/openschool-org/openschool/internal/repositories"
+	"github.com/openschool-org/openschool/internal/services"
 )
 
-// TeacherSelfHandler serves the self-service endpoint a signed-in teacher
+// TeacherSelfHandler serves the self-service endpoints a signed-in teacher
 // uses to resolve their own teacher_profile ID — everything else (classes,
 // subjects, attendance, marks) is then fetched via the existing
 // teacherOrAdmin routes (e.g. GET /teachers/:id/workload) using that ID,
 // exactly like the admin UI would for any other teacher.
 type TeacherSelfHandler struct {
-	teachers *repositories.TeacherRepository
+	teachers  *repositories.TeacherRepository
+	school    *repositories.SchoolRepository
+	positions *services.PositionService
 }
 
-func NewTeacherSelfHandler(teachers *repositories.TeacherRepository) *TeacherSelfHandler {
-	return &TeacherSelfHandler{teachers: teachers}
+func NewTeacherSelfHandler(teachers *repositories.TeacherRepository, school *repositories.SchoolRepository, positions *services.PositionService) *TeacherSelfHandler {
+	return &TeacherSelfHandler{teachers: teachers, school: school, positions: positions}
 }
 
 // Profile godoc
@@ -43,4 +46,41 @@ func (h *TeacherSelfHandler) Profile(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, teacher)
+}
+
+// Position godoc
+// @Summary      The signed-in teacher's leadership position rank and notification reach
+// @Description  Used by the teacher dashboard/notification composer to tailor themselves to the caller's role in the hierarchy (Principal, Vice Principal, Section Head, Class Teacher, Subject Teacher, Teacher)
+// @Tags         teacher
+// @Produce      json
+// @Success      200  {object}  services.PositionSummary
+// @Failure      404  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /me/teacher/position [get]
+func (h *TeacherSelfHandler) Position(c *gin.Context) {
+	callerID, err := uuid.Parse(c.GetString("userID"))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
+		return
+	}
+
+	teacher, err := h.teachers.GetByUserID(c.Request.Context(), callerID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no teacher profile linked to this account"})
+		return
+	}
+
+	year, err := h.school.GetCurrentAcademicYear(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no current academic year configured"})
+		return
+	}
+
+	summary, err := h.positions.SummaryForTeacher(c.Request.Context(), teacher.ID, year.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, summary)
 }
