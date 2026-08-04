@@ -52,7 +52,7 @@ Every still-open finding from the (now-removed) codebase audit, tracked here so 
 **Why first:** small and self-contained, and the audit-log table it introduces is reused by every later phase that needs a change history (house reassignment, attendance-lock overrides, promotion, staff moves).
 
 - ⬜ **Session timeout (frontend) — not started.** Add an idle-timeout hook (e.g. `useIdleLogout`) wired near `ProtectedRoute` — debounced pointer/keyboard activity listener resetting a 30-minute timer; on expiry, call `useThunderID().signOut()` and redirect to `/signin`. Check whether `@thunderid/react`'s provider config already exposes a token-lifecycle/idle option before hand-rolling the timer.
-- ⬜ **Password reset with OTP (backend + frontend) — not started.** Today only initial account creation generates a one-time password (`AddStudent.tsx`'s "share it out-of-band, change on first login" flow) — there is no self-service or admin-triggered reset path for an existing account. Add a `ForgotPassword`/`ResetPassword` flow; check first whether ThunderID exposes a reset primitive through the same `internal/identity.Provider` seam before hand-rolling token generation/expiry, and mirror the existing OTP UX conventions (never predictable, shared out-of-band, forced change on next login).
+- ⬜ **Password reset — moved to Phase 8.** Originally scoped here; grew into its own phase once NIC-based default passwords and a universal (every-role) reset flow were added to the ask. See Phase 8.
 - ✅ **Audit-log infrastructure (backend) — done.** `audit_logs` table added via migration `000023` (`entity_type`, `entity_id`, `action`, `actor_id`, `before`/`after` jsonb, `reason`, `created_at`), plus `internal/services/audit.go` (`AuditService.Record`/`List`) and `internal/repositories/audit.go`. Wired into house changes and attendance-lock overrides (see Phase 3). Exposed read-only at `GET /audit-logs` (admin-only) with a matching **Audit Log** tab in Settings.
 - ✅ **House colors — done, and the assignment algorithm was corrected along the way.** Added `houses.color`; extended `CreateHouseRequest`/`Houses.tsx`'s existing modal with a color picker + swatches. The old `ReassignMissing()` round-robin (index-number `mod` a manually-configured `remainder` per house) was replaced with a **least-populated-house + random-tiebreak** query (`PickBalancedHouseForStudent`/`PickBalancedHouseForTeacher`) — it self-balances without admin-maintained remainder config and automatically pulls newly-added houses into rotation. Manual house changes go through `HouseService.ChangeStudentHouse`/`ChangeTeacherHouse`, which call the audit-log helper (admin-only routes, unchanged).
   - **Also done, ahead of Phase 6:** staff (teacher) houses now mirror student houses — `teacher_profiles.house_id`, auto-assigned on hire from a separate balance pool, admin-only manual override via `PUT /teachers/:id/house`, audited the same way.
@@ -148,18 +148,18 @@ New backend stack (mirrors `section_head.go`/`prefect.go`, minus the academic-ye
 
 ### 6.1 Staff categories & profiles
 
-No concept beyond `teacher_profiles` exists today (confirmed: no `staff_profiles`, `leave_requests`, `leave_balances`, or `employment_history` tables anywhere). Add a `staff_profiles`-style module generalizing the existing teacher-profile shape, split into two categories mapped directly onto Phase 4.1's bottom two positions:
+**Status: planned, scoped down — not yet built.** No concept beyond `teacher_profiles` exists today (confirmed: no `staff_profiles`, `leave_requests`, `leave_balances`, or `employment_history` tables anywhere).
 
-- **Academic Staff** — Teachers, Section Heads, Deputy Principals, Principal.
-- **Non-Academic Staff** — Lab Assistants, Librarians, Office Staff, Development Officers, IT Officers, Security, Minor Employees.
-
-Carry a `position_id` FK to the Phase 4 position table rather than a separate category enum, so category and rank stay in one place.
+- **Academic Staff** — this *is* `teacher_profiles`, already covering Teachers, Section Heads, Class Teachers, Subject Teachers, and (per Phase 4) Principal/Vice Principal. No separate table needed — the earlier idea of a shared `position_id` FK doesn't apply here, since Principal/Vice Principal live in `teacher_positions` (Phase 4), which is specifically for teachers.
+- **Non-Academic Staff (net-new, queued)** — a plain `non_academic_staff` table (Lab Assistant, Librarian, Office Staff, Development Officer, IT Officer, Security, Minor Employee), deliberately **without** the teacher stack's identity/login machinery — confirmed these staff don't need a ThunderID account for now, so there's no `user_id` column, no IDP provisioning, no role assignment. Just profile fields (`full_name`, `employee_number`, `designation`, `phone`, `joined_date`, `gender`, optional `house_id`, `employment_status`) — "just entries," per the ask. Admin-only CRUD, hard delete allowed (nothing references these rows yet), mirrors `GuardiansDirectory.tsx`'s single-page list+detail+modal pattern rather than the heavier 3-page Teacher flow, since there's no sub-resource management (no subjects/workload/attendance for these staff yet — that's still 6.2's job).
+- **Employee number automation (net-new, queued):** currently manual, free-text, and editable (`CreateTeacherRequest.EmployeeNumber`/`UpdateTeacherRequest.EmployeeNumber`) — becomes auto-generated (previous value + 1, via a Postgres sequence) and permanently immutable after creation. Per the product decision that "employee number is unique to every employee," **teachers and non-academic staff share one numbering pool** (one `employee_number_seq`, not two independent counters) — so this lands here rather than as a teacher-only change. Format: plain zero-padded string (`00001`, `00002`, ...), no type prefix.
+- **Deferred to a later pass:** leave management, employment history, staff attendance — see 6.2 below, which still needs the fuller module.
 
 ### 6.2 Staff attendance & leave (net-new)
 
 No staff-attendance concept exists at all today — `attendance_sessions`/`attendance_records` are student-only, and `taken_by` on those records just records who marked *student* attendance, not staff attendance itself. Add:
 
-- A staff-attendance table mirroring the existing student-attendance shape but scoped to `staff_profiles`, with `present`/`late`/`absent`/`leave` statuses — one state different from student attendance's `present`/`absent`/`late`/`excused`, so reuse the check-constraint *pattern* from migration `000006`, not the same constraint.
+- A staff-attendance table mirroring the existing student-attendance shape but scoped to `teacher_profiles`/`non_academic_staff` (once 6.1 lands), with `present`/`late`/`absent`/`leave` statuses — one state different from student attendance's `present`/`absent`/`late`/`excused`, so reuse the check-constraint *pattern* from migration `000006`, not the same constraint.
 - Monthly attendance, late, and absence reports as new aggregate queries — same reporting shape as any Phase 7 analytics query, not a separate reporting engine.
 
 ### 6.3 Student profile portfolio expansion
@@ -195,6 +195,32 @@ Already done in Phase 1 ("staff houses now mirror student houses, auto-assigned 
 
 ---
 
+## Phase 8 — NIC-based account creation & universal password reset
+
+**Status: planned — not yet built.** Groups everything about how accounts get their initial password and how members change it — supersedes Phase 1's placeholder password-reset bullet (moved and expanded here) rather than duplicating it.
+
+### 8.1 NIC number field (net-new)
+
+No NIC/identity-document field exists anywhere in the codebase today (confirmed via full-text search — the only prior "nic" hits were false positives from `gin-gonic`, the Gin framework's import path, not an actual field). Add `nic_number VARCHAR(20) NOT NULL UNIQUE` to `teacher_profiles` and `guardians` (both defined in migration `000002_create_profiles.up.sql`) — validate loosely rather than hardcoding one format, since Sri Lankan NICs come in both the old 9-digit+V/X and new 12-digit-numeric forms, both still in active use. **Not** added to `student_profiles` — the ask is specifically Guardians and Teachers; students already have `index_number` as their unique identifier. Surface as a required field in `AddTeacher.tsx` and wherever a guardian is first created (`StudentGuardians.tsx`'s add-guardian modal, `GuardiansDirectory.tsx`'s create flow), and editable afterward (unlike `employee_number` from Phase 6.1, NIC *can* be corrected — a typo shouldn't be permanent, it should just stay `UNIQUE`).
+
+### 8.2 Default passwords, not manual entry (behavior change)
+
+Reverses the current student flow and removes manual entry for teachers/guardians — all three still go through the identity provider's normal `CreateUser`/`password` field via the existing `internal/identity.Provider` seam; this only changes *what value* is used, not the creation mechanism:
+
+- **Teachers:** `AddTeacher.tsx` currently has a manual `PasswordInput` (min 8 chars) feeding `CreateTeacherRequest.Password`. Remove the input; `TeacherService.CreateTeacher` uses the teacher's NIC number as the initial password instead (drop `Password` from `CreateTeacherRequest`).
+- **Guardians:** guardian records themselves don't carry a password (`CreateGuardianRequest` has none) — the manual password lives one step later, in `ProvisionGuardianLoginRequest.Password` (used wherever "give this guardian portal access" is triggered). Same change applies there: NIC number becomes the initial password, `Password` drops from that request.
+- **Students:** currently the *opposite* of what's wanted — `AddStudent.tsx`'s `generateTempPassword()` explicitly generates a **random** password, and the UI copy says "It is never the student's index number." Reverse this: `index_number` becomes the initial password directly, and `generateTempPassword()` is deleted.
+
+### 8.3 "One-time password" first-login flow (net-new)
+
+On first login, interrupt with a screen stating this is a one-time password (NIC/index-number-derived) and offering two explicit choices: **"Keep this password"** (acknowledges and clears the flag) or **"Set a new password"** (routes into 8.4's reset flow) — neither silently skippable. Needs a way to know "is this still the auto-assigned password": check first whether ThunderID exposes a "temporary credential / force change on next login" primitive before building a local `must_change_password` flag — same category of question as Phase 1's original note on the reset primitive.
+
+### 8.4 Universal self-service password reset (net-new)
+
+Every role (admin/teacher/student/parent) gets a self-service reset path — not just an admin-triggered one. Add `ForgotPassword`/`ResetPassword` endpoints; check first whether ThunderID exposes a reset primitive through `internal/identity.Provider` before hand-rolling token generation/expiry. Frontend: a "Forgot password?" link on `/signin`, plus a "Change password" action on every role's own profile/settings page (`TeacherProfile.tsx` and the student/parent equivalents, admin Settings) — reusing whatever primitive 8.3's "Set a new password" choice needs, so the one-time-password flow and the ordinary self-service flow share one implementation, not two.
+
+---
+
 ## Sequencing summary
 
 | Phase | Depends on | Can parallelize with |
@@ -206,3 +232,4 @@ Already done in Phase 1 ("staff houses now mirror student houses, auto-assigned 
 | 5 — Promotion & class reassignment | Phase 4 | 6 |
 | 6 — Staff & profile expansion | Phase 4 | 5 |
 | 7 — Analytics & CRUD polish | 1–6 (touches most modules) | — |
+| 8 — NIC & password lifecycle | — | 1–7 |
