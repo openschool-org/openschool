@@ -77,6 +77,23 @@ INNER JOIN classes             c   ON c.id   = ats.class_id
 WHERE ar.student_id = $1
 ORDER BY ats.date DESC;
 
+-- name: ListAttendanceRecordsForClassInRange :many
+-- every attendance record for a class across a date range — for the
+-- Phase 7 attendance report export.
+SELECT
+    ar.id,
+    sp.full_name    AS student_name,
+    sp.index_number AS student_index,
+    ats.date        AS session_date,
+    ar.status       AS status,
+    ar.note         AS note
+FROM attendance_records ar
+INNER JOIN attendance_sessions ats ON ats.id = ar.session_id
+INNER JOIN student_profiles    sp  ON sp.id  = ar.student_id
+WHERE ats.class_id = $1
+  AND ats.date BETWEEN $2 AND $3
+ORDER BY ats.date ASC, sp.full_name ASC;
+
 -- name: GetAttendanceSummaryByStudent :one
 SELECT
     COUNT(*)                                            AS total_days,

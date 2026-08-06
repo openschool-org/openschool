@@ -27,8 +27,32 @@ ORDER BY
         WHEN 'deputy_head' THEN 2
         WHEN 'senior' THEN 3
         WHEN 'junior' THEN 4
+        WHEN 'house_captain' THEN 5
+        WHEN 'vice_house_captain' THEN 6
     END,
     sp.full_name ASC;
 
 -- name: DeletePrefect :execrows
 DELETE FROM prefects WHERE id = $1;
+
+-- name: ListPrefectAppointmentsByStudent :many
+-- every prefect appointment a student has held, across all years — for the
+-- student portfolio's read-only "prefect appointments" rollup tab.
+SELECT
+    p.id,
+    p.academic_year_id,
+    p.rank,
+    p.created_at,
+    ay.label AS academic_year_label
+FROM prefects p
+INNER JOIN academic_years ay ON ay.id = p.academic_year_id
+WHERE p.student_id = $1
+ORDER BY ay.start_date DESC;
+
+-- name: ListPrefectYears :many
+-- every academic year that has at least one prefect appointment — powers
+-- the year-selector's list of "years with a board" for the archive view.
+SELECT DISTINCT ay.id, ay.label, ay.start_date
+FROM prefects p
+INNER JOIN academic_years ay ON ay.id = p.academic_year_id
+ORDER BY ay.start_date DESC;

@@ -150,54 +150,58 @@ New backend stack (mirrors `section_head.go`/`prefect.go`, minus the academic-ye
 
 ## Phase 6 — Staff management & student profile / prefect expansion
 
-*Depends on Phase 4's position model for staff permission scoping.*
+**Status: done.**
+
+*Depended on Phase 4's position model for staff permission scoping.*
 
 ### 6.1 Staff categories & profiles
 
-**Status: planned, scoped down — not yet built.** No concept beyond `teacher_profiles` exists today (confirmed: no `staff_profiles`, `leave_requests`, `leave_balances`, or `employment_history` tables anywhere).
+**Status: done.**
 
-- **Academic Staff** — this *is* `teacher_profiles`, already covering Teachers, Section Heads, Class Teachers, Subject Teachers, and (per Phase 4) Principal/Vice Principal. No separate table needed — the earlier idea of a shared `position_id` FK doesn't apply here, since Principal/Vice Principal live in `teacher_positions` (Phase 4), which is specifically for teachers.
-- **Non-Academic Staff (net-new, queued)** — a plain `non_academic_staff` table (Lab Assistant, Librarian, Office Staff, Development Officer, IT Officer, Security, Minor Employee), deliberately **without** the teacher stack's identity/login machinery — confirmed these staff don't need a ThunderID account for now, so there's no `user_id` column, no IDP provisioning, no role assignment. Just profile fields (`full_name`, `employee_number`, `designation`, `phone`, `joined_date`, `gender`, optional `house_id`, `employment_status`) — "just entries," per the ask. Admin-only CRUD, hard delete allowed (nothing references these rows yet), mirrors `GuardiansDirectory.tsx`'s single-page list+detail+modal pattern rather than the heavier 3-page Teacher flow, since there's no sub-resource management (no subjects/workload/attendance for these staff yet — that's still 6.2's job).
-- **Employee number automation (net-new, queued):** currently manual, free-text, and editable (`CreateTeacherRequest.EmployeeNumber`/`UpdateTeacherRequest.EmployeeNumber`) — becomes auto-generated (previous value + 1, via a Postgres sequence) and permanently immutable after creation. Per the product decision that "employee number is unique to every employee," **teachers and non-academic staff share one numbering pool** (one `employee_number_seq`, not two independent counters) — so this lands here rather than as a teacher-only change. Format: plain zero-padded string (`00001`, `00002`, ...), no type prefix.
-- **Deferred to a later pass:** leave management, employment history, staff attendance — see 6.2 below, which still needs the fuller module.
+- ✅ **Academic Staff** — unchanged, this *is* `teacher_profiles`.
+- ✅ **Non-Academic Staff — done.** `non_academic_staff` table (migration `000026`; `full_name`, `employee_number`, `designation` CHECK-constrained to Lab Assistant/Librarian/Office Staff/Development Officer/IT Officer/Security/Minor Employee, `phone`, `joined_date`, `gender`, `house_id`, `employment_status`), deliberately without login/IDP machinery — no `user_id`. Full backend stack (`internal/{models,repositories,services,handlers,routes}/non_academic_staff.go`) and `frontend/src/pages/admin/staff/NonAcademicStaff.tsx`, mirroring `GuardiansDirectory.tsx`'s single-page list+detail+modal pattern. Admin-only CRUD, hard delete. House changes go through the same audit-logged pattern as Phase 1 (`entityType="non_academic_staff_house"`).
+- ✅ **Employee number automation — done.** `employee_number_seq` (migration `000026`) shared between `teacher_profiles` and `non_academic_staff` — plain zero-padded string (`00001`, `00002`, ...). `TeacherRepository.NextEmployeeNumber`/`NonAcademicStaffRepository.NextEmployeeNumber` fetch the next value explicitly (needed before the IDP user exists, for teachers); `employee_number` dropped from `CreateTeacherRequest`/`UpdateTeacherRequest` and is now immutable in `TeacherDetail.tsx`.
+- **Deferred, not built:** leave management, employment history as a distinct concept (employment_status covers the "left the school" case) — flagged as a follow-up, not required for 6.1 to function.
 
-### 6.2 Staff attendance & leave (net-new)
+### 6.2 Staff attendance & leave
 
-No staff-attendance concept exists at all today — `attendance_sessions`/`attendance_records` are student-only, and `taken_by` on those records just records who marked *student* attendance, not staff attendance itself. Add:
+**Status: done.**
 
-- A staff-attendance table mirroring the existing student-attendance shape but scoped to `teacher_profiles`/`non_academic_staff` (once 6.1 lands), with `present`/`late`/`absent`/`leave` statuses — one state different from student attendance's `present`/`absent`/`late`/`excused`, so reuse the check-constraint *pattern* from migration `000006`, not the same constraint.
-- Monthly attendance, late, and absence reports as new aggregate queries — same reporting shape as any Phase 7 analytics query, not a separate reporting engine.
+- ✅ `staff_attendance_records` (migration `000027`) — one row per staff member per day, `teacher_id`/`non_academic_staff_id` mutually exclusive via CHECK, `present`/`late`/`absent`/`leave` statuses (a separate CHECK constraint from student attendance's `present`/`absent`/`late`/`excused`, per the plan's note). Backend: `internal/{repositories,services,handlers,routes}/staff_attendance.go`, upsert-on-mark semantics. Monthly summary aggregates (`MonthlyTeacherAttendanceSummary`/`MonthlyNonAcademicStaffAttendanceSummary`) per staff member. Frontend: `frontend/src/pages/admin/staff/StaffAttendance.tsx` — daily mark view + monthly summary toggle.
 
 ### 6.3 Student profile portfolio expansion
 
-`StudentDetail.tsx` currently has exactly **3 tabs**: `Profile`, `Guardians`, `Subject Enrollment` — no marks tab exists yet. Add the requested portfolio as new tables + tabs following the existing `StudentGuardians.tsx` tab-composition pattern:
+**Status: done.**
 
-- **Net-new tables:** progress reports, activities, clubs, sports, societies, competitions, leadership roles, awards/achievements, disciplinary records.
-- **Read-only rollups of data that already exists elsewhere** (no new tables, just a tab + query): attendance history (`attendance_records`), examination results (existing marks tables), prefect appointments (the `prefects` table, see 6.4), house info (existing `house_id`).
+- ✅ **Net-new tables (migration `000028`):** `student_progress_reports` (term-scoped narrative), `student_activities` (clubs/sports/societies/competitions **consolidated into one table** with a `category` CHECK column, rather than four near-duplicate CRUD stacks — a deliberate simplification since the four are structurally identical), `student_leadership_roles`, `student_awards`, `student_disciplinary_records`. Full backend stack in `internal/{models,repositories,services,handlers,routes}/student_portfolio.go`.
+- ✅ **Read-only rollups — done.** `StudentRecordsRollup.tsx` composes attendance history (new `GET /students/:id/attendance`, backed by the pre-existing `ListAttendanceByStudent` query which had no route before), examination results (reused the already-existing but previously-unused `useStudentMarks`/`ListStudentMarksByTerm` — the §0 dead-code list's decision to delete it is superseded by this real use), and prefect appointments (new `ListPrefectAppointmentsByStudent` query/route, see 6.4).
+- ✅ **Frontend tabs — done.** `StudentDetail.tsx` now has 8 tabs: the original Profile/Guardians/Subject Enrollment, plus `StudentProgressReports.tsx`, `StudentActivities.tsx`, `StudentLeadershipAwards.tsx` (leadership + awards combined), `StudentDisciplinary.tsx`, and `StudentRecordsRollup.tsx` — each following `StudentGuardians.tsx`'s `studentId`-prop, self-fetching tab-component pattern.
 
 ### 6.4 Prefect board expansion
 
-`academic_year_id` scoping **already exists** — `prefects` (migration `000016`) has `academic_year_id` with `UNIQUE(academic_year_id, student_id)`, and `ListPrefectsByYear` already filters by year. The gap is **UI-only**: `Prefects.tsx` only ever calls `usePrefects(currentYear?.id)` with no year selector and no archive view. Add:
+**Status: done.**
 
-- A rank/title distinction for Head Prefect / Deputy Head Prefect / Senior Prefect / Junior Prefect / House Captain / Vice House Captain — check whether the existing `rank` integer column already maps 1:1 to these titles or needs a proper enum/lookup.
-- A year selector on `Prefects.tsx`, reusing the same `useCurrentAcademicYear`/year-picker pattern used elsewhere in the app.
-- A read-only archive view for past boards (list-by-year, no edit).
+- ✅ The existing `rank` column turned out to be a plain `VARCHAR` CHECK constraint, not an integer — no enum/lookup table existed. Extended via migration `000029` to add `house_captain`/`vice_house_captain` to the CHECK list (and to `ListPrefectsByYear`'s sort-order `CASE`); `Prefects.tsx`'s `RANKS` array extended to match.
+- ✅ **Year selector + archive — done.** `Prefects.tsx` now has a year `Select` (new `GET /prefects/years` route, backed by `ListPrefectYears`) covering every year with a recorded board plus the current year. Selecting a past year switches the page into a read-only archive view (Appoint/Remove actions hidden, an info banner shown) — reusing the existing `usePrefects(yearId)` hook, just parameterized by the selected year instead of always the current one.
 
 ### 6.5 Staff houses
 
-Already done in Phase 1 ("staff houses now mirror student houses, auto-assigned on hire, admin-only manual override") — nothing further needed here.
+Already done in Phase 1 — nothing further needed here.
 
 ---
 
 ## Phase 7 — Analytics dashboard & CRUD consistency polish
 
-- **Analytics:** `Dashboard.tsx` today only shows student/teacher/class/subject counts, per-class attendance, an audit-log feed, and current-year info — everything below is net-new aggregate queries against existing tables, not new domain concepts:
-  - *Student:* total, by grade, by class, gender distribution, house distribution, attendance trends.
-  - *Staff:* total teachers, academic staff, non-academic staff, attendance statistics (built on Phase 6.2's staff-attendance tables).
-  - *Academic:* subject performance, examination summaries, grade-wise performance, attendance percentages.
-  - *School:* student growth, staff growth, active academic year, notifications sent, timetable completion.
-- **CRUD consistency — edit confirmation (net-new):** confirmed no edit-confirmation pattern exists anywhere in the frontend today — only `ConfirmDeleteModal` exists. Add a shared `ConfirmEditModal` (or a generic `ConfirmActionModal` covering both edit and delete) alongside the existing `ConfirmDeleteModal`, and roll it out across admin forms that make significant field changes. Beyond that, audit existing admin pages against the already-established convention (Carbon `ComposedModal` forms, `EmptyState`, `InlineNotification` — see `StudentGuardians.tsx` for a single file exercising all four) and close remaining gaps rather than introducing a new design system.
-- **Report export templates (net-new, previously untracked):** drag-and-drop report templates for admins (attendance and other exports) to PDF. No PDF generation exists outside the dead `Showcase.tsx` page already slated for deletion in §0, so this is a from-scratch feature. Needs a library/format decision (server-side Go PDF library vs. a client-side template builder) as a follow-up design decision before implementation — the original ask ("drag and drop templates to get attendance and wanted things") doesn't pin down the export format.
+**Status: done.**
+
+- ✅ **Analytics — done.** New `GET /dashboard/analytics` (`internal/services/dashboard.go`, backed by `db/queries/dashboard.sql`'s ~15 aggregate queries, all implicitly scoped to the current academic year/term via the existing `is_current` pattern) composes one response covering:
+  - *Student:* total, by grade, by class, gender distribution, house distribution (colored by each house's real color), a 14-day attendance trend.
+  - *Staff:* academic/non-academic staff counts, this-month attendance totals (built on Phase 6.2's staff-attendance tables).
+  - *Academic:* subject performance, examination summary, grade-wise performance, overall attendance percentage.
+  - *School:* student growth by year, staff growth by joining year, notifications-sent count, timetable completion % (published timetables ÷ total classes for the current year).
+  - Frontend: `Dashboard.tsx` renders `AnalyticsSection.tsx` below the existing content — stat tiles + lightweight custom horizontal-bar/sparkline charts (no charting library added; kept consistent with the existing Carbon-derived color tokens already used for attendance status elsewhere in the app) rather than a new visual language.
+- ✅ **CRUD consistency — edit confirmation — done.** Added `ConfirmEditModal` (mirrors `ConfirmDeleteModal`, `kind="primary"` instead of `"danger"`), wired into the two highest-value inline-edit flows — `TeacherDetail.tsx` and `StudentDetail.tsx` — where "Save Changes" previously saved immediately with no confirmation step. Modal-based edit flows (`GuardiansDirectory.tsx`, `NonAcademicStaff.tsx`) were left as-is since the modal itself already is the deliberate confirmation step; stacking a second confirm on top would be redundant.
+- ✅ **Report export templates — done, server-side Go PDF (per product decision).** Added `github.com/jung-kurt/gofpdf`. `internal/services/report_export.go` renders two fixed templates — Attendance (by class + date range) and Marks (by class + term + subject) — to a simple bordered-table PDF, each with an optional column subset (a lightweight field picker rather than free-form drag-and-drop layout). New `GET /reports/attendance` / `GET /reports/marks` (admin-only, streamed as `application/pdf`). Frontend: `frontend/src/pages/admin/reports/Reports.tsx` — template picker, filters, column checkboxes, and a blob-download button.
 
 ---
 

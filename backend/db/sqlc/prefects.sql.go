@@ -24,6 +24,90 @@ func (q *Queries) DeletePrefect(ctx context.Context, id uuid.UUID) (int64, error
 	return result.RowsAffected(), nil
 }
 
+const listPrefectAppointmentsByStudent = `-- name: ListPrefectAppointmentsByStudent :many
+SELECT
+    p.id,
+    p.academic_year_id,
+    p.rank,
+    p.created_at,
+    ay.label AS academic_year_label
+FROM prefects p
+INNER JOIN academic_years ay ON ay.id = p.academic_year_id
+WHERE p.student_id = $1
+ORDER BY ay.start_date DESC
+`
+
+type ListPrefectAppointmentsByStudentRow struct {
+	ID                uuid.UUID          `json:"id"`
+	AcademicYearID    uuid.UUID          `json:"academic_year_id"`
+	Rank              string             `json:"rank"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	AcademicYearLabel string             `json:"academic_year_label"`
+}
+
+// every prefect appointment a student has held, across all years — for the
+// student portfolio's read-only "prefect appointments" rollup tab.
+func (q *Queries) ListPrefectAppointmentsByStudent(ctx context.Context, studentID uuid.UUID) ([]ListPrefectAppointmentsByStudentRow, error) {
+	rows, err := q.db.Query(ctx, listPrefectAppointmentsByStudent, studentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPrefectAppointmentsByStudentRow{}
+	for rows.Next() {
+		var i ListPrefectAppointmentsByStudentRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AcademicYearID,
+			&i.Rank,
+			&i.CreatedAt,
+			&i.AcademicYearLabel,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPrefectYears = `-- name: ListPrefectYears :many
+SELECT DISTINCT ay.id, ay.label, ay.start_date
+FROM prefects p
+INNER JOIN academic_years ay ON ay.id = p.academic_year_id
+ORDER BY ay.start_date DESC
+`
+
+type ListPrefectYearsRow struct {
+	ID        uuid.UUID   `json:"id"`
+	Label     string      `json:"label"`
+	StartDate pgtype.Date `json:"start_date"`
+}
+
+// every academic year that has at least one prefect appointment — powers
+// the year-selector's list of "years with a board" for the archive view.
+func (q *Queries) ListPrefectYears(ctx context.Context) ([]ListPrefectYearsRow, error) {
+	rows, err := q.db.Query(ctx, listPrefectYears)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPrefectYearsRow{}
+	for rows.Next() {
+		var i ListPrefectYearsRow
+		if err := rows.Scan(&i.ID, &i.Label, &i.StartDate); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPrefectsByYear = `-- name: ListPrefectsByYear :many
 SELECT
     p.id,
@@ -46,6 +130,8 @@ ORDER BY
         WHEN 'deputy_head' THEN 2
         WHEN 'senior' THEN 3
         WHEN 'junior' THEN 4
+        WHEN 'house_captain' THEN 5
+        WHEN 'vice_house_captain' THEN 6
     END,
     sp.full_name ASC
 `

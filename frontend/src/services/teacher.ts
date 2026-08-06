@@ -40,25 +40,24 @@ export interface TeacherSubject {
   created_at: string | null;
 }
 
-// Matches models.CreateTeacherRequest
+// Matches models.CreateTeacherRequest — employee_number is auto-assigned
+// server-side (Phase 6.1), not supplied here.
 export interface CreateTeacherRequest {
   email: string;
   given_name: string;
   family_name: string;
   phone_number?: string;
   password: string;
-  employee_number: string;
   joined_date: string; // RFC3339 timestamp
   title?: TeacherTitle;
   gender?: "male" | "female";
 }
 
-// Matches models.UpdateTeacherRequest
+// Matches models.UpdateTeacherRequest — employee_number is immutable.
 export interface UpdateTeacherRequest {
   given_name: string;
   family_name: string;
   phone_number?: string;
-  employee_number: string;
   title?: TeacherTitle;
   gender?: "male" | "female";
 }

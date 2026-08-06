@@ -1,3 +1,10 @@
+-- name: NextEmployeeNumber :one
+-- shared numbering pool with non_academic_staff (migration 000026). Called
+-- explicitly by the service (rather than relying on the column DEFAULT)
+-- because the value is needed up-front to pass to the identity provider
+-- before the teacher_profiles row exists.
+SELECT lpad(nextval('employee_number_seq')::text, 5, '0')::text AS employee_number;
+
 -- name: CreateTeacherProfile :one
 INSERT INTO teacher_profiles (
     user_id,
@@ -38,14 +45,14 @@ SELECT * FROM teacher_profiles
 ORDER BY full_name ASC;
 
 -- name: UpdateTeacherProfile :one
+-- employee_number is immutable once assigned (Phase 6.1) — not updatable here.
 UPDATE teacher_profiles
 SET
-    full_name       = $2,
-    employee_number = $3,
-    phone           = $4,
-    title           = $5,
-    gender          = $6,
-    updated_at      = NOW()
+    full_name  = $2,
+    phone      = $3,
+    title      = $4,
+    gender     = $5,
+    updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 

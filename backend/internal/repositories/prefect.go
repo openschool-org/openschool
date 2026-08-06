@@ -27,3 +27,11 @@ func (r *PrefectRepository) ListByYear(ctx context.Context, academicYearID uuid.
 func (r *PrefectRepository) Delete(ctx context.Context, id uuid.UUID) (int64, error) {
 	return r.queries.DeletePrefect(ctx, id)
 }
+
+func (r *PrefectRepository) ListByStudent(ctx context.Context, studentID uuid.UUID) ([]db.ListPrefectAppointmentsByStudentRow, error) {
+	return r.queries.ListPrefectAppointmentsByStudent(ctx, studentID)
+}
+
+func (r *PrefectRepository) ListYears(ctx context.Context) ([]db.ListPrefectYearsRow, error) {
+	return r.queries.ListPrefectYears(ctx)
+}

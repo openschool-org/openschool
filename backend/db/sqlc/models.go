@@ -145,6 +145,20 @@ type Medium struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type NonAcademicStaff struct {
+	ID               uuid.UUID          `json:"id"`
+	FullName         string             `json:"full_name"`
+	EmployeeNumber   string             `json:"employee_number"`
+	Designation      string             `json:"designation"`
+	Phone            pgtype.Text        `json:"phone"`
+	JoinedDate       pgtype.Date        `json:"joined_date"`
+	Gender           pgtype.Text        `json:"gender"`
+	HouseID          pgtype.UUID        `json:"house_id"`
+	EmploymentStatus string             `json:"employment_status"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Notification struct {
 	ID             uuid.UUID          `json:"id"`
 	Title          string             `json:"title"`
@@ -208,6 +222,18 @@ type SelectionGroup struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type StaffAttendanceRecord struct {
+	ID                 uuid.UUID          `json:"id"`
+	TeacherID          pgtype.UUID        `json:"teacher_id"`
+	NonAcademicStaffID pgtype.UUID        `json:"non_academic_staff_id"`
+	Date               pgtype.Date        `json:"date"`
+	Status             string             `json:"status"`
+	MarkedBy           pgtype.UUID        `json:"marked_by"`
+	Note               pgtype.Text        `json:"note"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Stream struct {
 	ID        uuid.UUID          `json:"id"`
 	Name      string             `json:"name"`
@@ -221,6 +247,40 @@ type StreamGroup struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type StudentActivity struct {
+	ID             uuid.UUID          `json:"id"`
+	StudentID      uuid.UUID          `json:"student_id"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	Category       string             `json:"category"`
+	Name           string             `json:"name"`
+	Role           pgtype.Text        `json:"role"`
+	Achievement    pgtype.Text        `json:"achievement"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type StudentAward struct {
+	ID             uuid.UUID          `json:"id"`
+	StudentID      uuid.UUID          `json:"student_id"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	Title          string             `json:"title"`
+	Category       pgtype.Text        `json:"category"`
+	AwardedDate    pgtype.Date        `json:"awarded_date"`
+	Description    pgtype.Text        `json:"description"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type StudentDisciplinaryRecord struct {
+	ID             uuid.UUID          `json:"id"`
+	StudentID      uuid.UUID          `json:"student_id"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	IncidentDate   pgtype.Date        `json:"incident_date"`
+	Description    string             `json:"description"`
+	ActionTaken    pgtype.Text        `json:"action_taken"`
+	Severity       string             `json:"severity"`
+	RecordedBy     pgtype.UUID        `json:"recorded_by"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type StudentEnrollmentLock struct {
 	StudentID      uuid.UUID          `json:"student_id"`
 	LevelID        uuid.UUID          `json:"level_id"`
@@ -232,6 +292,15 @@ type StudentGuardian struct {
 	StudentID        uuid.UUID `json:"student_id"`
 	GuardianID       uuid.UUID `json:"guardian_id"`
 	IsPrimaryContact bool      `json:"is_primary_contact"`
+}
+
+type StudentLeadershipRole struct {
+	ID             uuid.UUID          `json:"id"`
+	StudentID      uuid.UUID          `json:"student_id"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	Title          string             `json:"title"`
+	Scope          pgtype.Text        `json:"scope"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type StudentProfile struct {
@@ -248,6 +317,16 @@ type StudentProfile struct {
 	Gender           pgtype.Text        `json:"gender"`
 	HouseID          pgtype.UUID        `json:"house_id"`
 	EnrollmentStatus string             `json:"enrollment_status"`
+}
+
+type StudentProgressReport struct {
+	ID        uuid.UUID          `json:"id"`
+	StudentID uuid.UUID          `json:"student_id"`
+	TermID    uuid.UUID          `json:"term_id"`
+	Narrative string             `json:"narrative"`
+	WrittenBy pgtype.UUID        `json:"written_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
 type StudentSibling struct {

@@ -23,6 +23,17 @@ export const useClassSessions = (classId: string) =>
     enabled: !!classId,
   });
 
+export const studentAttendanceKey = (studentId: string) => ["students", studentId, "attendance"];
+
+// Every attendance record a student has, across classes and sessions — for
+// the student portfolio's read-only attendance-history rollup tab.
+export const useStudentAttendanceHistory = (studentId: string) =>
+  useQuery({
+    queryKey: studentAttendanceKey(studentId),
+    queryFn: () => attendanceApi.listByStudent(studentId),
+    enabled: !!studentId,
+  });
+
 export const dailySessionsKey = (date: string) => ["attendance", "sessions", "date", date];
 
 export const useDailySessions = (date: string) =>

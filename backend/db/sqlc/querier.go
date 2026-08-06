@@ -45,6 +45,8 @@ type Querier interface {
 	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error)
 	CreateClass(ctx context.Context, arg CreateClassParams) (Class, error)
 	CreateClassroom(ctx context.Context, arg CreateClassroomParams) (Classroom, error)
+	// Disciplinary records --------------------------------------------------------
+	CreateDisciplinaryRecord(ctx context.Context, arg CreateDisciplinaryRecordParams) (StudentDisciplinaryRecord, error)
 	CreateGrade(ctx context.Context, arg CreateGradeParams) (Grade, error)
 	CreateGradeSection(ctx context.Context, arg CreateGradeSectionParams) (GradeSection, error)
 	CreateGuardian(ctx context.Context, arg CreateGuardianParams) (Guardian, error)
@@ -53,13 +55,22 @@ type Querier interface {
 	CreateLevel(ctx context.Context, arg CreateLevelParams) (Level, error)
 	// ── mediums ─────────────────────────────────────────────────────────────────
 	CreateMedium(ctx context.Context, name string) (Medium, error)
+	CreateNonAcademicStaff(ctx context.Context, arg CreateNonAcademicStaffParams) (NonAcademicStaff, error)
 	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
 	CreateNotificationRecipient(ctx context.Context, arg CreateNotificationRecipientParams) error
+	// Progress reports --------------------------------------------------------
+	CreateProgressReport(ctx context.Context, arg CreateProgressReportParams) (StudentProgressReport, error)
 	CreateSchool(ctx context.Context, arg CreateSchoolParams) (School, error)
 	// ── selection groups ────────────────────────────────────────────────────────
 	CreateSelectionGroup(ctx context.Context, arg CreateSelectionGroupParams) (SelectionGroup, error)
 	CreateStream(ctx context.Context, name string) (Stream, error)
 	CreateStreamGroup(ctx context.Context, arg CreateStreamGroupParams) (StreamGroup, error)
+	// Activities ---------------------------------------------------------------
+	CreateStudentActivity(ctx context.Context, arg CreateStudentActivityParams) (StudentActivity, error)
+	// Awards ---------------------------------------------------------------------
+	CreateStudentAward(ctx context.Context, arg CreateStudentAwardParams) (StudentAward, error)
+	// Leadership roles -----------------------------------------------------------
+	CreateStudentLeadershipRole(ctx context.Context, arg CreateStudentLeadershipRoleParams) (StudentLeadershipRole, error)
 	CreateStudentProfile(ctx context.Context, arg CreateStudentProfileParams) (StudentProfile, error)
 	CreateStudentSubjectEnrollment(ctx context.Context, arg CreateStudentSubjectEnrollmentParams) (StudentSubjectEnrollment, error)
 	CreateSubject(ctx context.Context, arg CreateSubjectParams) (Subject, error)
@@ -70,12 +81,38 @@ type Querier interface {
 	CreateTimetablePeriod(ctx context.Context, arg CreateTimetablePeriodParams) (TimetablePeriod, error)
 	CreateTimetableStatusHistory(ctx context.Context, arg CreateTimetableStatusHistoryParams) (TimetableStatusHistory, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DashboardAttendancePercentage(ctx context.Context) (DashboardAttendancePercentageRow, error)
+	DashboardExaminationSummary(ctx context.Context) (DashboardExaminationSummaryRow, error)
+	DashboardGradeWisePerformance(ctx context.Context) ([]DashboardGradeWisePerformanceRow, error)
+	DashboardNotificationsSentCount(ctx context.Context) (int64, error)
+	// present/late/absent/leave totals across all staff (teachers + non-academic)
+	// for the current calendar month.
+	DashboardStaffAttendanceThisMonth(ctx context.Context) (DashboardStaffAttendanceThisMonthRow, error)
+	DashboardStaffCounts(ctx context.Context) (DashboardStaffCountsRow, error)
+	// teacher headcount bucketed by the calendar year they joined.
+	DashboardStaffGrowth(ctx context.Context) ([]DashboardStaffGrowthRow, error)
+	// % present per day over the last 14 days that have a session.
+	DashboardStudentAttendanceTrend(ctx context.Context) ([]DashboardStudentAttendanceTrendRow, error)
+	DashboardStudentCountByClass(ctx context.Context) ([]DashboardStudentCountByClassRow, error)
+	// Phase 7 analytics dashboard — net-new aggregate queries against existing
+	// (and Phase 6) tables. All scoped implicitly to the current academic year
+	// / current term via the existing is_current single-row pattern, so the
+	// handler layer doesn't need to accept year/term parameters.
+	DashboardStudentCountByGrade(ctx context.Context) ([]DashboardStudentCountByGradeRow, error)
+	DashboardStudentGenderDistribution(ctx context.Context) ([]DashboardStudentGenderDistributionRow, error)
+	// distinct actively-enrolled students per academic year, most recent last.
+	DashboardStudentGrowth(ctx context.Context) ([]DashboardStudentGrowthRow, error)
+	DashboardStudentHouseDistribution(ctx context.Context) ([]DashboardStudentHouseDistributionRow, error)
+	// average mark % per subject for the current term.
+	DashboardSubjectPerformance(ctx context.Context) ([]DashboardSubjectPerformanceRow, error)
+	DashboardTimetableCompletion(ctx context.Context) (DashboardTimetableCompletionRow, error)
 	DeactivateUser(ctx context.Context, id uuid.UUID) (User, error)
 	DeleteAcademicYear(ctx context.Context, id uuid.UUID) (int64, error)
 	// attendance_records cascade with the session
 	DeleteAttendanceSession(ctx context.Context, id uuid.UUID) error
 	DeleteClass(ctx context.Context, id uuid.UUID) error
 	DeleteClassroom(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteDisciplinaryRecord(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteDraftNotification(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteDraftTimetable(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteGrade(ctx context.Context, id uuid.UUID) (int64, error)
@@ -88,14 +125,19 @@ type Querier interface {
 	// blocked while any of its groups still carry enrollments
 	DeleteLevel(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteMedium(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteNonAcademicStaff(ctx context.Context, id uuid.UUID) (int64, error)
 	DeletePrefect(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteProgressReport(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteSectionHead(ctx context.Context, id uuid.UUID) (int64, error)
 	// blocked while enrollments reference it
 	DeleteSelectionGroup(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStream(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStreamGroup(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteStudentActivity(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteStudentAward(ctx context.Context, id uuid.UUID) (int64, error)
 	// clears a student's picks for one level/year so a re-submit replaces them
 	DeleteStudentEnrollmentsForLevel(ctx context.Context, arg DeleteStudentEnrollmentsForLevelParams) error
+	DeleteStudentLeadershipRole(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStudentProfile(ctx context.Context, id uuid.UUID) error
 	DeleteStudentSubjectEnrollment(ctx context.Context, arg DeleteStudentSubjectEnrollmentParams) error
 	DeleteSubject(ctx context.Context, id uuid.UUID) (int64, error)
@@ -161,6 +203,7 @@ type Querier interface {
 	// pgx.ErrNoRows means the given grade is the top grade (no promotion target
 	// — the student is graduating, not being promoted to a new class).
 	GetNextGrade(ctx context.Context, id uuid.UUID) (Grade, error)
+	GetNonAcademicStaffByID(ctx context.Context, id uuid.UUID) (NonAcademicStaff, error)
 	GetNotificationByID(ctx context.Context, id uuid.UUID) (Notification, error)
 	GetNotificationRecipientStats(ctx context.Context, notificationID uuid.UUID) (GetNotificationRecipientStatsRow, error)
 	GetPrimaryGuardian(ctx context.Context, studentID uuid.UUID) (Guardian, error)
@@ -224,6 +267,9 @@ type Querier interface {
 	ListAllUserIDs(ctx context.Context) ([]uuid.UUID, error)
 	ListAttendanceBySession(ctx context.Context, sessionID uuid.UUID) ([]ListAttendanceBySessionRow, error)
 	ListAttendanceByStudent(ctx context.Context, studentID uuid.UUID) ([]ListAttendanceByStudentRow, error)
+	// every attendance record for a class across a date range — for the
+	// Phase 7 attendance report export.
+	ListAttendanceRecordsForClassInRange(ctx context.Context, arg ListAttendanceRecordsForClassInRangeParams) ([]ListAttendanceRecordsForClassInRangeRow, error)
 	ListAttendanceSessionsByClass(ctx context.Context, classID uuid.UUID) ([]AttendanceSession, error)
 	// the cross-class daily dashboard: every session on one date, with the class,
 	// grade and teacher resolved, plus enough counts to show marked/pending and
@@ -241,6 +287,7 @@ type Querier interface {
 	ListClassesByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]ListClassesByAcademicYearRow, error)
 	ListClassrooms(ctx context.Context) ([]Classroom, error)
 	ListCurrentClasses(ctx context.Context) ([]ListCurrentClassesRow, error)
+	ListDisciplinaryRecordsByStudent(ctx context.Context, studentID uuid.UUID) ([]StudentDisciplinaryRecord, error)
 	// every booked (teacher or classroom) cell across other timetables in the
 	// same academic year, used for cross-timetable clash detection
 	ListEntriesForYearExcludingTimetable(ctx context.Context, arg ListEntriesForYearExcludingTimetableParams) ([]ListEntriesForYearExcludingTimetableRow, error)
@@ -275,7 +322,17 @@ type Querier interface {
 	// filtering happens client-side, matching this app's existing convention
 	// for list pages (see e.g. Subjects, Streams)
 	ListMyNotifications(ctx context.Context, userID uuid.UUID) ([]ListMyNotificationsRow, error)
+	ListNonAcademicStaff(ctx context.Context, arg ListNonAcademicStaffParams) ([]NonAcademicStaff, error)
+	ListNonAcademicStaffAttendanceByDate(ctx context.Context, date pgtype.Date) ([]ListNonAcademicStaffAttendanceByDateRow, error)
+	ListNonAcademicStaffAttendanceHistory(ctx context.Context, arg ListNonAcademicStaffAttendanceHistoryParams) ([]StaffAttendanceRecord, error)
+	// every prefect appointment a student has held, across all years — for the
+	// student portfolio's read-only "prefect appointments" rollup tab.
+	ListPrefectAppointmentsByStudent(ctx context.Context, studentID uuid.UUID) ([]ListPrefectAppointmentsByStudentRow, error)
+	// every academic year that has at least one prefect appointment — powers
+	// the year-selector's list of "years with a board" for the archive view.
+	ListPrefectYears(ctx context.Context) ([]ListPrefectYearsRow, error)
 	ListPrefectsByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListPrefectsByYearRow, error)
+	ListProgressReportsByStudent(ctx context.Context, studentID uuid.UUID) ([]ListProgressReportsByStudentRow, error)
 	// every published timetable (any class) the teacher has at least one entry in, for the given year
 	ListPublishedTimetablesForTeacher(ctx context.Context, arg ListPublishedTimetablesForTeacherParams) ([]Timetable, error)
 	ListSectionHeadsByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListSectionHeadsByYearRow, error)
@@ -285,12 +342,15 @@ type Querier interface {
 	ListSentNotificationsByUser(ctx context.Context, createdBy uuid.UUID) ([]ListSentNotificationsByUserRow, error)
 	ListStreamGroupsByStream(ctx context.Context, streamID uuid.UUID) ([]StreamGroup, error)
 	ListStreams(ctx context.Context) ([]Stream, error)
+	ListStudentActivitiesByStudent(ctx context.Context, studentID uuid.UUID) ([]StudentActivity, error)
+	ListStudentAwardsByStudent(ctx context.Context, studentID uuid.UUID) ([]StudentAward, error)
 	ListStudentEnrollments(ctx context.Context, arg ListStudentEnrollmentsParams) ([]ListStudentEnrollmentsRow, error)
 	ListStudentEnrollmentsByLevel(ctx context.Context, arg ListStudentEnrollmentsByLevelParams) ([]ListStudentEnrollmentsByLevelRow, error)
 	// used to authorize a teacher-sent "guardian" rule: allowed only if at
 	// least one of the guardian's linked students is in one of the teacher's
 	// assigned classes
 	ListStudentIDsByGuardian(ctx context.Context, guardianID uuid.UUID) ([]uuid.UUID, error)
+	ListStudentLeadershipRolesByStudent(ctx context.Context, studentID uuid.UUID) ([]StudentLeadershipRole, error)
 	// teacher_id/teacher_name are NULL if the student's current-year class has
 	// no assigned teacher for that subject (or the student has no current class)
 	ListStudentMarksByTerm(ctx context.Context, arg ListStudentMarksByTermParams) ([]ListStudentMarksByTermRow, error)
@@ -319,6 +379,8 @@ type Querier interface {
 	ListSubjectTeachersByClass(ctx context.Context, classID uuid.UUID) ([]ListSubjectTeachersByClassRow, error)
 	ListSubjects(ctx context.Context) ([]Subject, error)
 	ListSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID) ([]Subject, error)
+	ListTeacherAttendanceByDate(ctx context.Context, date pgtype.Date) ([]ListTeacherAttendanceByDateRow, error)
+	ListTeacherAttendanceHistory(ctx context.Context, arg ListTeacherAttendanceHistoryParams) ([]StaffAttendanceRecord, error)
 	ListTeacherAvailabilityByTeacherYear(ctx context.Context, arg ListTeacherAvailabilityByTeacherYearParams) ([]TeacherAvailability, error)
 	ListTeacherPositions(ctx context.Context) ([]ListTeacherPositionsRow, error)
 	// a teacher's full weekly schedule across every published timetable, for
@@ -346,6 +408,17 @@ type Querier interface {
 	MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error)
 	MarkNotificationRecipientRead(ctx context.Context, arg MarkNotificationRecipientReadParams) error
 	MarkNotificationSent(ctx context.Context, id uuid.UUID) (Notification, error)
+	MonthlyNonAcademicStaffAttendanceSummary(ctx context.Context, arg MonthlyNonAcademicStaffAttendanceSummaryParams) ([]MonthlyNonAcademicStaffAttendanceSummaryRow, error)
+	// one row per teacher with a count for each status in the given date range
+	// (the caller passes the first/last day of the month).
+	MonthlyTeacherAttendanceSummary(ctx context.Context, arg MonthlyTeacherAttendanceSummaryParams) ([]MonthlyTeacherAttendanceSummaryRow, error)
+	// shared numbering pool with non_academic_staff (migration 000026). Called
+	// explicitly by the service (rather than relying on the column DEFAULT)
+	// because the value is needed up-front to pass to the identity provider
+	// before the teacher_profiles row exists.
+	NextEmployeeNumber(ctx context.Context) (string, error)
+	// shares the numbering pool with teacher_profiles (migration 000026).
+	NextNonAcademicEmployeeNumber(ctx context.Context) (string, error)
 	// Picks whichever house currently has the fewest students, breaking ties
 	// randomly. A newly-created house has zero members and so is naturally
 	// preferred until it catches up — no manual remainder bookkeeping needed.
@@ -378,23 +451,30 @@ type Querier interface {
 	UpdateHouse(ctx context.Context, arg UpdateHouseParams) (House, error)
 	UpdateLevel(ctx context.Context, arg UpdateLevelParams) (Level, error)
 	UpdateMedium(ctx context.Context, arg UpdateMediumParams) (Medium, error)
+	UpdateNonAcademicStaff(ctx context.Context, arg UpdateNonAcademicStaffParams) (NonAcademicStaff, error)
+	UpdateNonAcademicStaffEmploymentStatus(ctx context.Context, arg UpdateNonAcademicStaffEmploymentStatusParams) (NonAcademicStaff, error)
+	UpdateNonAcademicStaffHouse(ctx context.Context, arg UpdateNonAcademicStaffHouseParams) (NonAcademicStaff, error)
 	UpdateNotificationDraft(ctx context.Context, arg UpdateNotificationDraftParams) (Notification, error)
+	UpdateProgressReport(ctx context.Context, arg UpdateProgressReportParams) (StudentProgressReport, error)
 	UpdateSchool(ctx context.Context, arg UpdateSchoolParams) (School, error)
 	UpdateSelectionGroup(ctx context.Context, arg UpdateSelectionGroupParams) (SelectionGroup, error)
 	UpdateStream(ctx context.Context, arg UpdateStreamParams) (Stream, error)
 	UpdateStreamGroup(ctx context.Context, arg UpdateStreamGroupParams) (StreamGroup, error)
+	UpdateStudentActivity(ctx context.Context, arg UpdateStudentActivityParams) (StudentActivity, error)
 	UpdateStudentEnrollmentStatus(ctx context.Context, arg UpdateStudentEnrollmentStatusParams) (StudentProfile, error)
 	UpdateStudentHouse(ctx context.Context, arg UpdateStudentHouseParams) (StudentProfile, error)
 	UpdateStudentProfile(ctx context.Context, arg UpdateStudentProfileParams) (StudentProfile, error)
 	UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error)
 	UpdateTeacherEmploymentStatus(ctx context.Context, arg UpdateTeacherEmploymentStatusParams) (TeacherProfile, error)
 	UpdateTeacherHouse(ctx context.Context, arg UpdateTeacherHouseParams) (TeacherProfile, error)
+	// employee_number is immutable once assigned (Phase 6.1) — not updatable here.
 	UpdateTeacherProfile(ctx context.Context, arg UpdateTeacherProfileParams) (TeacherProfile, error)
 	UpdateTerm(ctx context.Context, arg UpdateTermParams) (Term, error)
 	UpdateTimetablePeriod(ctx context.Context, arg UpdateTimetablePeriodParams) (TimetablePeriod, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	// Teacher-in-charge for a whole grade (grades without A/L streams).
 	UpsertGradeSectionHead(ctx context.Context, arg UpsertGradeSectionHeadParams) (SectionHead, error)
+	UpsertNonAcademicStaffAttendance(ctx context.Context, arg UpsertNonAcademicStaffAttendanceParams) (StaffAttendanceRecord, error)
 	UpsertPrefect(ctx context.Context, arg UpsertPrefectParams) (Prefect, error)
 	// Swaps who the Principal is (at most one row can ever exist — permanent
 	// until resignation/promotion, not renewed per year).
@@ -402,6 +482,7 @@ type Querier interface {
 	// Teacher-in-charge for one A/L stream within a grade.
 	UpsertStreamSectionHead(ctx context.Context, arg UpsertStreamSectionHeadParams) (SectionHead, error)
 	UpsertSubjectPeriodRequirement(ctx context.Context, arg UpsertSubjectPeriodRequirementParams) (SubjectPeriodRequirement, error)
+	UpsertTeacherAttendance(ctx context.Context, arg UpsertTeacherAttendanceParams) (StaffAttendanceRecord, error)
 	UpsertTermMark(ctx context.Context, arg UpsertTermMarkParams) (TermMark, error)
 	UpsertTimetableEntry(ctx context.Context, arg UpsertTimetableEntryParams) (TimetableEntry, error)
 	UpsertTimetableSettings(ctx context.Context, arg UpsertTimetableSettingsParams) (TimetableSetting, error)

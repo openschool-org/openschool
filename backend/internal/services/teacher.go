@@ -30,10 +30,11 @@ func NewTeacherService(repo *repositories.TeacherRepository, idp identity.Provid
 }
 
 func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTeacherRequest) (db.TeacherProfile, error) {
-	// check employee number not already used
-	_, err := s.repo.GetByEmployeeNumber(ctx, req.EmployeeNumber)
-	if err == nil {
-		return db.TeacherProfile{}, fmt.Errorf("employee number already exists")
+	// employee_number is auto-assigned from the shared sequence (Phase 6.1) —
+	// fetched up-front since the identity provider user needs it as an attribute.
+	employeeNumber, err := s.repo.NextEmployeeNumber(ctx)
+	if err != nil {
+		return db.TeacherProfile{}, fmt.Errorf("failed to assign employee number: %w", err)
 	}
 
 	idpUser, err := s.idp.CreateUser(ctx, "teacher", map[string]interface{}{
@@ -42,7 +43,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		"given_name":      req.GivenName,
 		"family_name":     req.FamilyName,
 		"phone":           req.PhoneNumber,
-		"employee_number": req.EmployeeNumber,
+		"employee_number": employeeNumber,
 		"password":        req.Password,
 	})
 	if err != nil {
@@ -82,7 +83,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 	profile, err := s.repo.Create(ctx, db.CreateTeacherProfileParams{
 		UserID:         userID,
 		FullName:       fullName,
-		EmployeeNumber: req.EmployeeNumber,
+		EmployeeNumber: employeeNumber,
 		JoinedDate:     pgtype.Date{Time: req.JoinedDate, Valid: true},
 		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
 		Title:          pgtype.Text{String: req.Title, Valid: req.Title != ""},
@@ -123,24 +124,22 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 	}
 
 	err = s.idp.UpdateUser(ctx, userID, "teacher", map[string]interface{}{
-		"username":        user.Email,
-		"email":           user.Email,
-		"given_name":      req.GivenName,
-		"family_name":     req.FamilyName,
-		"phone":           req.PhoneNumber,
-		"employee_number": req.EmployeeNumber,
+		"username":    user.Email,
+		"email":       user.Email,
+		"given_name":  req.GivenName,
+		"family_name": req.FamilyName,
+		"phone":       req.PhoneNumber,
 	})
 	if err != nil {
 		fmt.Printf("warning: failed to update identity provider user: %v\n", err)
 	}
 
 	return s.repo.Update(ctx, db.UpdateTeacherProfileParams{
-		ID:             id,
-		FullName:       fullName,
-		EmployeeNumber: req.EmployeeNumber,
-		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
-		Title:          pgtype.Text{String: req.Title, Valid: req.Title != ""},
-		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
+		ID:       id,
+		FullName: fullName,
+		Phone:    pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
+		Title:    pgtype.Text{String: req.Title, Valid: req.Title != ""},
+		Gender:   pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
 	})
 }
 

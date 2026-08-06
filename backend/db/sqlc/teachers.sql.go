@@ -399,6 +399,21 @@ func (q *Queries) ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID
 	return items, nil
 }
 
+const nextEmployeeNumber = `-- name: NextEmployeeNumber :one
+SELECT lpad(nextval('employee_number_seq')::text, 5, '0')::text AS employee_number
+`
+
+// shared numbering pool with non_academic_staff (migration 000026). Called
+// explicitly by the service (rather than relying on the column DEFAULT)
+// because the value is needed up-front to pass to the identity provider
+// before the teacher_profiles row exists.
+func (q *Queries) NextEmployeeNumber(ctx context.Context) (string, error) {
+	row := q.db.QueryRow(ctx, nextEmployeeNumber)
+	var employee_number string
+	err := row.Scan(&employee_number)
+	return employee_number, err
+}
+
 const removeSubjectFromTeacher = `-- name: RemoveSubjectFromTeacher :exec
 DELETE FROM teacher_subjects
 WHERE teacher_id = $1 AND subject_id = $2
@@ -468,30 +483,28 @@ func (q *Queries) UpdateTeacherEmploymentStatus(ctx context.Context, arg UpdateT
 const updateTeacherProfile = `-- name: UpdateTeacherProfile :one
 UPDATE teacher_profiles
 SET
-    full_name       = $2,
-    employee_number = $3,
-    phone           = $4,
-    title           = $5,
-    gender          = $6,
-    updated_at      = NOW()
+    full_name  = $2,
+    phone      = $3,
+    title      = $4,
+    gender     = $5,
+    updated_at = NOW()
 WHERE id = $1
 RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status
 `
 
 type UpdateTeacherProfileParams struct {
-	ID             uuid.UUID   `json:"id"`
-	FullName       string      `json:"full_name"`
-	EmployeeNumber string      `json:"employee_number"`
-	Phone          pgtype.Text `json:"phone"`
-	Title          pgtype.Text `json:"title"`
-	Gender         pgtype.Text `json:"gender"`
+	ID       uuid.UUID   `json:"id"`
+	FullName string      `json:"full_name"`
+	Phone    pgtype.Text `json:"phone"`
+	Title    pgtype.Text `json:"title"`
+	Gender   pgtype.Text `json:"gender"`
 }
 
+// employee_number is immutable once assigned (Phase 6.1) — not updatable here.
 func (q *Queries) UpdateTeacherProfile(ctx context.Context, arg UpdateTeacherProfileParams) (TeacherProfile, error) {
 	row := q.db.QueryRow(ctx, updateTeacherProfile,
 		arg.ID,
 		arg.FullName,
-		arg.EmployeeNumber,
 		arg.Phone,
 		arg.Title,
 		arg.Gender,

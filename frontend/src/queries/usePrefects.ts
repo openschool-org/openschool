@@ -11,6 +11,16 @@ export const usePrefects = (academicYearId: string) =>
     enabled: !!academicYearId,
   });
 
+export const prefectYearsKey = ["prefects", "years"];
+
+// Academic years that have at least one prefect appointment — for the
+// archive view's year selector.
+export const usePrefectYears = () =>
+  useQuery({
+    queryKey: prefectYearsKey,
+    queryFn: () => prefectApi.listYears(),
+  });
+
 export const useAssignPrefect = () => {
   const queryClient = useQueryClient();
   return useMutation({

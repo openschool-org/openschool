@@ -8,14 +8,9 @@ import { useDailySessions, useSessionRecords, useCreateSession, classSessionsKey
 import { attendanceApi, type AttendanceSession } from "../../services/attendance";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import ErrorMessage from "../../components/common/ErrorMessage";
+import { todayISODate } from "../../lib/date";
 
 const ACCENT = "#406AAF";
-
-function todayISODate(): string {
-  const d = new Date();
-  const tz = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
-}
 
 function PendingClassAction({ classId, className, gradeName }: { classId: string; className: string; gradeName: string }) {
   const navigate = useNavigate();

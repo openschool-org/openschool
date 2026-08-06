@@ -21,7 +21,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TITLES: TeacherTitle[] = ["Mr", "Miss", "Mrs", "Ms", "Dr", "Von", "Prof"];
 
 type Touched = Partial<
-  Record<"givenName" | "familyName" | "email" | "password" | "employeeNumber" | "joinedDate", boolean>
+  Record<"givenName" | "familyName" | "email" | "password" | "joinedDate", boolean>
 >;
 
 export default function AddTeacher() {
@@ -35,7 +35,6 @@ export default function AddTeacher() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-  const [employeeNumber, setEmployeeNumber] = useState("");
   const [joinedDate, setJoinedDate] = useState("");
   const [touched, setTouched] = useState<Touched>({});
 
@@ -47,7 +46,6 @@ export default function AddTeacher() {
       familyName: true,
       email: true,
       password: true,
-      employeeNumber: true,
       joinedDate: true,
     });
     if (!isValid) return;
@@ -58,7 +56,6 @@ export default function AddTeacher() {
         email: email.trim(),
         phone_number: phone.trim() || undefined,
         password,
-        employee_number: employeeNumber.trim(),
         joined_date: new Date(joinedDate).toISOString(),
         title: title || undefined,
         gender: gender || undefined,
@@ -75,7 +72,6 @@ export default function AddTeacher() {
   const familyNameInvalid = !!touched.familyName && !familyName.trim();
   const emailInvalid = !!touched.email && !EMAIL_RE.test(email.trim());
   const passwordInvalid = !!touched.password && password.length < 8;
-  const employeeNumberInvalid = !!touched.employeeNumber && !employeeNumber.trim();
   const joinedDateInvalid = !!touched.joinedDate && !joinedDate;
 
   const isValid =
@@ -83,7 +79,6 @@ export default function AddTeacher() {
     familyName.trim().length > 0 &&
     EMAIL_RE.test(email.trim()) &&
     password.length >= 8 &&
-    employeeNumber.trim().length > 0 &&
     !!joinedDate;
 
   return (
@@ -192,16 +187,6 @@ export default function AddTeacher() {
         <div className="os-form__section">
           <div className="os-form__section-header">Employment Details</div>
           <div className="os-form__section-body">
-            <TextInput
-              id="employee-number"
-              labelText="Employee Number"
-              placeholder="e.g. EMP-0145"
-              value={employeeNumber}
-              onChange={(e) => setEmployeeNumber(e.target.value)}
-              onBlur={() => markTouched("employeeNumber")}
-              invalid={employeeNumberInvalid}
-              invalidText="Employee number is required."
-            />
             <DatePicker
               datePickerType="single"
               dateFormat="Y-m-d"
