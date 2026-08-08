@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Calendar, Add, Checkmark, TrashCan } from "@carbon/icons-react";
+import { Calendar, Add, Checkmark, TrashCan, Edit } from "@carbon/icons-react";
 import {
   Button,
   Tag,
@@ -23,6 +23,7 @@ import {
 import {
   useTerms,
   useCreateTerm,
+  useUpdateTerm,
   useSetCurrentTerm,
   useDeleteTerm,
 } from "../../../queries/useTerms";
@@ -78,21 +79,57 @@ const EMPTY_TERM_FORM = { name: "", start_date: "", end_date: "" };
 function TermsModal({ year, onClose }: { year: AcademicYear; onClose: () => void }) {
   const { data: terms, isLoading } = useTerms(year.id);
   const createTerm = useCreateTerm(year.id);
+  const updateTerm = useUpdateTerm(year.id);
   const setCurrentTerm = useSetCurrentTerm(year.id);
   const deleteTerm = useDeleteTerm(year.id);
 
   const [form, setForm] = useState(EMPTY_TERM_FORM);
   const [touched, setTouched] = useState<{ name?: boolean; start_date?: boolean; end_date?: boolean }>({});
   const [toDelete, setToDelete] = useState<Term | null>(null);
+  // When set, the form below edits this term instead of creating a new one.
+  const [editing, setEditing] = useState<Term | null>(null);
 
   const dateRangeInvalid =
     !!form.start_date && !!form.end_date && form.end_date <= form.start_date;
   const isValid =
     form.name.trim().length > 0 && !!form.start_date && !!form.end_date && !dateRangeInvalid;
 
-  const handleAdd = () => {
+  const resetForm = () => {
+    setForm(EMPTY_TERM_FORM);
+    setTouched({});
+    setEditing(null);
+  };
+
+  const startEdit = (t: Term) => {
+    createTerm.reset();
+    updateTerm.reset();
+    setForm({
+      name: t.name,
+      start_date: isoToYmd(t.start_date),
+      end_date: isoToYmd(t.end_date),
+    });
+    setTouched({});
+    setEditing(t);
+  };
+
+  const handleSubmit = () => {
     setTouched({ name: true, start_date: true, end_date: true });
     if (!isValid) return;
+    if (editing) {
+      updateTerm.mutate(
+        {
+          id: editing.id,
+          data: {
+            name: form.name.trim(),
+            start_date: new Date(form.start_date).toISOString(),
+            end_date: new Date(form.end_date).toISOString(),
+            sort_order: editing.sort_order,
+          },
+        },
+        { onSuccess: resetForm },
+      );
+      return;
+    }
     createTerm.mutate(
       {
         academic_year_id: year.id,
@@ -101,14 +138,11 @@ function TermsModal({ year, onClose }: { year: AcademicYear; onClose: () => void
         end_date: new Date(form.end_date).toISOString(),
         sort_order: terms?.length ?? 0,
       },
-      {
-        onSuccess: () => {
-          setForm(EMPTY_TERM_FORM);
-          setTouched({});
-        },
-      },
+      { onSuccess: resetForm },
     );
   };
+
+  const isSaving = createTerm.isPending || updateTerm.isPending;
 
   return (
     <>
@@ -120,6 +154,16 @@ function TermsModal({ year, onClose }: { year: AcademicYear; onClose: () => void
               kind="error"
               title="Error"
               subtitle={getErrorMessage(createTerm.error, "Failed to create term")}
+              lowContrast
+              hideCloseButton
+              style={{ marginBottom: "1rem", maxWidth: "100%" }}
+            />
+          )}
+          {updateTerm.isError && (
+            <InlineNotification
+              kind="error"
+              title="Error"
+              subtitle={getErrorMessage(updateTerm.error, "Failed to update term")}
               lowContrast
               hideCloseButton
               style={{ marginBottom: "1rem", maxWidth: "100%" }}
@@ -174,6 +218,14 @@ function TermsModal({ year, onClose }: { year: AcademicYear; onClose: () => void
                     hasIconOnly
                     kind="ghost"
                     size="sm"
+                    iconDescription="Edit term"
+                    renderIcon={Edit}
+                    onClick={() => startEdit(t)}
+                  />
+                  <Button
+                    hasIconOnly
+                    kind="ghost"
+                    size="sm"
                     iconDescription="Delete term"
                     renderIcon={TrashCan}
                     onClick={() => setToDelete(t)}
@@ -184,6 +236,11 @@ function TermsModal({ year, onClose }: { year: AcademicYear; onClose: () => void
           )}
 
           <div style={{ display: "grid", gap: "0.75rem" }}>
+            {editing && (
+              <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: 600, color: "#161616" }}>
+                Editing {editing.name}
+              </p>
+            )}
             <TextInput
               id="term-name"
               labelText="Term name"
@@ -194,7 +251,10 @@ function TermsModal({ year, onClose }: { year: AcademicYear; onClose: () => void
               invalid={!!touched.name && !form.name.trim()}
               invalidText="A name is required."
             />
+            {/* Remount the pickers when switching term, so flatpickr picks up
+                the prefilled value instead of keeping the previous one. */}
             <DatePicker
+              key={`start-${editing?.id ?? "new"}`}
               datePickerType="single"
               dateFormat="Y-m-d"
               value={form.start_date}
@@ -210,6 +270,7 @@ function TermsModal({ year, onClose }: { year: AcademicYear; onClose: () => void
               />
             </DatePicker>
             <DatePicker
+              key={`end-${editing?.id ?? "new"}`}
               datePickerType="single"
               dateFormat="Y-m-d"
               value={form.end_date}
@@ -228,16 +289,28 @@ function TermsModal({ year, onClose }: { year: AcademicYear; onClose: () => void
                 }
               />
             </DatePicker>
-            <Button
-              kind="ghost"
-              size="sm"
-              renderIcon={Add}
-              onClick={handleAdd}
-              disabled={createTerm.isPending}
-              style={{ justifySelf: "start" }}
-            >
-              {createTerm.isPending ? "Adding…" : "Add Term"}
-            </Button>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <Button
+                kind="ghost"
+                size="sm"
+                renderIcon={editing ? Checkmark : Add}
+                onClick={handleSubmit}
+                disabled={isSaving}
+              >
+                {isSaving
+                  ? editing
+                    ? "Saving…"
+                    : "Adding…"
+                  : editing
+                    ? "Save Changes"
+                    : "Add Term"}
+              </Button>
+              {editing && (
+                <Button kind="ghost" size="sm" onClick={resetForm} disabled={isSaving}>
+                  Cancel
+                </Button>
+              )}
+            </div>
           </div>
         </ModalBody>
         <ModalFooter>
@@ -252,7 +325,9 @@ function TermsModal({ year, onClose }: { year: AcademicYear; onClose: () => void
         title="Delete term"
         description={
           <>
-            Delete <strong>{toDelete?.name}</strong>? This cannot be undone.
+            Delete <strong>{toDelete?.name}</strong>? Every examination mark
+            recorded against this term is deleted with it. To correct a name or
+            date, use Edit instead — this cannot be undone.
           </>
         }
         isPending={deleteTerm.isPending}
@@ -569,4 +644,10 @@ export default function AcademicYears() {
 function toYmd(d: Date | undefined): string {
   if (!d) return "";
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Terms come back with RFC3339 timestamps; the date pickers want Y-m-d.
+function isoToYmd(iso: string | null): string {
+  if (!iso) return "";
+  return toYmd(new Date(iso));
 }

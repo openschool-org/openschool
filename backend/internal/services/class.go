@@ -35,6 +35,9 @@ func (s *ClassService) CreateClass(ctx context.Context, req models.CreateClassRe
 	if req.StreamGroupID != nil {
 		params.StreamGroupID = pgtype.UUID{Bytes: *req.StreamGroupID, Valid: true}
 	}
+	if req.MediumID != nil {
+		params.MediumID = pgtype.UUID{Bytes: *req.MediumID, Valid: true}
+	}
 
 	return s.repo.Create(ctx, params)
 }
@@ -59,6 +62,9 @@ func (s *ClassService) UpdateClass(ctx context.Context, id uuid.UUID, req models
 
 	if req.FormTeacherID != nil {
 		params.FormTeacherID = pgtype.UUID{Bytes: *req.FormTeacherID, Valid: true}
+	}
+	if req.MediumID != nil {
+		params.MediumID = pgtype.UUID{Bytes: *req.MediumID, Valid: true}
 	}
 
 	return s.repo.Update(ctx, params)

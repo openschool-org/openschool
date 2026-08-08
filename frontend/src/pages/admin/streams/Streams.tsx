@@ -20,12 +20,18 @@ import {
 } from "../../../queries/useClasses";
 import { useCurrentAcademicYear } from "../../../queries/useAcademicYears";
 import { useTeachers } from "../../../queries/useTeachers";
-import { useSectionHeads, useAssignSectionHead } from "../../../queries/useSectionHeads";
+import {
+  useSectionHeads,
+  useAssignSectionHead,
+  useRemoveSectionHead,
+} from "../../../queries/useSectionHeads";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import EntityCombobox from "../../../components/common/EntityCombobox";
+import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 import type { Stream } from "../../../services/stream";
+import type { SectionHead } from "../../../services/sectionHead";
 
 function StreamGroups({ stream }: { stream: Stream }) {
   const { data: groups, isLoading } = useStreamGroups(stream.id);
@@ -81,9 +87,11 @@ export default function Streams() {
   const { data: teachers } = useTeachers();
   const { data: sectionHeads } = useSectionHeads(currentYear?.id ?? "");
   const assignSectionHead = useAssignSectionHead();
+  const removeSectionHead = useRemoveSectionHead();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [newStreamName, setNewStreamName] = useState("");
+  const [toRemove, setToRemove] = useState<SectionHead | null>(null);
 
   const handleCreateStream = () => {
     if (!newStreamName.trim()) return;
@@ -244,6 +252,16 @@ export default function Streams() {
                       placeholder="Search teachers…"
                     />
                   </div>
+                  {/* Assigning requires a teacher, so leaving the post vacant
+                      is only possible by removing the appointment outright. */}
+                  <Button
+                    kind="danger--ghost"
+                    size="sm"
+                    onClick={() => head && setToRemove(head)}
+                    disabled={!head || removeSectionHead.isPending}
+                  >
+                    Remove
+                  </Button>
                 </div>
               );
             })}
@@ -260,7 +278,40 @@ export default function Streams() {
             style={{ maxWidth: "100%", margin: "0 1.5rem 1rem" }}
           />
         )}
+
+        {removeSectionHead.isError && (
+          <InlineNotification
+            kind="error"
+            title="Could not remove section head"
+            subtitle={getErrorMessage(removeSectionHead.error, "Please try again.")}
+            lowContrast
+            onClose={() => removeSectionHead.reset()}
+            style={{ maxWidth: "100%", margin: "0 1.5rem 1rem" }}
+          />
+        )}
       </div>
+
+      <ConfirmDeleteModal
+        open={!!toRemove}
+        title="Remove section head"
+        description={
+          <>
+            Remove <strong>{toRemove?.teacher_name}</strong> as teacher-in-charge
+            of {toRemove?.grade_name}
+            {toRemove?.stream_name ? ` - ${toRemove.stream_name}` : ""}? The post
+            is left vacant, and they lose the notification reach the role grants.
+          </>
+        }
+        isPending={removeSectionHead.isPending}
+        onClose={() => setToRemove(null)}
+        onConfirm={() => {
+          if (!toRemove || !currentYear) return;
+          removeSectionHead.mutate(
+            { id: toRemove.id, academicYearId: currentYear.id },
+            { onSettled: () => setToRemove(null) },
+          );
+        }}
+      />
 
       <ComposedModal open={createOpen} size="sm" onClose={() => setCreateOpen(false)}>
         <ModalHeader title="New stream" />

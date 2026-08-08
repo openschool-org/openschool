@@ -15,6 +15,9 @@ export interface PromotionPreviewRow {
   suggested_class_name: string | null;
   total_marks?: number;
   total_max_marks?: number;
+  medium_locked: boolean;
+  current_medium_id: string | null;
+  current_medium_name: string | null;
 }
 
 export interface AssignmentEntry {

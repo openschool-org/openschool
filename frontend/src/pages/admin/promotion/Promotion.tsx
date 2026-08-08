@@ -288,7 +288,7 @@ function PromotionGroup({
   gradeId: string;
   gradeName: string;
   rows: PromotionPreviewRow[];
-  targetClasses: { id: string; name: string }[];
+  targetClasses: { id: string; name: string; medium_id: string | null }[];
   assignments: Record<string, string>;
   onAssign: (studentId: string, classId: string) => void;
   onBulkAssign: (map: Record<string, string>) => void;
@@ -306,21 +306,31 @@ function PromotionGroup({
     for (const r of selectedInGroup) onAssign(r.student_id, bulkClassId);
   };
 
+  // Students in a medium-designated class carry straight over to the same
+  // medium in the next grade, so they sit out both distributions — and the
+  // medium-designated classes sit out as targets, otherwise a shuffle would
+  // refill an English section with students who don't belong in it. Their
+  // rows stay visible and their pick stays overridable either way.
+  const shufflePool = rows.filter((r) => !r.medium_locked);
+  const shuffleTargets = targetClasses.filter((c) => !c.medium_id);
+  const lockedCount = rows.length - shufflePool.length;
+  const canShuffle = shuffleTargets.length > 0 && shufflePool.length > 0;
+
   // Highest marks to lowest, dealt round-robin across the grade's target
   // classes — so every class ends up with a similar spread of high-to-low
   // performers (and a similar average) instead of one class getting all
   // the top scorers.
   const distributeByMarks = () => {
-    if (targetClasses.length === 0) return;
-    const sorted = [...rows].sort((a, b) => (b.total_marks ?? -1) - (a.total_marks ?? -1));
-    onBulkAssign(roundRobinAssign(sorted, targetClasses));
+    if (!canShuffle) return;
+    const sorted = [...shufflePool].sort((a, b) => (b.total_marks ?? -1) - (a.total_marks ?? -1));
+    onBulkAssign(roundRobinAssign(sorted, shuffleTargets));
   };
 
   // Same equal-class-size round-robin dealing, but in random order —
   // unrelated to marks.
   const distributeRandomly = () => {
-    if (targetClasses.length === 0) return;
-    onBulkAssign(roundRobinAssign(shuffled(rows), targetClasses));
+    if (!canShuffle) return;
+    onBulkAssign(roundRobinAssign(shuffled(shufflePool), shuffleTargets));
   };
 
   return (
@@ -330,16 +340,21 @@ function PromotionGroup({
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           {!isGraduating && targetClasses.length > 0 && (
             <>
+              {lockedCount > 0 && (
+                <span style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>
+                  {lockedCount} medium-locked, excluded from distribution
+                </span>
+              )}
               <Button
                 kind="ghost"
                 size="sm"
                 onClick={distributeByMarks}
-                disabled={!hasMarks}
+                disabled={!hasMarks || !canShuffle}
                 title={hasMarks ? undefined : "Pick a term and enable “Sort by total marks” above first"}
               >
                 Distribute by marks
               </Button>
-              <Button kind="ghost" size="sm" onClick={distributeRandomly}>
+              <Button kind="ghost" size="sm" onClick={distributeRandomly} disabled={!canShuffle}>
                 Assign randomly
               </Button>
             </>
@@ -396,7 +411,19 @@ function PromotionGroup({
                 <div style={{ fontWeight: 500, fontSize: "0.875rem" }}>{r.student_name}</div>
                 <div style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>{r.student_index}</div>
               </td>
-              <td>{r.current_class_name}</td>
+              <td>
+                {r.current_class_name}
+                {r.medium_locked && (
+                  <Tag
+                    type="purple"
+                    size="sm"
+                    style={{ marginLeft: "0.5rem" }}
+                    title="Medium-designated class — carries over to the same medium and is left out of distribution"
+                  >
+                    {r.current_medium_name ?? "Medium"}
+                  </Tag>
+                )}
+              </td>
               {rankByMarks && (
                 <td>
                   {r.total_marks != null ? (
@@ -423,7 +450,15 @@ function PromotionGroup({
                       />
                     </div>
                     {r.suggested_class_name && assignments[r.student_id] === r.suggested_class_id && (
-                      <Tag type="green" size="sm" title="Same-name carryover suggestion">
+                      <Tag
+                        type="green"
+                        size="sm"
+                        title={
+                          r.medium_locked
+                            ? "Same-medium carryover suggestion"
+                            : "Same-name carryover suggestion"
+                        }
+                      >
                         <ArrowRight size={10} style={{ marginRight: "2px" }} />
                         Suggested
                       </Tag>

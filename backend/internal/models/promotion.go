@@ -18,6 +18,15 @@ type PromotionPreviewRow struct {
 	SuggestedClassName *string  `json:"suggested_class_name"`
 	TotalMarks         *float64 `json:"total_marks,omitempty"`
 	TotalMaxMarks      *float64 `json:"total_max_marks,omitempty"`
+
+	// MediumLocked marks a student whose current class is designated for a
+	// language of instruction. Their suggestion is resolved by medium rather
+	// than by class name, and the frontend keeps them out of the
+	// distribute-by-marks / assign-randomly pools so a medium-designated
+	// section is never partially refilled with students who don't belong.
+	MediumLocked      bool    `json:"medium_locked"`
+	CurrentMediumID   *string `json:"current_medium_id"`
+	CurrentMediumName *string `json:"current_medium_name"`
 }
 
 // AssignmentEntry is one student's final target class, as decided by the

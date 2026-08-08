@@ -14,6 +14,7 @@ import {
   useStreamGroups,
 } from "../../../queries/useClasses";
 import { useGrades } from "../../../queries/useGrades";
+import { useMediums } from "../../../queries/useCurriculum";
 import { useTeachers } from "../../../queries/useTeachers";
 import { useAcademicYears } from "../../../queries/useAcademicYears";
 import { getErrorMessage } from "../../../lib/errorMessage";
@@ -28,6 +29,7 @@ const EMPTY_FORM = {
   stream_id: "",
   stream_group_id: "",
   form_teacher_id: "",
+  medium_id: "",
 };
 
 export default function AddClass() {
@@ -36,6 +38,7 @@ export default function AddClass() {
   const { data: grades, isLoading: gradesLoading } = useGrades();
   const { data: years } = useAcademicYears();
   const { data: streams } = useStreams();
+  const { data: mediums } = useMediums();
   const { data: teachers } = useTeachers();
   const createClass = useCreateClass();
 
@@ -72,6 +75,7 @@ export default function AddClass() {
         stream_id: form.stream_id || null,
         stream_group_id: form.stream_group_id || null,
         form_teacher_id: form.form_teacher_id || null,
+        medium_id: form.medium_id || null,
       },
       { onSuccess: () => navigate("/classes") },
     );
@@ -167,6 +171,19 @@ export default function AddClass() {
               <SelectItem value="" text="No sub-stream" />
               {streamGroups?.map((g) => (
                 <SelectItem key={g.id} value={g.id} text={g.name} />
+              ))}
+            </Select>
+
+            <Select
+              id="medium"
+              labelText="Medium (optional)"
+              helperText="Set this only if the section is reserved for one language of instruction — medium-designated classes carry students straight over at promotion instead of being reshuffled."
+              value={form.medium_id}
+              onChange={(e) => set("medium_id", e.target.value)}
+            >
+              <SelectItem value="" text="No medium" />
+              {mediums?.map((m) => (
+                <SelectItem key={m.id} value={m.id} text={m.name} />
               ))}
             </Select>
 

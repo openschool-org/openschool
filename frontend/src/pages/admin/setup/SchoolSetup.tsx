@@ -5,6 +5,8 @@ import {
   TextInput,
   NumberInput,
   Checkbox,
+  Select,
+  SelectItem,
   ProgressIndicator,
   ProgressStep,
   InlineNotification,
@@ -62,7 +64,9 @@ const GRADE_MIN = 1;
 const GRADE_MAX = 13;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const STEPS = ["School", "Houses", "Grades", "Classes", "Mediums", "Done"] as const;
+// Mediums precede Classes so the Classes step can tag each section with a
+// language of instruction as it is generated.
+const STEPS = ["School", "Houses", "Grades", "Mediums", "Classes", "Done"] as const;
 const HOUSE_COLOR_PALETTE = ["#0f62fe", "#da1e28", "#24a148", "#f1c21b", "#8a3ffc", "#ff832b"];
 
 function StepShell({
@@ -132,8 +136,10 @@ interface SubmitProgress {
   school: boolean;
   houses: boolean;
   grades: Grade[] | null;
+  // created medium ids keyed by name, so a retry after a partial failure
+  // reuses them instead of creating duplicates
+  mediums: Map<string, string> | null;
   classes: boolean;
-  mediums: boolean;
 }
 
 export default function SchoolSetup() {
@@ -209,11 +215,14 @@ export default function SchoolSetup() {
   const regularGradeNumbers = orderedSelectedGrades.filter((n) => !AL_GRADE_NUMBERS.has(n));
   const alGradeNumbers = orderedSelectedGrades.filter((n) => AL_GRADE_NUMBERS.has(n));
 
-  // ── Step 3: Classes ──────────────────────────────────────────────────────
+  // ── Step 4: Classes ──────────────────────────────────────────────────────
   const now = new Date();
   const [yearLabel, setYearLabel] = useState(String(now.getFullYear()));
   const [sectionsPerGrade, setSectionsPerGrade] = useState<Record<number, number>>({});
   const [classesSkipped, setClassesSkipped] = useState(false);
+  // language of instruction per generated section, keyed "<grade>-<index>".
+  // Holds the medium *name* because ids don't exist until submit.
+  const [sectionMediums, setSectionMediums] = useState<Record<string, string>>({});
 
   const [alStreams, setAlStreams] = useState<Record<ALStreamKey, { enabled: boolean; code: string; sections: number }>>(
     () =>
@@ -222,7 +231,7 @@ export default function SchoolSetup() {
       ) as Record<ALStreamKey, { enabled: boolean; code: string; sections: number }>,
   );
 
-  // ── Step 4: Mediums ──────────────────────────────────────────────────────
+  // ── Step 3: Mediums ──────────────────────────────────────────────────────
   const SUGGESTED_MEDIUMS = ["Sinhala", "Tamil", "English"];
   const [mediumChecks, setMediumChecks] = useState<Record<string, boolean>>({
     Sinhala: true,
@@ -231,6 +240,12 @@ export default function SchoolSetup() {
   });
   const [customMediums, setCustomMediums] = useState<string[]>([]);
   const [mediumsSkipped, setMediumsSkipped] = useState(false);
+
+  // what the Classes step offers per section — empty when mediums were skipped,
+  // which hides the pickers entirely rather than showing an empty dropdown
+  const selectedMediumNames = mediumsSkipped
+    ? []
+    : [...SUGGESTED_MEDIUMS.filter((m) => mediumChecks[m]), ...customMediums.filter((m) => m.trim())];
 
   // ── Final submission (Step 5) ───────────────────────────────────────────
   // Nothing above this point has touched the database — Steps 0-4 are pure
@@ -243,11 +258,15 @@ export default function SchoolSetup() {
     school: false,
     houses: false,
     grades: null,
+    mediums: null,
     classes: false,
-    mediums: false,
   });
 
-  const submitAll = async () => {
+  // skipClassesOverride is passed by the Classes step, whose setState hasn't
+  // applied yet when it kicks off the submit — reading the state here would
+  // see the previous value and create classes the admin chose to skip.
+  const submitAll = async (skipClassesOverride?: boolean) => {
+    const skipClasses = skipClassesOverride ?? classesSkipped;
     setSubmitting(true);
     setSubmitError(null);
     const progress = progressRef.current;
@@ -293,8 +312,26 @@ export default function SchoolSetup() {
       }
       const createdGrades = progress.grades;
 
+      // Mediums are written before classes so each generated section can be
+      // tagged with its language of instruction in the same pass.
+      if (!progress.mediums) {
+        const byName = new Map<string, string>();
+        if (!mediumsSkipped) {
+          const names = [
+            ...SUGGESTED_MEDIUMS.filter((m) => mediumChecks[m]),
+            ...customMediums.filter((m) => m.trim()),
+          ];
+          for (const name of names) {
+            const medium = await createMedium.mutateAsync({ name });
+            byName.set(name, medium.id);
+          }
+        }
+        progress.mediums = byName;
+      }
+      const mediumIdByName = progress.mediums;
+
       if (!progress.classes) {
-        if (!classesSkipped && yearLabel.trim() && createdGrades.length > 0) {
+        if (!skipClasses && yearLabel.trim() && createdGrades.length > 0) {
           const regularGrades = createdGrades.filter((g) => !AL_GRADE_NUMBERS.has(Number(g.name.replace(/\D/g, ""))));
           const alGrades = createdGrades.filter((g) => AL_GRADE_NUMBERS.has(Number(g.name.replace(/\D/g, ""))));
 
@@ -310,10 +347,12 @@ export default function SchoolSetup() {
             const count = sectionsPerGrade[gradeNumber] ?? 1;
             for (let i = 0; i < count; i++) {
               const section = String.fromCharCode(65 + i);
+              const mediumName = sectionMediums[`${gradeNumber}-${i}`];
               await createClass.mutateAsync({
                 grade_id: grade.id,
                 academic_year_id: year.id,
                 name: `${gradeNumber}-${section}`,
+                medium_id: (mediumName && mediumIdByName.get(mediumName)) || null,
               });
             }
           }
@@ -358,19 +397,6 @@ export default function SchoolSetup() {
         progress.classes = true;
       }
 
-      if (!progress.mediums) {
-        if (!mediumsSkipped) {
-          const names = [
-            ...SUGGESTED_MEDIUMS.filter((m) => mediumChecks[m]),
-            ...customMediums.filter((m) => m.trim()),
-          ];
-          for (const name of names) {
-            await createMedium.mutateAsync({ name });
-          }
-        }
-        progress.mediums = true;
-      }
-
       setSubmitted(true);
     } catch (e) {
       setSubmitError(getErrorMessage(e, "Failed to save your school setup. Please try again."));
@@ -403,6 +429,13 @@ export default function SchoolSetup() {
     goNext();
   };
 
+  const handleMediumsNext = (skip: boolean) => {
+    setMediumsSkipped(skip);
+    goNext();
+  };
+
+  // Classes is now the last input step, so this is where everything gets
+  // written.
   const handleClassesNext = (skip: boolean) => {
     setError(null);
     if (!skip && !yearLabel.trim()) {
@@ -411,12 +444,7 @@ export default function SchoolSetup() {
     }
     setClassesSkipped(skip);
     goNext();
-  };
-
-  const handleMediumsNext = (skip: boolean) => {
-    setMediumsSkipped(skip);
-    goNext();
-    submitAll();
+    submitAll(skip);
   };
 
   return (
@@ -608,8 +636,41 @@ export default function SchoolSetup() {
           </StepShell>
         )}
 
-        {/* ── Step 3: Classes ────────────────────────────────────────── */}
+        {/* ── Step 3: Mediums ────────────────────────────────────────── */}
         {step === 3 && (
+          <StepShell icon={Language} title="Mediums" subtitle="Optional - languages of instruction. Set these first so the next step can tag each section with one.">
+            <div style={{ display: "flex", gap: "1.5rem", marginBottom: "1rem" }}>
+              {SUGGESTED_MEDIUMS.map((m) => (
+                <Checkbox
+                  key={m}
+                  id={`medium-${m}`}
+                  labelText={m}
+                  checked={!!mediumChecks[m]}
+                  onChange={(_e, { checked }) => setMediumChecks((prev) => ({ ...prev, [m]: checked }))}
+                />
+              ))}
+            </div>
+            {customMediums.map((m, i) => (
+              <RepeatableRow key={i} onRemove={() => setCustomMediums((ms) => ms.filter((_, idx) => idx !== i))}>
+                <TextInput
+                  id={`custom-medium-${i}`}
+                  labelText="Medium"
+                  size="md"
+                  value={m}
+                  onChange={(e) =>
+                    setCustomMediums((ms) => ms.map((row, idx) => (idx === i ? e.target.value : row)))
+                  }
+                />
+              </RepeatableRow>
+            ))}
+            <Button kind="ghost" size="sm" renderIcon={Add} onClick={() => setCustomMediums((ms) => [...ms, ""])}>
+              Add another medium
+            </Button>
+          </StepShell>
+        )}
+
+        {/* ── Step 4: Classes ────────────────────────────────────────── */}
+        {step === 4 && (
           <StepShell
             icon={Building}
             title="Classes"
@@ -630,25 +691,52 @@ export default function SchoolSetup() {
               <>
                 {regularGradeNumbers.length > 0 && (
                   <div style={{ display: "grid", gap: "0.75rem", marginBottom: alGradeNumbers.length > 0 ? "1.75rem" : 0 }}>
-                    {regularGradeNumbers.map((gradeNumber) => (
-                      <div
-                        key={gradeNumber}
-                        style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "0.5rem 0", borderBottom: "1px solid #f4f4f4" }}
-                      >
-                        <span style={{ flex: 1, fontSize: "0.875rem", fontWeight: 500, color: "#161616" }}>Grade {gradeNumber}</span>
-                        <NumberInput
-                          id={`sections-${gradeNumber}`}
-                          label="Sections"
-                          size="sm"
-                          min={0}
-                          max={10}
-                          value={sectionsPerGrade[gradeNumber] ?? 1}
-                          onChange={(_e, { value }) =>
-                            setSectionsPerGrade((prev) => ({ ...prev, [gradeNumber]: value === "" ? 0 : Number(value) }))
-                          }
-                        />
-                      </div>
-                    ))}
+                    {regularGradeNumbers.map((gradeNumber) => {
+                      const count = sectionsPerGrade[gradeNumber] ?? 1;
+                      return (
+                        <div
+                          key={gradeNumber}
+                          style={{ padding: "0.5rem 0", borderBottom: "1px solid #f4f4f4" }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                            <span style={{ flex: 1, fontSize: "0.875rem", fontWeight: 500, color: "#161616" }}>Grade {gradeNumber}</span>
+                            <NumberInput
+                              id={`sections-${gradeNumber}`}
+                              label="Sections"
+                              size="sm"
+                              min={0}
+                              max={10}
+                              value={count}
+                              onChange={(_e, { value }) =>
+                                setSectionsPerGrade((prev) => ({ ...prev, [gradeNumber]: value === "" ? 0 : Number(value) }))
+                              }
+                            />
+                          </div>
+                          {selectedMediumNames.length > 0 && count > 0 && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.5rem" }}>
+                              {Array.from({ length: count }).map((_, i) => (
+                                <Select
+                                  key={i}
+                                  id={`section-medium-${gradeNumber}-${i}`}
+                                  labelText={`${gradeNumber}-${String.fromCharCode(65 + i)}`}
+                                  size="sm"
+                                  style={{ minWidth: "9rem" }}
+                                  value={sectionMediums[`${gradeNumber}-${i}`] ?? ""}
+                                  onChange={(e) =>
+                                    setSectionMediums((prev) => ({ ...prev, [`${gradeNumber}-${i}`]: e.target.value }))
+                                  }
+                                >
+                                  <SelectItem value="" text="No medium" />
+                                  {selectedMediumNames.map((m) => (
+                                    <SelectItem key={m} value={m} text={m} />
+                                  ))}
+                                </Select>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -727,39 +815,6 @@ export default function SchoolSetup() {
           </StepShell>
         )}
 
-        {/* ── Step 4: Mediums ────────────────────────────────────────── */}
-        {step === 4 && (
-          <StepShell icon={Language} title="Mediums" subtitle="Optional - languages of instruction, used later to restrict subjects.">
-            <div style={{ display: "flex", gap: "1.5rem", marginBottom: "1rem" }}>
-              {SUGGESTED_MEDIUMS.map((m) => (
-                <Checkbox
-                  key={m}
-                  id={`medium-${m}`}
-                  labelText={m}
-                  checked={!!mediumChecks[m]}
-                  onChange={(_e, { checked }) => setMediumChecks((prev) => ({ ...prev, [m]: checked }))}
-                />
-              ))}
-            </div>
-            {customMediums.map((m, i) => (
-              <RepeatableRow key={i} onRemove={() => setCustomMediums((ms) => ms.filter((_, idx) => idx !== i))}>
-                <TextInput
-                  id={`custom-medium-${i}`}
-                  labelText="Medium"
-                  size="md"
-                  value={m}
-                  onChange={(e) =>
-                    setCustomMediums((ms) => ms.map((row, idx) => (idx === i ? e.target.value : row)))
-                  }
-                />
-              </RepeatableRow>
-            ))}
-            <Button kind="ghost" size="sm" renderIcon={Add} onClick={() => setCustomMediums((ms) => [...ms, ""])}>
-              Add another medium
-            </Button>
-          </StepShell>
-        )}
-
         {/* ── Step 5: Done ───────────────────────────────────────────── */}
         {step === 5 && (
           <div>
@@ -779,7 +834,7 @@ export default function SchoolSetup() {
                   lowContrast
                   style={{ marginBottom: "1.25rem", maxWidth: "100%", textAlign: "left" }}
                 />
-                <Button onClick={submitAll} style={{ width: "100%", maxWidth: "100%" }}>
+                <Button onClick={() => submitAll()} style={{ width: "100%", maxWidth: "100%" }}>
                   Retry
                 </Button>
               </div>
@@ -901,8 +956,8 @@ export default function SchoolSetup() {
                   kind="secondary"
                   onClick={() => {
                     if (step === 1) handleHousesNext(true);
-                    else if (step === 3) handleClassesNext(true);
-                    else handleMediumsNext(true);
+                    else if (step === 3) handleMediumsNext(true);
+                    else handleClassesNext(true);
                   }}
                 >
                   Skip
@@ -914,8 +969,8 @@ export default function SchoolSetup() {
                   if (step === 0) handleSchoolNext();
                   else if (step === 1) handleHousesNext(false);
                   else if (step === 2) handleGradesNext();
-                  else if (step === 3) handleClassesNext(false);
-                  else handleMediumsNext(false);
+                  else if (step === 3) handleMediumsNext(false);
+                  else handleClassesNext(false);
                 }}
               >
                 {step === 4 ? "Finish Setup" : "Continue"}
