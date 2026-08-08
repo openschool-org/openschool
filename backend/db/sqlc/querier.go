@@ -58,6 +58,7 @@ type Querier interface {
 	CreateNonAcademicStaff(ctx context.Context, arg CreateNonAcademicStaffParams) (NonAcademicStaff, error)
 	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
 	CreateNotificationRecipient(ctx context.Context, arg CreateNotificationRecipientParams) error
+	CreatePasswordResetToken(ctx context.Context, arg CreatePasswordResetTokenParams) (PasswordResetToken, error)
 	// Progress reports --------------------------------------------------------
 	CreateProgressReport(ctx context.Context, arg CreateProgressReportParams) (StudentProgressReport, error)
 	CreateSchool(ctx context.Context, arg CreateSchoolParams) (School, error)
@@ -195,6 +196,10 @@ type Querier interface {
 	GetGradeTICForGrade(ctx context.Context, arg GetGradeTICForGradeParams) (uuid.UUID, error)
 	GetGuardianByID(ctx context.Context, id uuid.UUID) (Guardian, error)
 	GetGuardianByUserID(ctx context.Context, userID pgtype.UUID) (Guardian, error)
+	// Identity check for the unauthenticated forgot-password flow (Phase 8.4) —
+	// confirms the caller knows this guardian's NIC before a reset token is
+	// minted for their account.
+	GetGuardianByUserIDAndNIC(ctx context.Context, arg GetGuardianByUserIDAndNICParams) (Guardian, error)
 	GetHouseByID(ctx context.Context, id uuid.UUID) (House, error)
 	GetLevelByID(ctx context.Context, id uuid.UUID) (Level, error)
 	GetMaxVersionForClass(ctx context.Context, arg GetMaxVersionForClassParams) (int32, error)
@@ -206,6 +211,7 @@ type Querier interface {
 	GetNonAcademicStaffByID(ctx context.Context, id uuid.UUID) (NonAcademicStaff, error)
 	GetNotificationByID(ctx context.Context, id uuid.UUID) (Notification, error)
 	GetNotificationRecipientStats(ctx context.Context, notificationID uuid.UUID) (GetNotificationRecipientStatsRow, error)
+	GetPasswordResetTokenByHash(ctx context.Context, tokenHash string) (PasswordResetToken, error)
 	GetPrimaryGuardian(ctx context.Context, studentID uuid.UUID) (Guardian, error)
 	GetPublishedTimetableForClass(ctx context.Context, arg GetPublishedTimetableForClassParams) (Timetable, error)
 	GetSchool(ctx context.Context) (School, error)
@@ -222,6 +228,10 @@ type Querier interface {
 	GetTeacherByEmployeeNumber(ctx context.Context, employeeNumber string) (TeacherProfile, error)
 	GetTeacherByID(ctx context.Context, id uuid.UUID) (TeacherProfile, error)
 	GetTeacherByUserID(ctx context.Context, userID uuid.UUID) (TeacherProfile, error)
+	// Identity check for the unauthenticated forgot-password flow (Phase 8.4) —
+	// confirms the caller knows this teacher's NIC before a reset token is
+	// minted for their account.
+	GetTeacherByUserIDAndNIC(ctx context.Context, arg GetTeacherByUserIDAndNICParams) (TeacherProfile, error)
 	// the position row a teacher holds, if any — a teacher can hold at most one
 	// of principal/vice_principal (enforced by idx_teacher_positions_teacher_position_unique
 	// covering both position values, since RankForTeacher only needs to know
@@ -408,6 +418,7 @@ type Querier interface {
 	MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error)
 	MarkNotificationRecipientRead(ctx context.Context, arg MarkNotificationRecipientReadParams) error
 	MarkNotificationSent(ctx context.Context, id uuid.UUID) (Notification, error)
+	MarkPasswordResetTokenUsed(ctx context.Context, id uuid.UUID) error
 	MonthlyNonAcademicStaffAttendanceSummary(ctx context.Context, arg MonthlyNonAcademicStaffAttendanceSummaryParams) ([]MonthlyNonAcademicStaffAttendanceSummaryRow, error)
 	// one row per teacher with a count for each status in the given date range
 	// (the caller passes the first/last day of the month).
@@ -436,6 +447,7 @@ type Querier interface {
 	// Links a guardian record to the ThunderID identity created for their
 	// portal login (see internal/services/guardian.go ProvisionLogin).
 	SetGuardianUserID(ctx context.Context, arg SetGuardianUserIDParams) error
+	SetMustChangePassword(ctx context.Context, arg SetMustChangePasswordParams) error
 	SetNotificationRecipientArchived(ctx context.Context, arg SetNotificationRecipientArchivedParams) error
 	SetPrimaryContact(ctx context.Context, arg SetPrimaryContactParams) error
 	SetTeacherActiveStatus(ctx context.Context, arg SetTeacherActiveStatusParams) error
@@ -468,6 +480,8 @@ type Querier interface {
 	UpdateTeacherEmploymentStatus(ctx context.Context, arg UpdateTeacherEmploymentStatusParams) (TeacherProfile, error)
 	UpdateTeacherHouse(ctx context.Context, arg UpdateTeacherHouseParams) (TeacherProfile, error)
 	// employee_number is immutable once assigned (Phase 6.1) — not updatable here.
+	// nic_number *is* updatable, unlike employee_number — a typo should be
+	// correctable, it just has to stay unique (Phase 8.1).
 	UpdateTeacherProfile(ctx context.Context, arg UpdateTeacherProfileParams) (TeacherProfile, error)
 	UpdateTerm(ctx context.Context, arg UpdateTermParams) (Term, error)
 	UpdateTimetablePeriod(ctx context.Context, arg UpdateTimetablePeriodParams) (TimetablePeriod, error)

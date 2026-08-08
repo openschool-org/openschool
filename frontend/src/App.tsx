@@ -1,6 +1,8 @@
 import { Routes, Route } from "react-router";
 import SignIn from "./pages/SignIn";
 import Setup from "./pages/Setup";
+import ForgotPassword from "./pages/ForgotPassword";
+import PasswordInterstitial from "./pages/PasswordInterstitial";
 import AccessRestricted from "./pages/AccessRestricted";
 import ComingSoon from "./pages/ComingSoon";
 import { useRole } from "./hooks/useRole";
@@ -71,14 +73,20 @@ import NotificationCenter from "./pages/notifications/NotificationCenter";
 
 function App() {
   useApi();
-  useProvisionUser();
+  const { data: me, isLoading: meLoading } = useProvisionUser();
   const { role, loading } = useRole();
+
+  // Wait on /me too once a role is resolved, so the interstitial's flag
+  // (must_change_password) is known before any route renders — otherwise
+  // the real app would flash briefly first.
+  const stillLoading = loading || (role !== null && meLoading);
 
   return (
     <Routes>
       {/* Public routes - always accessible */}
       <Route path="/signin" element={<SignIn />} />
       <Route path="/setup" element={<Setup />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
       {/* Dev-only previews for status pages that are otherwise only reachable
           by actually triggering the condition (no role, unbuilt feature). */}
@@ -90,13 +98,25 @@ function App() {
       )}
 
       {/* Show loading state while role is being determined */}
-      {loading ? (
+      {stillLoading ? (
         <Route
           path="*"
           element={
             <div style={{ minHeight: "100vh", background: "#f4f4f4" }} />
           }
         />
+      ) : me?.must_change_password ? (
+        /* Phase 8.3 — blocks every route until the user keeps or replaces
+           their system-assigned default password. */
+        <Route
+          element={
+            <ProtectedRoute>
+              <PasswordInterstitial />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="*" element={<PasswordInterstitial />} />
+        </Route>
       ) : role === "teacher" ? (
         /* Teacher routes */
         <Route

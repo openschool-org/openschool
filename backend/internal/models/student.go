@@ -6,7 +6,8 @@ type CreateStudentRequest struct {
 	GivenName   string `json:"given_name" binding:"required"`
 	FamilyName  string `json:"family_name" binding:"required"`
 	PhoneNumber string `json:"phone_number"`
-	Password    string `json:"password" binding:"required,min=8"`
+	// Password is no longer collected — the student's index number becomes
+	// their initial (one-time) password (Phase 8.2).
 
 	// Student profile fields
 	IndexNumber    string `json:"index_number" binding:"required"`

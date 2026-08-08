@@ -27,12 +27,13 @@ export interface StudentWithClass extends Student {
   academic_year: string | null;
 }
 
+// No password field — the student's index number becomes their initial
+// (one-time) password server-side (Phase 8.2).
 export interface CreateStudentRequest {
   email: string;
   given_name: string;
   family_name: string;
   phone_number?: string;
-  password: string;
   index_number: string;
   address?: string;
   whatsapp?: string;

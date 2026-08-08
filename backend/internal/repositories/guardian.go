@@ -130,21 +130,30 @@ func (r *GuardianRepository) IsGuardianOfStudent(ctx context.Context, userID uui
 	})
 }
 
-func (r *GuardianRepository) CreateWithNullable(ctx context.Context, fullName string, relationship string, phone string, email string) (db.Guardian, error) {
+func (r *GuardianRepository) CreateWithNullable(ctx context.Context, fullName string, relationship string, phone string, email string, nicNumber string) (db.Guardian, error) {
 	return r.queries.CreateGuardian(ctx, db.CreateGuardianParams{
 		FullName:     fullName,
 		Relationship: relationship,
 		Phone:        phone,
 		Email:        pgtype.Text{String: email, Valid: email != ""},
+		NicNumber:    nicNumber,
 	})
 }
 
-func (r *GuardianRepository) UpdateWithNullable(ctx context.Context, id uuid.UUID, fullName string, relationship string, phone string, email string) (db.Guardian, error) {
+func (r *GuardianRepository) UpdateWithNullable(ctx context.Context, id uuid.UUID, fullName string, relationship string, phone string, email string, nicNumber string) (db.Guardian, error) {
 	return r.queries.UpdateGuardian(ctx, db.UpdateGuardianParams{
 		ID:           id,
 		FullName:     fullName,
 		Relationship: relationship,
 		Phone:        phone,
 		Email:        pgtype.Text{String: email, Valid: email != ""},
+		NicNumber:    nicNumber,
+	})
+}
+
+func (r *GuardianRepository) GetByUserIDAndNIC(ctx context.Context, userID uuid.UUID, nicNumber string) (db.Guardian, error) {
+	return r.queries.GetGuardianByUserIDAndNIC(ctx, db.GetGuardianByUserIDAndNICParams{
+		UserID:    pgtype.UUID{Bytes: userID, Valid: true},
+		NicNumber: nicNumber,
 	})
 }

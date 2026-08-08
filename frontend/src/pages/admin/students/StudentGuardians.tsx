@@ -3,7 +3,6 @@ import {
   Button,
   Tag,
   TextInput,
-  PasswordInput,
   Select,
   SelectItem,
   InlineNotification,
@@ -38,9 +37,10 @@ const EMPTY_GUARDIAN_FORM = {
   relationship: "father" as GuardianRelationship,
   phone: "",
   email: "",
+  nic_number: "",
 };
 
-const EMPTY_LOGIN_FORM = { given_name: "", family_name: "", username: "", password: "" };
+const EMPTY_LOGIN_FORM = { given_name: "", family_name: "", username: "" };
 
 function useDebounced<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -68,10 +68,17 @@ function AddGuardianModal({
 
   const addGuardian = useAddGuardian(studentId);
   const [form, setForm] = useState(EMPTY_GUARDIAN_FORM);
-  const [touched, setTouched] = useState<{ full_name?: boolean; phone?: boolean }>({});
+  const [touched, setTouched] = useState<{
+    full_name?: boolean;
+    phone?: boolean;
+    nic_number?: boolean;
+  }>({});
   const [created, setCreated] = useState<{ name: string; duplicates: number } | null>(null);
 
-  const isValid = form.full_name.trim().length > 0 && form.phone.trim().length > 0;
+  const isValid =
+    form.full_name.trim().length > 0 &&
+    form.phone.trim().length > 0 &&
+    form.nic_number.trim().length > 0;
 
   const results = (search.data ?? []).filter((g) => !existingGuardianIds.includes(g.id));
 
@@ -80,7 +87,7 @@ function AddGuardianModal({
   };
 
   const handleAdd = () => {
-    setTouched({ full_name: true, phone: true });
+    setTouched({ full_name: true, phone: true, nic_number: true });
     if (!isValid) return;
     addGuardian.mutate(
       {
@@ -89,6 +96,7 @@ function AddGuardianModal({
           relationship: form.relationship,
           phone: form.phone.trim(),
           email: form.email.trim() || undefined,
+          nic_number: form.nic_number.trim(),
         },
         isPrimaryContact: false,
       },
@@ -229,6 +237,16 @@ function AddGuardianModal({
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
               />
+              <TextInput
+                id="guardian-nic"
+                labelText="NIC Number"
+                value={form.nic_number}
+                onChange={(e) => setForm((f) => ({ ...f, nic_number: e.target.value }))}
+                onBlur={() => setTouched((t) => ({ ...t, nic_number: true }))}
+                invalid={!!touched.nic_number && !form.nic_number.trim()}
+                invalidText="NIC number is required."
+                helperText="Used as the guardian's initial one-time portal password."
+              />
             </div>
           </>
         )}
@@ -280,17 +298,15 @@ function ProvisionLoginModal({
     given_name: false,
     family_name: false,
     username: false,
-    password: false,
   });
 
   const isValid =
     form.given_name.trim().length > 0 &&
     form.family_name.trim().length > 0 &&
-    form.username.trim().length > 0 &&
-    form.password.length >= 8;
+    form.username.trim().length > 0;
 
   const handleSubmit = () => {
-    setTouched({ given_name: true, family_name: true, username: true, password: true });
+    setTouched({ given_name: true, family_name: true, username: true });
     if (!isValid) return;
     provision.mutate(
       {
@@ -299,7 +315,6 @@ function ProvisionLoginModal({
           given_name: form.given_name.trim(),
           family_name: form.family_name.trim(),
           username: form.username.trim(),
-          password: form.password,
         },
       },
       { onSuccess: onClose },
@@ -320,6 +335,14 @@ function ProvisionLoginModal({
             style={{ marginBottom: "1rem", maxWidth: "100%" }}
           />
         )}
+        <InlineNotification
+          kind="info"
+          title="One-time password"
+          subtitle={`${guardian.full_name}'s NIC number on file becomes their initial portal password. They'll be prompted to change it on first sign-in.`}
+          lowContrast
+          hideCloseButton
+          style={{ marginBottom: "1rem", maxWidth: "100%" }}
+        />
         {provision.isError && (
           <InlineNotification
             kind="error"
@@ -360,16 +383,6 @@ function ProvisionLoginModal({
             onBlur={() => setTouched((t) => ({ ...t, username: true }))}
             invalid={touched.username && !form.username.trim()}
             invalidText="Required."
-          />
-          <PasswordInput
-            id="guardian-login-password"
-            labelText="Temporary Password"
-            helperText="At least 8 characters. Share this with the guardian directly."
-            value={form.password}
-            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-            onBlur={() => setTouched((t) => ({ ...t, password: true }))}
-            invalid={touched.password && form.password.length < 8}
-            invalidText="Must be at least 8 characters."
           />
         </div>
       </ModalBody>

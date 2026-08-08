@@ -34,18 +34,17 @@ func NewMeService(repo *repositories.UserRepository) *MeService {
 
 // EnsureProvisioned makes sure a local row exists for an identity that just
 // authenticated, so first-time sign-ins don't need a separate provisioning
-// step. It's a no-op if the token carries no recognized app role — nothing
-// meaningful to provision yet.
-func (s *MeService) EnsureProvisioned(ctx context.Context, userID uuid.UUID, email, fullName, role string) error {
+// step. It's a no-op (returning the zero User) if the token carries no
+// recognized app role — nothing meaningful to provision yet.
+func (s *MeService) EnsureProvisioned(ctx context.Context, userID uuid.UUID, email, fullName, role string) (db.User, error) {
 	if role == "" {
-		return nil
+		return db.User{}, nil
 	}
 
-	_, err := s.repo.EnsureExists(ctx, db.EnsureUserExistsParams{
+	return s.repo.EnsureExists(ctx, db.EnsureUserExistsParams{
 		ID:       userID,
 		Email:    email,
 		FullName: fullName,
 		Role:     role,
 	})
-	return err
 }

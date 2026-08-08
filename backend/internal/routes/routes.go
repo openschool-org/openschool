@@ -23,6 +23,8 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware())
 
+	RegisterAuthRoutes(api, protected, pool)
+
 	admin := protected.Group("")
 	admin.Use(middleware.RequireRole("admin"))
 

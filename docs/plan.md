@@ -207,27 +207,27 @@ Already done in Phase 1 — nothing further needed here.
 
 ## Phase 8 — NIC-based account creation & universal password reset
 
-**Status: planned — not yet built.** Groups everything about how accounts get their initial password and how members change it — supersedes Phase 1's placeholder password-reset bullet (moved and expanded here) rather than duplicating it.
+**Status: done.** Groups everything about how accounts get their initial password and how members change it — supersedes Phase 1's placeholder password-reset bullet (moved and expanded here) rather than duplicating it.
 
-### 8.1 NIC number field (net-new)
+### 8.1 NIC number field
 
-No NIC/identity-document field exists anywhere in the codebase today (confirmed via full-text search — the only prior "nic" hits were false positives from `gin-gonic`, the Gin framework's import path, not an actual field). Add `nic_number VARCHAR(20) NOT NULL UNIQUE` to `teacher_profiles` and `guardians` (both defined in migration `000002_create_profiles.up.sql`) — validate loosely rather than hardcoding one format, since Sri Lankan NICs come in both the old 9-digit+V/X and new 12-digit-numeric forms, both still in active use. **Not** added to `student_profiles` — the ask is specifically Guardians and Teachers; students already have `index_number` as their unique identifier. Surface as a required field in `AddTeacher.tsx` and wherever a guardian is first created (`StudentGuardians.tsx`'s add-guardian modal, `GuardiansDirectory.tsx`'s create flow), and editable afterward (unlike `employee_number` from Phase 6.1, NIC *can* be corrected — a typo shouldn't be permanent, it should just stay `UNIQUE`).
+✅ **Done.** `nic_number VARCHAR(20) NOT NULL UNIQUE` added to `teacher_profiles` and `guardians` via migration `000030_add_nic_number` (existing rows backfilled with a placeholder so the constraints could be added in the same migration, since NIC — unlike `employee_number` — is editable afterward). Validated loosely at the application layer only (required, non-empty), not via a DB `CHECK`, since Sri Lankan NICs come in both the old 9-digit+V/X and new 12-digit-numeric forms. **Not** added to `student_profiles` — students already have `index_number`. Required field in `AddTeacher.tsx`/`TeacherDetail.tsx`'s edit form and wherever a guardian is created or edited (`StudentGuardians.tsx`'s add-guardian modal, `GuardiansDirectory.tsx`'s edit modal).
 
-### 8.2 Default passwords, not manual entry (behavior change)
+### 8.2 Default passwords, not manual entry
 
-Reverses the current student flow and removes manual entry for teachers/guardians — all three still go through the identity provider's normal `CreateUser`/`password` field via the existing `internal/identity.Provider` seam; this only changes *what value* is used, not the creation mechanism:
+✅ **Done.** All three still go through `internal/identity.Provider`'s existing `CreateUser`/`password` attribute — only *what value* is used changed, not the creation mechanism:
 
-- **Teachers:** `AddTeacher.tsx` currently has a manual `PasswordInput` (min 8 chars) feeding `CreateTeacherRequest.Password`. Remove the input; `TeacherService.CreateTeacher` uses the teacher's NIC number as the initial password instead (drop `Password` from `CreateTeacherRequest`).
-- **Guardians:** guardian records themselves don't carry a password (`CreateGuardianRequest` has none) — the manual password lives one step later, in `ProvisionGuardianLoginRequest.Password` (used wherever "give this guardian portal access" is triggered). Same change applies there: NIC number becomes the initial password, `Password` drops from that request.
-- **Students:** currently the *opposite* of what's wanted — `AddStudent.tsx`'s `generateTempPassword()` explicitly generates a **random** password, and the UI copy says "It is never the student's index number." Reverse this: `index_number` becomes the initial password directly, and `generateTempPassword()` is deleted.
+- **Teachers:** the manual `PasswordInput` is gone from `AddTeacher.tsx`; `TeacherService.CreateTeacher` uses the NIC number as the initial password (`Password` dropped from `CreateTeacherRequest`).
+- **Guardians:** `ProvisionLogin` now reads the guardian's already-on-file `nic_number` as the password (`Password` dropped from `ProvisionGuardianLoginRequest`).
+- **Students:** `AddStudent.tsx`'s random `generateTempPassword()` is deleted; `index_number` is now passed directly as the password.
 
-### 8.3 "One-time password" first-login flow (net-new)
+### 8.3 "One-time password" first-login flow
 
-On first login, interrupt with a screen stating this is a one-time password (NIC/index-number-derived) and offering two explicit choices: **"Keep this password"** (acknowledges and clears the flag) or **"Set a new password"** (routes into 8.4's reset flow) — neither silently skippable. Needs a way to know "is this still the auto-assigned password": check first whether ThunderID exposes a "temporary credential / force change on next login" primitive before building a local `must_change_password` flag — same category of question as Phase 1's original note on the reset primitive.
+✅ **Done.** Confirmed ThunderID's `identity.Provider` has no temporary-credential/force-change primitive (`CreateUser`/`UpdateUser`/`DeleteUser`/`AssignRole` only), so a local `users.must_change_password` column (migration `000031_add_password_lifecycle`) tracks it instead — set `TRUE` whenever Phase 8.2 assigns a default password. `GET /me` now returns the flag; `App.tsx` gates every route behind `PasswordInterstitial.tsx` (a full-page, non-dismissible screen) whenever it's `TRUE`, offering **"Keep this password"** (`POST /auth/keep-default-password`) or **"Set a new password"** (same `ChangePassword` path as 8.4).
 
-### 8.4 Universal self-service password reset (net-new)
+### 8.4 Universal self-service password reset
 
-Every role (admin/teacher/student/parent) gets a self-service reset path — not just an admin-triggered one. Add `ForgotPassword`/`ResetPassword` endpoints; check first whether ThunderID exposes a reset primitive through `internal/identity.Provider` before hand-rolling token generation/expiry. Frontend: a "Forgot password?" link on `/signin`, plus a "Change password" action on every role's own profile/settings page (`TeacherProfile.tsx` and the student/parent equivalents, admin Settings) — reusing whatever primitive 8.3's "Set a new password" choice needs, so the one-time-password flow and the ordinary self-service flow share one implementation, not two.
+✅ **Done.** ThunderID exposes no reset primitive either, so it's hand-rolled: `password_reset_tokens` (migration `000031`, shared with 8.3) stores only a SHA-256 hash of a short-lived (15 min), single-use token. `AuthService` (`internal/services/auth.go`) exposes `ForgotPassword`/`ResetPassword` (unauthenticated — identity verified via login email + the Phase 8.2 default-password secret: NIC for teacher/parent, index number for student; **admin excluded**, no secondary secret on file, falls back to the authenticated path) and `ChangePassword`/`KeepDefaultPassword` (authenticated, reused by 8.3). Routes on `internal/routes/auth.go`, rate-limited like `/setup/admin`. Frontend: a "Forgot password?" link on `/signin` → `ForgotPassword.tsx` (identify → set new password, two steps of one page); a "Change password" action shared by every role via `AppHeaderActions` (`ChangePasswordModal.tsx`), plus a dedicated button on `TeacherProfile.tsx`'s banner.
 
 ---
 

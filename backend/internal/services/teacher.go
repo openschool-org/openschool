@@ -37,6 +37,8 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		return db.TeacherProfile{}, fmt.Errorf("failed to assign employee number: %w", err)
 	}
 
+	// NIC number doubles as the initial (one-time) password (Phase 8.2) —
+	// there is no separate manual password entry anymore.
 	idpUser, err := s.idp.CreateUser(ctx, "teacher", map[string]interface{}{
 		"username":        req.Email,
 		"email":           req.Email,
@@ -44,7 +46,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		"family_name":     req.FamilyName,
 		"phone":           req.PhoneNumber,
 		"employee_number": employeeNumber,
-		"password":        req.Password,
+		"password":        req.NICNumber,
 	})
 	if err != nil {
 		return db.TeacherProfile{}, fmt.Errorf("failed to create identity provider user: %w", err)
@@ -59,10 +61,11 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 
 	// insert into users table
 	_, err = s.repo.CreateUser(ctx, db.CreateUserParams{
-		ID:       userID,
-		Email:    req.Email,
-		FullName: fullName,
-		Role:     "teacher",
+		ID:                 userID,
+		Email:              req.Email,
+		FullName:           fullName,
+		Role:               "teacher",
+		MustChangePassword: true,
 	})
 	if err != nil {
 		rollbackIDPUser(ctx, s.idp, "CreateTeacher", idpUser.ID)
@@ -84,6 +87,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		UserID:         userID,
 		FullName:       fullName,
 		EmployeeNumber: employeeNumber,
+		NicNumber:      req.NICNumber,
 		JoinedDate:     pgtype.Date{Time: req.JoinedDate, Valid: true},
 		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
 		Title:          pgtype.Text{String: req.Title, Valid: req.Title != ""},
@@ -135,11 +139,12 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 	}
 
 	return s.repo.Update(ctx, db.UpdateTeacherProfileParams{
-		ID:       id,
-		FullName: fullName,
-		Phone:    pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
-		Title:    pgtype.Text{String: req.Title, Valid: req.Title != ""},
-		Gender:   pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
+		ID:        id,
+		FullName:  fullName,
+		Phone:     pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
+		Title:     pgtype.Text{String: req.Title, Valid: req.Title != ""},
+		Gender:    pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
+		NicNumber: req.NICNumber,
 	})
 }
 

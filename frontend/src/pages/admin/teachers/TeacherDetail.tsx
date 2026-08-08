@@ -42,6 +42,7 @@ function teacherToForm(t: Teacher) {
     given_name: given ?? "",
     family_name: rest.join(" "),
     phone_number: t.phone ?? "",
+    nic_number: t.nic_number ?? "",
     title: t.title ?? ("" as TeacherTitle | ""),
     gender: t.gender ?? ("" as "" | "male" | "female"),
   };
@@ -68,6 +69,7 @@ export default function TeacherDetail() {
     given_name: "",
     family_name: "",
     phone_number: "",
+    nic_number: "",
     title: "" as TeacherTitle | "",
     gender: "" as "" | "male" | "female",
   });
@@ -99,6 +101,7 @@ export default function TeacherDetail() {
           given_name: form.given_name.trim(),
           family_name: form.family_name.trim(),
           phone_number: form.phone_number.trim() || undefined,
+          nic_number: form.nic_number.trim(),
           title: form.title || undefined,
           gender: form.gender || undefined,
         },
@@ -114,7 +117,8 @@ export default function TeacherDetail() {
     ? getErrorMessage(updateTeacher.error, "Failed to update teacher")
     : null;
 
-  const isValid = form.given_name.trim() && form.family_name.trim();
+  const isValid =
+    form.given_name.trim() && form.family_name.trim() && form.nic_number.trim();
 
   if (isLoading) return <LoadingSpinner />;
   if (isError || !teacher)
@@ -276,6 +280,13 @@ export default function TeacherDetail() {
                 value={form.phone_number}
                 readOnly={!editing}
                 onChange={(e) => change("phone_number", e.target.value)}
+              />
+              <TextInput
+                id="nic-number"
+                labelText="NIC Number"
+                value={form.nic_number}
+                readOnly={!editing}
+                onChange={(e) => change("nic_number", e.target.value)}
               />
               <TextInput
                 id="joined-date"

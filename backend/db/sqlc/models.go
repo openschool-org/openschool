@@ -121,6 +121,7 @@ type Guardian struct {
 	Phone        string             `json:"phone"`
 	Email        pgtype.Text        `json:"email"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	NicNumber    string             `json:"nic_number"`
 }
 
 type House struct {
@@ -181,6 +182,15 @@ type NotificationRecipient struct {
 	ReadAt         pgtype.Timestamptz `json:"read_at"`
 	IsArchived     bool               `json:"is_archived"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type PasswordResetToken struct {
+	ID        uuid.UUID          `json:"id"`
+	UserID    uuid.UUID          `json:"user_id"`
+	TokenHash string             `json:"token_hash"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Prefect struct {
@@ -392,6 +402,7 @@ type TeacherProfile struct {
 	IsActive         bool               `json:"is_active"`
 	HouseID          pgtype.UUID        `json:"house_id"`
 	EmploymentStatus string             `json:"employment_status"`
+	NicNumber        string             `json:"nic_number"`
 }
 
 type TeacherSubject struct {
@@ -487,13 +498,14 @@ type TimetableStatusHistory struct {
 }
 
 type User struct {
-	ID        uuid.UUID          `json:"id"`
-	Email     string             `json:"email"`
-	FullName  string             `json:"full_name"`
-	Role      string             `json:"role"`
-	IsActive  bool               `json:"is_active"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID                 uuid.UUID          `json:"id"`
+	Email              string             `json:"email"`
+	FullName           string             `json:"full_name"`
+	Role               string             `json:"role"`
+	IsActive           bool               `json:"is_active"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	MustChangePassword bool               `json:"must_change_password"`
 }
 
 type VicePrincipalGradeScope struct {

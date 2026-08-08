@@ -42,7 +42,7 @@ func (s *GuardianService) CreateGuardian(ctx context.Context, req models.CreateG
 	if err != nil {
 		return db.Guardian{}, nil, err
 	}
-	guardian, err := s.repo.CreateWithNullable(ctx, req.FullName, req.Relationship, req.Phone, req.Email)
+	guardian, err := s.repo.CreateWithNullable(ctx, req.FullName, req.Relationship, req.Phone, req.Email, req.NICNumber)
 	if err != nil {
 		return db.Guardian{}, nil, err
 	}
@@ -94,7 +94,7 @@ func (s *GuardianService) ListNotifications(ctx context.Context, guardianID uuid
 }
 
 func (s *GuardianService) UpdateGuardian(ctx context.Context, id uuid.UUID, req models.UpdateGuardianRequest) (db.Guardian, error) {
-	return s.repo.UpdateWithNullable(ctx, id, req.FullName, req.Relationship, req.Phone, req.Email)
+	return s.repo.UpdateWithNullable(ctx, id, req.FullName, req.Relationship, req.Phone, req.Email, req.NICNumber)
 }
 
 func (s *GuardianService) LinkToStudent(ctx context.Context, studentID uuid.UUID, req models.LinkGuardianRequest) error {
@@ -132,13 +132,16 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 		return db.Guardian{}, ErrGuardianMissingEmail
 	}
 
+	// The guardian's NIC number (already on file, Phase 8.1) becomes their
+	// initial (one-time) portal password (Phase 8.2) — there is no separate
+	// manual password entry anymore.
 	idpUser, err := s.idp.CreateUser(ctx, "parent", map[string]interface{}{
 		"username":    req.Username,
 		"email":       guardian.Email.String,
 		"given_name":  req.GivenName,
 		"family_name": req.FamilyName,
 		"phone":       guardian.Phone,
-		"password":    req.Password,
+		"password":    guardian.NicNumber,
 	})
 	if err != nil {
 		return db.Guardian{}, fmt.Errorf("failed to create identity provider account: %w", err)
@@ -153,10 +156,11 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 	// provider directly — that row normally only appears lazily on first
 	// login (see MeHandler), which is too late for the FK this needs now.
 	if _, err := s.users.EnsureExists(ctx, db.EnsureUserExistsParams{
-		ID:       userID,
-		Email:    guardian.Email.String,
-		FullName: guardian.FullName,
-		Role:     "parent",
+		ID:                 userID,
+		Email:              guardian.Email.String,
+		FullName:           guardian.FullName,
+		Role:               "parent",
+		MustChangePassword: true,
 	}); err != nil {
 		rollbackIDPUser(ctx, s.idp, "ProvisionLogin", idpUser.ID)
 		return db.Guardian{}, fmt.Errorf("failed to create local user record: %w", err)

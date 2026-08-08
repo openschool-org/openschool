@@ -8,11 +8,13 @@ type CreateTeacherRequest struct {
 	GivenName   string `json:"given_name" binding:"required"`
 	FamilyName  string `json:"family_name" binding:"required"`
 	PhoneNumber string `json:"phone_number"`
-	Password    string `json:"password" binding:"required,min=8"`
+	// Password is no longer collected — the teacher's NIC number becomes
+	// their initial (one-time) password (Phase 8.2).
 
 	// Teacher profile fields
 	// EmployeeNumber is auto-assigned from the shared employee_number_seq
 	// (Phase 6.1) — not supplied by the caller.
+	NICNumber  string    `json:"nic_number" binding:"required"`
 	JoinedDate time.Time `json:"joined_date" binding:"required"`
 	Title      string    `json:"title" binding:"omitempty,oneof=Mr Miss Mrs Ms Dr Von Prof"`
 	Gender     string    `json:"gender" binding:"omitempty,oneof=male female"`
@@ -23,8 +25,11 @@ type UpdateTeacherRequest struct {
 	FamilyName  string `json:"family_name" binding:"required"`
 	PhoneNumber string `json:"phone_number"`
 	// EmployeeNumber is immutable once assigned — not updatable.
-	Title  string `json:"title" binding:"omitempty,oneof=Mr Miss Mrs Ms Dr Von Prof"`
-	Gender string `json:"gender" binding:"omitempty,oneof=male female"`
+	// NICNumber *is* updatable — unlike employee_number, a typo shouldn't be
+	// permanent (Phase 8.1).
+	NICNumber string `json:"nic_number" binding:"required"`
+	Title     string `json:"title" binding:"omitempty,oneof=Mr Miss Mrs Ms Dr Von Prof"`
+	Gender    string `json:"gender" binding:"omitempty,oneof=male female"`
 }
 
 type AssignSubjectToTeacherRequest struct {
@@ -40,6 +45,7 @@ type TeacherResponse struct {
 	UserID         string `json:"user_id"`
 	FullName       string `json:"full_name"`
 	EmployeeNumber string `json:"employee_number"`
+	NICNumber      string `json:"nic_number"`
 	JoinedDate     string `json:"joined_date"`
 	Phone          string `json:"phone"`
 	Title          string `json:"title"`

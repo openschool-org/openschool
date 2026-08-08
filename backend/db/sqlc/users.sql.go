@@ -28,18 +28,20 @@ INSERT INTO users (
     id,
     email,
     full_name,
-    role
+    role,
+    must_change_password
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5
 )
-RETURNING id, email, full_name, role, is_active, created_at, updated_at
+RETURNING id, email, full_name, role, is_active, created_at, updated_at, must_change_password
 `
 
 type CreateUserParams struct {
-	ID       uuid.UUID `json:"id"`
-	Email    string    `json:"email"`
-	FullName string    `json:"full_name"`
-	Role     string    `json:"role"`
+	ID                 uuid.UUID `json:"id"`
+	Email              string    `json:"email"`
+	FullName           string    `json:"full_name"`
+	Role               string    `json:"role"`
+	MustChangePassword bool      `json:"must_change_password"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -48,6 +50,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.Email,
 		arg.FullName,
 		arg.Role,
+		arg.MustChangePassword,
 	)
 	var i User
 	err := row.Scan(
@@ -58,6 +61,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MustChangePassword,
 	)
 	return i, err
 }
@@ -68,7 +72,7 @@ SET
     is_active  = FALSE,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, full_name, role, is_active, created_at, updated_at
+RETURNING id, email, full_name, role, is_active, created_at, updated_at, must_change_password
 `
 
 func (q *Queries) DeactivateUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -82,6 +86,7 @@ func (q *Queries) DeactivateUser(ctx context.Context, id uuid.UUID) (User, error
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MustChangePassword,
 	)
 	return i, err
 }
@@ -91,19 +96,21 @@ INSERT INTO users (
     id,
     email,
     full_name,
-    role
+    role,
+    must_change_password
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5
 )
 ON CONFLICT (id) DO UPDATE SET id = users.id
-RETURNING id, email, full_name, role, is_active, created_at, updated_at
+RETURNING id, email, full_name, role, is_active, created_at, updated_at, must_change_password
 `
 
 type EnsureUserExistsParams struct {
-	ID       uuid.UUID `json:"id"`
-	Email    string    `json:"email"`
-	FullName string    `json:"full_name"`
-	Role     string    `json:"role"`
+	ID                 uuid.UUID `json:"id"`
+	Email              string    `json:"email"`
+	FullName           string    `json:"full_name"`
+	Role               string    `json:"role"`
+	MustChangePassword bool      `json:"must_change_password"`
 }
 
 // Atomic get-or-create: used to provision the local row for an identity
@@ -116,6 +123,7 @@ func (q *Queries) EnsureUserExists(ctx context.Context, arg EnsureUserExistsPara
 		arg.Email,
 		arg.FullName,
 		arg.Role,
+		arg.MustChangePassword,
 	)
 	var i User
 	err := row.Scan(
@@ -126,12 +134,13 @@ func (q *Queries) EnsureUserExists(ctx context.Context, arg EnsureUserExistsPara
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MustChangePassword,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, full_name, role, is_active, created_at, updated_at FROM users
+SELECT id, email, full_name, role, is_active, created_at, updated_at, must_change_password FROM users
 WHERE email = $1
 `
 
@@ -146,12 +155,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MustChangePassword,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, full_name, role, is_active, created_at, updated_at FROM users
+SELECT id, email, full_name, role, is_active, created_at, updated_at, must_change_password FROM users
 WHERE id = $1
 `
 
@@ -166,12 +176,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MustChangePassword,
 	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, full_name, role, is_active, created_at, updated_at FROM users
+SELECT id, email, full_name, role, is_active, created_at, updated_at, must_change_password FROM users
 ORDER BY full_name ASC
 `
 
@@ -192,6 +203,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MustChangePassword,
 		); err != nil {
 			return nil, err
 		}
@@ -204,7 +216,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 }
 
 const listUsersByRole = `-- name: ListUsersByRole :many
-SELECT id, email, full_name, role, is_active, created_at, updated_at FROM users
+SELECT id, email, full_name, role, is_active, created_at, updated_at, must_change_password FROM users
 WHERE role = $1
 ORDER BY full_name ASC
 `
@@ -226,6 +238,7 @@ func (q *Queries) ListUsersByRole(ctx context.Context, role string) ([]User, err
 			&i.IsActive,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.MustChangePassword,
 		); err != nil {
 			return nil, err
 		}
@@ -237,6 +250,22 @@ func (q *Queries) ListUsersByRole(ctx context.Context, role string) ([]User, err
 	return items, nil
 }
 
+const setMustChangePassword = `-- name: SetMustChangePassword :exec
+UPDATE users
+SET must_change_password = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type SetMustChangePasswordParams struct {
+	ID                 uuid.UUID `json:"id"`
+	MustChangePassword bool      `json:"must_change_password"`
+}
+
+func (q *Queries) SetMustChangePassword(ctx context.Context, arg SetMustChangePasswordParams) error {
+	_, err := q.db.Exec(ctx, setMustChangePassword, arg.ID, arg.MustChangePassword)
+	return err
+}
+
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET
@@ -244,7 +273,7 @@ SET
     email      = $3,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, full_name, role, is_active, created_at, updated_at
+RETURNING id, email, full_name, role, is_active, created_at, updated_at, must_change_password
 `
 
 type UpdateUserParams struct {
@@ -264,6 +293,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MustChangePassword,
 	)
 	return i, err
 }

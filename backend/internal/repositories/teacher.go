@@ -84,6 +84,13 @@ func (r *TeacherRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (
 	return r.queries.GetTeacherByUserID(ctx, userID)
 }
 
+func (r *TeacherRepository) GetByUserIDAndNIC(ctx context.Context, userID uuid.UUID, nicNumber string) (db.TeacherProfile, error) {
+	return r.queries.GetTeacherByUserIDAndNIC(ctx, db.GetTeacherByUserIDAndNICParams{
+		UserID:    userID,
+		NicNumber: nicNumber,
+	})
+}
+
 func (r *TeacherRepository) ListWorkload(ctx context.Context, teacherID uuid.UUID) ([]db.ListTeacherWorkloadRow, error) {
 	return r.queries.ListTeacherWorkload(ctx, teacherID)
 }

@@ -22,7 +22,28 @@ func NewDashboardService(repo *repositories.DashboardRepository) *DashboardServi
 // query error fails the whole request; the dashboard already tolerates a
 // full-page error state.
 func (s *DashboardService) Analytics(ctx context.Context) (models.DashboardAnalyticsResponse, error) {
-	var resp models.DashboardAnalyticsResponse
+	// Every slice below is built with append onto a nil starting slice, so an
+	// aggregate with zero rows (e.g. no attendance sessions yet) would stay
+	// nil and marshal to JSON `null` instead of `[]` — the frontend maps
+	// over these unconditionally, so `null` crashes it. Starting from empty
+	// (non-nil) slices keeps the JSON shape stable regardless of row count.
+	resp := models.DashboardAnalyticsResponse{
+		Student: models.DashboardStudentAnalytics{
+			ByGrade:            []models.CountRow{},
+			ByClass:            []models.CountRow{},
+			GenderDistribution: []models.CountRow{},
+			HouseDistribution:  []models.HouseCountRow{},
+			AttendanceTrend:    []models.AttendanceTrendPoint{},
+		},
+		Academic: models.DashboardAcademicAnalytics{
+			SubjectPerformance:   []models.PerformanceRow{},
+			GradeWisePerformance: []models.PerformanceRow{},
+		},
+		School: models.DashboardSchoolAnalytics{
+			StudentGrowth: []models.GrowthPoint{},
+			StaffGrowth:   []models.GrowthPoint{},
+		},
+	}
 
 	byGrade, err := s.repo.StudentCountByGrade(ctx)
 	if err != nil {

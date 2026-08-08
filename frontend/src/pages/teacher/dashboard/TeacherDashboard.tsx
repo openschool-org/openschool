@@ -53,7 +53,7 @@ export default function TeacherDashboard() {
   const todaySessionByClass = new Map(
     (dailySessions ?? []).filter((s) => classIds.includes(s.class_id)).map((s) => [s.class_id, s]),
   );
-  const markedCount = todaySessionByClass.size;
+  const markedCount = [...todaySessionByClass.values()].filter((s) => s.marked_count > 0).length;
   const pendingCount = Math.max(myClasses.length - markedCount, 0);
 
   const recentSessions = classIds

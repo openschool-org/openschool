@@ -41,13 +41,21 @@ function EditGuardianModal({ guardian, onClose }: { guardian: Guardian; onClose:
     relationship: guardian.relationship,
     phone: guardian.phone,
     email: guardian.email ?? "",
+    nic_number: guardian.nic_number,
   });
-  const [touched, setTouched] = useState<{ full_name?: boolean; phone?: boolean }>({});
+  const [touched, setTouched] = useState<{
+    full_name?: boolean;
+    phone?: boolean;
+    nic_number?: boolean;
+  }>({});
 
-  const isValid = form.full_name.trim().length > 0 && form.phone.trim().length > 0;
+  const isValid =
+    form.full_name.trim().length > 0 &&
+    form.phone.trim().length > 0 &&
+    form.nic_number.trim().length > 0;
 
   const handleSave = () => {
-    setTouched({ full_name: true, phone: true });
+    setTouched({ full_name: true, phone: true, nic_number: true });
     if (!isValid) return;
     updateGuardian.mutate(
       {
@@ -57,6 +65,7 @@ function EditGuardianModal({ guardian, onClose }: { guardian: Guardian; onClose:
           relationship: form.relationship,
           phone: form.phone.trim(),
           email: form.email.trim() || undefined,
+          nic_number: form.nic_number.trim(),
         },
       },
       { onSuccess: onClose },
@@ -114,6 +123,15 @@ function EditGuardianModal({ guardian, onClose }: { guardian: Guardian; onClose:
             type="email"
             value={form.email}
             onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+          />
+          <TextInput
+            id="edit-guardian-nic"
+            labelText="NIC Number"
+            value={form.nic_number}
+            onChange={(e) => setForm((f) => ({ ...f, nic_number: e.target.value }))}
+            onBlur={() => setTouched((t) => ({ ...t, nic_number: true }))}
+            invalid={!!touched.nic_number && !form.nic_number.trim()}
+            invalidText="NIC number is required."
           />
         </div>
       </ModalBody>

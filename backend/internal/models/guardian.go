@@ -5,6 +5,7 @@ type CreateGuardianRequest struct {
 	Relationship string `json:"relationship" binding:"required"`
 	Phone        string `json:"phone" binding:"required"`
 	Email        string `json:"email"`
+	NICNumber    string `json:"nic_number" binding:"required"`
 }
 
 type UpdateGuardianRequest struct {
@@ -12,11 +13,14 @@ type UpdateGuardianRequest struct {
 	Relationship string `json:"relationship" binding:"required"`
 	Phone        string `json:"phone" binding:"required"`
 	Email        string `json:"email"`
+	NICNumber    string `json:"nic_number" binding:"required"`
 }
 
+// ProvisionGuardianLoginRequest no longer collects a password — the
+// guardian's NIC number (already on file from CreateGuardianRequest)
+// becomes their initial (one-time) portal password (Phase 8.2).
 type ProvisionGuardianLoginRequest struct {
 	Username   string `json:"username" binding:"required"`
-	Password   string `json:"password" binding:"required,min=8"`
 	GivenName  string `json:"given_name" binding:"required"`
 	FamilyName string `json:"family_name" binding:"required"`
 }
@@ -32,6 +36,7 @@ type GuardianResponse struct {
 	Relationship string `json:"relationship"`
 	Phone        string `json:"phone"`
 	Email        string `json:"email"`
+	NICNumber    string `json:"nic_number"`
 	CreatedAt    string `json:"created_at"`
 }
 
