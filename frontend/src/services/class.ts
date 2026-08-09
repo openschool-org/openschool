@@ -9,10 +9,12 @@ export interface ClassWithDetails {
   stream_group_id: string | null;
   girl_monitor_id: string | null;
   boy_monitor_id: string | null;
+  medium_id: string | null;
   name: string;
   created_at: string | null;
   grade_name: string;
   academic_year_label: string;
+  medium_name: string | null;
 }
 
 export interface ClassRow {
@@ -24,6 +26,7 @@ export interface ClassRow {
   stream_group_id: string | null;
   girl_monitor_id: string | null;
   boy_monitor_id: string | null;
+  medium_id: string | null;
   name: string;
   created_at: string | null;
 }
@@ -31,6 +34,7 @@ export interface ClassRow {
 export interface UpdateClassRequest {
   name: string;
   form_teacher_id?: string | null;
+  medium_id?: string | null;
 }
 
 export interface CreateClassRequest {
@@ -40,6 +44,7 @@ export interface CreateClassRequest {
   form_teacher_id?: string | null;
   stream_id?: string | null;
   stream_group_id?: string | null;
+  medium_id?: string | null;
 }
 
 export interface SubjectTeacher {

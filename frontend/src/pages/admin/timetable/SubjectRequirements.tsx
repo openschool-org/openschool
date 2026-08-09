@@ -1,15 +1,19 @@
 import { useState } from "react";
-import { NumberInput, InlineNotification, SkeletonText, Dropdown } from "@carbon/react";
+import { TrashCan } from "@carbon/icons-react";
+import { Button, NumberInput, InlineNotification, SkeletonText, Dropdown } from "@carbon/react";
 import { useCurrentAcademicYear } from "../../../queries/useAcademicYears";
 import { useGrades } from "../../../queries/useGrades";
 import { useSubjects } from "../../../queries/useSubjects";
 import {
   useSubjectPeriodRequirements,
   useUpsertSubjectPeriodRequirement,
+  useDeleteSubjectPeriodRequirement,
 } from "../../../queries/timetable/useSubjectPeriodRequirements";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import EmptyState from "../../../components/common/EmptyState";
+import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 import type { Grade } from "../../../services/grade";
+import type { SubjectPeriodRequirement } from "../../../services/timetable/subjectPeriodRequirement";
 
 export default function SubjectRequirements() {
   const { data: currentYear } = useCurrentAcademicYear();
@@ -21,9 +25,15 @@ export default function SubjectRequirements() {
   const gradeId = selectedGrade?.id ?? "";
   const { data: requirements, isLoading } = useSubjectPeriodRequirements(yearId, gradeId);
   const upsert = useUpsertSubjectPeriodRequirement();
+  const remove = useDeleteSubjectPeriodRequirement(yearId, gradeId);
+
+  const [toRemove, setToRemove] = useState<SubjectPeriodRequirement | null>(null);
+
+  const requirementFor = (subjectId: string) =>
+    requirements?.find((r) => r.subject_id === subjectId);
 
   const periodsFor = (subjectId: string) =>
-    requirements?.find((r) => r.subject_id === subjectId)?.periods_per_week ?? 0;
+    requirementFor(subjectId)?.periods_per_week ?? 0;
 
   const handleChange = (subjectId: string, value: number) => {
     if (!yearId || !gradeId) return;
@@ -75,35 +85,81 @@ export default function SubjectRequirements() {
                 style={{ maxWidth: "100%", marginBottom: "1rem" }}
               />
             )}
+            {remove.isError && (
+              <InlineNotification
+                kind="error"
+                title="Could not clear requirement"
+                subtitle={getErrorMessage(remove.error)}
+                lowContrast
+                onClose={() => remove.reset()}
+                style={{ maxWidth: "100%", marginBottom: "1rem" }}
+              />
+            )}
             <table className="os-table">
               <thead>
                 <tr>
                   <th>Subject</th>
                   <th style={{ width: "10rem" }}>Periods / week</th>
+                  <th style={{ width: "4rem" }}>{null}</th>
                 </tr>
               </thead>
               <tbody>
-                {subjects.map((s) => (
-                  <tr key={s.id}>
-                    <td>{s.name}</td>
-                    <td>
-                      <NumberInput
-                        id={`periods-${s.id}`}
-                        label=""
-                        size="sm"
-                        min={0}
-                        max={20}
-                        value={periodsFor(s.id)}
-                        onChange={(_e, { value }) => handleChange(s.id, Number(value ?? 0))}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {subjects.map((s) => {
+                  const requirement = requirementFor(s.id);
+                  return (
+                    <tr key={s.id}>
+                      <td>{s.name}</td>
+                      <td>
+                        <NumberInput
+                          id={`periods-${s.id}`}
+                          label=""
+                          size="sm"
+                          min={0}
+                          max={20}
+                          value={periodsFor(s.id)}
+                          onChange={(_e, { value }) => handleChange(s.id, Number(value ?? 0))}
+                        />
+                      </td>
+                      <td>
+                        {/* Clearing removes the row entirely, which is not the
+                            same as setting 0 periods — an unset subject is not
+                            checked by the timetable validator at all. */}
+                        <Button
+                          hasIconOnly
+                          kind="ghost"
+                          size="sm"
+                          iconDescription="Clear requirement"
+                          renderIcon={TrashCan}
+                          disabled={!requirement || remove.isPending}
+                          onClick={() => requirement && setToRemove(requirement)}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </>
         )}
       </div>
+
+      <ConfirmDeleteModal
+        open={!!toRemove}
+        title="Clear requirement"
+        description={
+          <>
+            Clear the weekly period requirement for{" "}
+            <strong>{toRemove?.subject_name}</strong> in {selectedGrade?.name}?
+            The timetable validator will stop checking this subject for this
+            grade until a requirement is set again.
+          </>
+        }
+        isPending={remove.isPending}
+        onClose={() => setToRemove(null)}
+        onConfirm={() => {
+          if (toRemove) remove.mutate(toRemove.id, { onSettled: () => setToRemove(null) });
+        }}
+      />
     </div>
   );
 }

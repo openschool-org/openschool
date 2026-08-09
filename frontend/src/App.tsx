@@ -76,28 +76,24 @@ function App() {
   const { data: me, isLoading: meLoading } = useProvisionUser();
   const { role, loading } = useRole();
 
-  // Wait on /me too once a role is resolved, so the interstitial's flag
-  // (must_change_password) is known before any route renders — otherwise
-  // the real app would flash briefly first.
   const stillLoading = loading || (role !== null && meLoading);
 
   return (
     <Routes>
-      {/* Public routes - always accessible */}
       <Route path="/signin" element={<SignIn />} />
       <Route path="/setup" element={<Setup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
-      {/* Dev-only previews for status pages that are otherwise only reachable
-          by actually triggering the condition (no role, unbuilt feature). */}
       {import.meta.env.DEV && (
         <>
           <Route path="/dev/access-restricted" element={<AccessRestricted />} />
-          <Route path="/dev/coming-soon" element={<ComingSoon feature="Example Feature" />} />
+          <Route
+            path="/dev/coming-soon"
+            element={<ComingSoon feature="Example Feature" />}
+          />
         </>
       )}
 
-      {/* Show loading state while role is being determined */}
       {stillLoading ? (
         <Route
           path="*"
@@ -106,8 +102,6 @@ function App() {
           }
         />
       ) : me?.must_change_password ? (
-        /* Phase 8.3 — blocks every route until the user keeps or replaces
-           their system-assigned default password. */
         <Route
           element={
             <ProtectedRoute>
@@ -118,7 +112,6 @@ function App() {
           <Route path="*" element={<PasswordInterstitial />} />
         </Route>
       ) : role === "teacher" ? (
-        /* Teacher routes */
         <Route
           element={
             <ProtectedRoute>
@@ -142,10 +135,7 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Route>
       ) : role === "admin" ? (
-        /* Admin routes */
         <>
-          {/* Full-page wizard — deliberately outside RootLayout so it
-              renders without the sidebar/header chrome. */}
           <Route
             path="/school-setup"
             element={
@@ -161,50 +151,55 @@ function App() {
               </ProtectedRoute>
             }
           >
-          <Route index element={<Dashboard />} />
-          <Route path="/students" element={<Students />} />
-          <Route path="/students/new" element={<AddStudent />} />
-          <Route path="/students/:id" element={<StudentDetail />} />
-          <Route path="/guardians" element={<GuardiansDirectory />} />
-          <Route path="/non-academic-staff" element={<NonAcademicStaff />} />
-          <Route path="/staff-attendance" element={<StaffAttendance />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/teachers" element={<Teachers />} />
-          <Route path="/teachers/new" element={<AddTeacher />} />
-          <Route path="/teachers/:id" element={<TeacherDetail />} />
-          <Route path="/classes" element={<Classes />} />
-          <Route path="/classes/new" element={<AddClass />} />
-          <Route path="/classes/:id" element={<ClassDetail />} />
-          <Route path="/streams" element={<Streams />} />
-          <Route path="/prefects" element={<Prefects />} />
-          <Route path="/positions" element={<Positions />} />
-          <Route path="/subjects" element={<Subjects />} />
-          <Route path="/subjects/new" element={<AddSubject />} />
-          <Route path="/grades" element={<Grades />} />
-          <Route path="/curriculum" element={<Curriculum />} />
-          <Route path="/curriculum/:id" element={<LevelDetail />} />
-          <Route path="/mediums" element={<Mediums />} />
-          <Route path="/attendance" element={<Attendance />} />
-          <Route
-            path="/attendance/sessions/:id/mark"
-            element={<AttendanceMark />}
-          />
-          <Route path="/academic-years" element={<AcademicYears />} />
-          <Route path="/promotion" element={<Promotion />} />
-          <Route path="/notifications" element={<NotificationComposer />} />
-          <Route path="/notification-center" element={<NotificationCenter />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/timetables" element={<Timetables />} />
-          <Route path="/timetables/:id" element={<TimetableEditor />} />
-          <Route path="/grade-sections" element={<GradeSections />} />
-          <Route path="/classrooms" element={<Classrooms />} />
-          <Route path="/subject-requirements" element={<SubjectRequirements />} />
-          <Route path="/timetable-settings" element={<TimetableSettings />} />
-          <Route path="*" element={<NotFound />} />
+            <Route index element={<Dashboard />} />
+            <Route path="/students" element={<Students />} />
+            <Route path="/students/new" element={<AddStudent />} />
+            <Route path="/students/:id" element={<StudentDetail />} />
+            <Route path="/guardians" element={<GuardiansDirectory />} />
+            <Route path="/non-academic-staff" element={<NonAcademicStaff />} />
+            <Route path="/staff-attendance" element={<StaffAttendance />} />
+            <Route path="/reports" element={<Reports />} />
+            <Route path="/teachers" element={<Teachers />} />
+            <Route path="/teachers/new" element={<AddTeacher />} />
+            <Route path="/teachers/:id" element={<TeacherDetail />} />
+            <Route path="/classes" element={<Classes />} />
+            <Route path="/classes/new" element={<AddClass />} />
+            <Route path="/classes/:id" element={<ClassDetail />} />
+            <Route path="/streams" element={<Streams />} />
+            <Route path="/prefects" element={<Prefects />} />
+            <Route path="/positions" element={<Positions />} />
+            <Route path="/subjects" element={<Subjects />} />
+            <Route path="/subjects/new" element={<AddSubject />} />
+            <Route path="/grades" element={<Grades />} />
+            <Route path="/curriculum" element={<Curriculum />} />
+            <Route path="/curriculum/:id" element={<LevelDetail />} />
+            <Route path="/mediums" element={<Mediums />} />
+            <Route path="/attendance" element={<Attendance />} />
+            <Route
+              path="/attendance/sessions/:id/mark"
+              element={<AttendanceMark />}
+            />
+            <Route path="/academic-years" element={<AcademicYears />} />
+            <Route path="/promotion" element={<Promotion />} />
+            <Route path="/notifications" element={<NotificationComposer />} />
+            <Route
+              path="/notification-center"
+              element={<NotificationCenter />}
+            />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/timetables" element={<Timetables />} />
+            <Route path="/timetables/:id" element={<TimetableEditor />} />
+            <Route path="/grade-sections" element={<GradeSections />} />
+            <Route path="/classrooms" element={<Classrooms />} />
+            <Route
+              path="/subject-requirements"
+              element={<SubjectRequirements />}
+            />
+            <Route path="/timetable-settings" element={<TimetableSettings />} />
+            <Route path="*" element={<NotFound />} />
           </Route>
         </>
       ) : role === "parent" ? (
-        /* Parent routes */
         <Route
           element={
             <ProtectedRoute>
@@ -218,7 +213,6 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Route>
       ) : role === "student" ? (
-        /* Student routes */
         <Route
           element={
             <ProtectedRoute>
@@ -231,8 +225,6 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Route>
       ) : (
-        /* unrecognized roles: no portal built yet — never fall through to
-           admin, teacher, parent, or student routes */
         <Route
           element={
             <ProtectedRoute>

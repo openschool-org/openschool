@@ -12,12 +12,6 @@ export const classesByYearKey = (academicYearId: string) => ["classes", "by-year
 
 export const classKey = (id: string) => ["classes", id];
 export const classStudentsKey = (id: string) => ["classes", id, "students"];
-export const classSubjectTeachersKey = (id: string) => [
-  "classes",
-  id,
-  "subject-teachers",
-];
-
 export const streamGroupsKey = (streamId: string) => [
   ...STREAMS_KEY,
   streamId,
@@ -71,13 +65,6 @@ export const useClassStudents = (id: string) =>
   useQuery({
     queryKey: classStudentsKey(id),
     queryFn: () => studentApi.listByClass(id),
-    enabled: !!id,
-  });
-
-export const useClassSubjectTeachers = (id: string) =>
-  useQuery({
-    queryKey: classSubjectTeachersKey(id),
-    queryFn: () => classApi.listSubjectTeachers(id),
     enabled: !!id,
   });
 

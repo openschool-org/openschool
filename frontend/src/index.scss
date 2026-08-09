@@ -251,6 +251,29 @@ html, body, #root {
   white-space: nowrap;
 }
 
+.thunderid-dialog__content:has(.thunderid-user-profile) {
+  width: min(60rem, calc(100vw - 3rem)) !important;
+  max-width: none !important;
+  max-height: min(44rem, calc(100vh - 3rem)) !important;
+
+  scrollbar-width: thin;
+  scrollbar-color: #c6c6c6 transparent;
+
+  &::-webkit-scrollbar {
+    width: 3px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: #c6c6c6;
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background-color: #a8a8a8;
+  }
+}
+
 // ─── Sidebar ────────────────────────────────────────────────────────────────
 .cds--side-nav {
   width: $os-sidebar-w !important;

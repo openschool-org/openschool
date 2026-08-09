@@ -16,13 +16,6 @@ export const useStudents = () =>
     queryFn: studentApi.list,
   });
 
-export const useStudent = (id: string) =>
-  useQuery({
-    queryKey: studentKey(id),
-    queryFn: () => studentApi.get(id),
-    enabled: !!id,
-  });
-
 export const useStudentWithClass = (id: string) =>
   useQuery({
     queryKey: studentClassKey(id),

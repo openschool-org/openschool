@@ -2,12 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { timetableApi } from "../../services/timetable/timetable";
 import type { TimetableEntryInput } from "../../services/timetable/timetable";
 
-export const timetablesByClassKey = (classId: string, academicYearId: string) => [
-  "timetables",
-  "class",
-  classId,
-  academicYearId,
-];
 export const timetablesByYearKey = (academicYearId: string) => ["timetables", "year", academicYearId];
 export const timetableKey = (id: string) => ["timetables", id];
 export const timetableEntriesKey = (id: string) => ["timetables", id, "entries"];
@@ -26,13 +20,6 @@ const invalidateTimetable = (queryClient: ReturnType<typeof useQueryClient>, id:
   queryClient.invalidateQueries({ queryKey: ["timetables"] });
   queryClient.invalidateQueries({ queryKey: ["timetable-reviews"] });
 };
-
-export const useTimetablesByClass = (classId: string, academicYearId: string) =>
-  useQuery({
-    queryKey: timetablesByClassKey(classId, academicYearId),
-    queryFn: () => timetableApi.listByClass(classId, academicYearId),
-    enabled: !!classId && !!academicYearId,
-  });
 
 export const useTimetablesByYear = (academicYearId: string) =>
   useQuery({

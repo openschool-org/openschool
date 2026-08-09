@@ -39,7 +39,7 @@ export function AppHeaderActions() {
         </HeaderGlobalAction>
       )}
       <HeaderGlobalAction aria-label="Change password" onClick={() => setChangingPassword(true)}>
-        <Password size={20} />
+        <Password size={20} className="os-header-icon" />
       </HeaderGlobalAction>
       <NotificationsBell />
       <UserDropdown />

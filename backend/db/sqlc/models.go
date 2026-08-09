@@ -57,6 +57,7 @@ type Class struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	GirlMonitorID  pgtype.UUID        `json:"girl_monitor_id"`
 	BoyMonitorID   pgtype.UUID        `json:"boy_monitor_id"`
+	MediumID       pgtype.UUID        `json:"medium_id"`
 }
 
 type ClassStudent struct {

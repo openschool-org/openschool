@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	db "github.com/openschool-org/openschool/db/sqlc"
 )
@@ -33,6 +34,16 @@ func (r *PromotionRepository) FindClassByGradeAndName(ctx context.Context, grade
 		GradeID:        gradeID,
 		AcademicYearID: academicYearID,
 		Name:           name,
+	})
+}
+
+// FindClassByGradeAndMedium returns pgx.ErrNoRows when the next grade has no
+// class in the same medium — the student then falls back to a manual pick.
+func (r *PromotionRepository) FindClassByGradeAndMedium(ctx context.Context, gradeID, academicYearID uuid.UUID, mediumID pgtype.UUID) (db.Class, error) {
+	return r.queries.FindClassByGradeAndMedium(ctx, db.FindClassByGradeAndMediumParams{
+		GradeID:        gradeID,
+		AcademicYearID: academicYearID,
+		MediumID:       mediumID,
 	})
 }
 

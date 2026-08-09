@@ -162,6 +162,11 @@ type Querier interface {
 	// than DO NOTHING) is required so RETURNING always yields a row, whether
 	// this call created it or another concurrent request already did.
 	EnsureUserExists(ctx context.Context, arg EnsureUserExistsParams) (User, error)
+	// same-medium carryover for a medium-locked class: a student in the English
+	// section of grade 6 should land in the English section of grade 7 regardless
+	// of what the sections are named. Ordered by name so a grade with more than
+	// one section in the same medium resolves deterministically to the first.
+	FindClassByGradeAndMedium(ctx context.Context, arg FindClassByGradeAndMediumParams) (Class, error)
 	// same-name carryover suggestion (e.g. "6A" -> "7A"); ErrNoRows means no
 	// suggestion, the frontend leaves the target class blank for a manual pick.
 	FindClassByGradeAndName(ctx context.Context, arg FindClassByGradeAndNameParams) (Class, error)

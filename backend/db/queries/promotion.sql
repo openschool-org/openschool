@@ -18,6 +18,8 @@ SELECT
     sp.index_number AS student_index,
     c.id            AS class_id,
     c.name          AS class_name,
+    c.medium_id     AS medium_id,
+    m.name          AS medium_name,
     g.id            AS grade_id,
     g.name          AS grade_name,
     g.sort_order    AS grade_sort_order
@@ -25,6 +27,7 @@ FROM class_students cs
 INNER JOIN student_profiles sp ON sp.id = cs.student_id
 INNER JOIN classes c           ON c.id = cs.class_id
 INNER JOIN grades g            ON g.id = c.grade_id
+LEFT JOIN  mediums m           ON m.id = c.medium_id
 WHERE cs.academic_year_id = $1
   AND sp.enrollment_status = 'active'
 ORDER BY g.sort_order ASC, c.name ASC, sp.full_name ASC;
@@ -34,6 +37,16 @@ ORDER BY g.sort_order ASC, c.name ASC, sp.full_name ASC;
 -- suggestion, the frontend leaves the target class blank for a manual pick.
 SELECT * FROM classes
 WHERE grade_id = $1 AND academic_year_id = $2 AND name = $3;
+
+-- name: FindClassByGradeAndMedium :one
+-- same-medium carryover for a medium-locked class: a student in the English
+-- section of grade 6 should land in the English section of grade 7 regardless
+-- of what the sections are named. Ordered by name so a grade with more than
+-- one section in the same medium resolves deterministically to the first.
+SELECT * FROM classes
+WHERE grade_id = $1 AND academic_year_id = $2 AND medium_id = $3
+ORDER BY name ASC
+LIMIT 1;
 
 -- name: ListStudentTotalMarksForTerm :many
 -- per-student total marks for one term, across every subject they have a

@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const bulkDeleteClassStudentsForYear = `-- name: BulkDeleteClassStudentsForYear :exec
@@ -69,8 +70,44 @@ func (q *Queries) CountClassesInYearByIDs(ctx context.Context, arg CountClassesI
 	return count, err
 }
 
+const findClassByGradeAndMedium = `-- name: FindClassByGradeAndMedium :one
+SELECT id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id FROM classes
+WHERE grade_id = $1 AND academic_year_id = $2 AND medium_id = $3
+ORDER BY name ASC
+LIMIT 1
+`
+
+type FindClassByGradeAndMediumParams struct {
+	GradeID        uuid.UUID   `json:"grade_id"`
+	AcademicYearID uuid.UUID   `json:"academic_year_id"`
+	MediumID       pgtype.UUID `json:"medium_id"`
+}
+
+// same-medium carryover for a medium-locked class: a student in the English
+// section of grade 6 should land in the English section of grade 7 regardless
+// of what the sections are named. Ordered by name so a grade with more than
+// one section in the same medium resolves deterministically to the first.
+func (q *Queries) FindClassByGradeAndMedium(ctx context.Context, arg FindClassByGradeAndMediumParams) (Class, error) {
+	row := q.db.QueryRow(ctx, findClassByGradeAndMedium, arg.GradeID, arg.AcademicYearID, arg.MediumID)
+	var i Class
+	err := row.Scan(
+		&i.ID,
+		&i.GradeID,
+		&i.AcademicYearID,
+		&i.FormTeacherID,
+		&i.StreamID,
+		&i.StreamGroupID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.GirlMonitorID,
+		&i.BoyMonitorID,
+		&i.MediumID,
+	)
+	return i, err
+}
+
 const findClassByGradeAndName = `-- name: FindClassByGradeAndName :one
-SELECT id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id FROM classes
+SELECT id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id FROM classes
 WHERE grade_id = $1 AND academic_year_id = $2 AND name = $3
 `
 
@@ -96,6 +133,7 @@ func (q *Queries) FindClassByGradeAndName(ctx context.Context, arg FindClassByGr
 		&i.CreatedAt,
 		&i.GirlMonitorID,
 		&i.BoyMonitorID,
+		&i.MediumID,
 	)
 	return i, err
 }
@@ -131,6 +169,8 @@ SELECT
     sp.index_number AS student_index,
     c.id            AS class_id,
     c.name          AS class_name,
+    c.medium_id     AS medium_id,
+    m.name          AS medium_name,
     g.id            AS grade_id,
     g.name          AS grade_name,
     g.sort_order    AS grade_sort_order
@@ -138,20 +178,23 @@ FROM class_students cs
 INNER JOIN student_profiles sp ON sp.id = cs.student_id
 INNER JOIN classes c           ON c.id = cs.class_id
 INNER JOIN grades g            ON g.id = c.grade_id
+LEFT JOIN  mediums m           ON m.id = c.medium_id
 WHERE cs.academic_year_id = $1
   AND sp.enrollment_status = 'active'
 ORDER BY g.sort_order ASC, c.name ASC, sp.full_name ASC
 `
 
 type ListActiveStudentsForYearRow struct {
-	StudentID      uuid.UUID `json:"student_id"`
-	StudentName    string    `json:"student_name"`
-	StudentIndex   string    `json:"student_index"`
-	ClassID        uuid.UUID `json:"class_id"`
-	ClassName      string    `json:"class_name"`
-	GradeID        uuid.UUID `json:"grade_id"`
-	GradeName      string    `json:"grade_name"`
-	GradeSortOrder int32     `json:"grade_sort_order"`
+	StudentID      uuid.UUID   `json:"student_id"`
+	StudentName    string      `json:"student_name"`
+	StudentIndex   string      `json:"student_index"`
+	ClassID        uuid.UUID   `json:"class_id"`
+	ClassName      string      `json:"class_name"`
+	MediumID       pgtype.UUID `json:"medium_id"`
+	MediumName     pgtype.Text `json:"medium_name"`
+	GradeID        uuid.UUID   `json:"grade_id"`
+	GradeName      string      `json:"grade_name"`
+	GradeSortOrder int32       `json:"grade_sort_order"`
 }
 
 // every actively-enrolled student's current class/grade for an academic
@@ -171,6 +214,8 @@ func (q *Queries) ListActiveStudentsForYear(ctx context.Context, academicYearID 
 			&i.StudentIndex,
 			&i.ClassID,
 			&i.ClassName,
+			&i.MediumID,
+			&i.MediumName,
 			&i.GradeID,
 			&i.GradeName,
 			&i.GradeSortOrder,

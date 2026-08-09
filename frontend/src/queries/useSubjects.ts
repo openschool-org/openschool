@@ -10,13 +10,6 @@ export const useSubjects = () =>
     queryFn: subjectApi.list,
   });
 
-export const useSubject = (id: string) =>
-  useQuery({
-    queryKey: [...SUBJECTS_KEY, id],
-    queryFn: () => subjectApi.get(id),
-    enabled: !!id,
-  });
-
 export const useCreateSubject = () => {
   const queryClient = useQueryClient();
   return useMutation({
