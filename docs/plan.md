@@ -1,5 +1,11 @@
 # OpenSchool Feature Roadmap
 
+> **Historical document.** This is the phase-by-phase build log the project
+> grew from — kept for context on *why* things are built the way they are.
+> For the current, as-built feature list, see [`FEATURES.md`](./FEATURES.md)
+> instead; a few items marked "not yet built" below (e.g. medium-locked
+> classes in Phase 5) have since shipped and are current in that document.
+
 **Source:** grew out of a codebase audit and a feature-enhancement request to grow OpenSchool into a full Sri Lankan Government School ERP, plus a session-timeout ask. This document is the single, current source of truth for both the audit's remaining open items and the feature roadmap — the standalone audit document has been folded in here and removed.
 
 **How to read this:** each phase lists what already exists to build on (so we don't reinvent it) and what's net-new. Phases 1–3 are independent of the role-hierarchy work in Phase 4 and can proceed in parallel. Phases 5 and 6 depend on Phase 4's position model existing first (promotion and staff permissions need it).

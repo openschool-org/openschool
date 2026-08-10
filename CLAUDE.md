@@ -9,6 +9,13 @@ OpenSchool is a self-hosted school management system. It is a monorepo with two 
 - `backend/` — Go REST API (Gin framework)
 - `frontend/` — React SPA (Vite, TypeScript, Carbon Design System)
 
+For anything beyond a quick fix, read further before making changes:
+
+- [`docs/FEATURES.md`](docs/FEATURES.md) — current feature list by module
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — component layout, full data model, external interfaces
+- [`docs/adr/`](docs/adr/) — *why* behind non-obvious decisions (e.g. why positions aren't ThunderID roles, why the current-academic-year invariant exists) — check here before "fixing" something that looks wrong but is deliberate
+- [`audit.md`](audit.md) — known bugs/code-quality findings with severity; check it isn't already tracking whatever you just found before re-reporting it
+
 ## Backend
 
 ### Setup & Running
@@ -33,9 +40,14 @@ The server starts on `:8080`. Migrations in `db/migrations/` are applied via `go
 ```bash
 cd backend
 go build ./...
+go vet ./...
 go test ./...
 go test ./path/to/package  # single package
 ```
+
+CI (`.github/workflows/backend-ci.yml`) also runs `staticcheck` (blocking)
+and, informationally (not yet blocking — see the workflow file for why),
+`govulncheck` and a dead-code scan.
 
 ### Database Workflow (sqlc)
 
@@ -90,26 +102,39 @@ pnpm lint     # eslint
 pnpm preview  # preview production build
 ```
 
+CI (`.github/workflows/frontend-ci.yml`) also runs `pnpm audit --prod`
+informationally (not yet blocking — two known advisories are still open,
+see `audit.md`).
+
 ### Architecture
 
 Authentication is handled by **ThunderID** (`@thunderid/react`). The provider is configured in `main.tsx` via `VITE_THUNDERID_CLIENT_ID`, `VITE_THUNDERID_BASE_URL`, and `VITE_THUNDERID_SCOPES` (see `frontend/.env.example`). Auth state and the access token come from the `useThunderID()` hook (`isSignedIn`/`isLoading`/`getAccessToken`/`signOut`). All routes except `/signin` are wrapped in `ProtectedRoute`, which redirects unauthenticated users to `/signin`. Role (`admin`/`teacher`/`student`/`parent`) is read from the `roles` claim of the access token via the `useRole` hook.
 
 - `main.tsx` — root: `ThunderIDProvider` → `QueryClientProvider` → `BrowserRouter` → `App`
-- `App.tsx` — route definitions; `ProtectedRoute` guards the root layout
-- `src/layouts/RootLayout.tsx` — Carbon `Header` with nav; `<Outlet>` for page content
-- `src/pages/` — route-level page components
-- `src/components/` — shared components
+- `App.tsx` — resolves role from the JWT and renders one of four route trees (admin/teacher/student/parent), each behind its own layout and `ProtectedRoute`; there's no separate URL per role, routing is decided by claim
+- `src/layouts/` — `RootLayout.tsx` (admin), `TeacherLayout.tsx`, `StudentLayout.tsx`, `ParentLayout.tsx` — each a Carbon `Header` with nav + `<Outlet>` for page content
+- `src/pages/` — route-level page components, one directory per portal (`admin/`, `teacher/`, `student/`, `parent/`, `notifications/` shared across portals); admin pages are further split by module
+- `src/queries/` — TanStack Query hooks, one typed query-key builder per entity; mutations invalidate the keys they affect
+- `src/services/` — one file per backend module, thin `axios` wrappers matching `internal/models/` shapes
+- `src/components/common/` — shared CRUD building blocks (`ConfirmDeleteModal`, `EntityCombobox`, `EmptyState`, etc.) that almost every admin page composes from — deviating from the list+modal-form+confirm-delete template is a signal something's off, not a style choice
 
 UI uses **IBM Carbon Design System** (`@carbon/react`, `@carbon/icons-react`). Data fetching uses **TanStack Query** (`@tanstack/react-query`). Styles are SCSS (`index.scss`).
 
 ## Data Model
 
-Core domain entities (from `db/sqlc/models.go`):
+Core entities, enough to orient yourself:
 
 - `User` — accounts with roles: `admin`, `teacher`, `student`, `parent`
 - `TeacherProfile` / `StudentProfile` / `Guardian` — extended profile tables linked to `User`
 - `School` — single-row table for the instance's school info
-- `AcademicYear` — scopes all academic data; only one row should have `is_current = true` (enforced at app level)
-- `Grade` / `Class` / `Stream` / `StreamGroup` — school structure
+- `AcademicYear` — scopes almost all academic data via `academic_year_id` FKs; only one row should have `is_current = true` (enforced at app level, not a DB constraint — see [`docs/adr/0003-single-current-academic-year.md`](docs/adr/0003-single-current-academic-year.md))
+- `Grade` / `Class` / `Stream` / `StreamGroup` / `Medium` — school structure
 - `Subject` / `SubjectBucket` — curriculum; buckets group optional subject choices per grade
 - `AttendanceSession` / `AttendanceRecord` — attendance tracking per class session
+
+The schema has grown well beyond this (32 migrations, ~50 tables — also
+covering timetable, notifications, prefects, staff/positions, student
+portfolio, and the audit log). Don't hand-maintain a full list here — see
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#4-data-model) for the
+current, grouped breakdown, or `db/sqlc/models.go` (generated from the
+migrations) for exact columns/types.

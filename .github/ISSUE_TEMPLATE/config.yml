@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/openschool-org/openschool/security/advisories/new
+    about: Please report security vulnerabilities privately — see SECURITY.md. Do not open a public issue.
+  - name: Questions & discussion
+    url: https://github.com/openschool-org/openschool/discussions
+    about: Ask setup/usage questions or start a design discussion here rather than as an issue.

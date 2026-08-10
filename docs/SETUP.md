@@ -246,7 +246,7 @@ on their token:
 | Role | How the account is created | What they see |
 | --- | --- | --- |
 | Admin | Setup wizard (first one only) | Full admin dashboard — everything in this guide, including sending notifications to anyone |
-| Teacher | **Teachers** page | Their own dashboard, classes, attendance marking *(dashboard/classes currently placeholder data — not wired to real records yet)*, plus **My Timetable**, **Review Timetables** if they're a section head, and **Notifications** scoped to their own classes/grades/subjects |
+| Teacher | **Teachers** page | Their own dashboard (today's classes, recent sessions, quick actions — role-badged by position, see [Roles & positions](./FEATURES.md#roles--positions) in the feature guide), classes, attendance marking, plus **My Timetable**, **Review Timetables** if they're a section head or above, and **Notifications** scoped to their own classes/grades/subjects |
 | Student | **Students** page | Their own profile, attendance history, term marks, (once published) a **Timetable** tab on their dashboard, and their **Notification Center** |
 | Parent | A student's **Guardians** tab, per above | A list of their linked children; click into one for that child's attendance, term marks, and (once published) a **Timetable** tab; plus their own **Notification Center** |
 
@@ -265,16 +265,22 @@ redo it, but the two pieces live in different systems:
   …) lives in Postgres. To reset it:
   ```sql
   TRUNCATE TABLE
-    academic_years, attendance_records, attendance_sessions, class_students,
-    class_subject_teachers, classes, classrooms, grade_section_grades,
-    grade_sections, grades, group_subjects, guardians, houses, levels,
-    mediums, notification_recipients, notifications, prefects, school,
-    section_heads, selection_groups, stream_groups, streams,
-    student_guardians, student_profiles, student_siblings,
-    student_subject_enrollments, subject_period_requirements, subjects,
-    teacher_availability, teacher_profiles, teacher_subjects, term_marks,
-    terms, timetable_entries, timetable_periods, timetable_settings,
-    timetable_status_history, timetables, users
+    academic_years, attendance_records, attendance_sessions, audit_logs,
+    class_students, class_subject_teachers, classes, classrooms,
+    grade_section_grades, grade_sections, grades, grade_subjects,
+    group_subjects, guardians, houses, levels, mediums, non_academic_staff,
+    notification_recipients, notifications, password_reset_tokens, prefects,
+    school, section_heads, selection_groups, staff_attendance_records,
+    stream_groups, streams, student_activities, student_awards,
+    student_disciplinary_records, student_enrollment_locks,
+    student_guardians, student_leadership_roles, student_profiles,
+    student_progress_reports, student_siblings, student_subject_enrollments,
+    student_subject_selections, subject_bucket_options, subject_buckets,
+    subject_period_requirements, subjects, teacher_availability,
+    teacher_positions, teacher_profiles, teacher_subjects, term_marks,
+    terms, timetable_entries, timetable_notifications, timetable_periods,
+    timetable_settings, timetable_status_history, timetables, users,
+    vice_principal_grade_scopes
   RESTART IDENTITY CASCADE;
   ```
   This does **not** delete the corresponding identities (student/teacher/
