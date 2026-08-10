@@ -1,0 +1,17 @@
+# Layers OpenSchool's declarative resources onto ThunderID's quick-start compose
+# (thunderid/quickstart-compose.yml). Only adds a volume mount + env_file to the
+# existing `thunderid` service — no command/entrypoint override, so this merges
+# cleanly regardless of quick-start version.
+#
+# config.yml is mounted directly into config/resources/, where ThunderID auto-scans
+# and loads any *.yaml/*.yml file at startup (no --resources flag needed). Values
+# referenced by {{.VAR}} placeholders in config.yml come from environment.env via
+# env_file, which is loaded into the container's process environment the same way
+# regardless of which of ThunderID's three loading paths is used.
+
+services:
+  thunderid:
+    volumes:
+      - ./config.yml:/opt/thunderid/config/resources/openschool.yaml:ro
+    env_file:
+      - ./environment.env
