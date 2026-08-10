@@ -13,3 +13,6 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
+
+thunderid/environment.env

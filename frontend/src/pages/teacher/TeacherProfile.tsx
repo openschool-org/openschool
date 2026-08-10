@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useQueries } from "@tanstack/react-query";
-import { Tag } from "@carbon/react";
-import { Book } from "@carbon/icons-react";
+import { Tag, Button } from "@carbon/react";
+import { Book, Password } from "@carbon/icons-react";
 import { useMyTeacherProfile, useTeacherSubjects, useMyClasses } from "../../queries/useTeachers";
 import { classStudentsKey } from "../../queries/useClasses";
 import { classSessionsKey } from "../../queries/useAttendance";
@@ -8,10 +9,12 @@ import { attendanceApi } from "../../services/attendance";
 import { studentApi } from "../../services/student";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import ErrorMessage from "../../components/common/ErrorMessage";
+import ChangePasswordModal from "../../components/common/ChangePasswordModal";
 
 const ACCENT = "#406AAF";
 
 export default function TeacherProfile() {
+  const [changingPassword, setChangingPassword] = useState(false);
   const { data: profile, isLoading, isError, refetch } = useMyTeacherProfile();
   const { data: subjects } = useTeacherSubjects(profile?.id ?? "");
   const { classes: myClasses } = useMyClasses();
@@ -55,8 +58,15 @@ export default function TeacherProfile() {
         </div>
         <div className="os-profile__actions">
           <Tag type={profile.is_active ? "green" : "gray"} size="sm">{profile.is_active ? "Active" : "Inactive"}</Tag>
+          <Button kind="tertiary" size="sm" renderIcon={Password} onClick={() => setChangingPassword(true)}>
+            Change Password
+          </Button>
         </div>
       </div>
+
+      {changingPassword && (
+        <ChangePasswordModal onClose={() => setChangingPassword(false)} />
+      )}
 
       <div style={{ padding: "1.5rem 2rem" }}>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem", alignItems: "start" }}>

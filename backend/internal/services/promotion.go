@@ -55,6 +55,16 @@ func (s *PromotionService) Preview(ctx context.Context, sourceYearID, targetYear
 			CurrentGradeName: st.GradeName,
 		}
 
+		if st.MediumID.Valid {
+			mediumID := uuid.UUID(st.MediumID.Bytes).String()
+			row.MediumLocked = true
+			row.CurrentMediumID = &mediumID
+			if st.MediumName.Valid {
+				name := st.MediumName.String
+				row.CurrentMediumName = &name
+			}
+		}
+
 		nextGrade, cached := nextGradeCache[st.GradeID]
 		if !cached {
 			g, err := s.repo.GetNextGrade(ctx, st.GradeID)
@@ -81,10 +91,26 @@ func (s *PromotionService) Preview(ctx context.Context, sourceYearID, targetYear
 		row.NextGradeID = &nextGradeID
 		row.NextGradeName = &nextGradeName
 
-		suggestionKey := nextGrade.ID.String() + "|" + st.ClassName
+		// A medium-locked student carries over by language of instruction,
+		// not by class name — "6 English" should land in whatever the grade 7
+		// English section is called. Undesignated classes keep the original
+		// same-name carryover.
+		suggestionKey := nextGrade.ID.String() + "|name|" + st.ClassName
+		if row.MediumLocked {
+			suggestionKey = nextGrade.ID.String() + "|medium|" + *row.CurrentMediumID
+		}
+
 		suggested, cached := suggestionCache[suggestionKey]
 		if !cached {
-			c, err := s.repo.FindClassByGradeAndName(ctx, nextGrade.ID, targetYearID, st.ClassName)
+			var (
+				c   db.Class
+				err error
+			)
+			if row.MediumLocked {
+				c, err = s.repo.FindClassByGradeAndMedium(ctx, nextGrade.ID, targetYearID, st.MediumID)
+			} else {
+				c, err = s.repo.FindClassByGradeAndName(ctx, nextGrade.ID, targetYearID, st.ClassName)
+			}
 			if err != nil {
 				if !errors.Is(err, pgx.ErrNoRows) {
 					return nil, fmt.Errorf("failed to resolve suggested class: %w", err)

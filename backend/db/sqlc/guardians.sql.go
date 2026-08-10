@@ -17,11 +17,12 @@ INSERT INTO guardians (
     full_name,
     relationship,
     phone,
-    email
+    email,
+    nic_number
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5
 )
-RETURNING id, user_id, full_name, relationship, phone, email, created_at
+RETURNING id, user_id, full_name, relationship, phone, email, created_at, nic_number
 `
 
 type CreateGuardianParams struct {
@@ -29,6 +30,7 @@ type CreateGuardianParams struct {
 	Relationship string      `json:"relationship"`
 	Phone        string      `json:"phone"`
 	Email        pgtype.Text `json:"email"`
+	NicNumber    string      `json:"nic_number"`
 }
 
 func (q *Queries) CreateGuardian(ctx context.Context, arg CreateGuardianParams) (Guardian, error) {
@@ -37,6 +39,7 @@ func (q *Queries) CreateGuardian(ctx context.Context, arg CreateGuardianParams) 
 		arg.Relationship,
 		arg.Phone,
 		arg.Email,
+		arg.NicNumber,
 	)
 	var i Guardian
 	err := row.Scan(
@@ -47,6 +50,7 @@ func (q *Queries) CreateGuardian(ctx context.Context, arg CreateGuardianParams) 
 		&i.Phone,
 		&i.Email,
 		&i.CreatedAt,
+		&i.NicNumber,
 	)
 	return i, err
 }
@@ -71,7 +75,7 @@ func (q *Queries) DeleteGuardian(ctx context.Context, id uuid.UUID) (int64, erro
 }
 
 const findGuardianDuplicateCandidates = `-- name: FindGuardianDuplicateCandidates :many
-SELECT id, user_id, full_name, relationship, phone, email, created_at FROM guardians
+SELECT id, user_id, full_name, relationship, phone, email, created_at, nic_number FROM guardians
 WHERE phone = $1
    OR ($2::text IS NOT NULL AND email = $2)
 ORDER BY full_name ASC
@@ -103,6 +107,7 @@ func (q *Queries) FindGuardianDuplicateCandidates(ctx context.Context, arg FindG
 			&i.Phone,
 			&i.Email,
 			&i.CreatedAt,
+			&i.NicNumber,
 		); err != nil {
 			return nil, err
 		}
@@ -115,7 +120,7 @@ func (q *Queries) FindGuardianDuplicateCandidates(ctx context.Context, arg FindG
 }
 
 const getGuardianByID = `-- name: GetGuardianByID :one
-SELECT id, user_id, full_name, relationship, phone, email, created_at FROM guardians
+SELECT id, user_id, full_name, relationship, phone, email, created_at, nic_number FROM guardians
 WHERE id = $1
 `
 
@@ -130,12 +135,13 @@ func (q *Queries) GetGuardianByID(ctx context.Context, id uuid.UUID) (Guardian, 
 		&i.Phone,
 		&i.Email,
 		&i.CreatedAt,
+		&i.NicNumber,
 	)
 	return i, err
 }
 
 const getGuardianByUserID = `-- name: GetGuardianByUserID :one
-SELECT id, user_id, full_name, relationship, phone, email, created_at FROM guardians
+SELECT id, user_id, full_name, relationship, phone, email, created_at, nic_number FROM guardians
 WHERE user_id = $1
 `
 
@@ -150,13 +156,43 @@ func (q *Queries) GetGuardianByUserID(ctx context.Context, userID pgtype.UUID) (
 		&i.Phone,
 		&i.Email,
 		&i.CreatedAt,
+		&i.NicNumber,
+	)
+	return i, err
+}
+
+const getGuardianByUserIDAndNIC = `-- name: GetGuardianByUserIDAndNIC :one
+SELECT id, user_id, full_name, relationship, phone, email, created_at, nic_number FROM guardians
+WHERE user_id = $1 AND nic_number = $2
+`
+
+type GetGuardianByUserIDAndNICParams struct {
+	UserID    pgtype.UUID `json:"user_id"`
+	NicNumber string      `json:"nic_number"`
+}
+
+// Identity check for the unauthenticated forgot-password flow (Phase 8.4) —
+// confirms the caller knows this guardian's NIC before a reset token is
+// minted for their account.
+func (q *Queries) GetGuardianByUserIDAndNIC(ctx context.Context, arg GetGuardianByUserIDAndNICParams) (Guardian, error) {
+	row := q.db.QueryRow(ctx, getGuardianByUserIDAndNIC, arg.UserID, arg.NicNumber)
+	var i Guardian
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.FullName,
+		&i.Relationship,
+		&i.Phone,
+		&i.Email,
+		&i.CreatedAt,
+		&i.NicNumber,
 	)
 	return i, err
 }
 
 const getPrimaryGuardian = `-- name: GetPrimaryGuardian :one
 SELECT
-    g.id, g.user_id, g.full_name, g.relationship, g.phone, g.email, g.created_at
+    g.id, g.user_id, g.full_name, g.relationship, g.phone, g.email, g.created_at, g.nic_number
 FROM guardians g
 INNER JOIN student_guardians sg ON sg.guardian_id = g.id
 WHERE sg.student_id = $1
@@ -175,6 +211,7 @@ func (q *Queries) GetPrimaryGuardian(ctx context.Context, studentID uuid.UUID) (
 		&i.Phone,
 		&i.Email,
 		&i.CreatedAt,
+		&i.NicNumber,
 	)
 	return i, err
 }
@@ -252,7 +289,7 @@ func (q *Queries) ListGuardianUserIDsByStudentIDs(ctx context.Context, studentId
 }
 
 const listGuardians = `-- name: ListGuardians :many
-SELECT g.id, g.user_id, g.full_name, g.relationship, g.phone, g.email, g.created_at FROM guardians g
+SELECT g.id, g.user_id, g.full_name, g.relationship, g.phone, g.email, g.created_at, g.nic_number FROM guardians g
 WHERE (
     $1::text IS NULL
     OR g.full_name ILIKE '%' || $1 || '%'
@@ -293,6 +330,7 @@ func (q *Queries) ListGuardians(ctx context.Context, arg ListGuardiansParams) ([
 			&i.Phone,
 			&i.Email,
 			&i.CreatedAt,
+			&i.NicNumber,
 		); err != nil {
 			return nil, err
 		}
@@ -306,7 +344,7 @@ func (q *Queries) ListGuardians(ctx context.Context, arg ListGuardiansParams) ([
 
 const listGuardiansByStudent = `-- name: ListGuardiansByStudent :many
 SELECT
-    g.id, g.user_id, g.full_name, g.relationship, g.phone, g.email, g.created_at,
+    g.id, g.user_id, g.full_name, g.relationship, g.phone, g.email, g.created_at, g.nic_number,
     sg.is_primary_contact
 FROM guardians g
 INNER JOIN student_guardians sg ON sg.guardian_id = g.id
@@ -322,6 +360,7 @@ type ListGuardiansByStudentRow struct {
 	Phone            string             `json:"phone"`
 	Email            pgtype.Text        `json:"email"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	NicNumber        string             `json:"nic_number"`
 	IsPrimaryContact bool               `json:"is_primary_contact"`
 }
 
@@ -342,6 +381,7 @@ func (q *Queries) ListGuardiansByStudent(ctx context.Context, studentID uuid.UUI
 			&i.Phone,
 			&i.Email,
 			&i.CreatedAt,
+			&i.NicNumber,
 			&i.IsPrimaryContact,
 		); err != nil {
 			return nil, err
@@ -528,9 +568,10 @@ SET
     full_name    = $2,
     relationship = $3,
     phone        = $4,
-    email        = $5
+    email        = $5,
+    nic_number   = $6
 WHERE id = $1
-RETURNING id, user_id, full_name, relationship, phone, email, created_at
+RETURNING id, user_id, full_name, relationship, phone, email, created_at, nic_number
 `
 
 type UpdateGuardianParams struct {
@@ -539,6 +580,7 @@ type UpdateGuardianParams struct {
 	Relationship string      `json:"relationship"`
 	Phone        string      `json:"phone"`
 	Email        pgtype.Text `json:"email"`
+	NicNumber    string      `json:"nic_number"`
 }
 
 func (q *Queries) UpdateGuardian(ctx context.Context, arg UpdateGuardianParams) (Guardian, error) {
@@ -548,6 +590,7 @@ func (q *Queries) UpdateGuardian(ctx context.Context, arg UpdateGuardianParams) 
 		arg.Relationship,
 		arg.Phone,
 		arg.Email,
+		arg.NicNumber,
 	)
 	var i Guardian
 	err := row.Scan(
@@ -558,6 +601,7 @@ func (q *Queries) UpdateGuardian(ctx context.Context, arg UpdateGuardianParams) 
 		&i.Phone,
 		&i.Email,
 		&i.CreatedAt,
+		&i.NicNumber,
 	)
 	return i, err
 }

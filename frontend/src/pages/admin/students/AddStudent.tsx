@@ -7,8 +7,6 @@ import {
   RadioButtonGroup,
   RadioButton,
   InlineNotification,
-  Modal,
-  CopyButton,
 } from "@carbon/react";
 import { ArrowLeft, Save } from "@carbon/icons-react";
 import { useCreateStudent } from "../../../queries/useStudents";
@@ -19,13 +17,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type Touched = Partial<
   Record<"givenName" | "familyName" | "email" | "indexNumber", boolean>
 >;
-
-function generateTempPassword(): string {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-  const bytes = new Uint32Array(12);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
-}
 
 export default function AddStudent() {
   const navigate = useNavigate();
@@ -40,7 +31,6 @@ export default function AddStudent() {
   const [whatsapp, setWhatsapp] = useState("");
   const [specialRemarks, setSpecialRemarks] = useState("");
   const [gender, setGender] = useState<"" | "male" | "female">("");
-  const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [touched, setTouched] = useState<Touched>({});
 
   const markTouched = (field: keyof Touched) =>
@@ -54,21 +44,19 @@ export default function AddStudent() {
       indexNumber: true,
     });
     if (!isValid) return;
-    const password = generateTempPassword();
     createStudent.mutate(
       {
         given_name: givenName.trim(),
         family_name: familyName.trim(),
         email: email.trim(),
         phone_number: phone.trim() || undefined,
-        password,
         index_number: indexNumber.trim(),
         address: address.trim() || undefined,
         whatsapp: whatsapp.trim() || undefined,
         special_remarks: specialRemarks.trim() || undefined,
         gender: gender || undefined,
       },
-      { onSuccess: () => setTempPassword(password) },
+      { onSuccess: () => navigate("/students") },
     );
   };
 
@@ -116,7 +104,7 @@ export default function AddStudent() {
         <InlineNotification
           kind="info"
           title="Initial password"
-          subtitle="A one-time password is generated on save. It is never the student's index number - share it with them out-of-band and have them change it on first login."
+          subtitle="The student's index number is their initial one-time password. They'll be prompted to change it on first sign-in."
           lowContrast
           hideCloseButton
           style={{ maxWidth: "100%", marginBottom: "1.5rem" }}
@@ -244,40 +232,6 @@ export default function AddStudent() {
           </Button>
         </div>
       </div>
-
-      <Modal
-        open={tempPassword !== null}
-        modalHeading="Student enrolled"
-        primaryButtonText="Done"
-        onRequestSubmit={() => navigate("/students")}
-        onRequestClose={() => navigate("/students")}
-        passiveModal={false}
-      >
-        <p style={{ marginBottom: "1rem" }}>
-          Share this one-time password with the student through a secure,
-          out-of-band channel (not email/SMS in the clear). It will not be shown
-          again - the student should change it after signing in.
-        </p>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            padding: "0.75rem 1rem",
-            background: "#f4f4f4",
-            fontFamily: "monospace",
-            fontSize: "1rem",
-          }}
-        >
-          <span style={{ flex: 1 }}>{tempPassword}</span>
-          {tempPassword && (
-            <CopyButton
-              onClick={() => navigator.clipboard.writeText(tempPassword)}
-              feedback="Copied!"
-            />
-          )}
-        </div>
-      </Modal>
     </div>
   );
 }

@@ -12,9 +12,9 @@ import {
   ModalFooter,
   SkeletonText,
 } from "@carbon/react";
-import { useCurrentAcademicYear } from "../../../queries/useAcademicYears";
+import { useCurrentAcademicYear, useAcademicYears } from "../../../queries/useAcademicYears";
 import { useStudents } from "../../../queries/useStudents";
-import { usePrefects, useAssignPrefect, useRemovePrefect } from "../../../queries/usePrefects";
+import { usePrefects, useAssignPrefect, useRemovePrefect, usePrefectYears } from "../../../queries/usePrefects";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ErrorMessage from "../../../components/common/ErrorMessage";
@@ -26,12 +26,21 @@ const RANKS: { value: PrefectRank; label: string }[] = [
   { value: "deputy_head", label: "Deputy Head Prefects" },
   { value: "senior", label: "Senior Prefects" },
   { value: "junior", label: "Junior Prefects" },
+  { value: "house_captain", label: "House Captains" },
+  { value: "vice_house_captain", label: "Vice House Captains" },
 ];
 
 export default function Prefects() {
   const { data: currentYear, isLoading: yearLoading } = useCurrentAcademicYear();
+  const { data: allYears } = useAcademicYears();
+  const { data: pastYears } = usePrefectYears();
   const { data: students } = useStudents();
-  const { data: prefects, isLoading: prefectsLoading, isError, refetch } = usePrefects(currentYear?.id ?? "");
+
+  const [selectedYearId, setSelectedYearId] = useState<string | null>(null);
+  const viewingYearId = selectedYearId ?? currentYear?.id ?? "";
+  const isArchive = !!currentYear && viewingYearId !== currentYear.id;
+
+  const { data: prefects, isLoading: prefectsLoading, isError, refetch } = usePrefects(viewingYearId);
   const assignPrefect = useAssignPrefect();
   const removePrefect = useRemovePrefect();
 
@@ -65,19 +74,57 @@ export default function Prefects() {
 
   const loading = yearLoading || prefectsLoading;
 
+  // Years selectable in the archive dropdown: every year with a board on
+  // record, plus the current year even if it has no appointments yet.
+  const selectableYears = (() => {
+    const byId = new Map((allYears ?? []).map((y) => [y.id, y]));
+    const ids = new Set((pastYears ?? []).map((y) => y.id));
+    if (currentYear) ids.add(currentYear.id);
+    return Array.from(ids)
+      .map((id) => byId.get(id))
+      .filter((y): y is NonNullable<typeof y> => !!y)
+      .sort((a, b) => (b.start_date ?? "").localeCompare(a.start_date ?? ""));
+  })();
+
   return (
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">School Prefects</h1>
           <p className="os-page__subtitle">
-            Junior, Senior, Deputy Head and Head Prefects for {currentYear?.label ?? "the current year"}.
+            {isArchive
+              ? `Read-only archive — past board for ${allYears?.find((y) => y.id === viewingYearId)?.label ?? "this year"}.`
+              : `Junior, Senior, Deputy Head, Head Prefects and House Captains for ${currentYear?.label ?? "the current year"}.`}
           </p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" onClick={openAssign} disabled={!currentYear}>
-          Appoint Prefect
-        </Button>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: "0.75rem" }}>
+          <Select
+            id="prefect-year-selector"
+            labelText="Year"
+            value={viewingYearId}
+            onChange={(e) => setSelectedYearId(e.target.value || null)}
+            style={{ minWidth: "12rem" }}
+          >
+            {selectableYears.map((y) => (
+              <SelectItem key={y.id} value={y.id} text={y.id === currentYear?.id ? `${y.label} (current)` : y.label} />
+            ))}
+          </Select>
+          <Button renderIcon={Add} kind="primary" size="md" onClick={openAssign} disabled={!currentYear || isArchive}>
+            Appoint Prefect
+          </Button>
+        </div>
       </div>
+
+      {isArchive && (
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          title="Viewing a past board"
+          subtitle="This is a read-only archive. Switch to the current year to make changes."
+          style={{ marginBottom: "1.5rem", maxWidth: "100%" }}
+        />
+      )}
 
       {!yearLoading && !currentYear && (
         <InlineNotification
@@ -143,15 +190,17 @@ export default function Prefects() {
                       {[p.grade_name, p.student_index].filter(Boolean).join(" · ")}
                     </p>
                   </div>
-                  <Button
-                    hasIconOnly
-                    kind="ghost"
-                    size="sm"
-                    iconDescription="Remove"
-                    renderIcon={TrashCan}
-                    disabled={removePrefect.isPending}
-                    onClick={() => handleRemove(p)}
-                  />
+                  {!isArchive && (
+                    <Button
+                      hasIconOnly
+                      kind="ghost"
+                      size="sm"
+                      iconDescription="Remove"
+                      renderIcon={TrashCan}
+                      disabled={removePrefect.isPending}
+                      onClick={() => handleRemove(p)}
+                    />
+                  )}
                 </div>
               ))}
             </div>

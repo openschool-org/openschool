@@ -30,20 +30,23 @@ func NewTeacherService(repo *repositories.TeacherRepository, idp identity.Provid
 }
 
 func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTeacherRequest) (db.TeacherProfile, error) {
-	// check employee number not already used
-	_, err := s.repo.GetByEmployeeNumber(ctx, req.EmployeeNumber)
-	if err == nil {
-		return db.TeacherProfile{}, fmt.Errorf("employee number already exists")
+	// employee_number is auto-assigned from the shared sequence (Phase 6.1) —
+	// fetched up-front since the identity provider user needs it as an attribute.
+	employeeNumber, err := s.repo.NextEmployeeNumber(ctx)
+	if err != nil {
+		return db.TeacherProfile{}, fmt.Errorf("failed to assign employee number: %w", err)
 	}
 
+	// NIC number doubles as the initial (one-time) password (Phase 8.2) —
+	// there is no separate manual password entry anymore.
 	idpUser, err := s.idp.CreateUser(ctx, "teacher", map[string]interface{}{
 		"username":        req.Email,
 		"email":           req.Email,
 		"given_name":      req.GivenName,
 		"family_name":     req.FamilyName,
 		"phone":           req.PhoneNumber,
-		"employee_number": req.EmployeeNumber,
-		"password":        req.Password,
+		"employee_number": employeeNumber,
+		"password":        req.NICNumber,
 	})
 	if err != nil {
 		return db.TeacherProfile{}, fmt.Errorf("failed to create identity provider user: %w", err)
@@ -58,10 +61,11 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 
 	// insert into users table
 	_, err = s.repo.CreateUser(ctx, db.CreateUserParams{
-		ID:       userID,
-		Email:    req.Email,
-		FullName: fullName,
-		Role:     "teacher",
+		ID:                 userID,
+		Email:              req.Email,
+		FullName:           fullName,
+		Role:               "teacher",
+		MustChangePassword: true,
 	})
 	if err != nil {
 		rollbackIDPUser(ctx, s.idp, "CreateTeacher", idpUser.ID)
@@ -82,7 +86,8 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 	profile, err := s.repo.Create(ctx, db.CreateTeacherProfileParams{
 		UserID:         userID,
 		FullName:       fullName,
-		EmployeeNumber: req.EmployeeNumber,
+		EmployeeNumber: employeeNumber,
+		NicNumber:      req.NICNumber,
 		JoinedDate:     pgtype.Date{Time: req.JoinedDate, Valid: true},
 		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
 		Title:          pgtype.Text{String: req.Title, Valid: req.Title != ""},
@@ -123,24 +128,23 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 	}
 
 	err = s.idp.UpdateUser(ctx, userID, "teacher", map[string]interface{}{
-		"username":        user.Email,
-		"email":           user.Email,
-		"given_name":      req.GivenName,
-		"family_name":     req.FamilyName,
-		"phone":           req.PhoneNumber,
-		"employee_number": req.EmployeeNumber,
+		"username":    user.Email,
+		"email":       user.Email,
+		"given_name":  req.GivenName,
+		"family_name": req.FamilyName,
+		"phone":       req.PhoneNumber,
 	})
 	if err != nil {
 		fmt.Printf("warning: failed to update identity provider user: %v\n", err)
 	}
 
 	return s.repo.Update(ctx, db.UpdateTeacherProfileParams{
-		ID:             id,
-		FullName:       fullName,
-		EmployeeNumber: req.EmployeeNumber,
-		Phone:          pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
-		Title:          pgtype.Text{String: req.Title, Valid: req.Title != ""},
-		Gender:         pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
+		ID:        id,
+		FullName:  fullName,
+		Phone:     pgtype.Text{String: req.PhoneNumber, Valid: req.PhoneNumber != ""},
+		Title:     pgtype.Text{String: req.Title, Valid: req.Title != ""},
+		Gender:    pgtype.Text{String: req.Gender, Valid: req.Gender != ""},
+		NicNumber: req.NICNumber,
 	})
 }
 

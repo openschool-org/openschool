@@ -15,5 +15,7 @@ func RegisterPrefectRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGro
 
 	admin.PUT("/prefects", handler.Assign)
 	teacherOrAdmin.GET("/prefects", handler.List)
+	teacherOrAdmin.GET("/prefects/years", handler.ListYears)
+	teacherOrAdmin.GET("/students/:id/prefect-appointments", handler.ListByStudent)
 	admin.DELETE("/prefects/:id", handler.Delete)
 }

@@ -1,0 +1,69 @@
+name: Bug report
+description: Report something that's broken in OpenSchool
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. If this is a **security
+        vulnerability**, please don't file it here — see
+        [`SECURITY.md`](../../SECURITY.md) for private reporting instead.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the role you were signed in as (admin/teacher/student/parent) and the page/endpoint involved.
+      placeholder: |
+        1. Sign in as ...
+        2. Go to ...
+        3. Click ...
+        4. See error
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      multiple: true
+      options:
+        - Backend (API)
+        - Frontend (UI)
+        - Database / migrations
+        - Identity / ThunderID integration
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Commit or branch
+      description: Which commit hash or branch were you running?
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Paste any backend log output, browser console errors, or screenshots. This will be rendered as code automatically.
+      render: shell
+    validations:
+      required: false

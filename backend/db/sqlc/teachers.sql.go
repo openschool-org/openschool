@@ -44,21 +44,23 @@ INSERT INTO teacher_profiles (
     user_id,
     full_name,
     employee_number,
+    nic_number,
     joined_date,
     phone,
     title,
     gender,
     house_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
-RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status
+RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number
 `
 
 type CreateTeacherProfileParams struct {
 	UserID         uuid.UUID   `json:"user_id"`
 	FullName       string      `json:"full_name"`
 	EmployeeNumber string      `json:"employee_number"`
+	NicNumber      string      `json:"nic_number"`
 	JoinedDate     pgtype.Date `json:"joined_date"`
 	Phone          pgtype.Text `json:"phone"`
 	Title          pgtype.Text `json:"title"`
@@ -71,6 +73,7 @@ func (q *Queries) CreateTeacherProfile(ctx context.Context, arg CreateTeacherPro
 		arg.UserID,
 		arg.FullName,
 		arg.EmployeeNumber,
+		arg.NicNumber,
 		arg.JoinedDate,
 		arg.Phone,
 		arg.Title,
@@ -92,6 +95,7 @@ func (q *Queries) CreateTeacherProfile(ctx context.Context, arg CreateTeacherPro
 		&i.IsActive,
 		&i.HouseID,
 		&i.EmploymentStatus,
+		&i.NicNumber,
 	)
 	return i, err
 }
@@ -118,7 +122,7 @@ func (q *Queries) DeleteTeacher(ctx context.Context, id uuid.UUID) (int64, error
 
 const getFormTeacherClass = `-- name: GetFormTeacherClass :one
 SELECT
-    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id
+    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id
 FROM classes c
 WHERE c.form_teacher_id = $1
   AND c.academic_year_id = (
@@ -140,12 +144,13 @@ func (q *Queries) GetFormTeacherClass(ctx context.Context, formTeacherID pgtype.
 		&i.CreatedAt,
 		&i.GirlMonitorID,
 		&i.BoyMonitorID,
+		&i.MediumID,
 	)
 	return i, err
 }
 
 const getTeacherByEmployeeNumber = `-- name: GetTeacherByEmployeeNumber :one
-SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status FROM teacher_profiles
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
 WHERE employee_number = $1
 `
 
@@ -166,12 +171,13 @@ func (q *Queries) GetTeacherByEmployeeNumber(ctx context.Context, employeeNumber
 		&i.IsActive,
 		&i.HouseID,
 		&i.EmploymentStatus,
+		&i.NicNumber,
 	)
 	return i, err
 }
 
 const getTeacherByID = `-- name: GetTeacherByID :one
-SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status FROM teacher_profiles
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
 WHERE id = $1
 `
 
@@ -192,12 +198,13 @@ func (q *Queries) GetTeacherByID(ctx context.Context, id uuid.UUID) (TeacherProf
 		&i.IsActive,
 		&i.HouseID,
 		&i.EmploymentStatus,
+		&i.NicNumber,
 	)
 	return i, err
 }
 
 const getTeacherByUserID = `-- name: GetTeacherByUserID :one
-SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status FROM teacher_profiles
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
 WHERE user_id = $1
 `
 
@@ -218,6 +225,42 @@ func (q *Queries) GetTeacherByUserID(ctx context.Context, userID uuid.UUID) (Tea
 		&i.IsActive,
 		&i.HouseID,
 		&i.EmploymentStatus,
+		&i.NicNumber,
+	)
+	return i, err
+}
+
+const getTeacherByUserIDAndNIC = `-- name: GetTeacherByUserIDAndNIC :one
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
+WHERE user_id = $1 AND nic_number = $2
+`
+
+type GetTeacherByUserIDAndNICParams struct {
+	UserID    uuid.UUID `json:"user_id"`
+	NicNumber string    `json:"nic_number"`
+}
+
+// Identity check for the unauthenticated forgot-password flow (Phase 8.4) —
+// confirms the caller knows this teacher's NIC before a reset token is
+// minted for their account.
+func (q *Queries) GetTeacherByUserIDAndNIC(ctx context.Context, arg GetTeacherByUserIDAndNICParams) (TeacherProfile, error) {
+	row := q.db.QueryRow(ctx, getTeacherByUserIDAndNIC, arg.UserID, arg.NicNumber)
+	var i TeacherProfile
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.FullName,
+		&i.EmployeeNumber,
+		&i.JoinedDate,
+		&i.Phone,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Title,
+		&i.Gender,
+		&i.IsActive,
+		&i.HouseID,
+		&i.EmploymentStatus,
+		&i.NicNumber,
 	)
 	return i, err
 }
@@ -318,7 +361,7 @@ func (q *Queries) ListTeacherWorkload(ctx context.Context, teacherID uuid.UUID) 
 }
 
 const listTeachers = `-- name: ListTeachers :many
-SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status FROM teacher_profiles
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
 ORDER BY full_name ASC
 `
 
@@ -345,6 +388,7 @@ func (q *Queries) ListTeachers(ctx context.Context) ([]TeacherProfile, error) {
 			&i.IsActive,
 			&i.HouseID,
 			&i.EmploymentStatus,
+			&i.NicNumber,
 		); err != nil {
 			return nil, err
 		}
@@ -358,7 +402,7 @@ func (q *Queries) ListTeachers(ctx context.Context) ([]TeacherProfile, error) {
 
 const listTeachersBySubject = `-- name: ListTeachersBySubject :many
 SELECT
-    tp.id, tp.user_id, tp.full_name, tp.employee_number, tp.joined_date, tp.phone, tp.created_at, tp.updated_at, tp.title, tp.gender, tp.is_active, tp.house_id, tp.employment_status
+    tp.id, tp.user_id, tp.full_name, tp.employee_number, tp.joined_date, tp.phone, tp.created_at, tp.updated_at, tp.title, tp.gender, tp.is_active, tp.house_id, tp.employment_status, tp.nic_number
 FROM teacher_profiles tp
 INNER JOIN teacher_subjects ts ON ts.teacher_id = tp.id
 WHERE ts.subject_id = $1
@@ -388,6 +432,7 @@ func (q *Queries) ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID
 			&i.IsActive,
 			&i.HouseID,
 			&i.EmploymentStatus,
+			&i.NicNumber,
 		); err != nil {
 			return nil, err
 		}
@@ -397,6 +442,21 @@ func (q *Queries) ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID
 		return nil, err
 	}
 	return items, nil
+}
+
+const nextEmployeeNumber = `-- name: NextEmployeeNumber :one
+SELECT lpad(nextval('employee_number_seq')::text, 5, '0')::text AS employee_number
+`
+
+// shared numbering pool with non_academic_staff (migration 000026). Called
+// explicitly by the service (rather than relying on the column DEFAULT)
+// because the value is needed up-front to pass to the identity provider
+// before the teacher_profiles row exists.
+func (q *Queries) NextEmployeeNumber(ctx context.Context) (string, error) {
+	row := q.db.QueryRow(ctx, nextEmployeeNumber)
+	var employee_number string
+	err := row.Scan(&employee_number)
+	return employee_number, err
 }
 
 const removeSubjectFromTeacher = `-- name: RemoveSubjectFromTeacher :exec
@@ -436,7 +496,7 @@ SET
     employment_status = $2,
     updated_at        = NOW()
 WHERE id = $1
-RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status
+RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number
 `
 
 type UpdateTeacherEmploymentStatusParams struct {
@@ -461,6 +521,7 @@ func (q *Queries) UpdateTeacherEmploymentStatus(ctx context.Context, arg UpdateT
 		&i.IsActive,
 		&i.HouseID,
 		&i.EmploymentStatus,
+		&i.NicNumber,
 	)
 	return i, err
 }
@@ -468,33 +529,36 @@ func (q *Queries) UpdateTeacherEmploymentStatus(ctx context.Context, arg UpdateT
 const updateTeacherProfile = `-- name: UpdateTeacherProfile :one
 UPDATE teacher_profiles
 SET
-    full_name       = $2,
-    employee_number = $3,
-    phone           = $4,
-    title           = $5,
-    gender          = $6,
-    updated_at      = NOW()
+    full_name  = $2,
+    phone      = $3,
+    title      = $4,
+    gender     = $5,
+    nic_number = $6,
+    updated_at = NOW()
 WHERE id = $1
-RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status
+RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number
 `
 
 type UpdateTeacherProfileParams struct {
-	ID             uuid.UUID   `json:"id"`
-	FullName       string      `json:"full_name"`
-	EmployeeNumber string      `json:"employee_number"`
-	Phone          pgtype.Text `json:"phone"`
-	Title          pgtype.Text `json:"title"`
-	Gender         pgtype.Text `json:"gender"`
+	ID        uuid.UUID   `json:"id"`
+	FullName  string      `json:"full_name"`
+	Phone     pgtype.Text `json:"phone"`
+	Title     pgtype.Text `json:"title"`
+	Gender    pgtype.Text `json:"gender"`
+	NicNumber string      `json:"nic_number"`
 }
 
+// employee_number is immutable once assigned (Phase 6.1) — not updatable here.
+// nic_number *is* updatable, unlike employee_number — a typo should be
+// correctable, it just has to stay unique (Phase 8.1).
 func (q *Queries) UpdateTeacherProfile(ctx context.Context, arg UpdateTeacherProfileParams) (TeacherProfile, error) {
 	row := q.db.QueryRow(ctx, updateTeacherProfile,
 		arg.ID,
 		arg.FullName,
-		arg.EmployeeNumber,
 		arg.Phone,
 		arg.Title,
 		arg.Gender,
+		arg.NicNumber,
 	)
 	var i TeacherProfile
 	err := row.Scan(
@@ -511,6 +575,7 @@ func (q *Queries) UpdateTeacherProfile(ctx context.Context, arg UpdateTeacherPro
 		&i.IsActive,
 		&i.HouseID,
 		&i.EmploymentStatus,
+		&i.NicNumber,
 	)
 	return i, err
 }

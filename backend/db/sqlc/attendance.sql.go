@@ -250,6 +250,66 @@ func (q *Queries) ListAttendanceByStudent(ctx context.Context, studentID uuid.UU
 	return items, nil
 }
 
+const listAttendanceRecordsForClassInRange = `-- name: ListAttendanceRecordsForClassInRange :many
+SELECT
+    ar.id,
+    sp.full_name    AS student_name,
+    sp.index_number AS student_index,
+    ats.date        AS session_date,
+    ar.status       AS status,
+    ar.note         AS note
+FROM attendance_records ar
+INNER JOIN attendance_sessions ats ON ats.id = ar.session_id
+INNER JOIN student_profiles    sp  ON sp.id  = ar.student_id
+WHERE ats.class_id = $1
+  AND ats.date BETWEEN $2 AND $3
+ORDER BY ats.date ASC, sp.full_name ASC
+`
+
+type ListAttendanceRecordsForClassInRangeParams struct {
+	ClassID uuid.UUID   `json:"class_id"`
+	Date    pgtype.Date `json:"date"`
+	Date_2  pgtype.Date `json:"date_2"`
+}
+
+type ListAttendanceRecordsForClassInRangeRow struct {
+	ID           uuid.UUID   `json:"id"`
+	StudentName  string      `json:"student_name"`
+	StudentIndex string      `json:"student_index"`
+	SessionDate  pgtype.Date `json:"session_date"`
+	Status       string      `json:"status"`
+	Note         pgtype.Text `json:"note"`
+}
+
+// every attendance record for a class across a date range — for the
+// Phase 7 attendance report export.
+func (q *Queries) ListAttendanceRecordsForClassInRange(ctx context.Context, arg ListAttendanceRecordsForClassInRangeParams) ([]ListAttendanceRecordsForClassInRangeRow, error) {
+	rows, err := q.db.Query(ctx, listAttendanceRecordsForClassInRange, arg.ClassID, arg.Date, arg.Date_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAttendanceRecordsForClassInRangeRow{}
+	for rows.Next() {
+		var i ListAttendanceRecordsForClassInRangeRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.StudentName,
+			&i.StudentIndex,
+			&i.SessionDate,
+			&i.Status,
+			&i.Note,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAttendanceSessionsByClass = `-- name: ListAttendanceSessionsByClass :many
 SELECT id, class_id, taken_by, date, created_at FROM attendance_sessions
 WHERE class_id = $1

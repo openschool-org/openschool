@@ -30,6 +30,8 @@ import {
   Location,
   Rule,
   SettingsAdjust,
+  Group,
+  DocumentPdf,
 } from "@carbon/icons-react";
 import { AxiosError } from "axios";
 import { useSchool } from "../queries/useSchool";
@@ -54,6 +56,7 @@ const NAV_GROUPS: {
       { path: "/students", label: "Students", Icon: UserMultiple },
       { path: "/guardians", label: "Guardians", Icon: UserAdmin },
       { path: "/teachers", label: "Teachers", Icon: Education },
+      { path: "/non-academic-staff", label: "Non-Academic Staff", Icon: Group },
       { path: "/prefects", label: "School Prefects", Icon: Trophy },
       { path: "/positions", label: "Leadership Positions", Icon: UserRole },
     ],
@@ -83,9 +86,11 @@ const NAV_GROUPS: {
     label: "Operations",
     items: [
       { path: "/attendance", label: "Attendance", Icon: EventSchedule },
+      { path: "/staff-attendance", label: "Staff Attendance", Icon: Group },
       { path: "/academic-years", label: "Academic Years", Icon: Calendar },
       { path: "/promotion", label: "Promotion", Icon: Renew },
       { path: "/notifications", label: "Notifications", Icon: Notification },
+      { path: "/reports", label: "Reports", Icon: DocumentPdf },
     ],
   },
   {

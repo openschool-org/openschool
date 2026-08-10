@@ -79,3 +79,11 @@ func (r *AttendanceRepository) GetSummaryByStudent(ctx context.Context, studentI
 		ClassID:   classID,
 	})
 }
+
+func (r *AttendanceRepository) ListForClassInRange(ctx context.Context, classID uuid.UUID, from, to time.Time) ([]db.ListAttendanceRecordsForClassInRangeRow, error) {
+	return r.queries.ListAttendanceRecordsForClassInRange(ctx, db.ListAttendanceRecordsForClassInRangeParams{
+		ClassID: classID,
+		Date:    pgtype.Date{Time: from, Valid: true},
+		Date_2:  pgtype.Date{Time: to, Valid: true},
+	})
+}

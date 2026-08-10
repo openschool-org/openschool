@@ -37,9 +37,10 @@ INSERT INTO classes (
     form_teacher_id,
     stream_id,
     stream_group_id,
-    name
+    name,
+    medium_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
+    $1, $2, $3, $4, $5, $6, $7
 )
 RETURNING *;
 
@@ -51,10 +52,12 @@ WHERE id = $1;
 SELECT
     c.*,
     g.name  AS grade_name,
-    ay.label AS academic_year_label
+    ay.label AS academic_year_label,
+    m.name  AS medium_name
 FROM classes c
 INNER JOIN grades g          ON g.id = c.grade_id
 INNER JOIN academic_years ay ON ay.id = c.academic_year_id
+LEFT JOIN  mediums m         ON m.id = c.medium_id
 WHERE c.academic_year_id = $1
 ORDER BY g.sort_order ASC, c.name ASC;
 
@@ -62,10 +65,12 @@ ORDER BY g.sort_order ASC, c.name ASC;
 SELECT
     c.*,
     g.name   AS grade_name,
-    ay.label AS academic_year_label
+    ay.label AS academic_year_label,
+    m.name   AS medium_name
 FROM classes c
 INNER JOIN grades g          ON g.id = c.grade_id
 INNER JOIN academic_years ay ON ay.id = c.academic_year_id
+LEFT JOIN  mediums m         ON m.id = c.medium_id
 WHERE ay.is_current = TRUE
 ORDER BY g.sort_order ASC, c.name ASC;
 
@@ -195,7 +200,8 @@ AND sg.id NOT IN (
 UPDATE classes
 SET
     name            = $2,
-    form_teacher_id = $3
+    form_teacher_id = $3,
+    medium_id       = $4
 WHERE id = $1
 RETURNING *;
 

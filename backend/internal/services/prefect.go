@@ -42,6 +42,14 @@ func (s *PrefectService) ListByYear(ctx context.Context, academicYearID uuid.UUI
 	return s.repo.ListByYear(ctx, academicYearID)
 }
 
+func (s *PrefectService) ListByStudent(ctx context.Context, studentID uuid.UUID) ([]db.ListPrefectAppointmentsByStudentRow, error) {
+	return s.repo.ListByStudent(ctx, studentID)
+}
+
+func (s *PrefectService) ListYears(ctx context.Context) ([]db.ListPrefectYearsRow, error) {
+	return s.repo.ListYears(ctx)
+}
+
 func (s *PrefectService) Delete(ctx context.Context, id uuid.UUID) error {
 	n, err := s.repo.Delete(ctx, id)
 	if err != nil {

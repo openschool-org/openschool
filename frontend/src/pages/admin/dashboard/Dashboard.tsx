@@ -21,6 +21,7 @@ import { useDailySessions } from "../../../queries/useAttendance";
 import type { ClassWithDetails } from "../../../services/class";
 import type { DailySession } from "../../../services/attendance";
 import EmptyState from "../../../components/common/EmptyState";
+import AnalyticsSection from "./AnalyticsSection";
 
 const ACCENT = "#406AAF";
 
@@ -397,6 +398,8 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      <AnalyticsSection />
     </div>
   );
 }

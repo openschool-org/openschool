@@ -16,12 +16,7 @@ import QuickActions from "./QuickActions";
 import TodaySummary from "./TodaySummary";
 import MyClassesPanel from "./MyClassesPanel";
 import LeadershipPanel from "./LeadershipPanel";
-
-function todayISODate(): string {
-  const d = new Date();
-  const tz = d.getTimezoneOffset() * 60000;
-  return new Date(d.getTime() - tz).toISOString().slice(0, 10);
-}
+import { todayISODate } from "../../../lib/date";
 
 // Section Head and above carry multi-grade/school-wide responsibility, so
 // they get the extra Leadership panel; a plain Class/Subject Teacher's
@@ -58,7 +53,7 @@ export default function TeacherDashboard() {
   const todaySessionByClass = new Map(
     (dailySessions ?? []).filter((s) => classIds.includes(s.class_id)).map((s) => [s.class_id, s]),
   );
-  const markedCount = todaySessionByClass.size;
+  const markedCount = [...todaySessionByClass.values()].filter((s) => s.marked_count > 0).length;
   const pendingCount = Math.max(myClasses.length - markedCount, 0);
 
   const recentSessions = classIds

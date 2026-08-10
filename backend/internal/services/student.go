@@ -30,13 +30,15 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 		return db.StudentProfile{}, fmt.Errorf("index number already exists")
 	}
 
+	// index_number doubles as both username and the initial (one-time)
+	// password (Phase 8.2) — there is no separate manual password entry.
 	idpUser, err := s.idp.CreateUser(ctx, "student", map[string]interface{}{
-		"username":     req.IndexNumber,
-		"email":        req.Email,
-		"given_name":   req.GivenName,
-		"family_name":  req.FamilyName,
-		"phone":        req.PhoneNumber,
-		"password":     req.Password,
+		"username":    req.IndexNumber,
+		"email":       req.Email,
+		"given_name":  req.GivenName,
+		"family_name": req.FamilyName,
+		"phone":       req.PhoneNumber,
+		"password":    req.IndexNumber,
 	})
 	if err != nil {
 		return db.StudentProfile{}, fmt.Errorf("failed to create identity provider user: %w", err)
@@ -51,10 +53,11 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 
 	// insert into users table
 	_, err = s.repo.CreateUser(ctx, db.CreateUserParams{
-		ID:       userID,
-		Email:    req.Email,
-		FullName: fullName,
-		Role:     "student",
+		ID:                 userID,
+		Email:              req.Email,
+		FullName:           fullName,
+		Role:               "student",
+		MustChangePassword: true,
 	})
 	if err != nil {
 		rollbackIDPUser(ctx, s.idp, "CreateStudent", idpUser.ID)
@@ -128,11 +131,11 @@ func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req mo
 
 	// update identity provider user with all required fields
 	err = s.idp.UpdateUser(ctx, userID, "student", map[string]interface{}{
-		"username":     student.IndexNumber,
-		"email":        user.Email,
-		"given_name":   req.GivenName,
-		"family_name":  req.FamilyName,
-		"phone":        req.PhoneNumber,
+		"username":    student.IndexNumber,
+		"email":       user.Email,
+		"given_name":  req.GivenName,
+		"family_name": req.FamilyName,
+		"phone":       req.PhoneNumber,
 	})
 	if err != nil {
 		fmt.Printf("warning: failed to update identity provider user: %v\n", err)

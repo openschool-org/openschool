@@ -25,6 +25,7 @@ import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import ProfileBanner from "../../../components/common/ProfileBanner";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import ConfirmEditModal from "../../../components/common/ConfirmEditModal";
 import type { Teacher, TeacherTitle, TeacherEmploymentStatus } from "../../../services/teacher";
 
 const TITLES: TeacherTitle[] = ["Mr", "Miss", "Mrs", "Ms", "Dr", "Von", "Prof"];
@@ -41,7 +42,7 @@ function teacherToForm(t: Teacher) {
     given_name: given ?? "",
     family_name: rest.join(" "),
     phone_number: t.phone ?? "",
-    employee_number: t.employee_number,
+    nic_number: t.nic_number ?? "",
     title: t.title ?? ("" as TeacherTitle | ""),
     gender: t.gender ?? ("" as "" | "male" | "female"),
   };
@@ -60,6 +61,7 @@ export default function TeacherDetail() {
   const { data: houses } = useHouses();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmEditOpen, setConfirmEditOpen] = useState(false);
   const [editing, setEditing] = useState(
     (location.state as { edit?: boolean } | null)?.edit ?? false,
   );
@@ -67,7 +69,7 @@ export default function TeacherDetail() {
     given_name: "",
     family_name: "",
     phone_number: "",
-    employee_number: "",
+    nic_number: "",
     title: "" as TeacherTitle | "",
     gender: "" as "" | "male" | "female",
   });
@@ -99,12 +101,12 @@ export default function TeacherDetail() {
           given_name: form.given_name.trim(),
           family_name: form.family_name.trim(),
           phone_number: form.phone_number.trim() || undefined,
-          employee_number: form.employee_number.trim(),
+          nic_number: form.nic_number.trim(),
           title: form.title || undefined,
           gender: form.gender || undefined,
         },
       },
-      { onSuccess: () => setEditing(false) },
+      { onSuccess: () => { setEditing(false); setConfirmEditOpen(false); } },
     );
   };
 
@@ -116,9 +118,7 @@ export default function TeacherDetail() {
     : null;
 
   const isValid =
-    form.given_name.trim() &&
-    form.family_name.trim() &&
-    form.employee_number.trim();
+    form.given_name.trim() && form.family_name.trim() && form.nic_number.trim();
 
   if (isLoading) return <LoadingSpinner />;
   if (isError || !teacher)
@@ -152,7 +152,7 @@ export default function TeacherDetail() {
                 renderIcon={Save}
                 kind="primary"
                 size="sm"
-                onClick={handleSave}
+                onClick={() => setConfirmEditOpen(true)}
                 disabled={!isValid || updateTeacher.isPending}
               >
                 {updateTeacher.isPending ? "Saving…" : "Save Changes"}
@@ -271,9 +271,8 @@ export default function TeacherDetail() {
               <TextInput
                 id="employee-number"
                 labelText="Employee Number"
-                value={form.employee_number}
-                readOnly={!editing}
-                onChange={(e) => change("employee_number", e.target.value)}
+                value={teacher.employee_number}
+                readOnly
               />
               <TextInput
                 id="phone"
@@ -281,6 +280,13 @@ export default function TeacherDetail() {
                 value={form.phone_number}
                 readOnly={!editing}
                 onChange={(e) => change("phone_number", e.target.value)}
+              />
+              <TextInput
+                id="nic-number"
+                labelText="NIC Number"
+                value={form.nic_number}
+                readOnly={!editing}
+                onChange={(e) => change("nic_number", e.target.value)}
               />
               <TextInput
                 id="joined-date"
@@ -418,6 +424,15 @@ export default function TeacherDetail() {
         isPending={deleteTeacher.isPending}
         onClose={() => setConfirmOpen(false)}
         onConfirm={handleDelete}
+      />
+
+      <ConfirmEditModal
+        open={confirmEditOpen}
+        title="Save changes"
+        description={<>Save these changes to <strong>{teacher.full_name}</strong>&apos;s profile?</>}
+        isPending={updateTeacher.isPending}
+        onClose={() => setConfirmEditOpen(false)}
+        onConfirm={handleSave}
       />
     </div>
   );

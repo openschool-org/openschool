@@ -1,15 +1,23 @@
+-- name: NextEmployeeNumber :one
+-- shared numbering pool with non_academic_staff (migration 000026). Called
+-- explicitly by the service (rather than relying on the column DEFAULT)
+-- because the value is needed up-front to pass to the identity provider
+-- before the teacher_profiles row exists.
+SELECT lpad(nextval('employee_number_seq')::text, 5, '0')::text AS employee_number;
+
 -- name: CreateTeacherProfile :one
 INSERT INTO teacher_profiles (
     user_id,
     full_name,
     employee_number,
+    nic_number,
     joined_date,
     phone,
     title,
     gender,
     house_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
 RETURNING *;
 
@@ -33,19 +41,29 @@ WHERE user_id = $1;
 SELECT * FROM teacher_profiles
 WHERE employee_number = $1;
 
+-- name: GetTeacherByUserIDAndNIC :one
+-- Identity check for the unauthenticated forgot-password flow (Phase 8.4) —
+-- confirms the caller knows this teacher's NIC before a reset token is
+-- minted for their account.
+SELECT * FROM teacher_profiles
+WHERE user_id = $1 AND nic_number = $2;
+
 -- name: ListTeachers :many
 SELECT * FROM teacher_profiles
 ORDER BY full_name ASC;
 
 -- name: UpdateTeacherProfile :one
+-- employee_number is immutable once assigned (Phase 6.1) — not updatable here.
+-- nic_number *is* updatable, unlike employee_number — a typo should be
+-- correctable, it just has to stay unique (Phase 8.1).
 UPDATE teacher_profiles
 SET
-    full_name       = $2,
-    employee_number = $3,
-    phone           = $4,
-    title           = $5,
-    gender          = $6,
-    updated_at      = NOW()
+    full_name  = $2,
+    phone      = $3,
+    title      = $4,
+    gender     = $5,
+    nic_number = $6,
+    updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 

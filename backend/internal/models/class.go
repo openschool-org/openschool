@@ -9,11 +9,15 @@ type CreateClassRequest struct {
 	FormTeacherID  *uuid.UUID `json:"form_teacher_id"`
 	StreamID       *uuid.UUID `json:"stream_id"`
 	StreamGroupID  *uuid.UUID `json:"stream_group_id"`
+	// language of instruction; nil leaves the class undesignated, which keeps
+	// it inside the promotion shuffle pool.
+	MediumID *uuid.UUID `json:"medium_id"`
 }
 
 type UpdateClassRequest struct {
 	Name          string     `json:"name" binding:"required"`
 	FormTeacherID *uuid.UUID `json:"form_teacher_id"`
+	MediumID      *uuid.UUID `json:"medium_id"`
 }
 
 type AssignFormTeacherRequest struct {
@@ -41,14 +45,16 @@ type ClassResponse struct {
 	StreamGroupID  *uuid.UUID `json:"stream_group_id"`
 	GirlMonitorID  *uuid.UUID `json:"girl_monitor_id"`
 	BoyMonitorID   *uuid.UUID `json:"boy_monitor_id"`
+	MediumID       *uuid.UUID `json:"medium_id"`
 	Name           string     `json:"name"`
 	CreatedAt      string     `json:"created_at"`
 }
 
 type ClassWithDetailsResponse struct {
 	ClassResponse
-	GradeName         string `json:"grade_name"`
-	AcademicYearLabel string `json:"academic_year_label"`
+	GradeName         string  `json:"grade_name"`
+	AcademicYearLabel string  `json:"academic_year_label"`
+	MediumName        *string `json:"medium_name"`
 }
 
 type SubjectTeacherResponse struct {

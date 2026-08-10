@@ -23,6 +23,8 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware())
 
+	RegisterAuthRoutes(api, protected, pool)
+
 	admin := protected.Group("")
 	admin.Use(middleware.RequireRole("admin"))
 
@@ -47,9 +49,12 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	RegisterStreamRoutes(admin, teacherOrAdmin, pool)
 	RegisterClassRoutes(admin, teacherOrAdmin, pool)
 	RegisterStudentRoutes(admin, teacherOrAdmin, pool)
+	RegisterStudentPortfolioRoutes(teacherOrAdmin, pool)
 	RegisterTeacherRoutes(admin, teacherOrAdmin, pool)
 	RegisterAttendanceRoutes(teacherOrAdmin, pool)
+	RegisterStaffAttendanceRoutes(teacherOrAdmin, pool)
 	RegisterGuardianRoutes(admin, teacherOrAdmin, pool)
+	RegisterNonAcademicStaffRoutes(admin, teacherOrAdmin, pool)
 	RegisterSectionHeadRoutes(admin, teacherOrAdmin, pool)
 	RegisterPrefectRoutes(admin, teacherOrAdmin, pool)
 	RegisterPositionRoutes(admin, teacherOrAdmin, pool)
@@ -59,6 +64,8 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	RegisterStudentSelfRoutes(student, pool)
 	RegisterTeacherSelfRoutes(teacher, pool)
 	RegisterAuditRoutes(admin, pool)
+	RegisterDashboardRoutes(admin, pool)
+	RegisterReportExportRoutes(admin, pool)
 
 	timetableroutes.RegisterClassroomRoutes(admin, teacherOrAdmin, pool)
 	timetableroutes.RegisterGradeSectionRoutes(admin, teacherOrAdmin, pool)

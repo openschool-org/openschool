@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Add, ChevronRight, Copy, Layers, Rocket } from "@carbon/icons-react";
+import { Add, ChevronRight, Copy, Edit, Layers, Rocket } from "@carbon/icons-react";
 import {
   Button,
   Tag,
@@ -18,6 +18,7 @@ import {
 import {
   useLevels,
   useCreateLevel,
+  useUpdateLevel,
   useDuplicateLevel,
   useDeleteLevel,
 } from "../../../queries/useCurriculum";
@@ -58,6 +59,7 @@ export default function Curriculum() {
   const { data: levels, isLoading, isError, refetch } = useLevels();
   const { data: grades } = useGrades();
   const createLevel = useCreateLevel();
+  const updateLevel = useUpdateLevel();
   const duplicateLevel = useDuplicateLevel();
   const deleteLevel = useDeleteLevel();
   const runPreset = useRunCurriculumPreset();
@@ -66,6 +68,9 @@ export default function Curriculum() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [labelTouched, setLabelTouched] = useState(false);
   const [toDelete, setToDelete] = useState<Level | null>(null);
+  const [toEdit, setToEdit] = useState<Level | null>(null);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [editLabelTouched, setEditLabelTouched] = useState(false);
   const [toDuplicate, setToDuplicate] = useState<Level | null>(null);
   const [dupForm, setDupForm] = useState(EMPTY_FORM);
   const [dupLabelTouched, setDupLabelTouched] = useState(false);
@@ -91,6 +96,33 @@ export default function Curriculum() {
         sort_order: form.sort_order,
       },
       { onSuccess: () => setCreateOpen(false) },
+    );
+  };
+
+  const openEdit = (l: Level) => {
+    updateLevel.reset();
+    setEditLabelTouched(false);
+    setEditForm({
+      label: l.label,
+      grade_id: l.grade_id ?? "",
+      sort_order: l.sort_order,
+    });
+    setToEdit(l);
+  };
+
+  const handleEdit = () => {
+    setEditLabelTouched(true);
+    if (!toEdit || !editForm.label.trim()) return;
+    updateLevel.mutate(
+      {
+        id: toEdit.id,
+        data: {
+          label: editForm.label.trim(),
+          grade_id: editForm.grade_id || undefined,
+          sort_order: editForm.sort_order,
+        },
+      },
+      { onSuccess: () => setToEdit(null) },
     );
   };
 
@@ -286,6 +318,14 @@ export default function Curriculum() {
                 <Button
                   kind="ghost"
                   size="sm"
+                  renderIcon={Edit}
+                  onClick={() => openEdit(l)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  kind="ghost"
+                  size="sm"
                   renderIcon={Copy}
                   onClick={() => openDuplicate(l)}
                 >
@@ -370,6 +410,82 @@ export default function Curriculum() {
             disabled={!form.label.trim() || createLevel.isPending}
           >
             {createLevel.isPending ? "Creating…" : "Create"}
+          </Button>
+        </ModalFooter>
+      </ComposedModal>
+
+      {/* Edit modal */}
+      <ComposedModal open={!!toEdit} size="md" onClose={() => setToEdit(null)}>
+        <ModalHeader title={`Edit ${toEdit?.label ?? ""}`} />
+        <ModalBody>
+          {updateLevel.isError && (
+            <InlineNotification
+              kind="error"
+              title="Error"
+              subtitle={getErrorMessage(updateLevel.error, "Failed to update level")}
+              lowContrast
+              hideCloseButton
+              style={{ marginBottom: "1rem", maxWidth: "100%" }}
+            />
+          )}
+          <p
+            style={{
+              fontSize: "0.875rem",
+              color: "#525252",
+              marginBottom: "1rem",
+            }}
+          >
+            Renaming a level leaves its selection groups and student choices
+            untouched — only the label, grade link, and ordering change.
+          </p>
+          <div style={{ display: "grid", gap: "1.25rem" }}>
+            <TextInput
+              id="edit-label"
+              labelText="Label"
+              value={editForm.label}
+              onChange={(e) =>
+                setEditForm((f) => ({ ...f, label: e.target.value }))
+              }
+              onBlur={() => setEditLabelTouched(true)}
+              invalid={editLabelTouched && !editForm.label.trim()}
+              invalidText="A label is required."
+            />
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1rem" }}>
+              <Select
+                id="edit-grade"
+                labelText="Grade (optional)"
+                value={editForm.grade_id}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, grade_id: e.target.value }))
+                }
+              >
+                <SelectItem value="" text="No grade" />
+                {grades?.map((g) => (
+                  <SelectItem key={g.id} value={g.id} text={g.name} />
+                ))}
+              </Select>
+              <NumberInput
+                id="edit-sort"
+                label="Sort order"
+                min={0}
+                value={editForm.sort_order}
+                onChange={(_e, { value }) =>
+                  setEditForm((f) => ({ ...f, sort_order: Number(value) || 0 }))
+                }
+              />
+            </div>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button kind="secondary" onClick={() => setToEdit(null)}>
+            Cancel
+          </Button>
+          <Button
+            kind="primary"
+            onClick={handleEdit}
+            disabled={!editForm.label.trim() || updateLevel.isPending}
+          >
+            {updateLevel.isPending ? "Saving…" : "Save Changes"}
           </Button>
         </ModalFooter>
       </ComposedModal>

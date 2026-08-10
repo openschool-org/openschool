@@ -146,7 +146,7 @@ func (q *Queries) ListStudentsMissingHouse(ctx context.Context) ([]StudentProfil
 }
 
 const listTeachersMissingHouse = `-- name: ListTeachersMissingHouse :many
-SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status FROM teacher_profiles
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
 WHERE house_id IS NULL
 ORDER BY employee_number ASC
 `
@@ -174,6 +174,7 @@ func (q *Queries) ListTeachersMissingHouse(ctx context.Context) ([]TeacherProfil
 			&i.IsActive,
 			&i.HouseID,
 			&i.EmploymentStatus,
+			&i.NicNumber,
 		); err != nil {
 			return nil, err
 		}
@@ -304,7 +305,7 @@ SET
     house_id   = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status
+RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number
 `
 
 type UpdateTeacherHouseParams struct {
@@ -329,6 +330,7 @@ func (q *Queries) UpdateTeacherHouse(ctx context.Context, arg UpdateTeacherHouse
 		&i.IsActive,
 		&i.HouseID,
 		&i.EmploymentStatus,
+		&i.NicNumber,
 	)
 	return i, err
 }

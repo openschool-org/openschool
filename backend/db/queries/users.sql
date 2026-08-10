@@ -3,9 +3,10 @@ INSERT INTO users (
     id,
     email,
     full_name,
-    role
+    role,
+    must_change_password
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5
 )
 RETURNING *;
 
@@ -18,12 +19,18 @@ INSERT INTO users (
     id,
     email,
     full_name,
-    role
+    role,
+    must_change_password
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5
 )
 ON CONFLICT (id) DO UPDATE SET id = users.id
 RETURNING *;
+
+-- name: SetMustChangePassword :exec
+UPDATE users
+SET must_change_password = $2, updated_at = NOW()
+WHERE id = $1;
 
 -- name: GetUserByID :one
 SELECT * FROM users

@@ -1,5 +1,11 @@
 # OpenSchool Feature Roadmap
 
+> **Historical document.** This is the phase-by-phase build log the project
+> grew from — kept for context on *why* things are built the way they are.
+> For the current, as-built feature list, see [`FEATURES.md`](./FEATURES.md)
+> instead; a few items marked "not yet built" below (e.g. medium-locked
+> classes in Phase 5) have since shipped and are current in that document.
+
 **Source:** grew out of a codebase audit and a feature-enhancement request to grow OpenSchool into a full Sri Lankan Government School ERP, plus a session-timeout ask. This document is the single, current source of truth for both the audit's remaining open items and the feature roadmap — the standalone audit document has been folded in here and removed.
 
 **How to read this:** each phase lists what already exists to build on (so we don't reinvent it) and what's net-new. Phases 1–3 are independent of the role-hierarchy work in Phase 4 and can proceed in parallel. Phases 5 and 6 depend on Phase 4's position model existing first (promotion and staff permissions need it).
@@ -150,80 +156,84 @@ New backend stack (mirrors `section_head.go`/`prefect.go`, minus the academic-ye
 
 ## Phase 6 — Staff management & student profile / prefect expansion
 
-*Depends on Phase 4's position model for staff permission scoping.*
+**Status: done.**
+
+*Depended on Phase 4's position model for staff permission scoping.*
 
 ### 6.1 Staff categories & profiles
 
-**Status: planned, scoped down — not yet built.** No concept beyond `teacher_profiles` exists today (confirmed: no `staff_profiles`, `leave_requests`, `leave_balances`, or `employment_history` tables anywhere).
+**Status: done.**
 
-- **Academic Staff** — this *is* `teacher_profiles`, already covering Teachers, Section Heads, Class Teachers, Subject Teachers, and (per Phase 4) Principal/Vice Principal. No separate table needed — the earlier idea of a shared `position_id` FK doesn't apply here, since Principal/Vice Principal live in `teacher_positions` (Phase 4), which is specifically for teachers.
-- **Non-Academic Staff (net-new, queued)** — a plain `non_academic_staff` table (Lab Assistant, Librarian, Office Staff, Development Officer, IT Officer, Security, Minor Employee), deliberately **without** the teacher stack's identity/login machinery — confirmed these staff don't need a ThunderID account for now, so there's no `user_id` column, no IDP provisioning, no role assignment. Just profile fields (`full_name`, `employee_number`, `designation`, `phone`, `joined_date`, `gender`, optional `house_id`, `employment_status`) — "just entries," per the ask. Admin-only CRUD, hard delete allowed (nothing references these rows yet), mirrors `GuardiansDirectory.tsx`'s single-page list+detail+modal pattern rather than the heavier 3-page Teacher flow, since there's no sub-resource management (no subjects/workload/attendance for these staff yet — that's still 6.2's job).
-- **Employee number automation (net-new, queued):** currently manual, free-text, and editable (`CreateTeacherRequest.EmployeeNumber`/`UpdateTeacherRequest.EmployeeNumber`) — becomes auto-generated (previous value + 1, via a Postgres sequence) and permanently immutable after creation. Per the product decision that "employee number is unique to every employee," **teachers and non-academic staff share one numbering pool** (one `employee_number_seq`, not two independent counters) — so this lands here rather than as a teacher-only change. Format: plain zero-padded string (`00001`, `00002`, ...), no type prefix.
-- **Deferred to a later pass:** leave management, employment history, staff attendance — see 6.2 below, which still needs the fuller module.
+- ✅ **Academic Staff** — unchanged, this *is* `teacher_profiles`.
+- ✅ **Non-Academic Staff — done.** `non_academic_staff` table (migration `000026`; `full_name`, `employee_number`, `designation` CHECK-constrained to Lab Assistant/Librarian/Office Staff/Development Officer/IT Officer/Security/Minor Employee, `phone`, `joined_date`, `gender`, `house_id`, `employment_status`), deliberately without login/IDP machinery — no `user_id`. Full backend stack (`internal/{models,repositories,services,handlers,routes}/non_academic_staff.go`) and `frontend/src/pages/admin/staff/NonAcademicStaff.tsx`, mirroring `GuardiansDirectory.tsx`'s single-page list+detail+modal pattern. Admin-only CRUD, hard delete. House changes go through the same audit-logged pattern as Phase 1 (`entityType="non_academic_staff_house"`).
+- ✅ **Employee number automation — done.** `employee_number_seq` (migration `000026`) shared between `teacher_profiles` and `non_academic_staff` — plain zero-padded string (`00001`, `00002`, ...). `TeacherRepository.NextEmployeeNumber`/`NonAcademicStaffRepository.NextEmployeeNumber` fetch the next value explicitly (needed before the IDP user exists, for teachers); `employee_number` dropped from `CreateTeacherRequest`/`UpdateTeacherRequest` and is now immutable in `TeacherDetail.tsx`.
+- **Deferred, not built:** leave management, employment history as a distinct concept (employment_status covers the "left the school" case) — flagged as a follow-up, not required for 6.1 to function.
 
-### 6.2 Staff attendance & leave (net-new)
+### 6.2 Staff attendance & leave
 
-No staff-attendance concept exists at all today — `attendance_sessions`/`attendance_records` are student-only, and `taken_by` on those records just records who marked *student* attendance, not staff attendance itself. Add:
+**Status: done.**
 
-- A staff-attendance table mirroring the existing student-attendance shape but scoped to `teacher_profiles`/`non_academic_staff` (once 6.1 lands), with `present`/`late`/`absent`/`leave` statuses — one state different from student attendance's `present`/`absent`/`late`/`excused`, so reuse the check-constraint *pattern* from migration `000006`, not the same constraint.
-- Monthly attendance, late, and absence reports as new aggregate queries — same reporting shape as any Phase 7 analytics query, not a separate reporting engine.
+- ✅ `staff_attendance_records` (migration `000027`) — one row per staff member per day, `teacher_id`/`non_academic_staff_id` mutually exclusive via CHECK, `present`/`late`/`absent`/`leave` statuses (a separate CHECK constraint from student attendance's `present`/`absent`/`late`/`excused`, per the plan's note). Backend: `internal/{repositories,services,handlers,routes}/staff_attendance.go`, upsert-on-mark semantics. Monthly summary aggregates (`MonthlyTeacherAttendanceSummary`/`MonthlyNonAcademicStaffAttendanceSummary`) per staff member. Frontend: `frontend/src/pages/admin/staff/StaffAttendance.tsx` — daily mark view + monthly summary toggle.
 
 ### 6.3 Student profile portfolio expansion
 
-`StudentDetail.tsx` currently has exactly **3 tabs**: `Profile`, `Guardians`, `Subject Enrollment` — no marks tab exists yet. Add the requested portfolio as new tables + tabs following the existing `StudentGuardians.tsx` tab-composition pattern:
+**Status: done.**
 
-- **Net-new tables:** progress reports, activities, clubs, sports, societies, competitions, leadership roles, awards/achievements, disciplinary records.
-- **Read-only rollups of data that already exists elsewhere** (no new tables, just a tab + query): attendance history (`attendance_records`), examination results (existing marks tables), prefect appointments (the `prefects` table, see 6.4), house info (existing `house_id`).
+- ✅ **Net-new tables (migration `000028`):** `student_progress_reports` (term-scoped narrative), `student_activities` (clubs/sports/societies/competitions **consolidated into one table** with a `category` CHECK column, rather than four near-duplicate CRUD stacks — a deliberate simplification since the four are structurally identical), `student_leadership_roles`, `student_awards`, `student_disciplinary_records`. Full backend stack in `internal/{models,repositories,services,handlers,routes}/student_portfolio.go`.
+- ✅ **Read-only rollups — done.** `StudentRecordsRollup.tsx` composes attendance history (new `GET /students/:id/attendance`, backed by the pre-existing `ListAttendanceByStudent` query which had no route before), examination results (reused the already-existing but previously-unused `useStudentMarks`/`ListStudentMarksByTerm` — the §0 dead-code list's decision to delete it is superseded by this real use), and prefect appointments (new `ListPrefectAppointmentsByStudent` query/route, see 6.4).
+- ✅ **Frontend tabs — done.** `StudentDetail.tsx` now has 8 tabs: the original Profile/Guardians/Subject Enrollment, plus `StudentProgressReports.tsx`, `StudentActivities.tsx`, `StudentLeadershipAwards.tsx` (leadership + awards combined), `StudentDisciplinary.tsx`, and `StudentRecordsRollup.tsx` — each following `StudentGuardians.tsx`'s `studentId`-prop, self-fetching tab-component pattern.
 
 ### 6.4 Prefect board expansion
 
-`academic_year_id` scoping **already exists** — `prefects` (migration `000016`) has `academic_year_id` with `UNIQUE(academic_year_id, student_id)`, and `ListPrefectsByYear` already filters by year. The gap is **UI-only**: `Prefects.tsx` only ever calls `usePrefects(currentYear?.id)` with no year selector and no archive view. Add:
+**Status: done.**
 
-- A rank/title distinction for Head Prefect / Deputy Head Prefect / Senior Prefect / Junior Prefect / House Captain / Vice House Captain — check whether the existing `rank` integer column already maps 1:1 to these titles or needs a proper enum/lookup.
-- A year selector on `Prefects.tsx`, reusing the same `useCurrentAcademicYear`/year-picker pattern used elsewhere in the app.
-- A read-only archive view for past boards (list-by-year, no edit).
+- ✅ The existing `rank` column turned out to be a plain `VARCHAR` CHECK constraint, not an integer — no enum/lookup table existed. Extended via migration `000029` to add `house_captain`/`vice_house_captain` to the CHECK list (and to `ListPrefectsByYear`'s sort-order `CASE`); `Prefects.tsx`'s `RANKS` array extended to match.
+- ✅ **Year selector + archive — done.** `Prefects.tsx` now has a year `Select` (new `GET /prefects/years` route, backed by `ListPrefectYears`) covering every year with a recorded board plus the current year. Selecting a past year switches the page into a read-only archive view (Appoint/Remove actions hidden, an info banner shown) — reusing the existing `usePrefects(yearId)` hook, just parameterized by the selected year instead of always the current one.
 
 ### 6.5 Staff houses
 
-Already done in Phase 1 ("staff houses now mirror student houses, auto-assigned on hire, admin-only manual override") — nothing further needed here.
+Already done in Phase 1 — nothing further needed here.
 
 ---
 
 ## Phase 7 — Analytics dashboard & CRUD consistency polish
 
-- **Analytics:** `Dashboard.tsx` today only shows student/teacher/class/subject counts, per-class attendance, an audit-log feed, and current-year info — everything below is net-new aggregate queries against existing tables, not new domain concepts:
-  - *Student:* total, by grade, by class, gender distribution, house distribution, attendance trends.
-  - *Staff:* total teachers, academic staff, non-academic staff, attendance statistics (built on Phase 6.2's staff-attendance tables).
-  - *Academic:* subject performance, examination summaries, grade-wise performance, attendance percentages.
-  - *School:* student growth, staff growth, active academic year, notifications sent, timetable completion.
-- **CRUD consistency — edit confirmation (net-new):** confirmed no edit-confirmation pattern exists anywhere in the frontend today — only `ConfirmDeleteModal` exists. Add a shared `ConfirmEditModal` (or a generic `ConfirmActionModal` covering both edit and delete) alongside the existing `ConfirmDeleteModal`, and roll it out across admin forms that make significant field changes. Beyond that, audit existing admin pages against the already-established convention (Carbon `ComposedModal` forms, `EmptyState`, `InlineNotification` — see `StudentGuardians.tsx` for a single file exercising all four) and close remaining gaps rather than introducing a new design system.
-- **Report export templates (net-new, previously untracked):** drag-and-drop report templates for admins (attendance and other exports) to PDF. No PDF generation exists outside the dead `Showcase.tsx` page already slated for deletion in §0, so this is a from-scratch feature. Needs a library/format decision (server-side Go PDF library vs. a client-side template builder) as a follow-up design decision before implementation — the original ask ("drag and drop templates to get attendance and wanted things") doesn't pin down the export format.
+**Status: done.**
+
+- ✅ **Analytics — done.** New `GET /dashboard/analytics` (`internal/services/dashboard.go`, backed by `db/queries/dashboard.sql`'s ~15 aggregate queries, all implicitly scoped to the current academic year/term via the existing `is_current` pattern) composes one response covering:
+  - *Student:* total, by grade, by class, gender distribution, house distribution (colored by each house's real color), a 14-day attendance trend.
+  - *Staff:* academic/non-academic staff counts, this-month attendance totals (built on Phase 6.2's staff-attendance tables).
+  - *Academic:* subject performance, examination summary, grade-wise performance, overall attendance percentage.
+  - *School:* student growth by year, staff growth by joining year, notifications-sent count, timetable completion % (published timetables ÷ total classes for the current year).
+  - Frontend: `Dashboard.tsx` renders `AnalyticsSection.tsx` below the existing content — stat tiles + lightweight custom horizontal-bar/sparkline charts (no charting library added; kept consistent with the existing Carbon-derived color tokens already used for attendance status elsewhere in the app) rather than a new visual language.
+- ✅ **CRUD consistency — edit confirmation — done.** Added `ConfirmEditModal` (mirrors `ConfirmDeleteModal`, `kind="primary"` instead of `"danger"`), wired into the two highest-value inline-edit flows — `TeacherDetail.tsx` and `StudentDetail.tsx` — where "Save Changes" previously saved immediately with no confirmation step. Modal-based edit flows (`GuardiansDirectory.tsx`, `NonAcademicStaff.tsx`) were left as-is since the modal itself already is the deliberate confirmation step; stacking a second confirm on top would be redundant.
+- ✅ **Report export templates — done, server-side Go PDF (per product decision).** Added `github.com/jung-kurt/gofpdf`. `internal/services/report_export.go` renders two fixed templates — Attendance (by class + date range) and Marks (by class + term + subject) — to a simple bordered-table PDF, each with an optional column subset (a lightweight field picker rather than free-form drag-and-drop layout). New `GET /reports/attendance` / `GET /reports/marks` (admin-only, streamed as `application/pdf`). Frontend: `frontend/src/pages/admin/reports/Reports.tsx` — template picker, filters, column checkboxes, and a blob-download button.
 
 ---
 
 ## Phase 8 — NIC-based account creation & universal password reset
 
-**Status: planned — not yet built.** Groups everything about how accounts get their initial password and how members change it — supersedes Phase 1's placeholder password-reset bullet (moved and expanded here) rather than duplicating it.
+**Status: done.** Groups everything about how accounts get their initial password and how members change it — supersedes Phase 1's placeholder password-reset bullet (moved and expanded here) rather than duplicating it.
 
-### 8.1 NIC number field (net-new)
+### 8.1 NIC number field
 
-No NIC/identity-document field exists anywhere in the codebase today (confirmed via full-text search — the only prior "nic" hits were false positives from `gin-gonic`, the Gin framework's import path, not an actual field). Add `nic_number VARCHAR(20) NOT NULL UNIQUE` to `teacher_profiles` and `guardians` (both defined in migration `000002_create_profiles.up.sql`) — validate loosely rather than hardcoding one format, since Sri Lankan NICs come in both the old 9-digit+V/X and new 12-digit-numeric forms, both still in active use. **Not** added to `student_profiles` — the ask is specifically Guardians and Teachers; students already have `index_number` as their unique identifier. Surface as a required field in `AddTeacher.tsx` and wherever a guardian is first created (`StudentGuardians.tsx`'s add-guardian modal, `GuardiansDirectory.tsx`'s create flow), and editable afterward (unlike `employee_number` from Phase 6.1, NIC *can* be corrected — a typo shouldn't be permanent, it should just stay `UNIQUE`).
+✅ **Done.** `nic_number VARCHAR(20) NOT NULL UNIQUE` added to `teacher_profiles` and `guardians` via migration `000030_add_nic_number` (existing rows backfilled with a placeholder so the constraints could be added in the same migration, since NIC — unlike `employee_number` — is editable afterward). Validated loosely at the application layer only (required, non-empty), not via a DB `CHECK`, since Sri Lankan NICs come in both the old 9-digit+V/X and new 12-digit-numeric forms. **Not** added to `student_profiles` — students already have `index_number`. Required field in `AddTeacher.tsx`/`TeacherDetail.tsx`'s edit form and wherever a guardian is created or edited (`StudentGuardians.tsx`'s add-guardian modal, `GuardiansDirectory.tsx`'s edit modal).
 
-### 8.2 Default passwords, not manual entry (behavior change)
+### 8.2 Default passwords, not manual entry
 
-Reverses the current student flow and removes manual entry for teachers/guardians — all three still go through the identity provider's normal `CreateUser`/`password` field via the existing `internal/identity.Provider` seam; this only changes *what value* is used, not the creation mechanism:
+✅ **Done.** All three still go through `internal/identity.Provider`'s existing `CreateUser`/`password` attribute — only *what value* is used changed, not the creation mechanism:
 
-- **Teachers:** `AddTeacher.tsx` currently has a manual `PasswordInput` (min 8 chars) feeding `CreateTeacherRequest.Password`. Remove the input; `TeacherService.CreateTeacher` uses the teacher's NIC number as the initial password instead (drop `Password` from `CreateTeacherRequest`).
-- **Guardians:** guardian records themselves don't carry a password (`CreateGuardianRequest` has none) — the manual password lives one step later, in `ProvisionGuardianLoginRequest.Password` (used wherever "give this guardian portal access" is triggered). Same change applies there: NIC number becomes the initial password, `Password` drops from that request.
-- **Students:** currently the *opposite* of what's wanted — `AddStudent.tsx`'s `generateTempPassword()` explicitly generates a **random** password, and the UI copy says "It is never the student's index number." Reverse this: `index_number` becomes the initial password directly, and `generateTempPassword()` is deleted.
+- **Teachers:** the manual `PasswordInput` is gone from `AddTeacher.tsx`; `TeacherService.CreateTeacher` uses the NIC number as the initial password (`Password` dropped from `CreateTeacherRequest`).
+- **Guardians:** `ProvisionLogin` now reads the guardian's already-on-file `nic_number` as the password (`Password` dropped from `ProvisionGuardianLoginRequest`).
+- **Students:** `AddStudent.tsx`'s random `generateTempPassword()` is deleted; `index_number` is now passed directly as the password.
 
-### 8.3 "One-time password" first-login flow (net-new)
+### 8.3 "One-time password" first-login flow
 
-On first login, interrupt with a screen stating this is a one-time password (NIC/index-number-derived) and offering two explicit choices: **"Keep this password"** (acknowledges and clears the flag) or **"Set a new password"** (routes into 8.4's reset flow) — neither silently skippable. Needs a way to know "is this still the auto-assigned password": check first whether ThunderID exposes a "temporary credential / force change on next login" primitive before building a local `must_change_password` flag — same category of question as Phase 1's original note on the reset primitive.
+✅ **Done.** Confirmed ThunderID's `identity.Provider` has no temporary-credential/force-change primitive (`CreateUser`/`UpdateUser`/`DeleteUser`/`AssignRole` only), so a local `users.must_change_password` column (migration `000031_add_password_lifecycle`) tracks it instead — set `TRUE` whenever Phase 8.2 assigns a default password. `GET /me` now returns the flag; `App.tsx` gates every route behind `PasswordInterstitial.tsx` (a full-page, non-dismissible screen) whenever it's `TRUE`, offering **"Keep this password"** (`POST /auth/keep-default-password`) or **"Set a new password"** (same `ChangePassword` path as 8.4).
 
-### 8.4 Universal self-service password reset (net-new)
+### 8.4 Universal self-service password reset
 
-Every role (admin/teacher/student/parent) gets a self-service reset path — not just an admin-triggered one. Add `ForgotPassword`/`ResetPassword` endpoints; check first whether ThunderID exposes a reset primitive through `internal/identity.Provider` before hand-rolling token generation/expiry. Frontend: a "Forgot password?" link on `/signin`, plus a "Change password" action on every role's own profile/settings page (`TeacherProfile.tsx` and the student/parent equivalents, admin Settings) — reusing whatever primitive 8.3's "Set a new password" choice needs, so the one-time-password flow and the ordinary self-service flow share one implementation, not two.
+✅ **Done.** ThunderID exposes no reset primitive either, so it's hand-rolled: `password_reset_tokens` (migration `000031`, shared with 8.3) stores only a SHA-256 hash of a short-lived (15 min), single-use token. `AuthService` (`internal/services/auth.go`) exposes `ForgotPassword`/`ResetPassword` (unauthenticated — identity verified via login email + the Phase 8.2 default-password secret: NIC for teacher/parent, index number for student; **admin excluded**, no secondary secret on file, falls back to the authenticated path) and `ChangePassword`/`KeepDefaultPassword` (authenticated, reused by 8.3). Routes on `internal/routes/auth.go`, rate-limited like `/setup/admin`. Frontend: a "Forgot password?" link on `/signin` → `ForgotPassword.tsx` (identify → set new password, two steps of one page); a "Change password" action shared by every role via `AppHeaderActions` (`ChangePasswordModal.tsx`), plus a dedicated button on `TeacherProfile.tsx`'s banner.
 
 ---
 

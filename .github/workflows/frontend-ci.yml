@@ -45,3 +45,10 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Dependency audit
+        # Informational only for now: two known advisories (react-router,
+        # dompurify, the latter transitive via @thunderid/react) are not
+        # yet patched — see audit.md. Flip to blocking once resolved.
+        run: pnpm audit --prod
+        continue-on-error: true

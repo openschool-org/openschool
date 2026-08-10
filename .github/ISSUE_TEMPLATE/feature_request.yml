@@ -1,0 +1,48 @@
+name: Feature request
+description: Suggest a new feature or an improvement to an existing one
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, a quick check of [`docs/FEATURES.md`](../../docs/FEATURES.md)
+        and [`docs/plan.md`](../../docs/plan.md) may save you a duplicate —
+        this may already exist or be planned.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the gap or pain point, ideally with a concrete scenario (which role hits it, and when).
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should OpenSchool do instead? Sketch the UI/API shape if you have one in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      multiple: true
+      options:
+        - Backend (API)
+        - Frontend (UI)
+        - Database / migrations
+        - Identity / ThunderID integration
+        - Documentation
+        - Other / not sure
+    validations:
+      required: true

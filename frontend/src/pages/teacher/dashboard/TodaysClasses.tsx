@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import { Tag } from "@carbon/react";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import type { MyClass } from "../../../queries/useTeachers";
-import type { AttendanceSession } from "../../../services/attendance";
+import type { DailySession } from "../../../services/attendance";
 
 const ACCENT = "#406AAF";
 
@@ -15,7 +15,7 @@ export default function TodaysClasses({
   loading: boolean;
   myClasses: MyClass[];
   studentCountByClass: Map<string, number>;
-  todaySessionByClass: Map<string, AttendanceSession>;
+  todaySessionByClass: Map<string, DailySession>;
 }) {
   return (
     <div className="os-section">
@@ -33,6 +33,7 @@ export default function TodaysClasses({
         ) : (
           myClasses.map((cls, i) => {
             const session = todaySessionByClass.get(cls.class_id);
+            const isMarked = !!session && session.marked_count > 0;
             return (
               <div key={cls.class_id} style={{ display: "flex", alignItems: "center", gap: "1rem", padding: "1rem 1.5rem", borderBottom: i < myClasses.length - 1 ? "1px solid #f4f4f4" : "none", flexWrap: "wrap" }}>
                 <div style={{ width: "2.25rem", height: "2.25rem", background: "#edf2fa", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 700, fontSize: "0.75rem", color: ACCENT }}>
@@ -47,8 +48,8 @@ export default function TodaysClasses({
                   </p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <Tag type={session ? "blue" : "gray"} size="sm">
-                    {session ? "Marked" : "Pending"}
+                  <Tag type={isMarked ? "blue" : "gray"} size="sm">
+                    {isMarked ? "Marked" : "Pending"}
                   </Tag>
                   {session ? (
                     <Link to={`/attendance/sessions/${session.id}/mark`} style={{ fontSize: "0.8125rem", color: "#8d8d8d", textDecoration: "none", whiteSpace: "nowrap" }}>

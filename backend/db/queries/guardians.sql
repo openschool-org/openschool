@@ -3,9 +3,10 @@ INSERT INTO guardians (
     full_name,
     relationship,
     phone,
-    email
+    email,
+    nic_number
 ) VALUES (
-    $1, $2, $3, $4
+    $1, $2, $3, $4, $5
 )
 RETURNING *;
 
@@ -68,7 +69,8 @@ SET
     full_name    = $2,
     relationship = $3,
     phone        = $4,
-    email        = $5
+    email        = $5,
+    nic_number   = $6
 WHERE id = $1
 RETURNING *;
 
@@ -124,6 +126,13 @@ WHERE id = $1;
 -- name: GetGuardianByUserID :one
 SELECT * FROM guardians
 WHERE user_id = $1;
+
+-- name: GetGuardianByUserIDAndNIC :one
+-- Identity check for the unauthenticated forgot-password flow (Phase 8.4) —
+-- confirms the caller knows this guardian's NIC before a reset token is
+-- minted for their account.
+SELECT * FROM guardians
+WHERE user_id = $1 AND nic_number = $2;
 
 -- name: ListStudentsByGuardianUserID :many
 -- The signed-in parent's linked children, for the parent portal.

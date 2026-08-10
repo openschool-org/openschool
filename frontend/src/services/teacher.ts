@@ -9,6 +9,7 @@ export interface Teacher {
   user_id: string;
   full_name: string;
   employee_number: string;
+  nic_number: string;
   joined_date: string | null;
   phone: string | null;
   title: TeacherTitle | null;
@@ -40,25 +41,27 @@ export interface TeacherSubject {
   created_at: string | null;
 }
 
-// Matches models.CreateTeacherRequest
+// Matches models.CreateTeacherRequest — employee_number is auto-assigned
+// server-side (Phase 6.1), not supplied here. No password field — the NIC
+// number becomes the initial (one-time) password server-side (Phase 8.2).
 export interface CreateTeacherRequest {
   email: string;
   given_name: string;
   family_name: string;
   phone_number?: string;
-  password: string;
-  employee_number: string;
+  nic_number: string;
   joined_date: string; // RFC3339 timestamp
   title?: TeacherTitle;
   gender?: "male" | "female";
 }
 
-// Matches models.UpdateTeacherRequest
+// Matches models.UpdateTeacherRequest — employee_number is immutable,
+// nic_number is (Phase 8.1).
 export interface UpdateTeacherRequest {
   given_name: string;
   family_name: string;
   phone_number?: string;
-  employee_number: string;
+  nic_number: string;
   title?: TeacherTitle;
   gender?: "male" | "female";
 }

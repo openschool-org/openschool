@@ -1,5 +1,5 @@
 import { SignInButton, useThunderID } from "@thunderid/react";
-import { Navigate } from "react-router";
+import { Navigate, Link } from "react-router";
 import { Button } from "@carbon/react";
 import { useSetupStatus } from "../queries/useSetup";
 
@@ -38,6 +38,9 @@ export default function SignIn() {
             </Button>
           )}
         </SignInButton>
+        <p style={{ marginTop: "1rem", textAlign: "center", fontSize: "0.875rem" }}>
+          <Link to="/forgot-password">Forgot password?</Link>
+        </p>
       </div>
     </div>
   );

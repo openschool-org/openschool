@@ -24,6 +24,17 @@ export interface AttendanceRecordRow {
   note: string | null;
 }
 
+// Matches db.ListAttendanceByStudentRow
+export interface StudentAttendanceRow {
+  id: string;
+  session_id: string;
+  student_id: string;
+  status: "present" | "absent" | "late" | "excused";
+  note: string | null;
+  session_date: string;
+  class_name: string;
+}
+
 export interface MarkAttendanceRequest {
   records: {
     student_id: string;
@@ -73,4 +84,7 @@ export const attendanceApi = {
   // cascades to every attendance record already written for the session
   deleteSession: (id: string) =>
     api.delete(`/attendance/sessions/${id}`).then((r) => r.data),
+
+  listByStudent: (studentId: string) =>
+    api.get<StudentAttendanceRow[]>(`/students/${studentId}/attendance`).then((r) => r.data),
 };

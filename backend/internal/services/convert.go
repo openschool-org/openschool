@@ -59,3 +59,13 @@ func pgNumeric(v float64) pgtype.Numeric {
 	_ = n.Scan(strconv.FormatFloat(v, 'f', 2, 64))
 	return n
 }
+
+// numericToFloat64 is pgNumeric's inverse — used for aggregate query results
+// (e.g. AVG(...)) which come back NULL (zero rows) rather than zero.
+func numericToFloat64(n pgtype.Numeric) float64 {
+	f, err := n.Float64Value()
+	if err != nil || !f.Valid {
+		return 0
+	}
+	return f.Float64
+}

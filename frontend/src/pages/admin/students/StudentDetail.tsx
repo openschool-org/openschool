@@ -31,8 +31,14 @@ import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import ProfileBanner from "../../../components/common/ProfileBanner";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import ConfirmEditModal from "../../../components/common/ConfirmEditModal";
 import SubjectEnrollment from "./SubjectEnrollment";
 import StudentGuardians from "./StudentGuardians";
+import StudentProgressReports from "./StudentProgressReports";
+import StudentActivities from "./StudentActivities";
+import StudentLeadershipAwards from "./StudentLeadershipAwards";
+import StudentDisciplinary from "./StudentDisciplinary";
+import StudentRecordsRollup from "./StudentRecordsRollup";
 
 type Gender = "" | "male" | "female";
 
@@ -67,6 +73,7 @@ export default function StudentDetail() {
   const { data: houses } = useHouses();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmEditOpen, setConfirmEditOpen] = useState(false);
   const [editing, setEditing] = useState(
     (location.state as { edit?: boolean } | null)?.edit ?? false,
   );
@@ -113,7 +120,7 @@ export default function StudentDetail() {
           gender: form.gender || undefined,
         },
       },
-      { onSuccess: () => setEditing(false) },
+      { onSuccess: () => { setEditing(false); setConfirmEditOpen(false); } },
     );
   };
 
@@ -157,7 +164,7 @@ export default function StudentDetail() {
                 renderIcon={Save}
                 kind="primary"
                 size="sm"
-                onClick={handleSave}
+                onClick={() => setConfirmEditOpen(true)}
                 disabled={!isValid || updateStudent.isPending}
               >
                 {updateStudent.isPending ? "Saving…" : "Save Changes"}
@@ -201,6 +208,11 @@ export default function StudentDetail() {
             <Tab>Profile</Tab>
             <Tab>Guardians</Tab>
             <Tab>Subject Enrollment</Tab>
+            <Tab>Progress Reports</Tab>
+            <Tab>Activities</Tab>
+            <Tab>Leadership &amp; Awards</Tab>
+            <Tab>Disciplinary</Tab>
+            <Tab>Records</Tab>
           </TabList>
           <TabPanels>
             <TabPanel style={{ padding: 0 }}>
@@ -407,6 +419,21 @@ export default function StudentDetail() {
                 <SubjectEnrollment studentId={student.id} />
               </div>
             </TabPanel>
+            <TabPanel style={{ padding: 0 }}>
+              <StudentProgressReports studentId={student.id} />
+            </TabPanel>
+            <TabPanel style={{ padding: 0 }}>
+              <StudentActivities studentId={student.id} />
+            </TabPanel>
+            <TabPanel style={{ padding: 0 }}>
+              <StudentLeadershipAwards studentId={student.id} />
+            </TabPanel>
+            <TabPanel style={{ padding: 0 }}>
+              <StudentDisciplinary studentId={student.id} />
+            </TabPanel>
+            <TabPanel style={{ padding: 0 }}>
+              <StudentRecordsRollup studentId={student.id} />
+            </TabPanel>
           </TabPanels>
         </Tabs>
       </div>
@@ -423,6 +450,15 @@ export default function StudentDetail() {
         isPending={deleteStudent.isPending}
         onClose={() => setConfirmOpen(false)}
         onConfirm={handleDelete}
+      />
+
+      <ConfirmEditModal
+        open={confirmEditOpen}
+        title="Save changes"
+        description={<>Save these changes to <strong>{student.full_name}</strong>&apos;s profile?</>}
+        isPending={updateStudent.isPending}
+        onClose={() => setConfirmEditOpen(false)}
+        onConfirm={handleSave}
       />
     </div>
   );

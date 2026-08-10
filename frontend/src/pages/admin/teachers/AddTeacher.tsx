@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router";
 import {
   Button,
   TextInput,
-  PasswordInput,
   Select,
   SelectItem,
   RadioButtonGroup,
@@ -21,7 +20,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TITLES: TeacherTitle[] = ["Mr", "Miss", "Mrs", "Ms", "Dr", "Von", "Prof"];
 
 type Touched = Partial<
-  Record<"givenName" | "familyName" | "email" | "password" | "employeeNumber" | "joinedDate", boolean>
+  Record<"givenName" | "familyName" | "email" | "nicNumber" | "joinedDate", boolean>
 >;
 
 export default function AddTeacher() {
@@ -34,8 +33,7 @@ export default function AddTeacher() {
   const [familyName, setFamilyName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [employeeNumber, setEmployeeNumber] = useState("");
+  const [nicNumber, setNicNumber] = useState("");
   const [joinedDate, setJoinedDate] = useState("");
   const [touched, setTouched] = useState<Touched>({});
 
@@ -46,8 +44,7 @@ export default function AddTeacher() {
       givenName: true,
       familyName: true,
       email: true,
-      password: true,
-      employeeNumber: true,
+      nicNumber: true,
       joinedDate: true,
     });
     if (!isValid) return;
@@ -57,8 +54,7 @@ export default function AddTeacher() {
         family_name: familyName.trim(),
         email: email.trim(),
         phone_number: phone.trim() || undefined,
-        password,
-        employee_number: employeeNumber.trim(),
+        nic_number: nicNumber.trim(),
         joined_date: new Date(joinedDate).toISOString(),
         title: title || undefined,
         gender: gender || undefined,
@@ -74,16 +70,14 @@ export default function AddTeacher() {
   const givenNameInvalid = !!touched.givenName && !givenName.trim();
   const familyNameInvalid = !!touched.familyName && !familyName.trim();
   const emailInvalid = !!touched.email && !EMAIL_RE.test(email.trim());
-  const passwordInvalid = !!touched.password && password.length < 8;
-  const employeeNumberInvalid = !!touched.employeeNumber && !employeeNumber.trim();
+  const nicNumberInvalid = !!touched.nicNumber && !nicNumber.trim();
   const joinedDateInvalid = !!touched.joinedDate && !joinedDate;
 
   const isValid =
     givenName.trim().length > 0 &&
     familyName.trim().length > 0 &&
     EMAIL_RE.test(email.trim()) &&
-    password.length >= 8 &&
-    employeeNumber.trim().length > 0 &&
+    nicNumber.trim().length > 0 &&
     !!joinedDate;
 
   return (
@@ -174,34 +168,23 @@ export default function AddTeacher() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
-            <div className="os-form__full-col">
-              <PasswordInput
-                id="password"
-                labelText="Password"
-                placeholder="Set an initial password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onBlur={() => markTouched("password")}
-                invalid={passwordInvalid}
-                invalidText="Password must be at least 8 characters."
-              />
-            </div>
+            <TextInput
+              id="nic-number"
+              labelText="NIC Number"
+              placeholder="e.g. 199012345678 or 901234567V"
+              value={nicNumber}
+              onChange={(e) => setNicNumber(e.target.value)}
+              onBlur={() => markTouched("nicNumber")}
+              invalid={nicNumberInvalid}
+              invalidText="NIC number is required."
+              helperText="Used as the teacher's initial one-time password."
+            />
           </div>
         </div>
 
         <div className="os-form__section">
           <div className="os-form__section-header">Employment Details</div>
           <div className="os-form__section-body">
-            <TextInput
-              id="employee-number"
-              labelText="Employee Number"
-              placeholder="e.g. EMP-0145"
-              value={employeeNumber}
-              onChange={(e) => setEmployeeNumber(e.target.value)}
-              onBlur={() => markTouched("employeeNumber")}
-              invalid={employeeNumberInvalid}
-              invalidText="Employee number is required."
-            />
             <DatePicker
               datePickerType="single"
               dateFormat="Y-m-d"

@@ -41,5 +41,26 @@ jobs:
       - name: Build
         run: go build ./...
 
+      - name: Vet
+        run: go vet ./...
+
+      - name: Staticcheck
+        run: go run honnef.co/go/tools/cmd/staticcheck@latest ./...
+
       - name: Test
         run: go test ./...
+
+      - name: Vulnerability scan (govulncheck)
+        # Informational only for now: this currently reports real findings
+        # (mostly Go-toolchain-version CVEs, fixed by bumping the Go
+        # version rather than app code) that would otherwise break every
+        # PR. Flip to blocking once the backlog is clear.
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+        continue-on-error: true
+
+      - name: Dead code scan
+        # Informational only for now: there is real dead code today (see
+        # audit.md) that this would otherwise fail the build on. Flip to
+        # blocking once it's cleaned up.
+        run: go run golang.org/x/tools/cmd/deadcode@latest ./...
+        continue-on-error: true

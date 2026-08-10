@@ -28,6 +28,10 @@ func (r *TeacherRepository) GetByEmployeeNumber(ctx context.Context, employeeNum
 	return r.queries.GetTeacherByEmployeeNumber(ctx, employeeNumber)
 }
 
+func (r *TeacherRepository) NextEmployeeNumber(ctx context.Context) (string, error) {
+	return r.queries.NextEmployeeNumber(ctx)
+}
+
 func (r *TeacherRepository) List(ctx context.Context) ([]db.TeacherProfile, error) {
 	return r.queries.ListTeachers(ctx)
 }
@@ -78,6 +82,13 @@ func (r *TeacherRepository) SetActiveStatus(ctx context.Context, teacherID uuid.
 
 func (r *TeacherRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (db.TeacherProfile, error) {
 	return r.queries.GetTeacherByUserID(ctx, userID)
+}
+
+func (r *TeacherRepository) GetByUserIDAndNIC(ctx context.Context, userID uuid.UUID, nicNumber string) (db.TeacherProfile, error) {
+	return r.queries.GetTeacherByUserIDAndNIC(ctx, db.GetTeacherByUserIDAndNICParams{
+		UserID:    userID,
+		NicNumber: nicNumber,
+	})
 }
 
 func (r *TeacherRepository) ListWorkload(ctx context.Context, teacherID uuid.UUID) ([]db.ListTeacherWorkloadRow, error) {

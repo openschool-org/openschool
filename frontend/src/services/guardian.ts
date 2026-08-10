@@ -19,6 +19,7 @@ export interface Guardian {
   relationship: GuardianRelationship;
   phone: string;
   email: string | null;
+  nic_number: string;
   created_at: string | null;
 }
 
@@ -31,6 +32,7 @@ export interface CreateGuardianRequest {
   relationship: GuardianRelationship;
   phone: string;
   email?: string;
+  nic_number: string;
 }
 
 export interface CreateGuardianResult {
@@ -40,9 +42,10 @@ export interface CreateGuardianResult {
 
 export type UpdateGuardianRequest = CreateGuardianRequest;
 
+// No password field — the guardian's NIC number (already on file) becomes
+// their initial (one-time) portal password server-side (Phase 8.2).
 export interface ProvisionGuardianLoginRequest {
   username: string;
-  password: string;
   given_name: string;
   family_name: string;
 }
