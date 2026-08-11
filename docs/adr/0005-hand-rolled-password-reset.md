@@ -1,7 +1,6 @@
 # 0005. Hand-rolled password lifecycle (no IDP primitive)
 
-**Status:** Accepted, known weakness — revisit before relying on this in a
-security-sensitive deployment
+**Status:** Accepted
 
 ## Context
 
@@ -29,7 +28,9 @@ integration:
   `AuthService.ForgotPassword` identifies the requester by login email
   plus their on-file secret (NIC for teacher/parent, index number for
   student — administrators are excluded, since they have no secondary
-  secret on file) before issuing a token.
+  secret on file) before issuing a token and emailing a reset link
+  containing it to the address on file (`internal/mailer`) — the token
+  itself is never returned in the API response.
 
 ## Consequences
 
@@ -38,16 +39,15 @@ integration:
   exception to ADR 0001's "no local password storage" — scoped tightly
   (single-use, 15-minute TTL, hash-only) specifically because it's an
   exception.
-- **Known weakness, tracked as Critical in `audit.md` (finding C-1):**
-  `ForgotPassword` currently returns the reset token directly in the API
-  response rather than delivering it through a channel only the account
-  owner controls (e.g. email). Combined with the "secret" being a
-  semi-public identifier (NIC numbers and index numbers appear on
-  physical documents and are often known to family or classmates), this
-  meaningfully weakens the verification step's value. **This should be
-  treated as a decision to revisit, not a settled design** — see
-  `audit.md` for the full failure scenario and suggested fix (deliver the
-  token via the account's on-file email instead of the response body).
+- **Resolved weakness, tracked as Critical in `audit.md` (finding C-1):**
+  `ForgotPassword` used to return the reset token directly in the API
+  response, which — combined with the "secret" being a semi-public
+  identifier (NIC numbers and index numbers appear on physical documents
+  and are often known to family or classmates) — meaningfully weakened
+  the verification step's value. Fixed by delivering the token via a link
+  emailed to the account's on-file address (`internal/mailer`,
+  `ResetPassword.tsx`) instead of the response body; the endpoint's JSON
+  response is now a generic acknowledgement with no secret in it.
 - **Administrators cannot use self-service reset** — by design, since
   they have no NIC/index-number-equivalent secret on file. An admin who
   forgets their password needs direct database/operator intervention.

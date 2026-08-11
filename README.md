@@ -63,15 +63,11 @@ the local dev setup and PR workflow. Please also read the
 Found a security issue? Please **don't** open a public GitHub issue — see
 [`SECURITY.md`](SECURITY.md) for how to report it privately.
 
-## Founders
+## Maintainers
 
-OpenSchool was started by:
-
-- [Chamal Senarathna](https://github.com/chamals3n4)
-- [Hasitha Erandika](https://github.com/HasithaErandika)
-
-See the [contributors graph](https://github.com/openschool-org/openschool/graphs/contributors)
-for everyone who's helped since.
+This project is started and maintained by [Vertex Labs](https://vertexlabs.team),
+and has grown with everyone who's contributed since — see the
+[contributors graph](https://github.com/openschool-org/openschool/graphs/contributors).
 
 ## License
 

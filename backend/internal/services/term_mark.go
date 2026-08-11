@@ -72,17 +72,35 @@ func (s *TermMarkService) BulkUpsertMarks(ctx context.Context, classID uuid.UUID
 			return nil, err
 		}
 
+		// The class+subject authorization above only proves the teacher may
+		// enter marks for *this class* — without also checking the student
+		// is actually enrolled in it, a caller could submit marks for any
+		// student UUID from an entirely different class.
+		enrolledClass, err := s.classRepo.GetStudentCurrentClass(ctx, studentID)
+		if err != nil || enrolledClass.ID != classID {
+			return nil, fmt.Errorf("student %s is not enrolled in this class", entry.StudentID)
+		}
+
 		maxMarks := entry.MaxMarks
 		if maxMarks == 0 {
 			maxMarks = 100
+		}
+
+		marksNumeric, err := pgNumeric(entry.Marks)
+		if err != nil {
+			return nil, err
+		}
+		maxMarksNumeric, err := pgNumeric(maxMarks)
+		if err != nil {
+			return nil, err
 		}
 
 		mark, err := s.repo.Upsert(ctx, db.UpsertTermMarkParams{
 			StudentID: studentID,
 			SubjectID: subjectID,
 			TermID:    termID,
-			Marks:     pgNumeric(entry.Marks),
-			MaxMarks:  pgNumeric(maxMarks),
+			Marks:     marksNumeric,
+			MaxMarks:  maxMarksNumeric,
 			EnteredBy: pgtype.UUID{Bytes: actor.ID, Valid: true},
 		})
 		if err != nil {

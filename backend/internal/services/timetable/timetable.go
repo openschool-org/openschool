@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -394,7 +395,10 @@ func (s *TimetableService) Submit(ctx context.Context, id, submittedByUserID uui
 	_, _ = s.repo.AddStatusHistory(ctx, id, &fromStatus, "under_review", submittedByUserID, "")
 
 	if class, err := s.classRepo.GetByID(ctx, tt.ClassID); err == nil {
-		reviewers, _ := s.resolveAuthorizedReviewerIDs(ctx, class.GradeID, tt.AcademicYearID)
+		reviewers, err := s.resolveAuthorizedReviewerIDs(ctx, class.GradeID, tt.AcademicYearID)
+		if err != nil {
+			log.Printf("Submit: failed to resolve reviewers for grade %s, timetable %s not notified: %v", class.GradeID, id, err)
+		}
 		var reviewerUserIDs []uuid.UUID
 		for _, reviewerID := range reviewers {
 			if teacher, err := s.teacherRepo.GetByID(ctx, reviewerID); err == nil {
@@ -520,7 +524,10 @@ func (s *TimetableService) notifyPublication(ctx context.Context, tt db.Timetabl
 		}
 	}
 
-	entries, _ := s.repo.ListEntries(ctx, tt.ID)
+	entries, err := s.repo.ListEntries(ctx, tt.ID)
+	if err != nil {
+		log.Printf("notifyPublication: failed to list entries for timetable %s, teachers not notified: %v", tt.ID, err)
+	}
 	notifiedTeachers := make(map[uuid.UUID]bool)
 	for _, e := range entries {
 		if !e.TeacherID.Valid {
@@ -536,7 +543,10 @@ func (s *TimetableService) notifyPublication(ctx context.Context, tt db.Timetabl
 		}
 	}
 
-	students, _ := s.studentRepo.ListByClass(ctx, tt.ClassID)
+	students, err := s.studentRepo.ListByClass(ctx, tt.ClassID)
+	if err != nil {
+		log.Printf("notifyPublication: failed to list students for class %s, students/guardians not notified: %v", tt.ClassID, err)
+	}
 	studentIDs := make([]uuid.UUID, 0, len(students))
 	for _, student := range students {
 		if student.UserID.Valid {

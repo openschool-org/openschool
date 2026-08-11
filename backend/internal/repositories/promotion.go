@@ -10,11 +10,12 @@ import (
 )
 
 type PromotionRepository struct {
+	pool    *pgxpool.Pool
 	queries *db.Queries
 }
 
 func NewPromotionRepository(pool *pgxpool.Pool) *PromotionRepository {
-	return &PromotionRepository{queries: db.New(pool)}
+	return &PromotionRepository{pool: pool, queries: db.New(pool)}
 }
 
 // GetNextGrade returns the grade with the smallest sort_order greater than
@@ -65,18 +66,33 @@ func (r *PromotionRepository) CountClassesInYear(ctx context.Context, academicYe
 
 // CommitAssignments clears any existing enrollment for these students in
 // this academic year, then bulk-inserts the new class assignments in one
-// batched UNNEST write. Not wrapped in a transaction (matches this
-// codebase's existing non-transactional style elsewhere) — safe to re-run
-// since it's idempotent.
+// batched UNNEST write. Wrapped in a transaction so a crash or dropped
+// connection between the delete and the insert can't leave every student in
+// the batch with no class assignment at all — it's still safe to re-run
+// (idempotent), but that no longer has to be the only thing standing between
+// a mid-write interruption and a grade's worth of "unassigned" students.
 func (r *PromotionRepository) CommitAssignments(ctx context.Context, academicYearID uuid.UUID, studentIDs, classIDs []uuid.UUID) error {
-	if err := r.queries.BulkDeleteClassStudentsForYear(ctx, db.BulkDeleteClassStudentsForYearParams{
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := r.queries.WithTx(tx)
+
+	if err := qtx.BulkDeleteClassStudentsForYear(ctx, db.BulkDeleteClassStudentsForYearParams{
 		AcademicYearID: academicYearID,
 		StudentIds:     studentIDs,
 	}); err != nil {
 		return err
 	}
-	return r.queries.BulkInsertClassStudents(ctx, db.BulkInsertClassStudentsParams{
+
+	if err := qtx.BulkInsertClassStudents(ctx, db.BulkInsertClassStudentsParams{
 		ClassIds:   classIDs,
 		StudentIds: studentIDs,
-	})
+	}); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }

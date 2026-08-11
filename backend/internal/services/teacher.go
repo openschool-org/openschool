@@ -72,9 +72,16 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		return db.TeacherProfile{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
-	// assign teacher role in the identity provider
+	// assign teacher role in the identity provider — a failure here must be
+	// a hard error, not just a log line: without it, the account gets
+	// created successfully but no teacher claim ever lands on its JWT, so
+	// every later request from it is rejected with 403 and no clue why.
 	if err := s.idp.AssignRole(ctx, identity.RoleID("teacher"), idpUser.ID); err != nil {
-		log.Printf("CreateTeacher: failed to assign teacher role to %s: %v", idpUser.ID, err)
+		rollbackIDPUser(ctx, s.idp, "CreateTeacher", idpUser.ID)
+		if delErr := s.repo.DeleteUser(ctx, userID); delErr != nil {
+			log.Printf("CreateTeacher: failed to roll back local user row %s after error: %v (local user now orphaned)", userID, delErr)
+		}
+		return db.TeacherProfile{}, fmt.Errorf("failed to assign teacher role: %w", err)
 	}
 
 	houseID := pgtype.UUID{}
@@ -135,7 +142,7 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 		"phone":       req.PhoneNumber,
 	})
 	if err != nil {
-		fmt.Printf("warning: failed to update identity provider user: %v\n", err)
+		log.Printf("UpdateTeacher: failed to update identity provider user: %v", err)
 	}
 
 	return s.repo.Update(ctx, db.UpdateTeacherProfileParams{
@@ -183,7 +190,12 @@ func (s *TeacherService) DeleteTeacher(ctx context.Context, id uuid.UUID) error 
 	}
 
 	if err := s.repo.DeleteUser(ctx, userID); err != nil {
-		return fmt.Errorf("failed to delete user record: %w", err)
+		// Unlike the IDP-delete failure below, this leaves the local users
+		// row AND the identity provider account both fully live and able to
+		// authenticate, with no teacher profile anywhere — worse than the
+		// documented orphan case, since the account still works. Retrying
+		// this same delete call is safe (teacher profile is already gone).
+		return fmt.Errorf("teacher profile deleted but failed to delete local user record — the account (id %s) can still sign in with no profile and must be removed manually or by retrying this delete: %w", userID, err)
 	}
 
 	if err := s.idp.DeleteUser(ctx, userID.String()); err != nil {

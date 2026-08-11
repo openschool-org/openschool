@@ -12,9 +12,10 @@ export interface ForgotPasswordRequest {
   secret: string;
 }
 
+// Deliberately carries no token — the reset link is delivered out-of-band by
+// email, not handed back to whoever called this endpoint.
 export interface ForgotPasswordResponse {
-  reset_token: string;
-  expires_at: string;
+  message: string;
 }
 
 export interface ResetPasswordRequest {

@@ -102,7 +102,7 @@ export default function AnalyticsSection() {
   }
 
   const genderRows: CountRow[] = data.student.gender_distribution.map((g) => ({
-    label: g.label[0].toUpperCase() + g.label.slice(1),
+    label: g.label ? g.label[0].toUpperCase() + g.label.slice(1) : "Unspecified",
     count: g.count,
   }));
 

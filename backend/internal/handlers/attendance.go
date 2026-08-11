@@ -168,9 +168,15 @@ func (h *AttendanceHandler) ListSessionsByClass(c *gin.Context) {
 		return
 	}
 
-	sessions, err := h.service.ListSessionsByClass(c.Request.Context(), classID)
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	sessions, err := h.service.ListSessionsByClass(c.Request.Context(), actor, classID)
+	if err != nil {
+		c.JSON(statusForAttendanceError(err, http.StatusInternalServerError), gin.H{"error": err.Error()})
 		return
 	}
 

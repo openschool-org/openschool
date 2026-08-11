@@ -33,7 +33,7 @@ import {
   Group,
   DocumentPdf,
 } from "@carbon/icons-react";
-import { AxiosError } from "axios";
+import { isNotFoundError } from "../lib/errorMessage";
 import { useSchool } from "../queries/useSchool";
 import {
   AppHeaderBrand,
@@ -103,8 +103,7 @@ export default function RootLayout() {
   const location = useLocation();
 
   const { isLoading: schoolLoading, error: schoolError } = useSchool();
-  const noSchoolYet =
-    schoolError instanceof AxiosError && schoolError.response?.status === 404;
+  const noSchoolYet = isNotFoundError(schoolError);
 
   if (!schoolLoading && noSchoolYet && location.pathname !== "/school-setup") {
     return <Navigate to="/school-setup" replace />;

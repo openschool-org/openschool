@@ -14,6 +14,7 @@ import {
 import { ArrowLeft, Save } from "@carbon/icons-react";
 import { useCreateTeacher } from "../../../queries/useTeachers";
 import { getErrorMessage } from "../../../lib/errorMessage";
+import { toYmd } from "../../../lib/date";
 import type { TeacherTitle } from "../../../services/teacher";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -189,14 +190,7 @@ export default function AddTeacher() {
               datePickerType="single"
               dateFormat="Y-m-d"
               value={joinedDate}
-              onChange={(dates) => {
-                const d = dates[0];
-                setJoinedDate(
-                  d
-                    ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
-                    : "",
-                );
-              }}
+              onChange={(dates) => setJoinedDate(toYmd(dates[0]))}
             >
               <DatePickerInput
                 id="joined-date"

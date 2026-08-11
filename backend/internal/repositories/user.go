@@ -36,6 +36,10 @@ func (r *UserRepository) CountByRole(ctx context.Context, role string) (int64, e
 	return r.queries.CountUsersByRole(ctx, role)
 }
 
+func (r *UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	return r.queries.DeleteUser(ctx, id)
+}
+
 func (r *UserRepository) SetMustChangePassword(ctx context.Context, id uuid.UUID, mustChange bool) error {
 	return r.queries.SetMustChangePassword(ctx, db.SetMustChangePasswordParams{
 		ID:                 id,

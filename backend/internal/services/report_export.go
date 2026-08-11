@@ -104,7 +104,7 @@ func (s *ReportExportService) ExportAttendance(ctx context.Context, req models.A
 	}
 
 	title := fmt.Sprintf("Attendance Report — %s (%s to %s)", class.Name, req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
-	return renderTablePDF(title, headers, rows), nil
+	return renderTablePDF(title, headers, rows)
 }
 
 // ExportMarks renders the marks report PDF and returns the raw bytes.
@@ -178,12 +178,12 @@ func (s *ReportExportService) ExportMarks(ctx context.Context, req models.MarksR
 	}
 
 	title := fmt.Sprintf("Marks Report — %s | %s | %s", class.Name, term.Name, subject.Name)
-	return renderTablePDF(title, headers, rows), nil
+	return renderTablePDF(title, headers, rows)
 }
 
 // renderTablePDF builds a simple landscape A4 table PDF: a title line and a
 // header row followed by data rows, columns evenly spaced.
-func renderTablePDF(title string, headers []string, rows [][]string) []byte {
+func renderTablePDF(title string, headers []string, rows [][]string) ([]byte, error) {
 	pdf := gofpdf.New("L", "mm", "A4", "")
 	pdf.AddPage()
 	pdf.SetFont("Helvetica", "B", 14)
@@ -216,8 +216,10 @@ func renderTablePDF(title string, headers []string, rows [][]string) []byte {
 	}
 
 	var buf bytes.Buffer
-	_ = pdf.Output(&buf)
-	return buf.Bytes()
+	if err := pdf.Output(&buf); err != nil {
+		return nil, fmt.Errorf("failed to render PDF: %w", err)
+	}
+	return buf.Bytes(), nil
 }
 
 // formatNumeric renders a pgtype.Numeric mark value trimmed of trailing

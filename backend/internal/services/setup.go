@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 	db "github.com/openschool-org/openschool/db/sqlc"
@@ -84,6 +85,14 @@ func (s *SetupService) RegisterFirstAdmin(ctx context.Context, req models.Regist
 	}
 
 	if err := s.idp.AssignRole(ctx, identity.RoleID("admin"), idpUser.ID); err != nil {
+		// Unlike every earlier failure branch in this function, this one runs
+		// after the local admin row already exists — NeedsSetup() would
+		// otherwise report false forever, permanently locking /setup behind a
+		// user who can never actually sign in (no role on their IDP account).
+		if delErr := s.repo.Delete(ctx, userID); delErr != nil {
+			log.Printf("RegisterFirstAdmin: failed to roll back local user row %s: %v (local admin row now orphaned, instance may be unbootstrappable)", userID, delErr)
+		}
+		rollbackIDPUser(ctx, s.idp, "RegisterFirstAdmin", idpUser.ID)
 		return db.User{}, fmt.Errorf("failed to assign admin role: %w", err)
 	}
 

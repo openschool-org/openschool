@@ -12,8 +12,7 @@ import {
   InlineNotification,
 } from "@carbon/react";
 import { Save, Edit, Settings as SettingsIcon } from "@carbon/icons-react";
-import { AxiosError } from "axios";
-import { getErrorMessage } from "../../../lib/errorMessage";
+import { getErrorMessage, isNotFoundError } from "../../../lib/errorMessage";
 import SchoolInfoCard, { type SchoolFormValues } from "../../../components/school/SchoolInfoCard";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
@@ -54,7 +53,7 @@ export default function SettingsPage() {
   const updateSchool = useUpdateSchool();
   const createSchool = useCreateSchool();
 
-  const noSchoolYet = error instanceof AxiosError && error.response?.status === 404;
+  const noSchoolYet = isNotFoundError(error);
 
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -240,21 +239,25 @@ export default function SettingsPage() {
               }
             />
           </div>
+          {/* These four aren't backed by any field on the School model yet — disabled
+              rather than wired to a no-op onChange, so the UI doesn't imply a save
+              that never happens (audit.md M-13). Re-enable once there's a backend
+              field for each to actually persist to. */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
-            <Select id="timezone" labelText="Time Zone" defaultValue="asia_colombo" disabled={!editing}>
+            <Select id="timezone" labelText="Time Zone" defaultValue="asia_colombo" disabled helperText="Not yet configurable">
               <SelectItem value="asia_colombo" text="Asia/Colombo (UTC+5:30)" />
               <SelectItem value="utc" text="UTC" />
             </Select>
-            <Select id="language" labelText="Default Language" defaultValue="english" disabled={!editing}>
+            <Select id="language" labelText="Default Language" defaultValue="english" disabled helperText="Not yet configurable">
               <SelectItem value="english" text="English" />
               <SelectItem value="sinhala" text="Sinhala" />
               <SelectItem value="tamil" text="Tamil" />
             </Select>
-            <Select id="calendar" labelText="Academic Calendar" defaultValue="jan_dec" disabled={!editing}>
+            <Select id="calendar" labelText="Academic Calendar" defaultValue="jan_dec" disabled helperText="Not yet configurable">
               <SelectItem value="jan_dec" text="January - December" />
               <SelectItem value="sep_aug" text="September - August" />
             </Select>
-            <Select id="grading" labelText="Grading System" defaultValue="percentage" disabled={!editing}>
+            <Select id="grading" labelText="Grading System" defaultValue="percentage" disabled helperText="Not yet configurable">
               <SelectItem value="percentage" text="Percentage (0-100)" />
               <SelectItem value="grade" text="Grade (A-F)" />
             </Select>

@@ -47,11 +47,7 @@ import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 import EntityCombobox from "../../../components/common/EntityCombobox";
 import ClassMarks from "./ClassMarks";
-
-function toYmd(d: Date | undefined): string {
-  if (!d) return "";
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
+import { toYmd, todayISODate } from "../../../lib/date";
 
 function formatClassLabel(name: string) {
   const m = name.match(/^(\d+)([^\d-].*)$/);
@@ -96,7 +92,7 @@ export default function ClassDetail() {
   const [enrolOpen, setEnrolOpen] = useState(false);
   const [studentChoice, setStudentChoice] = useState("");
   const [sessionOpen, setSessionOpen] = useState(false);
-  const [sessionDate, setSessionDate] = useState(toYmd(new Date()));
+  const [sessionDate, setSessionDate] = useState(todayISODate());
   const [toUnenroll, setToUnenroll] = useState<Student | null>(null);
   const [toDeleteSession, setToDeleteSession] = useState<AttendanceSession | null>(null);
   const [sessionDateFilter, setSessionDateFilter] = useState("");
@@ -207,7 +203,7 @@ export default function ClassDetail() {
 
   const openNewSession = () => {
     createSession.reset();
-    setSessionDate(toYmd(new Date()));
+    setSessionDate(todayISODate());
     setSessionOpen(true);
   };
 

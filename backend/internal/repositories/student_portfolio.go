@@ -37,12 +37,12 @@ func (r *StudentPortfolioRepository) ListProgressReports(ctx context.Context, st
 	return r.queries.ListProgressReportsByStudent(ctx, studentID)
 }
 
-func (r *StudentPortfolioRepository) UpdateProgressReport(ctx context.Context, id uuid.UUID, narrative string) (db.StudentProgressReport, error) {
-	return r.queries.UpdateProgressReport(ctx, db.UpdateProgressReportParams{ID: id, Narrative: narrative})
+func (r *StudentPortfolioRepository) UpdateProgressReport(ctx context.Context, id, studentID uuid.UUID, narrative string) (db.StudentProgressReport, error) {
+	return r.queries.UpdateProgressReport(ctx, db.UpdateProgressReportParams{ID: id, StudentID: studentID, Narrative: narrative})
 }
 
-func (r *StudentPortfolioRepository) DeleteProgressReport(ctx context.Context, id uuid.UUID) (int64, error) {
-	return r.queries.DeleteProgressReport(ctx, id)
+func (r *StudentPortfolioRepository) DeleteProgressReport(ctx context.Context, id, studentID uuid.UUID) (int64, error) {
+	return r.queries.DeleteProgressReport(ctx, db.DeleteProgressReportParams{ID: id, StudentID: studentID})
 }
 
 // Activities
@@ -62,9 +62,10 @@ func (r *StudentPortfolioRepository) ListActivities(ctx context.Context, student
 	return r.queries.ListStudentActivitiesByStudent(ctx, studentID)
 }
 
-func (r *StudentPortfolioRepository) UpdateActivity(ctx context.Context, id uuid.UUID, category, name, role, achievement string) (db.StudentActivity, error) {
+func (r *StudentPortfolioRepository) UpdateActivity(ctx context.Context, id, studentID uuid.UUID, category, name, role, achievement string) (db.StudentActivity, error) {
 	return r.queries.UpdateStudentActivity(ctx, db.UpdateStudentActivityParams{
 		ID:          id,
+		StudentID:   studentID,
 		Category:    category,
 		Name:        name,
 		Role:        pgtype.Text{String: role, Valid: role != ""},
@@ -72,8 +73,8 @@ func (r *StudentPortfolioRepository) UpdateActivity(ctx context.Context, id uuid
 	})
 }
 
-func (r *StudentPortfolioRepository) DeleteActivity(ctx context.Context, id uuid.UUID) (int64, error) {
-	return r.queries.DeleteStudentActivity(ctx, id)
+func (r *StudentPortfolioRepository) DeleteActivity(ctx context.Context, id, studentID uuid.UUID) (int64, error) {
+	return r.queries.DeleteStudentActivity(ctx, db.DeleteStudentActivityParams{ID: id, StudentID: studentID})
 }
 
 // Leadership roles
@@ -91,8 +92,8 @@ func (r *StudentPortfolioRepository) ListLeadershipRoles(ctx context.Context, st
 	return r.queries.ListStudentLeadershipRolesByStudent(ctx, studentID)
 }
 
-func (r *StudentPortfolioRepository) DeleteLeadershipRole(ctx context.Context, id uuid.UUID) (int64, error) {
-	return r.queries.DeleteStudentLeadershipRole(ctx, id)
+func (r *StudentPortfolioRepository) DeleteLeadershipRole(ctx context.Context, id, studentID uuid.UUID) (int64, error) {
+	return r.queries.DeleteStudentLeadershipRole(ctx, db.DeleteStudentLeadershipRoleParams{ID: id, StudentID: studentID})
 }
 
 // Awards
@@ -112,8 +113,8 @@ func (r *StudentPortfolioRepository) ListAwards(ctx context.Context, studentID u
 	return r.queries.ListStudentAwardsByStudent(ctx, studentID)
 }
 
-func (r *StudentPortfolioRepository) DeleteAward(ctx context.Context, id uuid.UUID) (int64, error) {
-	return r.queries.DeleteStudentAward(ctx, id)
+func (r *StudentPortfolioRepository) DeleteAward(ctx context.Context, id, studentID uuid.UUID) (int64, error) {
+	return r.queries.DeleteStudentAward(ctx, db.DeleteStudentAwardParams{ID: id, StudentID: studentID})
 }
 
 // Disciplinary records
@@ -138,6 +139,6 @@ func (r *StudentPortfolioRepository) ListDisciplinaryRecords(ctx context.Context
 	return r.queries.ListDisciplinaryRecordsByStudent(ctx, studentID)
 }
 
-func (r *StudentPortfolioRepository) DeleteDisciplinaryRecord(ctx context.Context, id uuid.UUID) (int64, error) {
-	return r.queries.DeleteDisciplinaryRecord(ctx, id)
+func (r *StudentPortfolioRepository) DeleteDisciplinaryRecord(ctx context.Context, id, studentID uuid.UUID) (int64, error) {
+	return r.queries.DeleteDisciplinaryRecord(ctx, db.DeleteDisciplinaryRecordParams{ID: id, StudentID: studentID})
 }

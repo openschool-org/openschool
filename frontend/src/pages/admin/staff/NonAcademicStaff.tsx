@@ -36,7 +36,7 @@ import { getErrorMessage } from "../../../lib/errorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
-import { todayISODate } from "../../../lib/date";
+import { todayISODate, toYmd } from "../../../lib/date";
 
 const EMPLOYMENT_STATUSES: { value: NonAcademicEmploymentStatus; label: string }[] = [
   { value: "active", label: "Active" },
@@ -163,12 +163,9 @@ function StaffFormModal({
               dateFormat="Y-m-d"
               value={form.joined_date}
               onChange={(dates) => {
-                const d = dates[0];
-                if (d) {
-                  setForm((f) => ({
-                    ...f,
-                    joined_date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
-                  }));
+                const ymd = toYmd(dates[0]);
+                if (ymd) {
+                  setForm((f) => ({ ...f, joined_date: ymd }));
                 }
               }}
             >

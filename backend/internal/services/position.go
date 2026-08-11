@@ -154,18 +154,14 @@ type PositionSummary struct {
 // notify the whole school (true for Principal, or a Vice Principal with
 // notify_whole_school granted) — used by GET /me/teacher/position.
 func (s *PositionService) SummaryForTeacher(ctx context.Context, teacherID, academicYearID uuid.UUID) (PositionSummary, error) {
-	rank, err := s.RankForTeacher(ctx, teacherID, academicYearID)
+	rank, vicePrincipalPosition, err := s.RankForTeacher(ctx, teacherID, academicYearID)
 	if err != nil {
 		return PositionSummary{}, err
 	}
 
 	notifyWholeSchool := rank == RankPrincipal
 	if rank == RankVicePrincipal {
-		position, err := s.repo.GetForTeacher(ctx, teacherID)
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return PositionSummary{}, err
-		}
-		notifyWholeSchool = position.NotifyWholeSchool
+		notifyWholeSchool = vicePrincipalPosition.NotifyWholeSchool
 	}
 
 	return PositionSummary{
@@ -179,47 +175,50 @@ func (s *PositionService) SummaryForTeacher(ctx context.Context, teacherID, acad
 // each mechanism in hierarchy order and stopping at the first match.
 // Principal/Vice Principal are permanent (not year-scoped); Section
 // Head/Class Teacher/Subject Teacher are checked for the given academic
-// year since those assignments legitimately change every year.
-func (s *PositionService) RankForTeacher(ctx context.Context, teacherID, academicYearID uuid.UUID) (PositionRank, error) {
+// year since those assignments legitimately change every year. The second
+// return value is only meaningful when rank is RankVicePrincipal — it's the
+// row SummaryForTeacher would otherwise have to re-fetch to read
+// NotifyWholeSchool off of.
+func (s *PositionService) RankForTeacher(ctx context.Context, teacherID, academicYearID uuid.UUID) (PositionRank, db.TeacherPosition, error) {
 	isPrincipal, err := s.repo.IsPrincipal(ctx, teacherID)
 	if err != nil {
-		return 0, err
+		return 0, db.TeacherPosition{}, err
 	}
 	if isPrincipal {
-		return RankPrincipal, nil
+		return RankPrincipal, db.TeacherPosition{}, nil
 	}
 
 	position, err := s.repo.GetForTeacher(ctx, teacherID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return 0, err
+		return 0, db.TeacherPosition{}, err
 	}
 	if err == nil && position.Position == "vice_principal" {
-		return RankVicePrincipal, nil
+		return RankVicePrincipal, position, nil
 	}
 
 	headedGrades, err := s.sectionHeadRepo.ListGradeIDsHeadedByTeacher(ctx, teacherID, academicYearID)
 	if err != nil {
-		return 0, err
+		return 0, db.TeacherPosition{}, err
 	}
 	if len(headedGrades) > 0 {
-		return RankSectionHead, nil
+		return RankSectionHead, db.TeacherPosition{}, nil
 	}
 
 	isFormTeacher, err := s.repo.IsFormTeacherOfAnyClass(ctx, teacherID, academicYearID)
 	if err != nil {
-		return 0, err
+		return 0, db.TeacherPosition{}, err
 	}
 	if isFormTeacher {
-		return RankClassTeacher, nil
+		return RankClassTeacher, db.TeacherPosition{}, nil
 	}
 
 	isSubjectTeacher, err := s.repo.IsSubjectTeacherOfAnyClass(ctx, teacherID, academicYearID)
 	if err != nil {
-		return 0, err
+		return 0, db.TeacherPosition{}, err
 	}
 	if isSubjectTeacher {
-		return RankSubjectTeacher, nil
+		return RankSubjectTeacher, db.TeacherPosition{}, nil
 	}
 
-	return RankTeacher, nil
+	return RankTeacher, db.TeacherPosition{}, nil
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
@@ -52,12 +53,16 @@ func (s *StudentPortfolioService) ListProgressReports(ctx context.Context, stude
 	return s.repo.ListProgressReports(ctx, studentID)
 }
 
-func (s *StudentPortfolioService) UpdateProgressReport(ctx context.Context, id uuid.UUID, req models.UpdateProgressReportRequest) (db.StudentProgressReport, error) {
-	return s.repo.UpdateProgressReport(ctx, id, req.Narrative)
+func (s *StudentPortfolioService) UpdateProgressReport(ctx context.Context, id, studentID uuid.UUID, req models.UpdateProgressReportRequest) (db.StudentProgressReport, error) {
+	report, err := s.repo.UpdateProgressReport(ctx, id, studentID, req.Narrative)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return db.StudentProgressReport{}, ErrPortfolioRecordNotFound
+	}
+	return report, err
 }
 
-func (s *StudentPortfolioService) DeleteProgressReport(ctx context.Context, id uuid.UUID) error {
-	rows, err := s.repo.DeleteProgressReport(ctx, id)
+func (s *StudentPortfolioService) DeleteProgressReport(ctx context.Context, id, studentID uuid.UUID) error {
+	rows, err := s.repo.DeleteProgressReport(ctx, id, studentID)
 	if err != nil {
 		return err
 	}
@@ -84,15 +89,19 @@ func (s *StudentPortfolioService) ListActivities(ctx context.Context, studentID 
 	return s.repo.ListActivities(ctx, studentID)
 }
 
-func (s *StudentPortfolioService) UpdateActivity(ctx context.Context, id uuid.UUID, req models.UpdateActivityRequest) (db.StudentActivity, error) {
+func (s *StudentPortfolioService) UpdateActivity(ctx context.Context, id, studentID uuid.UUID, req models.UpdateActivityRequest) (db.StudentActivity, error) {
 	if !models.ValidActivityCategories[req.Category] {
 		return db.StudentActivity{}, ErrInvalidActivityCategory
 	}
-	return s.repo.UpdateActivity(ctx, id, req.Category, req.Name, req.Role, req.Achievement)
+	activity, err := s.repo.UpdateActivity(ctx, id, studentID, req.Category, req.Name, req.Role, req.Achievement)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return db.StudentActivity{}, ErrPortfolioRecordNotFound
+	}
+	return activity, err
 }
 
-func (s *StudentPortfolioService) DeleteActivity(ctx context.Context, id uuid.UUID) error {
-	rows, err := s.repo.DeleteActivity(ctx, id)
+func (s *StudentPortfolioService) DeleteActivity(ctx context.Context, id, studentID uuid.UUID) error {
+	rows, err := s.repo.DeleteActivity(ctx, id, studentID)
 	if err != nil {
 		return err
 	}
@@ -116,8 +125,8 @@ func (s *StudentPortfolioService) ListLeadershipRoles(ctx context.Context, stude
 	return s.repo.ListLeadershipRoles(ctx, studentID)
 }
 
-func (s *StudentPortfolioService) DeleteLeadershipRole(ctx context.Context, id uuid.UUID) error {
-	rows, err := s.repo.DeleteLeadershipRole(ctx, id)
+func (s *StudentPortfolioService) DeleteLeadershipRole(ctx context.Context, id, studentID uuid.UUID) error {
+	rows, err := s.repo.DeleteLeadershipRole(ctx, id, studentID)
 	if err != nil {
 		return err
 	}
@@ -141,8 +150,8 @@ func (s *StudentPortfolioService) ListAwards(ctx context.Context, studentID uuid
 	return s.repo.ListAwards(ctx, studentID)
 }
 
-func (s *StudentPortfolioService) DeleteAward(ctx context.Context, id uuid.UUID) error {
-	rows, err := s.repo.DeleteAward(ctx, id)
+func (s *StudentPortfolioService) DeleteAward(ctx context.Context, id, studentID uuid.UUID) error {
+	rows, err := s.repo.DeleteAward(ctx, id, studentID)
 	if err != nil {
 		return err
 	}
@@ -169,8 +178,8 @@ func (s *StudentPortfolioService) ListDisciplinaryRecords(ctx context.Context, s
 	return s.repo.ListDisciplinaryRecords(ctx, studentID)
 }
 
-func (s *StudentPortfolioService) DeleteDisciplinaryRecord(ctx context.Context, id uuid.UUID) error {
-	rows, err := s.repo.DeleteDisciplinaryRecord(ctx, id)
+func (s *StudentPortfolioService) DeleteDisciplinaryRecord(ctx context.Context, id, studentID uuid.UUID) error {
+	rows, err := s.repo.DeleteDisciplinaryRecord(ctx, id, studentID)
 	if err != nil {
 		return err
 	}

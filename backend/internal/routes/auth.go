@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/openschool-org/openschool/internal/handlers"
+	"github.com/openschool-org/openschool/internal/mailer"
 	"github.com/openschool-org/openschool/internal/middleware"
 	"github.com/openschool-org/openschool/internal/repositories"
 	"github.com/openschool-org/openschool/internal/services"
@@ -21,6 +22,7 @@ func RegisterAuthRoutes(public *gin.RouterGroup, protected *gin.RouterGroup, poo
 		repositories.NewGuardianRepository(pool),
 		repositories.NewAuthRepository(pool),
 		newIdentityProvider(),
+		mailer.NewFromEnv(),
 	)
 	handler := handlers.NewAuthHandler(service)
 

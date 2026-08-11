@@ -7,7 +7,7 @@ import {
   useMarkStaffAttendance,
 } from "../../../queries/useStaffAttendance";
 import type { StaffAttendanceRow, StaffAttendanceStatus } from "../../../services/staffAttendance";
-import { todayISODate } from "../../../lib/date";
+import { todayISODate, toYmd } from "../../../lib/date";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 
@@ -185,10 +185,8 @@ export default function StaffAttendance() {
       <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
         {!showMonthly && (
           <DatePicker datePickerType="single" dateFormat="Y-m-d" value={date} onChange={(dates) => {
-            const d = dates[0];
-            if (d) {
-              setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
-            }
+            const ymd = toYmd(dates[0]);
+            if (ymd) setDate(ymd);
           }}>
             <DatePickerInput id="staff-attendance-date" labelText="Date" placeholder="YYYY-MM-DD" />
           </DatePicker>

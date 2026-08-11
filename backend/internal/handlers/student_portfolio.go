@@ -113,6 +113,10 @@ func (h *StudentPortfolioHandler) ListProgressReports(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /students/{id}/progress-reports/{record_id} [put]
 func (h *StudentPortfolioHandler) UpdateProgressReport(c *gin.Context) {
+	studentID, ok := studentIDParam(c)
+	if !ok {
+		return
+	}
 	id, ok := recordIDParam(c)
 	if !ok {
 		return
@@ -122,7 +126,7 @@ func (h *StudentPortfolioHandler) UpdateProgressReport(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	report, err := h.service.UpdateProgressReport(c.Request.Context(), id, req)
+	report, err := h.service.UpdateProgressReport(c.Request.Context(), id, studentID, req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -140,11 +144,15 @@ func (h *StudentPortfolioHandler) UpdateProgressReport(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /students/{id}/progress-reports/{record_id} [delete]
 func (h *StudentPortfolioHandler) DeleteProgressReport(c *gin.Context) {
+	studentID, ok := studentIDParam(c)
+	if !ok {
+		return
+	}
 	id, ok := recordIDParam(c)
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteProgressReport(c.Request.Context(), id); err != nil {
+	if err := h.service.DeleteProgressReport(c.Request.Context(), id, studentID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -214,6 +222,10 @@ func (h *StudentPortfolioHandler) ListActivities(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /students/{id}/activities/{record_id} [put]
 func (h *StudentPortfolioHandler) UpdateActivity(c *gin.Context) {
+	studentID, ok := studentIDParam(c)
+	if !ok {
+		return
+	}
 	id, ok := recordIDParam(c)
 	if !ok {
 		return
@@ -223,7 +235,7 @@ func (h *StudentPortfolioHandler) UpdateActivity(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	activity, err := h.service.UpdateActivity(c.Request.Context(), id, req)
+	activity, err := h.service.UpdateActivity(c.Request.Context(), id, studentID, req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -241,11 +253,15 @@ func (h *StudentPortfolioHandler) UpdateActivity(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /students/{id}/activities/{record_id} [delete]
 func (h *StudentPortfolioHandler) DeleteActivity(c *gin.Context) {
+	studentID, ok := studentIDParam(c)
+	if !ok {
+		return
+	}
 	id, ok := recordIDParam(c)
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteActivity(c.Request.Context(), id); err != nil {
+	if err := h.service.DeleteActivity(c.Request.Context(), id, studentID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -313,11 +329,15 @@ func (h *StudentPortfolioHandler) ListLeadershipRoles(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /students/{id}/leadership-roles/{record_id} [delete]
 func (h *StudentPortfolioHandler) DeleteLeadershipRole(c *gin.Context) {
+	studentID, ok := studentIDParam(c)
+	if !ok {
+		return
+	}
 	id, ok := recordIDParam(c)
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteLeadershipRole(c.Request.Context(), id); err != nil {
+	if err := h.service.DeleteLeadershipRole(c.Request.Context(), id, studentID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -385,11 +405,15 @@ func (h *StudentPortfolioHandler) ListAwards(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /students/{id}/awards/{record_id} [delete]
 func (h *StudentPortfolioHandler) DeleteAward(c *gin.Context) {
+	studentID, ok := studentIDParam(c)
+	if !ok {
+		return
+	}
 	id, ok := recordIDParam(c)
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteAward(c.Request.Context(), id); err != nil {
+	if err := h.service.DeleteAward(c.Request.Context(), id, studentID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -457,11 +481,15 @@ func (h *StudentPortfolioHandler) ListDisciplinaryRecords(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /students/{id}/disciplinary-records/{record_id} [delete]
 func (h *StudentPortfolioHandler) DeleteDisciplinaryRecord(c *gin.Context) {
+	studentID, ok := studentIDParam(c)
+	if !ok {
+		return
+	}
 	id, ok := recordIDParam(c)
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteDisciplinaryRecord(c.Request.Context(), id); err != nil {
+	if err := h.service.DeleteDisciplinaryRecord(c.Request.Context(), id, studentID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

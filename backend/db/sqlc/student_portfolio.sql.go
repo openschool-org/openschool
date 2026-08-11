@@ -205,11 +205,16 @@ func (q *Queries) CreateStudentLeadershipRole(ctx context.Context, arg CreateStu
 }
 
 const deleteDisciplinaryRecord = `-- name: DeleteDisciplinaryRecord :execrows
-DELETE FROM student_disciplinary_records WHERE id = $1
+DELETE FROM student_disciplinary_records WHERE id = $1 AND student_id = $2
 `
 
-func (q *Queries) DeleteDisciplinaryRecord(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteDisciplinaryRecord, id)
+type DeleteDisciplinaryRecordParams struct {
+	ID        uuid.UUID `json:"id"`
+	StudentID uuid.UUID `json:"student_id"`
+}
+
+func (q *Queries) DeleteDisciplinaryRecord(ctx context.Context, arg DeleteDisciplinaryRecordParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteDisciplinaryRecord, arg.ID, arg.StudentID)
 	if err != nil {
 		return 0, err
 	}
@@ -217,11 +222,16 @@ func (q *Queries) DeleteDisciplinaryRecord(ctx context.Context, id uuid.UUID) (i
 }
 
 const deleteProgressReport = `-- name: DeleteProgressReport :execrows
-DELETE FROM student_progress_reports WHERE id = $1
+DELETE FROM student_progress_reports WHERE id = $1 AND student_id = $2
 `
 
-func (q *Queries) DeleteProgressReport(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteProgressReport, id)
+type DeleteProgressReportParams struct {
+	ID        uuid.UUID `json:"id"`
+	StudentID uuid.UUID `json:"student_id"`
+}
+
+func (q *Queries) DeleteProgressReport(ctx context.Context, arg DeleteProgressReportParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteProgressReport, arg.ID, arg.StudentID)
 	if err != nil {
 		return 0, err
 	}
@@ -229,11 +239,16 @@ func (q *Queries) DeleteProgressReport(ctx context.Context, id uuid.UUID) (int64
 }
 
 const deleteStudentActivity = `-- name: DeleteStudentActivity :execrows
-DELETE FROM student_activities WHERE id = $1
+DELETE FROM student_activities WHERE id = $1 AND student_id = $2
 `
 
-func (q *Queries) DeleteStudentActivity(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteStudentActivity, id)
+type DeleteStudentActivityParams struct {
+	ID        uuid.UUID `json:"id"`
+	StudentID uuid.UUID `json:"student_id"`
+}
+
+func (q *Queries) DeleteStudentActivity(ctx context.Context, arg DeleteStudentActivityParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteStudentActivity, arg.ID, arg.StudentID)
 	if err != nil {
 		return 0, err
 	}
@@ -241,11 +256,16 @@ func (q *Queries) DeleteStudentActivity(ctx context.Context, id uuid.UUID) (int6
 }
 
 const deleteStudentAward = `-- name: DeleteStudentAward :execrows
-DELETE FROM student_awards WHERE id = $1
+DELETE FROM student_awards WHERE id = $1 AND student_id = $2
 `
 
-func (q *Queries) DeleteStudentAward(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteStudentAward, id)
+type DeleteStudentAwardParams struct {
+	ID        uuid.UUID `json:"id"`
+	StudentID uuid.UUID `json:"student_id"`
+}
+
+func (q *Queries) DeleteStudentAward(ctx context.Context, arg DeleteStudentAwardParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteStudentAward, arg.ID, arg.StudentID)
 	if err != nil {
 		return 0, err
 	}
@@ -253,11 +273,16 @@ func (q *Queries) DeleteStudentAward(ctx context.Context, id uuid.UUID) (int64, 
 }
 
 const deleteStudentLeadershipRole = `-- name: DeleteStudentLeadershipRole :execrows
-DELETE FROM student_leadership_roles WHERE id = $1
+DELETE FROM student_leadership_roles WHERE id = $1 AND student_id = $2
 `
 
-func (q *Queries) DeleteStudentLeadershipRole(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteStudentLeadershipRole, id)
+type DeleteStudentLeadershipRoleParams struct {
+	ID        uuid.UUID `json:"id"`
+	StudentID uuid.UUID `json:"student_id"`
+}
+
+func (q *Queries) DeleteStudentLeadershipRole(ctx context.Context, arg DeleteStudentLeadershipRoleParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteStudentLeadershipRole, arg.ID, arg.StudentID)
 	if err != nil {
 		return 0, err
 	}
@@ -453,18 +478,19 @@ func (q *Queries) ListStudentLeadershipRolesByStudent(ctx context.Context, stude
 
 const updateProgressReport = `-- name: UpdateProgressReport :one
 UPDATE student_progress_reports
-SET narrative = $2, updated_at = NOW()
-WHERE id = $1
+SET narrative = $3, updated_at = NOW()
+WHERE id = $1 AND student_id = $2
 RETURNING id, student_id, term_id, narrative, written_by, created_at, updated_at
 `
 
 type UpdateProgressReportParams struct {
 	ID        uuid.UUID `json:"id"`
+	StudentID uuid.UUID `json:"student_id"`
 	Narrative string    `json:"narrative"`
 }
 
 func (q *Queries) UpdateProgressReport(ctx context.Context, arg UpdateProgressReportParams) (StudentProgressReport, error) {
-	row := q.db.QueryRow(ctx, updateProgressReport, arg.ID, arg.Narrative)
+	row := q.db.QueryRow(ctx, updateProgressReport, arg.ID, arg.StudentID, arg.Narrative)
 	var i StudentProgressReport
 	err := row.Scan(
 		&i.ID,
@@ -480,13 +506,14 @@ func (q *Queries) UpdateProgressReport(ctx context.Context, arg UpdateProgressRe
 
 const updateStudentActivity = `-- name: UpdateStudentActivity :one
 UPDATE student_activities
-SET category = $2, name = $3, role = $4, achievement = $5
-WHERE id = $1
+SET category = $3, name = $4, role = $5, achievement = $6
+WHERE id = $1 AND student_id = $2
 RETURNING id, student_id, academic_year_id, category, name, role, achievement, created_at
 `
 
 type UpdateStudentActivityParams struct {
 	ID          uuid.UUID   `json:"id"`
+	StudentID   uuid.UUID   `json:"student_id"`
 	Category    string      `json:"category"`
 	Name        string      `json:"name"`
 	Role        pgtype.Text `json:"role"`
@@ -496,6 +523,7 @@ type UpdateStudentActivityParams struct {
 func (q *Queries) UpdateStudentActivity(ctx context.Context, arg UpdateStudentActivityParams) (StudentActivity, error) {
 	row := q.db.QueryRow(ctx, updateStudentActivity,
 		arg.ID,
+		arg.StudentID,
 		arg.Category,
 		arg.Name,
 		arg.Role,

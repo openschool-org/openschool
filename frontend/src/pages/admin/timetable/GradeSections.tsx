@@ -71,7 +71,7 @@ function PeriodsEditor({ section, onClose }: { section: GradeSection; onClose: (
           <Button
             kind="ghost"
             size="sm"
-            onClick={() => regenerate.mutate()}
+            onClick={() => regenerate.mutate(undefined, { onSuccess: () => setRows(null) })}
             disabled={regenerate.isPending}
           >
             {regenerate.isPending ? "Regenerating…" : "Regenerate from Timetable Settings"}

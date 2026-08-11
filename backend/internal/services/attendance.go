@@ -185,7 +185,10 @@ func (s *AttendanceService) DeleteSession(ctx context.Context, actor Actor, id u
 	return nil
 }
 
-func (s *AttendanceService) ListSessionsByClass(ctx context.Context, classID uuid.UUID) ([]db.AttendanceSession, error) {
+func (s *AttendanceService) ListSessionsByClass(ctx context.Context, actor Actor, classID uuid.UUID) ([]db.AttendanceSession, error) {
+	if err := s.authorizeTeacherForClass(ctx, actor, classID); err != nil {
+		return nil, err
+	}
 	return s.repo.ListSessionsByClass(ctx, classID)
 }
 

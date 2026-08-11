@@ -71,8 +71,12 @@ export default function Promotion() {
   const groups = useMemo(() => {
     const byGrade = new Map<string, { gradeName: string; rows: PromotionPreviewRow[] }>();
     for (const row of preview ?? []) {
-      const key = row.next_grade_id ?? "graduating";
-      const label = row.next_grade_name ?? "Graduating (no next grade)";
+      // Use the same `graduating` signal `unassignedCount` below reads,
+      // rather than inferring it from `next_grade_id` being null — two
+      // different signals for one concept is fragile if the backend's
+      // next_grade_id === null ⟺ graduating === true invariant ever loosens.
+      const key = row.graduating ? "graduating" : row.next_grade_id!;
+      const label = row.graduating ? "Graduating (no next grade)" : row.next_grade_name!;
       if (!byGrade.has(key)) byGrade.set(key, { gradeName: label, rows: [] });
       byGrade.get(key)!.rows.push(row);
     }

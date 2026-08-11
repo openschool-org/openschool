@@ -49,6 +49,15 @@ html, body, #root {
   justify-content: center;
   background-color: #f4f4f4;
 }
+
+// Full-viewport placeholder shown while App.tsx resolves role/session on
+// first load — same background as the rest of the app's neutral surfaces,
+// kept here instead of an inline style so it isn't the one spot with a
+// hardcoded color outside the stylesheet.
+.os-loading-placeholder {
+  min-height: 100vh;
+  background-color: #f4f4f4;
+}
 .os-signin-card {
   width: 100%;
   max-width: 480px;
