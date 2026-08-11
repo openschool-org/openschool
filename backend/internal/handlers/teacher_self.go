@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -83,4 +84,46 @@ func (h *TeacherSelfHandler) Position(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, summary)
+}
+
+// LeadershipOverview godoc
+// @Summary      The signed-in teacher's leadership overview panel data
+// @Description  Real, scoped counts (classes/students/today's attendance) for Principal, Vice Principal, and Section Head — 403 for anyone below Section Head, not empty data
+// @Tags         teacher
+// @Produce      json
+// @Success      200  {object}  services.LeadershipOverviewSummary
+// @Failure      403  {object}  map[string]string
+// @Failure      404  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /me/teacher/leadership-overview [get]
+func (h *TeacherSelfHandler) LeadershipOverview(c *gin.Context) {
+	callerID, err := uuid.Parse(c.GetString("userID"))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
+		return
+	}
+
+	teacher, err := h.teachers.GetByUserID(c.Request.Context(), callerID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no teacher profile linked to this account"})
+		return
+	}
+
+	year, err := h.school.GetCurrentAcademicYear(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no current academic year configured"})
+		return
+	}
+
+	overview, err := h.positions.LeadershipOverview(c.Request.Context(), teacher.ID, year.ID)
+	if err != nil {
+		if errors.Is(err, services.ErrInsufficientRank) {
+			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, overview)
 }

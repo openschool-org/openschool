@@ -33,6 +33,13 @@ pnpm dev
 
 Open `http://localhost:5173`.
 
+**Production note — TLS:** the backend speaks plain HTTP; it does not
+terminate TLS itself. Everything above is fine for local development, but a
+real deployment needs a reverse proxy or load balancer (nginx, Caddy,
+Traefik, a cloud provider's LB, etc.) terminating HTTPS in front of both the
+frontend and the backend. Without it, Bearer tokens are sniffable in
+transit — this isn't optional for anything beyond a local/dev instance.
+
 ## 2. Register the first admin (one time only)
 
 On a brand-new instance there's no admin account yet, so the app sends you

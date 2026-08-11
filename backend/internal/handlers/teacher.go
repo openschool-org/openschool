@@ -36,7 +36,13 @@ func (h *TeacherHandler) Create(c *gin.Context) {
 		return
 	}
 
-	teacher, err := h.service.CreateTeacher(c.Request.Context(), req)
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	teacher, err := h.service.CreateTeacher(c.Request.Context(), req, actor.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -216,7 +222,13 @@ func (h *TeacherHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeleteTeacher(c.Request.Context(), id); err != nil {
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.service.DeleteTeacher(c.Request.Context(), id, actor.ID); err != nil {
 		if errors.Is(err, services.ErrTeacherNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		} else if errors.Is(err, services.ErrTeacherInUse) {

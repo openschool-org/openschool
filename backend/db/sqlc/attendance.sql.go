@@ -359,8 +359,14 @@ INNER JOIN classes c ON c.id = ats.class_id
 INNER JOIN grades  g ON g.id = c.grade_id
 INNER JOIN users   u ON u.id = ats.taken_by
 WHERE ats.date = $1
+  AND ($2::uuid[] IS NULL OR g.id = ANY($2::uuid[]))
 ORDER BY g.sort_order ASC, c.name ASC
 `
+
+type ListAttendanceSessionsByDateParams struct {
+	Date     pgtype.Date `json:"date"`
+	GradeIds []uuid.UUID `json:"grade_ids"`
+}
 
 type ListAttendanceSessionsByDateRow struct {
 	ID            uuid.UUID          `json:"id"`
@@ -377,9 +383,12 @@ type ListAttendanceSessionsByDateRow struct {
 
 // the cross-class daily dashboard: every session on one date, with the class,
 // grade and teacher resolved, plus enough counts to show marked/pending and
-// how many of the enrolled students have a record so far
-func (q *Queries) ListAttendanceSessionsByDate(ctx context.Context, date pgtype.Date) ([]ListAttendanceSessionsByDateRow, error) {
-	rows, err := q.db.Query(ctx, listAttendanceSessionsByDate, date)
+// how many of the enrolled students have a record so far.
+// grade_ids narrows to the caller's authorized grades (whole-school callers
+// pass NULL); filtered at the SQL WHERE clause level, not in application
+// code, so a scoped caller can never receive rows outside their grades.
+func (q *Queries) ListAttendanceSessionsByDate(ctx context.Context, arg ListAttendanceSessionsByDateParams) ([]ListAttendanceSessionsByDateRow, error) {
+	rows, err := q.db.Query(ctx, listAttendanceSessionsByDate, arg.Date, arg.GradeIds)
 	if err != nil {
 		return nil, err
 	}

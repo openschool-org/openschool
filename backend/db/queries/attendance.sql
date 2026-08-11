@@ -24,7 +24,10 @@ ORDER BY date DESC;
 -- name: ListAttendanceSessionsByDate :many
 -- the cross-class daily dashboard: every session on one date, with the class,
 -- grade and teacher resolved, plus enough counts to show marked/pending and
--- how many of the enrolled students have a record so far
+-- how many of the enrolled students have a record so far.
+-- grade_ids narrows to the caller's authorized grades (whole-school callers
+-- pass NULL); filtered at the SQL WHERE clause level, not in application
+-- code, so a scoped caller can never receive rows outside their grades.
 SELECT
     ats.id,
     ats.class_id,
@@ -41,6 +44,7 @@ INNER JOIN classes c ON c.id = ats.class_id
 INNER JOIN grades  g ON g.id = c.grade_id
 INNER JOIN users   u ON u.id = ats.taken_by
 WHERE ats.date = $1
+  AND (sqlc.narg(grade_ids)::uuid[] IS NULL OR g.id = ANY(sqlc.narg(grade_ids)::uuid[]))
 ORDER BY g.sort_order ASC, c.name ASC;
 
 -- name: MarkAttendance :one

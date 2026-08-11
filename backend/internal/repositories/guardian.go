@@ -17,10 +17,6 @@ func NewGuardianRepository(pool *pgxpool.Pool) *GuardianRepository {
 	return &GuardianRepository{queries: db.New(pool)}
 }
 
-func (r *GuardianRepository) Create(ctx context.Context, params db.CreateGuardianParams) (db.Guardian, error) {
-	return r.queries.CreateGuardian(ctx, params)
-}
-
 func (r *GuardianRepository) GetByID(ctx context.Context, id uuid.UUID) (db.Guardian, error) {
 	return r.queries.GetGuardianByID(ctx, id)
 }
@@ -50,10 +46,6 @@ func (r *GuardianRepository) FindDuplicateCandidates(ctx context.Context, phone,
 // guardian directory's "children" column.
 func (r *GuardianRepository) ListStudentsByGuardianID(ctx context.Context, guardianID uuid.UUID) ([]db.StudentProfile, error) {
 	return r.queries.ListStudentsByGuardianID(ctx, guardianID)
-}
-
-func (r *GuardianRepository) Update(ctx context.Context, params db.UpdateGuardianParams) (db.Guardian, error) {
-	return r.queries.UpdateGuardian(ctx, params)
 }
 
 func (r *GuardianRepository) Delete(ctx context.Context, id uuid.UUID) (int64, error) {
@@ -104,19 +96,11 @@ func (r *GuardianRepository) ListGuardianUserIDsByStudentIDs(ctx context.Context
 	return ids, nil
 }
 
-func (r *GuardianRepository) GetPrimaryGuardian(ctx context.Context, studentID uuid.UUID) (db.Guardian, error) {
-	return r.queries.GetPrimaryGuardian(ctx, studentID)
-}
-
 func (r *GuardianRepository) SetUserID(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
 	return r.queries.SetGuardianUserID(ctx, db.SetGuardianUserIDParams{
 		ID:     id,
 		UserID: pgtype.UUID{Bytes: userID, Valid: true},
 	})
-}
-
-func (r *GuardianRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (db.Guardian, error) {
-	return r.queries.GetGuardianByUserID(ctx, pgtype.UUID{Bytes: userID, Valid: true})
 }
 
 func (r *GuardianRepository) ListStudentsByGuardianUserID(ctx context.Context, userID uuid.UUID) ([]db.ListStudentsByGuardianUserIDRow, error) {

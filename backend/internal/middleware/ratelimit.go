@@ -22,15 +22,13 @@ type limiterEntry struct {
 	lastSeen time.Time
 }
 
-// RateLimit throttles requests per client IP with a token-bucket limiter.
-// Originally written for a single unauthenticated, state-changing endpoint
-// (first-run admin registration) — now also used API-wide (see
-// cmd/api/main.go), so unlike a single low-traffic route, the set of
-// distinct client IPs here can grow into the thousands over a school day.
-// A background sweep evicts limiters idle for more than evictAfter so
-// memory tracks *active* clients, not every IP ever seen since the process
-// started.
-func RateLimit(rps float64, burst int) gin.HandlerFunc {
+// keyedRateLimit is the shared token-bucket-per-key implementation behind
+// RateLimit (per client IP) and PerAccountRateLimit (per signed-in JWT
+// subject). A background sweep evicts limiters idle for more than
+// evictAfter so memory tracks *active* keys, not every one ever seen since
+// the process started. keyFunc returning "" skips limiting for that
+// request (e.g. no signed-in subject yet).
+func keyedRateLimit(rps float64, burst int, keyFunc func(*gin.Context) string) gin.HandlerFunc {
 	var mu sync.Mutex
 	limiters := make(map[string]*limiterEntry)
 
@@ -62,7 +60,12 @@ func RateLimit(rps float64, burst int) gin.HandlerFunc {
 	}()
 
 	return func(c *gin.Context) {
-		if !limiterFor(c.ClientIP()).Allow() {
+		key := keyFunc(c)
+		if key == "" {
+			c.Next()
+			return
+		}
+		if !limiterFor(key).Allow() {
 			c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
 				"error": "Too many requests. Please wait a moment and try again.",
 			})
@@ -70,4 +73,28 @@ func RateLimit(rps float64, burst int) gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+// RateLimit throttles requests per client IP with a token-bucket limiter.
+// Originally written for a single unauthenticated, state-changing endpoint
+// (first-run admin registration) — now also used API-wide (see
+// cmd/api/main.go), so unlike a single low-traffic route, the set of
+// distinct client IPs here can grow into the thousands over a school day.
+func RateLimit(rps float64, burst int) gin.HandlerFunc {
+	return keyedRateLimit(rps, burst, func(c *gin.Context) string {
+		return c.ClientIP()
+	})
+}
+
+// PerAccountRateLimit throttles requests per signed-in JWT subject, layered
+// on top of the per-IP RateLimit in cmd/api/main.go. The per-IP limiter
+// alone can't isolate one abusive signed-in account from the rest of a
+// school sharing one NAT IP (it throttles everyone together); this fixes
+// that by keying on the account instead. Must run after AuthMiddleware so
+// "userID" is set — falls through unthrottled if it isn't (unauthenticated
+// requests are already covered by the per-IP limiter).
+func PerAccountRateLimit(rps float64, burst int) gin.HandlerFunc {
+	return keyedRateLimit(rps, burst, func(c *gin.Context) string {
+		return c.GetString("userID")
+	})
 }

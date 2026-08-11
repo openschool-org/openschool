@@ -194,7 +194,13 @@ func (h *GuardianHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeleteGuardian(c.Request.Context(), id); err != nil {
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.service.DeleteGuardian(c.Request.Context(), id, actor.ID); err != nil {
 		switch {
 		case errors.Is(err, services.ErrGuardianNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -359,7 +365,13 @@ func (h *GuardianHandler) ProvisionLogin(c *gin.Context) {
 		return
 	}
 
-	guardian, err := h.service.ProvisionLogin(c.Request.Context(), id, req)
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	guardian, err := h.service.ProvisionLogin(c.Request.Context(), id, req, actor.ID)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrGuardianNotFound):

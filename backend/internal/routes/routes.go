@@ -1,6 +1,9 @@
 package routes
 
 import (
+	"os"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/openschool-org/openschool/internal/handlers"
@@ -10,6 +13,24 @@ import (
 	timetableroutes "github.com/openschool-org/openschool/internal/routes/timetable"
 	"github.com/openschool-org/openschool/internal/services"
 )
+
+func envFloatOr(key string, fallback float64) float64 {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.ParseFloat(v, 64); err == nil {
+			return n
+		}
+	}
+	return fallback
+}
+
+func envIntOr(key string, fallback int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return fallback
+}
 
 func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	api := r.Group("/api/v1")
@@ -22,6 +43,14 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware())
+	// Layered on top of the per-IP RateLimit in cmd/api/main.go: isolates
+	// one abusive signed-in account from the rest of a school that may
+	// share one NAT IP. Same generous defaults as the per-IP limiter,
+	// tunable independently via env.
+	protected.Use(middleware.PerAccountRateLimit(
+		envFloatOr("API_PER_ACCOUNT_RATE_LIMIT_RPS", 30),
+		envIntOr("API_PER_ACCOUNT_RATE_LIMIT_BURST", 60),
+	))
 
 	RegisterAuthRoutes(api, protected, pool)
 
@@ -52,7 +81,7 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	RegisterStudentPortfolioRoutes(teacherOrAdmin, pool)
 	RegisterTeacherRoutes(admin, teacherOrAdmin, pool)
 	RegisterAttendanceRoutes(teacherOrAdmin, pool)
-	RegisterStaffAttendanceRoutes(teacherOrAdmin, pool)
+	RegisterStaffAttendanceRoutes(admin, pool)
 	RegisterGuardianRoutes(admin, teacherOrAdmin, pool)
 	RegisterNonAcademicStaffRoutes(admin, teacherOrAdmin, pool)
 	RegisterSectionHeadRoutes(admin, teacherOrAdmin, pool)
@@ -64,6 +93,7 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	RegisterStudentSelfRoutes(student, pool)
 	RegisterTeacherSelfRoutes(teacher, pool)
 	RegisterAuditRoutes(admin, pool)
+	RegisterIdentityReconciliationRoutes(admin, pool)
 	RegisterDashboardRoutes(admin, pool)
 	RegisterReportExportRoutes(admin, pool)
 

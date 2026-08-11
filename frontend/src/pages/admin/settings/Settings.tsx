@@ -20,6 +20,7 @@ import { useSchool, useUpdateSchool, useCreateSchool } from "../../../queries/us
 import type { School } from "../../../services/school";
 import Houses from "./Houses";
 import AuditLog from "./AuditLog";
+import OrphanedAccounts from "./OrphanedAccounts";
 
 type SettingsForm = SchoolFormValues & {
   grade_from: number | "";
@@ -143,6 +144,7 @@ export default function SettingsPage() {
           <Tab>General</Tab>
           <Tab>Houses</Tab>
           <Tab>Audit Log</Tab>
+          <Tab>Orphaned Accounts</Tab>
         </TabList>
         <TabPanels>
           <TabPanel style={{ padding: 0 }}>
@@ -320,6 +322,11 @@ export default function SettingsPage() {
           <TabPanel style={{ padding: 0 }}>
             <div style={{ marginTop: "1rem" }}>
               <AuditLog />
+            </div>
+          </TabPanel>
+          <TabPanel style={{ padding: 0 }}>
+            <div style={{ marginTop: "1rem" }}>
+              <OrphanedAccounts />
             </div>
           </TabPanel>
         </TabPanels>

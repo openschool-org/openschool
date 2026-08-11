@@ -24,7 +24,13 @@ func (h *StudentHandler) Create(c *gin.Context) {
 		return
 	}
 
-	student, err := h.service.CreateStudent(c.Request.Context(), req)
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	student, err := h.service.CreateStudent(c.Request.Context(), req, actor.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -257,7 +263,13 @@ func (h *StudentHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.DeleteStudent(c.Request.Context(), id); err != nil {
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.service.DeleteStudent(c.Request.Context(), id, actor.ID); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

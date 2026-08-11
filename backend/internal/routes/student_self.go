@@ -28,7 +28,8 @@ func RegisterStudentSelfRoutes(student *gin.RouterGroup, pool *pgxpool.Pool) {
 		repositories.NewPositionRepository(pool),
 	)
 	auditSvc := services.NewAuditService(repositories.NewAuditRepository(pool))
-	attendanceService := services.NewAttendanceService(repositories.NewAttendanceRepository(pool), repositories.NewUserRepository(pool), teacherRepo, classRepo, studentsRepo, guardianRepo, notifications, auditSvc)
+	positionSvc := services.NewPositionService(repositories.NewPositionRepository(pool), repositories.NewSectionHeadRepository(pool), nil)
+	attendanceService := services.NewAttendanceService(repositories.NewAttendanceRepository(pool), repositories.NewUserRepository(pool), teacherRepo, classRepo, studentsRepo, guardianRepo, notifications, auditSvc, positionSvc, repositories.NewSchoolRepository(pool))
 	marksService := services.NewTermMarkService(repositories.NewTermMarkRepository(pool), repositories.NewTeacherRepository(pool), repositories.NewClassRepository(pool))
 	enrollmentService := services.NewEnrollmentService(repositories.NewEnrollmentRepository(pool), repositories.NewCurriculumRepository(pool))
 

@@ -27,10 +27,11 @@ type GuardianService struct {
 	users         *repositories.UserRepository
 	idp           identity.Provider
 	notifications *notificationsservices.NotificationService
+	audit         *AuditService
 }
 
-func NewGuardianService(repo *repositories.GuardianRepository, users *repositories.UserRepository, idp identity.Provider, notifications *notificationsservices.NotificationService) *GuardianService {
-	return &GuardianService{repo: repo, users: users, idp: idp, notifications: notifications}
+func NewGuardianService(repo *repositories.GuardianRepository, users *repositories.UserRepository, idp identity.Provider, notifications *notificationsservices.NotificationService, audit *AuditService) *GuardianService {
+	return &GuardianService{repo: repo, users: users, idp: idp, notifications: notifications, audit: audit}
 }
 
 // CreateGuardian creates a new guardian record and also returns any
@@ -66,16 +67,22 @@ func (s *GuardianService) ListStudentsFor(ctx context.Context, guardianID uuid.U
 // to any student — the caller must unlink each one first, since silently
 // cascading the delete would remove a shared guardian from every child at
 // once.
-func (s *GuardianService) DeleteGuardian(ctx context.Context, id uuid.UUID) error {
+func (s *GuardianService) DeleteGuardian(ctx context.Context, id uuid.UUID, actorID uuid.UUID) error {
+	before, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return ErrGuardianNotFound
+	}
+
 	rows, err := s.repo.Delete(ctx, id)
 	if err != nil {
 		return err
 	}
 	if rows == 0 {
-		if _, err := s.repo.GetByID(ctx, id); err != nil {
-			return ErrGuardianNotFound
-		}
 		return ErrGuardianInUse
+	}
+
+	if s.audit != nil {
+		_ = s.audit.Record(ctx, "guardian_account", id, "account_deleted", actorID, before, nil, "")
 	}
 	return nil
 }
@@ -121,7 +128,7 @@ func (s *GuardianService) ListByStudent(ctx context.Context, studentID uuid.UUID
 // ProvisionLogin creates a ThunderID identity for an existing guardian
 // record and links it via guardians.user_id, giving them access to the
 // parent portal. Mirrors RegisterFirstAdmin's identity-provisioning flow.
-func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UUID, req models.ProvisionGuardianLoginRequest) (db.Guardian, error) {
+func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UUID, req models.ProvisionGuardianLoginRequest, actorID uuid.UUID) (db.Guardian, error) {
 	guardian, err := s.repo.GetByID(ctx, guardianID)
 	if err != nil {
 		return db.Guardian{}, ErrGuardianNotFound
@@ -177,6 +184,12 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 
 	if err := s.idp.AssignRole(ctx, identity.RoleID("parent"), idpUser.ID); err != nil {
 		return db.Guardian{}, fmt.Errorf("failed to assign parent role: %w", err)
+	}
+
+	if s.audit != nil {
+		_ = s.audit.Record(ctx, "guardian_account", guardianID, "login_provisioned", actorID, nil, struct {
+			UserID uuid.UUID `json:"user_id"`
+		}{userID}, "")
 	}
 
 	return s.repo.GetByID(ctx, guardianID)

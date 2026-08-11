@@ -36,7 +36,13 @@ func (h *PositionHandler) AssignPrincipal(c *gin.Context) {
 		return
 	}
 
-	position, err := h.service.AssignPrincipal(c.Request.Context(), req)
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	position, err := h.service.AssignPrincipal(c.Request.Context(), req, actor.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -63,7 +69,13 @@ func (h *PositionHandler) AssignVicePrincipal(c *gin.Context) {
 		return
 	}
 
-	position, err := h.service.AssignVicePrincipal(c.Request.Context(), req)
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	position, err := h.service.AssignVicePrincipal(c.Request.Context(), req, actor.ID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -106,7 +118,13 @@ func (h *PositionHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.Delete(c.Request.Context(), id); err != nil {
+	actor, err := actorFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.service.Delete(c.Request.Context(), id, actor.ID); err != nil {
 		if errors.Is(err, services.ErrPositionNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		} else {
