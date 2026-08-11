@@ -16,10 +16,6 @@ func NewEnrollmentRepository(pool *pgxpool.Pool) *EnrollmentRepository {
 	return &EnrollmentRepository{pool: pool, queries: db.New(pool)}
 }
 
-func (r *EnrollmentRepository) Create(ctx context.Context, params db.CreateStudentSubjectEnrollmentParams) (db.StudentSubjectEnrollment, error) {
-	return r.queries.CreateStudentSubjectEnrollment(ctx, params)
-}
-
 func (r *EnrollmentRepository) Delete(ctx context.Context, params db.DeleteStudentSubjectEnrollmentParams) error {
 	return r.queries.DeleteStudentSubjectEnrollment(ctx, params)
 }

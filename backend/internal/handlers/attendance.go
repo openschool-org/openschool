@@ -16,7 +16,7 @@ import (
 // (distinct from a genuine 404/400), so callers can tell "you can't see
 // this" apart from "this doesn't exist" or "bad input."
 func statusForAttendanceError(err error, notFoundStatus int) int {
-	if errors.Is(err, services.ErrNotAssignedToClass) {
+	if errors.Is(err, services.ErrNotAssignedToClass) || errors.Is(err, services.ErrInsufficientRank) {
 		return http.StatusForbidden
 	}
 	if errors.Is(err, services.ErrSessionLocked) {
@@ -200,9 +200,15 @@ func (h *AttendanceHandler) ListSessionsByDate(c *gin.Context) {
 		return
 	}
 
-	sessions, err := h.service.ListSessionsByDate(c.Request.Context(), date)
+	actor, err := actorFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	sessions, err := h.service.ListSessionsByDate(c.Request.Context(), actor, date)
+	if err != nil {
+		c.JSON(statusForAttendanceError(err, http.StatusBadRequest), gin.H{"error": err.Error()})
 		return
 	}
 

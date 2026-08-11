@@ -11,9 +11,11 @@ import {
 import { useChangePassword } from "../../queries/useAuth";
 import { getErrorMessage } from "../../lib/errorMessage";
 
-// Shared by every role's "Change password" action (Phase 8.4) — the
-// authenticated counterpart to the /forgot-password flow.
-export default function ChangePasswordModal({ onClose }: { onClose: () => void }) {
+export default function ChangePasswordModal({
+  onClose,
+}: {
+  onClose: () => void;
+}) {
   const changePassword = useChangePassword();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -45,7 +47,10 @@ export default function ChangePasswordModal({ onClose }: { onClose: () => void }
               <InlineNotification
                 kind="error"
                 title="Could not update password"
-                subtitle={getErrorMessage(changePassword.error, "Please try again.")}
+                subtitle={getErrorMessage(
+                  changePassword.error,
+                  "Please try again.",
+                )}
                 lowContrast
                 hideCloseButton
                 style={{ marginBottom: "1rem", maxWidth: "100%" }}
@@ -65,7 +70,9 @@ export default function ChangePasswordModal({ onClose }: { onClose: () => void }
                 labelText="Confirm New Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                invalid={confirmPassword.length > 0 && confirmPassword !== newPassword}
+                invalid={
+                  confirmPassword.length > 0 && confirmPassword !== newPassword
+                }
                 invalidText="Passwords do not match."
               />
             </div>
@@ -82,7 +89,11 @@ export default function ChangePasswordModal({ onClose }: { onClose: () => void }
             <Button kind="secondary" onClick={onClose}>
               Cancel
             </Button>
-            <Button kind="primary" onClick={handleSubmit} disabled={!canSubmit || changePassword.isPending}>
+            <Button
+              kind="primary"
+              onClick={handleSubmit}
+              disabled={!canSubmit || changePassword.isPending}
+            >
               {changePassword.isPending ? "Saving…" : "Save"}
             </Button>
           </>

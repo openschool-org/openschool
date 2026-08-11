@@ -585,10 +585,6 @@ func (s *TimetableService) GetPublishedForClass(ctx context.Context, classID, ac
 	return tt, entries, nil
 }
 
-func (s *TimetableService) GetStudentCurrentClass(ctx context.Context, studentID uuid.UUID) (db.GetStudentCurrentClassRow, error) {
-	return s.classRepo.GetStudentCurrentClass(ctx, studentID)
-}
-
 // GetPublishedForStudent resolves a student's current class and returns its
 // published timetable — used by both the student's own "my timetable" view
 // and the guardian's child-timetable view (after an ownership check).

@@ -14,6 +14,12 @@ var ErrDuplicateUser = errors.New("a user with these details already exists")
 
 type User struct {
 	ID string
+	// Username/Email are best-effort, extracted from whatever attributes
+	// the identity provider returned for this user (may be empty) — used
+	// only for display in the orphaned-account reconciliation view, never
+	// for authorization decisions.
+	Username string
+	Email    string
 }
 
 type Provider interface {
@@ -21,6 +27,12 @@ type Provider interface {
 	UpdateUser(ctx context.Context, userID string, userType string, attrs map[string]any) error
 	DeleteUser(ctx context.Context, userID string) error
 	AssignRole(ctx context.Context, roleID string, userID string) error
+	// ListUsers returns every user account the identity provider knows
+	// about, across all pages. Used by the orphaned-identity reconciliation
+	// job (docs/plan.md §0) to find accounts with no matching local `users`
+	// row — the compensating delete in a signup rollback only logs on
+	// failure, so this is the recovery path when that happens.
+	ListUsers(ctx context.Context) ([]User, error)
 }
 
 func JWKSURL() string {

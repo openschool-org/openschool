@@ -36,6 +36,8 @@ type AttendanceService struct {
 	guardianRepo  *repositories.GuardianRepository
 	notifications *notificationsservices.NotificationService
 	audit         *AuditService
+	positions     *PositionService
+	schoolRepo    *repositories.SchoolRepository
 }
 
 func NewAttendanceService(
@@ -47,10 +49,13 @@ func NewAttendanceService(
 	guardianRepo *repositories.GuardianRepository,
 	notifications *notificationsservices.NotificationService,
 	audit *AuditService,
+	positions *PositionService,
+	schoolRepo *repositories.SchoolRepository,
 ) *AttendanceService {
 	return &AttendanceService{
 		repo: repo, userRepo: userRepo, teacherRepo: teacherRepo, classRepo: classRepo,
 		studentRepo: studentRepo, guardianRepo: guardianRepo, notifications: notifications, audit: audit,
+		positions: positions, schoolRepo: schoolRepo,
 	}
 }
 
@@ -192,12 +197,43 @@ func (s *AttendanceService) ListSessionsByClass(ctx context.Context, actor Actor
 	return s.repo.ListSessionsByClass(ctx, classID)
 }
 
-func (s *AttendanceService) ListSessionsByDate(ctx context.Context, dateStr string) ([]db.ListAttendanceSessionsByDateRow, error) {
+// ListSessionsByDate is the cross-school attendance dashboard. It requires
+// admin or a leadership rank (Principal/Vice Principal/Section Head) — a
+// plain Class/Subject Teacher gets ErrInsufficientRank, not an unscoped
+// school-wide dump. Results are narrowed to the caller's authorized grades
+// at the SQL WHERE clause level (whole school for admin/Principal/an
+// unrestricted Vice Principal; headed/granted grades otherwise).
+func (s *AttendanceService) ListSessionsByDate(ctx context.Context, actor Actor, dateStr string) ([]db.ListAttendanceSessionsByDateRow, error) {
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid date format, use YYYY-MM-DD")
 	}
-	return s.repo.ListSessionsByDate(ctx, date)
+
+	if actor.Role == "admin" {
+		return s.repo.ListSessionsByDate(ctx, date, nil)
+	}
+
+	teacher, err := s.teacherRepo.GetByUserID(ctx, actor.ID)
+	if err != nil {
+		return nil, ErrInsufficientRank
+	}
+
+	year, err := s.schoolRepo.GetCurrentAcademicYear(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("no current academic year configured")
+	}
+
+	wholeSchool, gradeIDs, err := s.positions.LeadershipScope(ctx, teacher.ID, year.ID)
+	if err != nil {
+		return nil, err
+	}
+	if wholeSchool {
+		return s.repo.ListSessionsByDate(ctx, date, nil)
+	}
+	if len(gradeIDs) == 0 {
+		return []db.ListAttendanceSessionsByDateRow{}, nil
+	}
+	return s.repo.ListSessionsByDate(ctx, date, gradeIDs)
 }
 
 func (s *AttendanceService) MarkAttendance(ctx context.Context, actor Actor, sessionID uuid.UUID, req models.MarkAttendanceRequest) error {
@@ -320,11 +356,6 @@ func (s *AttendanceService) ListByStudentForTeacher(ctx context.Context, actor A
 		return nil, err
 	}
 	return s.repo.ListByStudent(ctx, studentID)
-}
-
-// GetSummary — see ListByStudent's doc comment; same split applies.
-func (s *AttendanceService) GetSummary(ctx context.Context, studentID uuid.UUID, classID uuid.UUID) (db.GetAttendanceSummaryByStudentRow, error) {
-	return s.repo.GetSummaryByStudent(ctx, studentID, classID)
 }
 
 func (s *AttendanceService) GetSummaryForTeacher(ctx context.Context, actor Actor, studentID uuid.UUID, classID uuid.UUID) (db.GetAttendanceSummaryByStudentRow, error) {

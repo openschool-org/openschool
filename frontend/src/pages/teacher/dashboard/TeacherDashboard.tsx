@@ -4,7 +4,7 @@ import { useDailySessions, classSessionsKey } from "../../../queries/useAttendan
 import { classStudentsKey } from "../../../queries/useClasses";
 import { useCurrentAcademicYear } from "../../../queries/useAcademicYears";
 import { useTerms } from "../../../queries/useTerms";
-import { useMyPosition } from "../../../queries/usePositions";
+import { useMyPosition, useMyLeadershipOverview } from "../../../queries/usePositions";
 import { attendanceApi } from "../../../services/attendance";
 import { studentApi } from "../../../services/student";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
@@ -16,6 +16,7 @@ import QuickActions from "./QuickActions";
 import TodaySummary from "./TodaySummary";
 import MyClassesPanel from "./MyClassesPanel";
 import LeadershipPanel from "./LeadershipPanel";
+import LeadershipOverviewPanel from "./LeadershipOverviewPanel";
 import { todayISODate } from "../../../lib/date";
 
 // Section Head and above carry multi-grade/school-wide responsibility, so
@@ -29,6 +30,8 @@ export default function TeacherDashboard() {
   const { data: terms } = useTerms(currentYear?.id);
   const { data: dailySessions } = useDailySessions(todayISODate());
   const { data: positionSummary } = useMyPosition();
+  const showLeadershipPanel = !!positionSummary && positionSummary.rank <= LEADERSHIP_RANK_CUTOFF;
+  const { data: leadershipOverview } = useMyLeadershipOverview(showLeadershipPanel);
 
   const classIds = myClasses.map((c) => c.class_id);
 
@@ -77,7 +80,6 @@ export default function TeacherDashboard() {
 
   const subjectSummary = [...new Set(myClasses.flatMap((c) => c.subjects))].join(", ") || "No subjects assigned yet";
   const rankLabel = positionSummary?.rank_label ?? "Teacher";
-  const showLeadershipPanel = !!positionSummary && positionSummary.rank <= LEADERSHIP_RANK_CUTOFF;
 
   return (
     <div className="os-page">
@@ -102,6 +104,7 @@ export default function TeacherDashboard() {
         </div>
 
         <div>
+          {showLeadershipPanel && leadershipOverview && <LeadershipOverviewPanel overview={leadershipOverview} />}
           {showLeadershipPanel && positionSummary && <LeadershipPanel summary={positionSummary} />}
           <QuickActions rankLabel={rankLabel} notifyWholeSchool={positionSummary?.notify_whole_school ?? false} />
           <TodaySummary

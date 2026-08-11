@@ -24,10 +24,6 @@ func (r *SubjectRepository) GetByID(ctx context.Context, id uuid.UUID) (db.Subje
 	return r.queries.GetSubjectByID(ctx, id)
 }
 
-func (r *SubjectRepository) GetByCode(ctx context.Context, code string) (db.Subject, error) {
-	return r.queries.GetSubjectByCode(ctx, code)
-}
-
 func (r *SubjectRepository) List(ctx context.Context) ([]db.Subject, error) {
 	return r.queries.ListSubjects(ctx)
 }

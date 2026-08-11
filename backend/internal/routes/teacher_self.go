@@ -11,9 +11,10 @@ import (
 func RegisterTeacherSelfRoutes(teacher *gin.RouterGroup, pool *pgxpool.Pool) {
 	teacherRepo := repositories.NewTeacherRepository(pool)
 	schoolRepo := repositories.NewSchoolRepository(pool)
-	positionService := services.NewPositionService(repositories.NewPositionRepository(pool), repositories.NewSectionHeadRepository(pool))
+	positionService := services.NewPositionService(repositories.NewPositionRepository(pool), repositories.NewSectionHeadRepository(pool), nil)
 	handler := handlers.NewTeacherSelfHandler(teacherRepo, schoolRepo, positionService)
 
 	teacher.GET("/me/teacher", handler.Profile)
 	teacher.GET("/me/teacher/position", handler.Position)
+	teacher.GET("/me/teacher/leadership-overview", handler.LeadershipOverview)
 }

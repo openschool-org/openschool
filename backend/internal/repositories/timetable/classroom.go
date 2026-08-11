@@ -20,10 +20,6 @@ func (r *ClassroomRepository) Create(ctx context.Context, params db.CreateClassr
 	return r.queries.CreateClassroom(ctx, params)
 }
 
-func (r *ClassroomRepository) GetByID(ctx context.Context, id uuid.UUID) (db.Classroom, error) {
-	return r.queries.GetClassroomByID(ctx, id)
-}
-
 func (r *ClassroomRepository) List(ctx context.Context) ([]db.Classroom, error) {
 	return r.queries.ListClassrooms(ctx)
 }

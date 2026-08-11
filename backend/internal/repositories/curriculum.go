@@ -143,10 +143,6 @@ func (r *CurriculumRepository) DeleteSelectionGroup(ctx context.Context, id uuid
 	return r.queries.DeleteSelectionGroup(ctx, id)
 }
 
-func (r *CurriculumRepository) CountGroupSubjects(ctx context.Context, groupID uuid.UUID) (int64, error) {
-	return r.queries.CountGroupSubjects(ctx, groupID)
-}
-
 func (r *CurriculumRepository) AddGroupSubject(ctx context.Context, params db.AddGroupSubjectParams) (db.GroupSubject, error) {
 	return r.queries.AddGroupSubject(ctx, params)
 }

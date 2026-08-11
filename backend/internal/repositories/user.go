@@ -36,6 +36,10 @@ func (r *UserRepository) CountByRole(ctx context.Context, role string) (int64, e
 	return r.queries.CountUsersByRole(ctx, role)
 }
 
+func (r *UserRepository) List(ctx context.Context) ([]db.User, error) {
+	return r.queries.ListUsers(ctx)
+}
+
 func (r *UserRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return r.queries.DeleteUser(ctx, id)
 }

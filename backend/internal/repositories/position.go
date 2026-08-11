@@ -101,3 +101,16 @@ func (r *PositionRepository) IsSubjectTeacherOfAnyClass(ctx context.Context, tea
 		AcademicYearID: academicYearID,
 	})
 }
+
+// LeadershipOverviewCounts returns class/student/today's-marked-session
+// counts for the current academic year, filtered at the SQL level to
+// gradeIDs (nil means whole school).
+func (r *PositionRepository) LeadershipOverviewCounts(ctx context.Context, gradeIDs []uuid.UUID) (db.LeadershipOverviewCountsRow, error) {
+	return r.queries.LeadershipOverviewCounts(ctx, gradeIDs)
+}
+
+// LeadershipOverviewGradeNames resolves human-readable grade names for a
+// grade-scoped leadership overview panel's heading.
+func (r *PositionRepository) LeadershipOverviewGradeNames(ctx context.Context, gradeIDs []uuid.UUID) ([]string, error) {
+	return r.queries.LeadershipOverviewGradeNames(ctx, gradeIDs)
+}

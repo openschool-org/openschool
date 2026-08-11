@@ -296,6 +296,83 @@ func (c *Client) AssignRole(ctx context.Context, roleID string, userID string) e
 	return nil
 }
 
+// thunderIDListPageSize is the page size requested per GET /users call.
+// ThunderID's own default (30) would take an impractical number of round
+// trips for a school-sized user base.
+const thunderIDListPageSize = 100
+
+// thunderIDListMaxPages bounds the pagination loop as a safety valve
+// against an unexpected pagination-metadata bug looping forever — 500
+// pages at 100/page covers 50,000 users, far beyond any real deployment.
+const thunderIDListMaxPages = 500
+
+type thunderIDUserListResponse struct {
+	TotalResults int                   `json:"totalResults"`
+	Count        int                   `json:"count"`
+	Users        []thunderIDListedUser `json:"users"`
+}
+
+type thunderIDListedUser struct {
+	ID         string          `json:"id"`
+	Attributes json.RawMessage `json:"attributes"`
+}
+
+// ListUsers pages through GET /users and returns every account. Best-effort
+// extracts username/email from each user's attributes for display purposes
+// only.
+func (c *Client) ListUsers(ctx context.Context) ([]identity.User, error) {
+	token, err := c.getAccessToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ThunderID token: %w", err)
+	}
+
+	var out []identity.User
+	offset := 0
+	for pageNum := 0; pageNum < thunderIDListMaxPages; pageNum++ {
+		reqURL := fmt.Sprintf("%s/users?limit=%d&offset=%d", c.baseUrl, thunderIDListPageSize, offset)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, idpError("ListUsers", resp.StatusCode, body)
+		}
+
+		var parsed thunderIDUserListResponse
+		if err := json.Unmarshal(body, &parsed); err != nil {
+			return nil, err
+		}
+
+		for _, u := range parsed.Users {
+			var attrs struct {
+				Username string `json:"username"`
+				Email    string `json:"email"`
+			}
+			_ = json.Unmarshal(u.Attributes, &attrs)
+			out = append(out, identity.User{ID: u.ID, Username: attrs.Username, Email: attrs.Email})
+		}
+
+		offset += parsed.Count
+		if parsed.Count == 0 || offset >= parsed.TotalResults {
+			break
+		}
+	}
+
+	return out, nil
+}
+
 // thunderErrorCode extracts ThunderID's machine-readable error code (e.g.
 // "USR-1014") from an error response body, or "" if it can't be parsed.
 func thunderErrorCode(body []byte) string {

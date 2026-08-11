@@ -1,5 +1,6 @@
 import { useThunderID } from "@thunderid/react";
 import { Navigate, useLocation } from "react-router";
+import { useIdleLogout } from "../hooks/useIdleLogout";
 
 export default function ProtectedRoute({
   children,
@@ -8,6 +9,7 @@ export default function ProtectedRoute({
 }) {
   const { isSignedIn, isLoading } = useThunderID();
   const location = useLocation();
+  useIdleLogout();
 
   if (isLoading) return <div style={{ minHeight: "100vh" }} />;
 

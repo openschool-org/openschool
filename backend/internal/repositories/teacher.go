@@ -24,10 +24,6 @@ func (r *TeacherRepository) GetByID(ctx context.Context, id uuid.UUID) (db.Teach
 	return r.queries.GetTeacherByID(ctx, id)
 }
 
-func (r *TeacherRepository) GetByEmployeeNumber(ctx context.Context, employeeNumber string) (db.TeacherProfile, error) {
-	return r.queries.GetTeacherByEmployeeNumber(ctx, employeeNumber)
-}
-
 func (r *TeacherRepository) NextEmployeeNumber(ctx context.Context) (string, error) {
 	return r.queries.NextEmployeeNumber(ctx)
 }

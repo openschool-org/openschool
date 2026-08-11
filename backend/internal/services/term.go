@@ -39,10 +39,6 @@ func (s *TermService) CreateTerm(ctx context.Context, req models.CreateTermReque
 	})
 }
 
-func (s *TermService) GetTerm(ctx context.Context, id uuid.UUID) (db.Term, error) {
-	return s.repo.GetByID(ctx, id)
-}
-
 func (s *TermService) ListTermsByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]db.Term, error) {
 	return s.repo.ListByAcademicYear(ctx, academicYearID)
 }
