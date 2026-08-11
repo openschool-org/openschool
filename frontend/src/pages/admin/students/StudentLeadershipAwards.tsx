@@ -11,7 +11,7 @@ import {
   useDeleteStudentAward,
 } from "../../../queries/useStudentPortfolio";
 import { getErrorMessage } from "../../../lib/errorMessage";
-import { todayISODate } from "../../../lib/date";
+import { todayISODate, toYmd } from "../../../lib/date";
 import EmptyState from "../../../components/common/EmptyState";
 
 export default function StudentLeadershipAwards({ studentId }: { studentId: string }) {
@@ -84,8 +84,8 @@ export default function StudentLeadershipAwards({ studentId }: { studentId: stri
           <div style={{ display: "grid", gridTemplateColumns: "1fr 12rem auto", gap: "0.75rem", alignItems: "end", marginBottom: "1.5rem" }}>
             <TextInput id="award-title" labelText="Title" value={awardTitle} onChange={(e) => setAwardTitle(e.target.value)} />
             <DatePicker datePickerType="single" dateFormat="Y-m-d" value={awardDate} onChange={(dates) => {
-              const d = dates[0];
-              if (d) setAwardDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+              const ymd = toYmd(dates[0]);
+              if (ymd) setAwardDate(ymd);
             }}>
               <DatePickerInput id="award-date" labelText="Date" placeholder="YYYY-MM-DD" />
             </DatePicker>

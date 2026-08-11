@@ -9,3 +9,7 @@ export function getErrorMessage(
   }
   return fallback;
 }
+
+export function isNotFoundError(error: unknown): boolean {
+  return error instanceof AxiosError && error.response?.status === 404;
+}

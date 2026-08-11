@@ -4,9 +4,9 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/openschool-org/openschool/internal/identity"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/services"
@@ -73,16 +73,25 @@ func (h *SetupHandler) RegisterAdmin(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"id": user.ID.String(), "email": user.Email})
 }
 
-// friendlyBindError turns Gin's validator messages (which quote raw Go
-// struct field names) into something a form user can act on.
+// friendlyBindError turns a validation failure into something a form user
+// can act on. Reads the struct field name off validator.FieldError directly
+// (via a type assertion) rather than substring-matching the error's message
+// text — substring matching breaks silently if a future validator-library
+// version changes that message format, since every case just falls through
+// to the generic default with no compile-time or runtime signal that
+// matching stopped working.
 func friendlyBindError(err error) string {
-	msg := err.Error()
-	switch {
-	case strings.Contains(msg, "Email"):
+	var verrs validator.ValidationErrors
+	if !errors.As(err, &verrs) || len(verrs) == 0 {
+		return "Please check the form and try again."
+	}
+
+	switch verrs[0].Field() {
+	case "Email":
 		return "Please enter a valid email address."
-	case strings.Contains(msg, "Password"):
+	case "Password":
 		return "Password must be at least 8 characters."
-	case strings.Contains(msg, "Username"), strings.Contains(msg, "GivenName"), strings.Contains(msg, "FamilyName"):
+	case "Username", "GivenName", "FamilyName":
 		return "Please fill in all required fields."
 	default:
 		return "Please check the form and try again."

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -259,51 +260,62 @@ func (s *GradeSectionService) generatePeriodsFromSettings(ctx context.Context, s
 	cursor := settings.SchoolStartTime.Microseconds
 	periodDurationMicros := int64(settings.PeriodDurationMinutes) * 60 * 1_000_000
 	intervalInserted := false
-	sortOrder := int32(0)
-	periodNum := int32(1)
+
+	slots := make([]db.CreateTimetablePeriodParams, 0, settings.NumberOfPeriods+1)
 
 	for i := int32(0); i < settings.NumberOfPeriods; {
 		if !intervalInserted && cursor >= section.IntervalStartTime.Microseconds {
-			if _, err := s.repo.CreatePeriod(ctx, db.CreateTimetablePeriodParams{
+			slots = append(slots, db.CreateTimetablePeriodParams{
 				GradeSectionID: section.ID,
-				SortOrder:      sortOrder,
 				StartTime:      section.IntervalStartTime,
 				EndTime:        section.IntervalEndTime,
 				SlotType:       "interval",
-			}); err != nil {
-				return err
-			}
-			sortOrder++
+			})
 			cursor = section.IntervalEndTime.Microseconds
 			intervalInserted = true
 			continue
 		}
 
 		periodEnd := cursor + periodDurationMicros
-		if _, err := s.repo.CreatePeriod(ctx, db.CreateTimetablePeriodParams{
+		slots = append(slots, db.CreateTimetablePeriodParams{
 			GradeSectionID: section.ID,
-			SortOrder:      sortOrder,
-			PeriodNumber:   pgtype.Int4{Int32: periodNum, Valid: true},
 			StartTime:      pgtype.Time{Microseconds: cursor, Valid: true},
 			EndTime:        pgtype.Time{Microseconds: periodEnd, Valid: true},
 			SlotType:       "period",
-		}); err != nil {
-			return err
-		}
-		sortOrder++
+		})
 		cursor = periodEnd
-		periodNum++
 		i++
 	}
 
 	if !intervalInserted {
-		if _, err := s.repo.CreatePeriod(ctx, db.CreateTimetablePeriodParams{
+		slots = append(slots, db.CreateTimetablePeriodParams{
 			GradeSectionID: section.ID,
-			SortOrder:      sortOrder,
 			StartTime:      section.IntervalStartTime,
 			EndTime:        section.IntervalEndTime,
 			SlotType:       "interval",
-		}); err != nil {
+		})
+	}
+
+	// An interval_start_time that falls outside the generated school day
+	// (inconsistent admin input, not validated up front) would otherwise
+	// leave the interval wherever the loop above happened to place it —
+	// sorting by actual start time before assigning sort_order/period_number
+	// guarantees the grid always displays chronologically regardless.
+	sort.SliceStable(slots, func(i, j int) bool {
+		return slots[i].StartTime.Microseconds < slots[j].StartTime.Microseconds
+	})
+
+	periodNum := int32(1)
+	for i := range slots {
+		slots[i].SortOrder = int32(i)
+		if slots[i].SlotType == "period" {
+			slots[i].PeriodNumber = pgtype.Int4{Int32: periodNum, Valid: true}
+			periodNum++
+		}
+	}
+
+	for _, params := range slots {
+		if _, err := s.repo.CreatePeriod(ctx, params); err != nil {
 			return err
 		}
 	}

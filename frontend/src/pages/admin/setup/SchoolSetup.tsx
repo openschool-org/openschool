@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useNavigate, Link } from "react-router";
+import { useNavigate, Navigate, Link } from "react-router";
 import {
   Button,
   TextInput,
@@ -29,7 +29,7 @@ import {
   ChevronRight,
 } from "@carbon/icons-react";
 import LogoUpload from "../../../components/school/LogoUpload";
-import { useCreateSchool } from "../../../queries/useSchool";
+import { useCreateSchool, useSchool } from "../../../queries/useSchool";
 import { useCreateHouse } from "../../../queries/useHouses";
 import { useCreateGrade } from "../../../queries/useGrades";
 import { useCreateAcademicYear } from "../../../queries/useAcademicYears";
@@ -146,6 +146,15 @@ export default function SchoolSetup() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  // RootLayout redirects an admin *into* /school-setup when no school
+  // exists yet, but nothing redirected them back *out* once it does — an
+  // admin revisiting this URL after onboarding got stuck on a wizard whose
+  // final "Finish Setup" fails forever (school already exists) with no way
+  // out but the browser back button (audit.md M-14). `submitted`/`submitting`
+  // excludes this wizard's own just-completed run, whose success response
+  // populates the school query before this component unmounts.
+  const { data: existingSchool, isLoading: schoolCheckLoading } = useSchool();
 
   const createSchool = useCreateSchool();
   const createHouse = useCreateHouse();
@@ -446,6 +455,10 @@ export default function SchoolSetup() {
     goNext();
     submitAll(skip);
   };
+
+  if (!schoolCheckLoading && existingSchool && !submitted && !submitting) {
+    return <Navigate to="/" replace />;
+  }
 
   return (
     <div className="os-signin-wrapper" style={{ alignItems: "flex-start", paddingTop: "3rem" }}>

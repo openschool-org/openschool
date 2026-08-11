@@ -6,6 +6,7 @@ import { useDailySessions, useDeleteSession } from "../../../queries/useAttendan
 import { useRole } from "../../../hooks/useRole";
 import type { DailySession } from "../../../services/attendance";
 import { getErrorMessage } from "../../../lib/errorMessage";
+import { toYmd, todayISODate } from "../../../lib/date";
 import TableSkeleton from "../../../components/common/TableSkeleton";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
@@ -24,12 +25,6 @@ function StatCardSkeleton() {
   );
 }
 
-function toYmd(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-const TODAY_YMD = toYmd(new Date());
-
 function displayDate(ymd: string) {
   const [y, m, d] = ymd.split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("en-LK", {
@@ -41,7 +36,7 @@ function displayDate(ymd: string) {
 }
 
 export default function Attendance() {
-  const [date, setDate] = useState(TODAY_YMD);
+  const [date, setDate] = useState(todayISODate());
   const { data: sessions, isLoading, isError, refetch } = useDailySessions(date);
   const deleteSession = useDeleteSession();
   const { role } = useRole();
@@ -55,7 +50,7 @@ export default function Attendance() {
 
   const marked = (sessions ?? []).filter((s) => s.marked_count > 0).length;
   const pending = (sessions ?? []).length - marked;
-  const isToday = date === TODAY_YMD;
+  const isToday = date === todayISODate();
 
   return (
     <div className="os-page">
@@ -80,7 +75,7 @@ export default function Attendance() {
 
       {!isToday && (
         <div style={{ marginBottom: "1rem" }}>
-          <Button kind="ghost" size="sm" onClick={() => setDate(TODAY_YMD)}>
+          <Button kind="ghost" size="sm" onClick={() => setDate(todayISODate())}>
             Jump to today
           </Button>
         </div>

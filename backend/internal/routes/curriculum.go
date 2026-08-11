@@ -13,7 +13,7 @@ func RegisterCurriculumRoutes(admin *gin.RouterGroup, protected *gin.RouterGroup
 	service := services.NewCurriculumService(repo)
 	handler := handlers.NewCurriculumHandler(service)
 
-	presetService := services.NewCurriculumPresetService(repo, repositories.NewSubjectRepository(pool), repositories.NewGradeRepository(pool))
+	presetService := services.NewCurriculumPresetService(pool, repo, repositories.NewSubjectRepository(pool), repositories.NewGradeRepository(pool))
 	presetHandler := handlers.NewCurriculumPresetHandler(presetService)
 	admin.GET("/curriculum/preset/preview", presetHandler.Preview)
 	admin.POST("/curriculum/preset", presetHandler.Run)

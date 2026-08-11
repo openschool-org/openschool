@@ -134,11 +134,22 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		tokenStr := parts[1]
 
-		claims := &Claims{}
-		token, err := jwt.ParseWithClaims(tokenStr, claims, jwks.Keyfunc,
+		parserOpts := []jwt.ParserOption{
 			jwt.WithValidMethods([]string{"RS256"}),
 			jwt.WithIssuer(identity.Issuer()),
-		)
+		}
+		// Audience validation is opt-in via THUNDERID_AUDIENCE: this
+		// instance's ThunderID frontend client isn't configured with a
+		// resource indicator today, so there's no single correct value to
+		// hardcode. Once set, a token minted for any other application (a
+		// second ThunderID-backed app sharing this issuer) stops being
+		// accepted here just because the issuer matches.
+		if aud := identity.Audience(); aud != "" {
+			parserOpts = append(parserOpts, jwt.WithAudience(aud))
+		}
+
+		claims := &Claims{}
+		token, err := jwt.ParseWithClaims(tokenStr, claims, jwks.Keyfunc, parserOpts...)
 		if err != nil || !token.Valid {
 			log.Printf("auth: token validation failed: %v", err)
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{

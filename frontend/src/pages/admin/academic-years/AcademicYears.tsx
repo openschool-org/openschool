@@ -33,6 +33,7 @@ import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import { toYmd } from "../../../lib/date";
 
 function AcademicYearRowSkeleton() {
   return (
@@ -639,11 +640,6 @@ export default function AcademicYears() {
       {termsFor && <TermsModal year={termsFor} onClose={() => setTermsFor(null)} />}
     </div>
   );
-}
-
-function toYmd(d: Date | undefined): string {
-  if (!d) return "";
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 // Terms come back with RFC3339 timestamps; the date pickers want Y-m-d.

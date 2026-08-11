@@ -7,18 +7,42 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/openschool-org/openschool/internal/identity"
 )
+
+// idpError logs the raw ThunderID response server-side and returns a
+// sanitized error safe to surface to an HTTP caller. Several handlers
+// return err.Error() straight to the client (see audit.md M-6); the upstream
+// body can contain internal details (stack traces, field names, config
+// hints) that shouldn't cross that boundary, so the sanitizing has to happen
+// here — the one place every ThunderID call funnels through — rather than
+// being re-applied at each of those call sites.
+func idpError(op string, statusCode int, body []byte) error {
+	log.Printf("thunderid: %s failed (status %d): %s", op, statusCode, string(body))
+	return fmt.Errorf("identity provider request failed (status %d)", statusCode)
+}
 
 type Client struct {
 	baseUrl    string
 	ouID       string
 	httpClient *http.Client
+
+	// Every CreateUser/UpdateUser/DeleteUser/AssignRole call fetched a fresh
+	// client-credentials token before this cache existed — at least doubling
+	// outbound requests to the IDP on every identity-touching write under
+	// real load (bulk imports, a school day's worth of writes). Guarded by a
+	// mutex since Client is shared across concurrent Gin request handlers.
+	tokenMu     sync.Mutex
+	cachedToken string
+	tokenExpiry time.Time
 }
 
 func NewClient() *Client {
@@ -51,6 +75,13 @@ type ThunderIDUser struct {
 }
 
 func (c *Client) getAccessToken(ctx context.Context) (string, error) {
+	c.tokenMu.Lock()
+	defer c.tokenMu.Unlock()
+
+	if c.cachedToken != "" && time.Now().Before(c.tokenExpiry) {
+		return c.cachedToken, nil
+	}
+
 	data := url.Values{}
 	data.Set("grant_type", "client_credentials")
 	data.Set("client_id", os.Getenv("THUNDERID_CLIENT_ID"))
@@ -84,6 +115,7 @@ func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 
 	var result struct {
 		AccessToken string `json:"access_token"`
+		ExpiresIn   int    `json:"expires_in"`
 	}
 	if err := json.Unmarshal(bodyBytes, &result); err != nil {
 		return "", err
@@ -92,6 +124,12 @@ func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 	if result.AccessToken == "" {
 		return "", fmt.Errorf("empty access token from ThunderID")
 	}
+
+	c.cachedToken = result.AccessToken
+	// Refreshed 10s before actual expiry so an in-flight request never gets
+	// handed a token that expires mid-call; ExpiresIn == 0 (field missing)
+	// falls back to an already-elapsed expiry, i.e. effectively uncached.
+	c.tokenExpiry = time.Now().Add(time.Duration(result.ExpiresIn)*time.Second - 10*time.Second)
 
 	return result.AccessToken, nil
 }
@@ -136,7 +174,7 @@ func (c *Client) CreateUser(ctx context.Context, userType string, attrs map[stri
 		if thunderErrorCode(respBody) == "USR-1014" {
 			return nil, identity.ErrDuplicateUser
 		}
-		return nil, fmt.Errorf("thunderid error: %s", string(respBody))
+		return nil, idpError("CreateUser", resp.StatusCode, respBody)
 	}
 
 	var user ThunderIDUser
@@ -181,7 +219,7 @@ func (c *Client) UpdateUser(ctx context.Context, userID string, userType string,
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("thunderid error: %s", string(respBody))
+		return idpError("UpdateUser", resp.StatusCode, respBody)
 	}
 
 	return nil
@@ -209,7 +247,7 @@ func (c *Client) DeleteUser(ctx context.Context, userID string) error {
 
 	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotFound {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("thunderid error: %s", string(body))
+		return idpError("DeleteUser", resp.StatusCode, body)
 	}
 
 	return nil
@@ -252,7 +290,7 @@ func (c *Client) AssignRole(ctx context.Context, roleID string, userID string) e
 
 	if resp.StatusCode != http.StatusNoContent {
 		respBody, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("thunderid error: %s", string(respBody))
+		return idpError("AssignRole", resp.StatusCode, respBody)
 	}
 
 	return nil

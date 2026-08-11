@@ -10,7 +10,7 @@ import {
 import { DISCIPLINARY_SEVERITIES } from "../../../services/studentPortfolio";
 import type { DisciplinarySeverity } from "../../../services/studentPortfolio";
 import { getErrorMessage } from "../../../lib/errorMessage";
-import { todayISODate } from "../../../lib/date";
+import { todayISODate, toYmd } from "../../../lib/date";
 import EmptyState from "../../../components/common/EmptyState";
 
 const SEVERITY_TAG: Record<DisciplinarySeverity, "gray" | "warm-gray" | "red"> = {
@@ -56,8 +56,8 @@ export default function StudentDisciplinary({ studentId }: { studentId: string }
 
         <div style={{ display: "grid", gridTemplateColumns: "10rem 10rem 1fr 1fr auto", gap: "0.75rem", alignItems: "end", marginBottom: "1.5rem" }}>
           <DatePicker datePickerType="single" dateFormat="Y-m-d" value={date} onChange={(dates) => {
-            const d = dates[0];
-            if (d) setDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+            const ymd = toYmd(dates[0]);
+            if (ymd) setDate(ymd);
           }}>
             <DatePickerInput id="disciplinary-date" labelText="Date" placeholder="YYYY-MM-DD" />
           </DatePicker>

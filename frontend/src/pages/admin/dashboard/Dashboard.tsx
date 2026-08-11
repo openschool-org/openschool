@@ -22,13 +22,9 @@ import type { ClassWithDetails } from "../../../services/class";
 import type { DailySession } from "../../../services/attendance";
 import EmptyState from "../../../components/common/EmptyState";
 import AnalyticsSection from "./AnalyticsSection";
+import { todayISODate } from "../../../lib/date";
 
 const ACCENT = "#406AAF";
-
-function toYmd(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-const TODAY_YMD = toYmd(new Date());
 
 function StatCard({
   label,
@@ -123,7 +119,7 @@ export default function Dashboard() {
   const { data: classes, isLoading: classesLoading } = useCurrentClasses();
   const { data: subjects, isLoading: subjectsLoading } = useSubjects();
   const { data: years, isLoading: yearsLoading } = useAcademicYears();
-  const { data: todaySessions, isLoading: sessionsLoading } = useDailySessions(TODAY_YMD);
+  const { data: todaySessions, isLoading: sessionsLoading } = useDailySessions(todayISODate());
 
   const title = school?.name ? `${school.name} - Admin Dashboard` : "Admin Dashboard";
   const currentYear = years?.find((y) => y.is_current) ?? null;

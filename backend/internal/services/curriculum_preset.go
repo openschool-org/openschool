@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/repositories"
 )
@@ -17,13 +18,14 @@ import (
 // entirely idempotent — safe to run more than once — since every create is
 // preceded by a lookup, so re-running only fills in whatever's missing.
 type CurriculumPresetService struct {
+	pool       *pgxpool.Pool
 	curriculum *repositories.CurriculumRepository
 	subjects   *repositories.SubjectRepository
 	grades     *repositories.GradeRepository
 }
 
-func NewCurriculumPresetService(curriculum *repositories.CurriculumRepository, subjects *repositories.SubjectRepository, grades *repositories.GradeRepository) *CurriculumPresetService {
-	return &CurriculumPresetService{curriculum: curriculum, subjects: subjects, grades: grades}
+func NewCurriculumPresetService(pool *pgxpool.Pool, curriculum *repositories.CurriculumRepository, subjects *repositories.SubjectRepository, grades *repositories.GradeRepository) *CurriculumPresetService {
+	return &CurriculumPresetService{pool: pool, curriculum: curriculum, subjects: subjects, grades: grades}
 }
 
 type presetSubject struct {
@@ -283,8 +285,28 @@ func (s *CurriculumPresetService) Run(ctx context.Context) (PresetSummary, error
 	return s.run(ctx, false)
 }
 
-func (s *CurriculumPresetService) run(ctx context.Context, dryRun bool) (PresetSummary, error) {
-	summary := PresetSummary{DryRun: dryRun, Levels: []PresetLevelPreview{}}
+func (s *CurriculumPresetService) run(ctx context.Context, dryRun bool) (summary PresetSummary, err error) {
+	summary = PresetSummary{DryRun: dryRun, Levels: []PresetLevelPreview{}}
+
+	// Every create below (only reachable when !dryRun — a dry run never
+	// writes) runs through qtx, a transactional *db.Queries, so a failure
+	// partway through this dozens-of-writes seed leaves nothing partially
+	// applied instead of a half-seeded curriculum an admin has to notice and
+	// clean up before re-running.
+	var qtx *db.Queries
+	if !dryRun {
+		tx, txErr := s.pool.Begin(ctx)
+		if txErr != nil {
+			return summary, fmt.Errorf("failed to start transaction: %w", txErr)
+		}
+		defer tx.Rollback(ctx)
+		qtx = db.New(s.pool).WithTx(tx)
+		defer func() {
+			if err == nil {
+				err = tx.Commit(ctx)
+			}
+		}()
+	}
 
 	// ── grades actually present in this school ──────────────────────────────
 	allGrades, err := s.grades.List(ctx)
@@ -322,7 +344,7 @@ func (s *CurriculumPresetService) run(ctx context.Context, dryRun bool) (PresetS
 			summary.SubjectsCreated++
 			continue
 		}
-		created, err := s.subjects.Create(ctx, db.CreateSubjectParams{
+		created, err := qtx.CreateSubject(ctx, db.CreateSubjectParams{
 			Name: ps.Name,
 			Code: ps.Code,
 			Type: optionalText(ps.Type),
@@ -362,7 +384,7 @@ func (s *CurriculumPresetService) run(ctx context.Context, dryRun bool) (PresetS
 			if dryRun {
 				level = db.Level{ID: uuid.New(), Label: label, GradeID: pgUUID(grade.ID)}
 			} else {
-				level, err = s.curriculum.CreateLevel(ctx, db.CreateLevelParams{
+				level, err = qtx.CreateLevel(ctx, db.CreateLevelParams{
 					Label:     label,
 					GradeID:   pgUUID(grade.ID),
 					SortOrder: sortOrder,
@@ -393,7 +415,7 @@ func (s *CurriculumPresetService) run(ctx context.Context, dryRun bool) (PresetS
 				if dryRun {
 					group = db.SelectionGroup{ID: uuid.New(), LevelID: level.ID, Label: pg.Label}
 				} else {
-					group, err = s.curriculum.CreateSelectionGroup(ctx, db.CreateSelectionGroupParams{
+					group, err = qtx.CreateSelectionGroup(ctx, db.CreateSelectionGroupParams{
 						LevelID:   level.ID,
 						Label:     pg.Label,
 						MinSelect: pg.MinSelect,
@@ -427,7 +449,7 @@ func (s *CurriculumPresetService) run(ctx context.Context, dryRun bool) (PresetS
 					continue // shouldn't happen — every code above is in presetSubjects
 				}
 				if !dryRun {
-					if _, err := s.curriculum.AddGroupSubject(ctx, db.AddGroupSubjectParams{
+					if _, err := qtx.AddGroupSubject(ctx, db.AddGroupSubjectParams{
 						GroupID:   group.ID,
 						SubjectID: subject.ID,
 						SortOrder: int32(si),

@@ -601,7 +601,15 @@ func (s *NotificationService) SendDirect(ctx context.Context, title, message, ca
 	return nil
 }
 
-func (s *NotificationService) GetStats(ctx context.Context, id uuid.UUID) (models.NotificationStatsResponse, error) {
+func (s *NotificationService) GetStats(ctx context.Context, id, callerUserID uuid.UUID, callerRole string) (models.NotificationStatsResponse, error) {
+	existing, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return models.NotificationStatsResponse{}, ErrNotificationNotFound
+	}
+	if existing.CreatedBy != callerUserID && callerRole != "admin" {
+		return models.NotificationStatsResponse{}, ErrForbiddenRecipients
+	}
+
 	row, err := s.repo.GetStats(ctx, id)
 	if err != nil {
 		return models.NotificationStatsResponse{}, err

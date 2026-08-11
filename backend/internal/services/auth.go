@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/openschool-org/openschool/internal/identity"
+	"github.com/openschool-org/openschool/internal/mailer"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
 )
@@ -23,10 +24,7 @@ var (
 	ErrResetTokenInvalid  = errors.New("reset link is invalid, already used, or has expired")
 )
 
-// passwordResetTokenTTL is short since, unlike a normal emailed reset link,
-// the token is handed straight back to the same client that just verified
-// its own identity — it only needs to survive the handoff into the next
-// screen of the same flow.
+// passwordResetTokenTTL bounds how long an emailed reset link stays valid.
 const passwordResetTokenTTL = 15 * time.Minute
 
 type AuthService struct {
@@ -36,6 +34,7 @@ type AuthService struct {
 	guardians *repositories.GuardianRepository
 	tokens    *repositories.AuthRepository
 	idp       identity.Provider
+	mailer    mailer.Mailer
 }
 
 func NewAuthService(
@@ -45,16 +44,21 @@ func NewAuthService(
 	guardians *repositories.GuardianRepository,
 	tokens *repositories.AuthRepository,
 	idp identity.Provider,
+	mailSender mailer.Mailer,
 ) *AuthService {
-	return &AuthService{users: users, teachers: teachers, students: students, guardians: guardians, tokens: tokens, idp: idp}
+	return &AuthService{users: users, teachers: teachers, students: students, guardians: guardians, tokens: tokens, idp: idp, mailer: mailSender}
 }
 
 // ForgotPassword verifies the caller knows both a user's login identifier
 // (email) and the secret that matches their initial default password
-// (Phase 8.2), then mints a short-lived one-time token for ResetPassword.
-// ThunderID exposes no reset primitive itself (confirmed — identity.Provider
-// is CreateUser/UpdateUser/DeleteUser/AssignRole only), so this whole flow —
-// including the token — is hand-rolled at the app level.
+// (Phase 8.2), then mints a short-lived one-time token and emails a reset
+// link to the address on file. ThunderID exposes no reset primitive itself
+// (confirmed — identity.Provider is CreateUser/UpdateUser/DeleteUser/AssignRole
+// only), so this whole flow — including the token — is hand-rolled at the
+// app level. The token is deliberately never returned in the API response:
+// NIC/index numbers aren't secret enough on their own (they appear on ID
+// cards/report cards) to let whoever supplies one also receive the token
+// that lets them take over the account — see docs audit C-1.
 func (s *AuthService) ForgotPassword(ctx context.Context, req models.ForgotPasswordRequest) (models.ForgotPasswordResponse, error) {
 	user, err := s.users.GetByEmail(ctx, req.Identifier)
 	if err != nil || user.Role != req.Role {
@@ -81,23 +85,40 @@ func (s *AuthService) ForgotPassword(ctx context.Context, req models.ForgotPassw
 		return models.ForgotPasswordResponse{}, ErrInvalidCredentials
 	}
 
-	return s.issueResetToken(ctx, user.ID)
+	if err := s.issueAndEmailResetToken(ctx, user.ID, user.Email); err != nil {
+		return models.ForgotPasswordResponse{}, err
+	}
+
+	return models.ForgotPasswordResponse{
+		Message: "If those details match an account, a password reset link has been sent to the email on file.",
+	}, nil
 }
 
-func (s *AuthService) issueResetToken(ctx context.Context, userID uuid.UUID) (models.ForgotPasswordResponse, error) {
+func (s *AuthService) issueAndEmailResetToken(ctx context.Context, userID uuid.UUID, email string) error {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
-		return models.ForgotPasswordResponse{}, fmt.Errorf("failed to generate reset token: %w", err)
+		return fmt.Errorf("failed to generate reset token: %w", err)
 	}
 	token := hex.EncodeToString(raw)
 	hash := hashResetToken(token)
 	expiresAt := time.Now().Add(passwordResetTokenTTL)
 
 	if _, err := s.tokens.CreatePasswordResetToken(ctx, userID, hash, expiresAt); err != nil {
-		return models.ForgotPasswordResponse{}, fmt.Errorf("failed to create reset token: %w", err)
+		return fmt.Errorf("failed to create reset token: %w", err)
 	}
 
-	return models.ForgotPasswordResponse{ResetToken: token, ExpiresAt: expiresAt.Format(time.RFC3339)}, nil
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s", mailer.FrontendURL(), token)
+	body := fmt.Sprintf(
+		"A password reset was requested for your OpenSchool account.\n\n"+
+			"Reset your password using the link below. It expires in %d minutes and can only be used once.\n\n%s\n\n"+
+			"If you didn't request this, you can safely ignore this email.",
+		int(passwordResetTokenTTL.Minutes()), resetLink,
+	)
+	if err := s.mailer.Send(ctx, email, "Reset your OpenSchool password", body); err != nil {
+		return fmt.Errorf("failed to send reset email: %w", err)
+	}
+
+	return nil
 }
 
 // ResetPassword is the unauthenticated counterpart to ChangePassword — it

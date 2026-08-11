@@ -27,6 +27,7 @@ import ProfileBanner from "../../../components/common/ProfileBanner";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 import ConfirmEditModal from "../../../components/common/ConfirmEditModal";
 import type { Teacher, TeacherTitle, TeacherEmploymentStatus } from "../../../services/teacher";
+import { splitFullName } from "../../../lib/name";
 
 const TITLES: TeacherTitle[] = ["Mr", "Miss", "Mrs", "Ms", "Dr", "Von", "Prof"];
 
@@ -37,10 +38,8 @@ const EMPLOYMENT_STATUSES: { value: TeacherEmploymentStatus; label: string }[] =
 ];
 
 function teacherToForm(t: Teacher) {
-  const [given, ...rest] = t.full_name.trim().split(/\s+/);
   return {
-    given_name: given ?? "",
-    family_name: rest.join(" "),
+    ...splitFullName(t.full_name),
     phone_number: t.phone ?? "",
     nic_number: t.nic_number ?? "",
     title: t.title ?? ("" as TeacherTitle | ""),

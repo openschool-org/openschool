@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router";
 import SignIn from "./pages/SignIn";
 import Setup from "./pages/Setup";
 import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import PasswordInterstitial from "./pages/PasswordInterstitial";
 import AccessRestricted from "./pages/AccessRestricted";
 import ComingSoon from "./pages/ComingSoon";
@@ -76,13 +77,18 @@ function App() {
   const { data: me, isLoading: meLoading } = useProvisionUser();
   const { role, loading } = useRole();
 
-  const stillLoading = loading || (role !== null && meLoading);
+  // Unconditional — gating meLoading behind `role !== null` created an
+  // implicit coupling where a user whose role resolves after (or alongside)
+  // a slow /me call could flash AccessRestricted despite having a valid
+  // role, since meLoading was only consulted once role was already known.
+  const stillLoading = loading || meLoading;
 
   return (
     <Routes>
       <Route path="/signin" element={<SignIn />} />
       <Route path="/setup" element={<Setup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {import.meta.env.DEV && (
         <>
@@ -97,9 +103,7 @@ function App() {
       {stillLoading ? (
         <Route
           path="*"
-          element={
-            <div style={{ minHeight: "100vh", background: "#f4f4f4" }} />
-          }
+          element={<div className="os-loading-placeholder" />}
         />
       ) : me?.must_change_password ? (
         <Route

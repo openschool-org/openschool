@@ -7,7 +7,7 @@ import { useCurrentAcademicYear } from "../../../queries/useAcademicYears";
 import { useTerms } from "../../../queries/useTerms";
 import { reportExportApi, ATTENDANCE_REPORT_COLUMNS, MARKS_REPORT_COLUMNS } from "../../../services/reportExport";
 import { getErrorMessage } from "../../../lib/errorMessage";
-import { todayISODate } from "../../../lib/date";
+import { todayISODate, toYmd } from "../../../lib/date";
 
 type Template = "attendance" | "marks";
 
@@ -119,14 +119,14 @@ export default function Reports() {
             {template === "attendance" ? (
               <>
                 <DatePicker datePickerType="single" dateFormat="Y-m-d" value={from} onChange={(dates) => {
-                  const d = dates[0];
-                  if (d) setFrom(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+                  const ymd = toYmd(dates[0]);
+                  if (ymd) setFrom(ymd);
                 }}>
                   <DatePickerInput id="report-from" labelText="From" placeholder="YYYY-MM-DD" />
                 </DatePicker>
                 <DatePicker datePickerType="single" dateFormat="Y-m-d" value={to} onChange={(dates) => {
-                  const d = dates[0];
-                  if (d) setTo(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+                  const ymd = toYmd(dates[0]);
+                  if (ymd) setTo(ymd);
                 }}>
                   <DatePickerInput id="report-to" labelText="To" placeholder="YYYY-MM-DD" />
                 </DatePicker>

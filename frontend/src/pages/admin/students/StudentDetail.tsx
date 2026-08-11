@@ -39,6 +39,7 @@ import StudentActivities from "./StudentActivities";
 import StudentLeadershipAwards from "./StudentLeadershipAwards";
 import StudentDisciplinary from "./StudentDisciplinary";
 import StudentRecordsRollup from "./StudentRecordsRollup";
+import { splitFullName } from "../../../lib/name";
 
 type Gender = "" | "male" | "female";
 
@@ -48,10 +49,8 @@ const ENROLLMENT_STATUSES: { value: StudentEnrollmentStatus; label: string }[] =
 ];
 
 function studentToForm(s: StudentWithClass) {
-  const [given, ...rest] = s.full_name.trim().split(/\s+/);
   return {
-    given_name: given ?? "",
-    family_name: rest.join(" "),
+    ...splitFullName(s.full_name),
     phone_number: s.phone ?? "",
     address: s.address ?? "",
     whatsapp: s.whatsapp ?? "",

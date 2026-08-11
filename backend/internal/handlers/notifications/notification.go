@@ -158,14 +158,18 @@ func (h *NotificationHandler) ListDrafts(c *gin.Context) {
 }
 
 func (h *NotificationHandler) Stats(c *gin.Context) {
+	callerID, role, ok := h.caller(c)
+	if !ok {
+		return
+	}
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-	stats, err := h.service.GetStats(c.Request.Context(), id)
+	stats, err := h.service.GetStats(c.Request.Context(), id, callerID, role)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		h.writeServiceError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, stats)

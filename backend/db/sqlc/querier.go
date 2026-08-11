@@ -113,7 +113,7 @@ type Querier interface {
 	DeleteAttendanceSession(ctx context.Context, id uuid.UUID) error
 	DeleteClass(ctx context.Context, id uuid.UUID) error
 	DeleteClassroom(ctx context.Context, id uuid.UUID) (int64, error)
-	DeleteDisciplinaryRecord(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteDisciplinaryRecord(ctx context.Context, arg DeleteDisciplinaryRecordParams) (int64, error)
 	DeleteDraftNotification(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteDraftTimetable(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteGrade(ctx context.Context, id uuid.UUID) (int64, error)
@@ -128,17 +128,17 @@ type Querier interface {
 	DeleteMedium(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteNonAcademicStaff(ctx context.Context, id uuid.UUID) (int64, error)
 	DeletePrefect(ctx context.Context, id uuid.UUID) (int64, error)
-	DeleteProgressReport(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteProgressReport(ctx context.Context, arg DeleteProgressReportParams) (int64, error)
 	DeleteSectionHead(ctx context.Context, id uuid.UUID) (int64, error)
 	// blocked while enrollments reference it
 	DeleteSelectionGroup(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStream(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStreamGroup(ctx context.Context, id uuid.UUID) (int64, error)
-	DeleteStudentActivity(ctx context.Context, id uuid.UUID) (int64, error)
-	DeleteStudentAward(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteStudentActivity(ctx context.Context, arg DeleteStudentActivityParams) (int64, error)
+	DeleteStudentAward(ctx context.Context, arg DeleteStudentAwardParams) (int64, error)
 	// clears a student's picks for one level/year so a re-submit replaces them
 	DeleteStudentEnrollmentsForLevel(ctx context.Context, arg DeleteStudentEnrollmentsForLevelParams) error
-	DeleteStudentLeadershipRole(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteStudentLeadershipRole(ctx context.Context, arg DeleteStudentLeadershipRoleParams) (int64, error)
 	DeleteStudentProfile(ctx context.Context, id uuid.UUID) error
 	DeleteStudentSubjectEnrollment(ctx context.Context, arg DeleteStudentSubjectEnrollmentParams) error
 	DeleteSubject(ctx context.Context, id uuid.UUID) (int64, error)

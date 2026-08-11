@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -54,10 +55,12 @@ func optionalInt4(v *int32) pgtype.Int4 {
 
 // pgNumeric converts a plain float (e.g. a mark out of 100) to pgtype.Numeric.
 // pgtype.Numeric only scans from a string, not a float, hence the detour.
-func pgNumeric(v float64) pgtype.Numeric {
+func pgNumeric(v float64) (pgtype.Numeric, error) {
 	var n pgtype.Numeric
-	_ = n.Scan(strconv.FormatFloat(v, 'f', 2, 64))
-	return n
+	if err := n.Scan(strconv.FormatFloat(v, 'f', 2, 64)); err != nil {
+		return pgtype.Numeric{}, fmt.Errorf("failed to convert %v to numeric: %w", v, err)
+	}
+	return n, nil
 }
 
 // numericToFloat64 is pgNumeric's inverse — used for aggregate query results

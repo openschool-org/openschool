@@ -18,6 +18,7 @@ var (
 	ErrGuardianNotFound           = errors.New("guardian not found")
 	ErrGuardianAlreadyProvisioned = errors.New("this guardian already has a portal login")
 	ErrGuardianMissingEmail       = errors.New("guardian must have an email on file before provisioning a login")
+	ErrGuardianMissingNIC         = errors.New("guardian must have an NIC number on file before provisioning a login")
 	ErrGuardianInUse              = errors.New("guardian is linked to a student — unlink them first")
 )
 
@@ -130,6 +131,9 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 	}
 	if !guardian.Email.Valid || guardian.Email.String == "" {
 		return db.Guardian{}, ErrGuardianMissingEmail
+	}
+	if guardian.NicNumber == "" {
+		return db.Guardian{}, ErrGuardianMissingNIC
 	}
 
 	// The guardian's NIC number (already on file, Phase 8.1) becomes their

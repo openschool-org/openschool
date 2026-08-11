@@ -14,12 +14,12 @@ ORDER BY t.sort_order DESC;
 
 -- name: UpdateProgressReport :one
 UPDATE student_progress_reports
-SET narrative = $2, updated_at = NOW()
-WHERE id = $1
+SET narrative = $3, updated_at = NOW()
+WHERE id = $1 AND student_id = $2
 RETURNING *;
 
 -- name: DeleteProgressReport :execrows
-DELETE FROM student_progress_reports WHERE id = $1;
+DELETE FROM student_progress_reports WHERE id = $1 AND student_id = $2;
 
 -- Activities ---------------------------------------------------------------
 
@@ -35,12 +35,12 @@ ORDER BY created_at DESC;
 
 -- name: UpdateStudentActivity :one
 UPDATE student_activities
-SET category = $2, name = $3, role = $4, achievement = $5
-WHERE id = $1
+SET category = $3, name = $4, role = $5, achievement = $6
+WHERE id = $1 AND student_id = $2
 RETURNING *;
 
 -- name: DeleteStudentActivity :execrows
-DELETE FROM student_activities WHERE id = $1;
+DELETE FROM student_activities WHERE id = $1 AND student_id = $2;
 
 -- Leadership roles -----------------------------------------------------------
 
@@ -55,7 +55,7 @@ WHERE student_id = $1
 ORDER BY created_at DESC;
 
 -- name: DeleteStudentLeadershipRole :execrows
-DELETE FROM student_leadership_roles WHERE id = $1;
+DELETE FROM student_leadership_roles WHERE id = $1 AND student_id = $2;
 
 -- Awards ---------------------------------------------------------------------
 
@@ -70,7 +70,7 @@ WHERE student_id = $1
 ORDER BY awarded_date DESC;
 
 -- name: DeleteStudentAward :execrows
-DELETE FROM student_awards WHERE id = $1;
+DELETE FROM student_awards WHERE id = $1 AND student_id = $2;
 
 -- Disciplinary records --------------------------------------------------------
 
@@ -85,4 +85,4 @@ WHERE student_id = $1
 ORDER BY incident_date DESC;
 
 -- name: DeleteDisciplinaryRecord :execrows
-DELETE FROM student_disciplinary_records WHERE id = $1;
+DELETE FROM student_disciplinary_records WHERE id = $1 AND student_id = $2;

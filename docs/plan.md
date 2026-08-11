@@ -49,6 +49,13 @@ Every still-open finding from the (now-removed) codebase audit, tracked here so 
 - **ThunderID attribute-name fragility (Low, informational)** — two prior production bugs (teacher account creation, guardian portal provisioning) were caused by hand-typed identity-provider attribute/type-name strings that have to match out-of-repo ThunderID console configuration, failing silently at runtime with a generic error code rather than at build/test time. Consider a small integration test exercising `CreateTeacher`/`ProvisionLogin`/`CreateStudent` against a real or recorded ThunderID response, or centralizing the attribute-name constants in one place.
 - **Load test** — run a `hey`/`k6` simulation of a morning attendance rush against the seeded ~2,560-student dataset before trusting the current DB-pool (25/5) and rate-limit (30 rps / burst 60) defaults for a real rollout. Deferred until the load test shows a need: a per-JWT-subject rate-limiting layer on top of the existing per-IP one (relevant since school users are often behind one shared IP), and a caching layer (e.g. Redis) in front of read-heavy, slow-changing endpoints (class/subject/grade lists).
 
+### §0.1 New findings from this pass — unscoped data exposure (Critical, not yet fixed)
+
+Found while scoping the deeper role-differentiated dashboard work below (§9.3) — both are the same root cause the earlier audit already flagged as a systemic risk ("identity-provider role assignment is handled differently at every call site"; here it's *authorization* handled differently at every call site): an endpoint built for one call site (an admin-only dashboard page) gets registered on the broad `teacherOrAdmin` route group with no matching handler-level check, unlike the well-factored `authorizeTeacherForClass` pattern used everywhere else in the attendance module. **Documented here only, per instruction — not fixed in code yet.**
+
+- **Cross-school attendance dashboard exposed to any teacher.** `GET /attendance/sessions` (`AttendanceHandler.ListSessionsByDate`, `internal/handlers/attendance.go`) sits on `teacherOrAdmin` but performs zero authorization beyond "is a signed-in teacher or admin" — no actor extraction, no rank/scope check at all, unlike its sibling `ListSessionsByClass` (fixed for the same gap earlier — see `audit.md` H-2). Any teacher, regardless of position, can query this for any date and get back *every* class's attendance session for the whole school (class name, grade, which teacher took it, enrolled/marked counts) — not just their own classes. **Fix:** require admin or a leadership rank (Principal/VP/Section Head) via a new check, and scope the returned sessions to the caller's authorized grades — whole school for Principal or an unrestricted VP, granted grades for a scoped VP (`vice_principal_grade_scopes`), headed grades for a Section Head (`ListGradeIDsHeadedByTeacher`) — rather than returning everything unconditionally to anyone who clears the role gate.
+- **Whole-staff HR attendance data exposed (read *and* write) to any teacher.** All five `/staff-attendance/*` routes (`internal/routes/staff_attendance.go`) sit on `teacherOrAdmin` with no per-handler authorization at all: `POST /staff-attendance` lets any teacher mark *any* staff member's attendance status; `GET /staff-attendance` and `GET /staff-attendance/monthly-summary` return every active teacher's and non-academic staff member's daily/monthly attendance, including `leave` status (sensitive HR data); `GET /staff-attendance/teachers/{id}/history` and `.../non-academic-staff/{id}/history` return any specific staff member's attendance history by arbitrary path-param ID. The frontend only ever calls these from an admin-only page (`pages/admin/staff/StaffAttendance.tsx`), so this is a backend-only gap — directly exploitable against the API (curl/Postman) by any signed-in teacher, invisible from the UI. **Fix:** move this whole route group from `teacherOrAdmin` to `admin`-only in `internal/routes/staff_attendance.go` — there is no legitimate teacher-facing use case for marking or reading a colleague's attendance/leave record.
+
 ---
 
 ## Phase 1 — Session timeout, house colors, audit-log foundation
@@ -131,7 +138,8 @@ New backend stack (mirrors `section_head.go`/`prefect.go`, minus the academic-ye
 
 - **Backend:** `GET /me/teacher/position` (`TeacherSelfHandler.Position`, `internal/routes/teacher_self.go`) returns `PositionSummary{rank, rank_label, notify_whole_school}` for the signed-in teacher, built on `PositionService.SummaryForTeacher`.
 - **Frontend restructure:** `pages/teacher/TeacherDashboard.tsx` (previously one ~280-line file) was split into `pages/teacher/dashboard/`: `TeacherDashboard.tsx` (composition root), `WelcomeBanner.tsx` (+ `RoleBadge.tsx`), `TodaysClasses.tsx`, `RecentSessions.tsx`, `QuickActions.tsx`, `TodaySummary.tsx`, `MyClassesPanel.tsx`, `LeadershipPanel.tsx` — one component per concern, matching the "more structured files" ask, rather than one monolithic component branching internally on rank.
-- **What actually differs by rank:** a `RoleBadge` in the welcome banner (color-coded by rank); a `LeadershipPanel` shown only for Section Head and above, describing their notification reach in plain language; `QuickActions`' "Send Notification" tile description text, which reflects what that rank can actually do (e.g. "Notify the whole school" vs "Notify your class and its guardians"). The underlying data (classes, attendance, sessions) is the same for every teacher — position only changes the framing and the notification-composer options (4.3).
+- **What actually differs by rank:** a `RoleBadge` in the welcome banner (color-coded by rank); a `LeadershipPanel` shown only for Section Head and above, describing their notification reach in plain language; `QuickActions`' "Send Notification" tile description text, which reflects what that rank can actually do (e.g. "Notify the whole school" vs "Notify your class and its guardians"). **The underlying data (classes, attendance, sessions) is the same for every teacher** — position only changes the framing and the notification-composer options (4.3), not what data is actually fetched or shown.
+- ⬜ **Deeper differentiation — planned, not yet built.** A Principal/Vice Principal or Section Head's dashboard today shows the exact same "my classes" data as a plain Class/Subject Teacher's, just with different label text around it. See §9.3 for the concrete design (a school-/grade-scoped "Overview" panel backed by a new, properly-authorization-gated endpoint) — deliberately scoped to close §0.1's leak #1 as part of building it, rather than adding a fourth ad hoc authorization path alongside the ones §0.1 already flags as inconsistent.
 
 ---
 
@@ -233,7 +241,66 @@ Already done in Phase 1 — nothing further needed here.
 
 ### 8.4 Universal self-service password reset
 
-✅ **Done.** ThunderID exposes no reset primitive either, so it's hand-rolled: `password_reset_tokens` (migration `000031`, shared with 8.3) stores only a SHA-256 hash of a short-lived (15 min), single-use token. `AuthService` (`internal/services/auth.go`) exposes `ForgotPassword`/`ResetPassword` (unauthenticated — identity verified via login email + the Phase 8.2 default-password secret: NIC for teacher/parent, index number for student; **admin excluded**, no secondary secret on file, falls back to the authenticated path) and `ChangePassword`/`KeepDefaultPassword` (authenticated, reused by 8.3). Routes on `internal/routes/auth.go`, rate-limited like `/setup/admin`. Frontend: a "Forgot password?" link on `/signin` → `ForgotPassword.tsx` (identify → set new password, two steps of one page); a "Change password" action shared by every role via `AppHeaderActions` (`ChangePasswordModal.tsx`), plus a dedicated button on `TeacherProfile.tsx`'s banner.
+✅ **Done.** ThunderID exposes no reset primitive either, so it's hand-rolled: `password_reset_tokens` (migration `000031`, shared with 8.3) stores only a SHA-256 hash of a short-lived (15 min), single-use token. `AuthService` (`internal/services/auth.go`) exposes `ForgotPassword`/`ResetPassword` (unauthenticated — identity verified via login email + the Phase 8.2 default-password secret: NIC for teacher/parent, index number for student; **admin excluded**, no secondary secret on file, falls back to the authenticated path) and `ChangePassword`/`KeepDefaultPassword` (authenticated, reused by 8.3). Routes on `internal/routes/auth.go`, rate-limited like `/setup/admin`. `ForgotPassword` delivers the reset token out-of-band via `internal/mailer` (SMTP, env-configured; logs instead of sending if `SMTP_HOST` is unset) rather than returning it in the response (audit C-1). Frontend: a "Forgot password?" link on `/signin` → `ForgotPassword.tsx` (identify → generic "check your email" message) and a separate `ResetPassword.tsx` at `/reset-password?token=...` for the emailed link; a "Change password" action shared by every role via `AppHeaderActions` (`ChangePasswordModal.tsx`), plus a dedicated button on `TeacherProfile.tsx`'s banner.
+
+---
+
+## Phase 9 — Pre-release hardening & the deepened role dashboard
+
+**Status: planned — documented here, not yet built.** Everything in this
+phase is a proposal for what to prioritize before a first real (v1) release,
+written up per request rather than implemented. Nothing below has shipped.
+
+### 9.1 What's left before v1 — functional gaps
+
+Pulled together from every "not yet built" marker elsewhere in this
+document, in one place:
+
+- **Session timeout (Phase 1)** — the one item that phase never finished; an idle-timeout auto sign-out is still not implemented.
+- **Medium-locked classes (Phase 5)** — `classes.medium_id`, the setup-wizard step reorder, and the promotion-pool exclusion described there are all still unbuilt.
+- **Deeper role-differentiated dashboard (§9.3 below)** — the current dashboard only changes label text by rank; genuinely scoped data (school-wide vs grade-wide vs own-classes) doesn't exist yet.
+- **Orphaned-identity reconciliation job (§0)** — no periodic/admin-triggered cleanup exists yet for ThunderID accounts left behind by a failed rollback.
+- **Teacher self-service profile edit (§0)** — still admin-only; needs a product decision on scope before building.
+- **Load test (§0)** — current DB-pool/rate-limit defaults are untested against realistic concurrent load.
+- **CI hardening completion (§0, restated in 9.2)** — `govulncheck`/`deadcode`/`pnpm audit` are still informational-only in CI.
+- **19 dead exported functions** (`deadcode` scan, `audit.md`) — each needs a decision: delete, or wire up the caller that should exist.
+- **Low-priority cross-file duplication** (`audit.md` Low tier) — the `userID`-from-context helper repeated across `parent.go`/`student_self.go`/`teacher_self.go`/`timetable/timetable.go`/`notifications/notification.go`, and role/status strings as raw literals instead of shared constants. Cosmetic; fine to defer past v1.
+
+### 9.2 Security hardening checklist before v1
+
+Organized by the categories asked about specifically (XSS, injection, DoS),
+plus what else came up while reviewing the current security posture.
+
+**Already in good shape (confirmed, not action items — listed so the gaps
+below read as genuine gaps, not a from-scratch list):**
+- **SQL/query injection** — every query goes through parameterized `sqlc`-generated code; no string-concatenated SQL exists anywhere in the codebase. Keep this invariant: route all new queries through `sqlc` rather than raw `pool.Query` calls with interpolated strings.
+- **XSS** — no `dangerouslySetInnerHTML`/`eval`/`as any` anywhere in the frontend (confirmed in the earlier audit pass); React escapes all rendered content by default. The backend is JSON-only and never serves HTML, so there's no server-rendered-HTML XSS surface either.
+- **CSRF** — not applicable as currently built: auth is a Bearer token attached by JS (`useApi.ts`'s axios interceptor), never a cookie, so there's nothing for a cross-site form/request to ride on. Re-evaluate only if auth ever moves to cookie-based sessions.
+
+**Gaps to close before v1:**
+- **Fix §0.1's two data-exposure findings** — the cross-school attendance leak and the wide-open staff-attendance routes. These are the highest-priority security item in this whole checklist; everything else here is hardening, those two are an active leak.
+- **No request body size limit** — Gin applies no cap by default. A client can `POST` an arbitrarily large body (e.g. a multi-MB `logo_url` string sent directly to the API, bypassing the frontend's 500KB client-side check entirely) and consume memory/bandwidth unbounded. Add a `http.MaxBytesReader`-based middleware capping request bodies (a few MB) API-wide.
+- **No server-side validation on `logo_url`** — it's an unbounded `TEXT` column set from a client-supplied string with no server-side size or `data:image/...` format check; the frontend's type/size guard (`LogoUpload.tsx`) is purely client-side and trivially bypassed by calling the API directly.
+- **Rate limiting is per-IP only, in-process, single-instance** — `internal/middleware/ratelimit.go`'s token-bucket limiter is keyed by client IP with no per-account layer, so one abusive signed-in account can't be isolated from the rest of a school sharing one NAT IP (throttles everyone together), while a distributed attacker rotating IPs isn't meaningfully rate-limited at all. It's also purely in-memory — resets on every restart and won't share state if the backend is ever horizontally scaled. Add a per-JWT-subject limiter layered on top of the existing per-IP one, and move to a shared store (Redis) before running more than one backend instance.
+- **Unpatched dependencies** — the 2 open `pnpm audit` advisories (`react-router`, `dompurify` via `@thunderid/react`) and the Go toolchain CVEs `govulncheck` reports (`audit.md`) should be resolved, then both checks flipped from `continue-on-error: true` to blocking in `.github/workflows/*-ci.yml` so a regression fails the build instead of passing silently.
+- **Unbounded list endpoints** — several `teacherOrAdmin`/`admin` list routes (`/students`, `/teachers`, `/notifications/sent`, etc.) return the entire table in one response with no pagination. Fine at the current ~2,500-student scale; add server-side pagination before a much larger school or a shared multi-tenant deployment makes that response size a real DoS/performance vector on its own.
+- **Secrets in a plain `.env` file** — `THUNDERID_CLIENT_SECRET`/`DB_PASSWORD`/`SMTP_PASSWORD` currently load from a gitignored `.env`, which is fine for local dev but not a real production secrets story. Document (or enforce) sourcing these from a proper secrets manager / injected environment before a real rollout.
+- **TLS is the deployer's responsibility, not enforced anywhere** — the app itself speaks plain HTTP; every real deployment needs a reverse proxy/load balancer terminating HTTPS in front of it, or Bearer tokens are sniffable in transit. Worth a explicit line in `docs/SETUP.md` so it isn't assumed-but-unstated.
+- **Audit log doesn't cover account/role changes yet** — today it covers house reassignment and attendance-lock overrides only. Extend it to account creation/deletion and position/role assignment — the highest-privilege actions in the system — so there's a record of who provisioned or removed which account, and when.
+
+### 9.3 Role-differentiated teacher dashboard, deepened — design (planned)
+
+What §4.4 built was framing (badge, one panel, copy changes) over identical
+underlying data. This is the concrete design for making the data itself
+differ by rank, expanding on the "Principal/VP vs Section Head vs Class/
+Subject Teacher" ask:
+
+- **Principal / Vice Principal** — a new "School Overview" panel (or "My Grades Overview" for a grade-scoped VP): total classes and students in scope, and today's attendance completion (X of Y classes marked) across that scope. Sits alongside the existing `LeadershipPanel` (notification reach), doesn't replace it.
+- **Section Head** — the same panel shape, scoped to the grade(s) they're TIC for (`ListGradeIDsHeadedByTeacher`) instead of the whole school: their section's classes/students/today's-attendance-completion, not just their own one class.
+- **Class Teacher / Subject Teacher** — dashboard stays exactly as it is today (own classes only); no overview panel, since they hold no grade- or school-wide scope to summarize.
+- **Backend:** one new endpoint, `GET /me/teacher/leadership-overview`, gated to Principal/VP/Section Head ranks only — a plain Class/Subject Teacher gets `403`, not empty data. This gate is also the proper fix for §0.1's leak #1 (built once, correctly, instead of patched ad hoc). Response shape: `{scope: "school" | "grades", grade_names: string[], class_count, student_count, sessions_marked_today, sessions_pending_today}`. Scope resolution reuses the existing, already-tested authorization data: whole school for Principal or a VP with `notify_whole_school`; otherwise the grades in `vice_principal_grade_scopes` (VP) or `ListGradeIDsHeadedByTeacher` (Section Head).
+- **Database — no new tables needed.** `teacher_positions`, `vice_principal_grade_scopes`, and `section_heads` already model every scope this requires; "correct the database" here means two new **read-only** aggregate queries (`db/queries/leadership.sql`: a school-wide variant and a grade-filtered variant of the same class/student/today's-attendance counts), not a migration. Both queries filter by grade at the SQL `WHERE` clause level — not fetched-then-filtered in application code — specifically so this new endpoint can't reproduce the class of bug §0.1 describes.
+- **Rollout note:** once built, apply against the actual `openschool-postgres` container (currently stopped locally — `docker compose up -d` in `backend/`) the same way every other migration/query change is: `sqlc generate` after adding the new queries, `go run ./cmd/api/main.go` to run the (in this case, schema-less) migration pass and pick up the new query layer.
 
 ---
 
@@ -249,3 +316,4 @@ Already done in Phase 1 — nothing further needed here.
 | 6 — Staff & profile expansion | Phase 4 | 5 |
 | 7 — Analytics & CRUD polish | 1–6 (touches most modules) | — |
 | 8 — NIC & password lifecycle | — | 1–7 |
+| 9 — Pre-release hardening & deepened dashboard | Phase 4 (position model) | — (gates v1 release) |

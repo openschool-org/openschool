@@ -31,6 +31,13 @@ func Issuer() string {
 	return os.Getenv("THUNDERID_ISSUER")
 }
 
+// Audience returns the expected `aud` claim on end-user access tokens (the
+// frontend SPA's OAuth client id), if configured. Empty means audience
+// validation is skipped — see the caller in middleware/auth.go.
+func Audience() string {
+	return os.Getenv("THUNDERID_AUDIENCE")
+}
+
 func RoleID(role string) string {
 	return os.Getenv("THUNDERID_ROLE_" + strings.ToUpper(role))
 }

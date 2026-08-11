@@ -13,9 +13,10 @@ type ForgotPasswordRequest struct {
 	Secret     string `json:"secret" binding:"required"`
 }
 
+// ForgotPasswordResponse deliberately carries no token or other secret — the
+// reset link is delivered out-of-band by email. See docs audit C-1.
 type ForgotPasswordResponse struct {
-	ResetToken string `json:"reset_token"`
-	ExpiresAt  string `json:"expires_at"`
+	Message string `json:"message"`
 }
 
 // ResetPasswordRequest sets a new password using the one-time token minted
