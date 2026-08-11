@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -15,7 +16,29 @@ import (
 var (
 	ErrAcademicYearNotFound = errors.New("academic year not found")
 	ErrAcademicYearInUse    = errors.New("academic year is used by a class and cannot be deleted")
+	ErrInvalidLogoURL       = errors.New("logo must be a data:image/... URL under 500KB")
 )
+
+// maxLogoDataURLChars bounds the base64 data: URL string length. The
+// frontend (LogoUpload.tsx) caps the raw image at 500KB before encoding;
+// base64 inflates that by ~4/3, so this is a generous ceiling around that,
+// not a tight byte-for-byte match. logo_url is otherwise an unbounded TEXT
+// column set directly from client input, and the frontend's check is
+// trivially bypassed by calling the API directly.
+const maxLogoDataURLChars = 700_000
+
+func validateLogoURL(logoURL string) error {
+	if logoURL == "" {
+		return nil
+	}
+	if !strings.HasPrefix(logoURL, "data:image/") {
+		return ErrInvalidLogoURL
+	}
+	if len(logoURL) > maxLogoDataURLChars {
+		return ErrInvalidLogoURL
+	}
+	return nil
+}
 
 type SchoolService struct {
 	repo *repositories.SchoolRepository
@@ -30,6 +53,10 @@ func (s *SchoolService) CreateSchool(ctx context.Context, req models.CreateSchoo
 	existing, err := s.repo.Get(ctx)
 	if err == nil && existing.ID != (uuid.UUID{}) {
 		return db.School{}, fmt.Errorf("school already exists")
+	}
+
+	if err := validateLogoURL(req.LogoURL); err != nil {
+		return db.School{}, err
 	}
 
 	return s.repo.Create(ctx, db.CreateSchoolParams{
@@ -48,6 +75,10 @@ func (s *SchoolService) GetSchool(ctx context.Context) (db.School, error) {
 }
 
 func (s *SchoolService) UpdateSchool(ctx context.Context, id uuid.UUID, req models.UpdateSchoolRequest) (db.School, error) {
+	if err := validateLogoURL(req.LogoURL); err != nil {
+		return db.School{}, err
+	}
+
 	return s.repo.Update(ctx, db.UpdateSchoolParams{
 		ID:        id,
 		Name:      req.Name,

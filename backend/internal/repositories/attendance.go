@@ -41,8 +41,14 @@ func (r *AttendanceRepository) ListSessionsByClass(ctx context.Context, classID 
 	return r.queries.ListAttendanceSessionsByClass(ctx, classID)
 }
 
-func (r *AttendanceRepository) ListSessionsByDate(ctx context.Context, date time.Time) ([]db.ListAttendanceSessionsByDateRow, error) {
-	return r.queries.ListAttendanceSessionsByDate(ctx, pgtype.Date{Time: date, Valid: true})
+// ListSessionsByDate returns every attendance session on the given date. A
+// nil gradeIDs means unfiltered (whole-school callers); a non-nil slice
+// restricts results to those grades at the SQL WHERE clause level.
+func (r *AttendanceRepository) ListSessionsByDate(ctx context.Context, date time.Time, gradeIDs []uuid.UUID) ([]db.ListAttendanceSessionsByDateRow, error) {
+	return r.queries.ListAttendanceSessionsByDate(ctx, db.ListAttendanceSessionsByDateParams{
+		Date:     pgtype.Date{Time: date, Valid: true},
+		GradeIds: gradeIDs,
+	})
 }
 
 func (r *AttendanceRepository) DeleteSession(ctx context.Context, id uuid.UUID) error {

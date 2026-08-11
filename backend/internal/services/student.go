@@ -17,13 +17,14 @@ type StudentService struct {
 	repo     *repositories.StudentRepository
 	idp      identity.Provider
 	houseSvc *HouseService
+	audit    *AuditService
 }
 
-func NewStudentService(repo *repositories.StudentRepository, idp identity.Provider, houseSvc *HouseService) *StudentService {
-	return &StudentService{repo: repo, idp: idp, houseSvc: houseSvc}
+func NewStudentService(repo *repositories.StudentRepository, idp identity.Provider, houseSvc *HouseService, audit *AuditService) *StudentService {
+	return &StudentService{repo: repo, idp: idp, houseSvc: houseSvc, audit: audit}
 }
 
-func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStudentRequest) (db.StudentProfile, error) {
+func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStudentRequest, actorID uuid.UUID) (db.StudentProfile, error) {
 	// check index number not already used
 	_, err := s.repo.GetByIndexNumber(ctx, req.IndexNumber)
 	if err == nil {
@@ -99,6 +100,10 @@ func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStu
 			log.Printf("CreateStudent: failed to roll back local user row %s after error: %v (local user now orphaned)", userID, delErr)
 		}
 		return db.StudentProfile{}, fmt.Errorf("failed to create student profile: %w", err)
+	}
+
+	if s.audit != nil {
+		_ = s.audit.Record(ctx, "student_account", userID, "account_created", actorID, nil, profile, "")
 	}
 
 	return profile, nil
@@ -178,7 +183,7 @@ func (s *StudentService) UpdateStudentHouse(ctx context.Context, id uuid.UUID, h
 	return s.houseSvc.ChangeStudentHouse(ctx, id, houseID, actorID)
 }
 
-func (s *StudentService) DeleteStudent(ctx context.Context, id uuid.UUID) error {
+func (s *StudentService) DeleteStudent(ctx context.Context, id uuid.UUID, actorID uuid.UUID) error {
 	student, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("student not found")
@@ -186,6 +191,10 @@ func (s *StudentService) DeleteStudent(ctx context.Context, id uuid.UUID) error 
 
 	if err := s.repo.DeleteStudent(ctx, id); err != nil {
 		return fmt.Errorf("failed to delete student profile: %w", err)
+	}
+
+	if s.audit != nil {
+		_ = s.audit.Record(ctx, "student_account", id, "account_deleted", actorID, student, nil, "")
 	}
 
 	if !student.UserID.Valid {

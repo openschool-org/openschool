@@ -269,6 +269,16 @@ type Querier interface {
 	// true if the teacher is a Vice Principal with either notify_whole_school =
 	// TRUE or the given grade in their scope.
 	IsVicePrincipalAuthorizedForGrade(ctx context.Context, arg IsVicePrincipalAuthorizedForGradeParams) (bool, error)
+	// Phase 9.3 — the deepened role-differentiated dashboard's "School/Grades
+	// Overview" panel for Principal/Vice Principal/Section Head. Both queries
+	// filter by grade at the SQL WHERE clause level (never fetched-then-
+	// filtered in application code) so a grade-scoped caller can never receive
+	// counts for a grade outside their scope — the same class of bug §0.1
+	// flagged for the cross-school attendance dashboard.
+	// grade_ids narrows to specific grades; NULL means whole school.
+	LeadershipOverviewCounts(ctx context.Context, gradeIds []uuid.UUID) (LeadershipOverviewCountsRow, error)
+	// Human-readable grade names for a grade-scoped caller's panel heading.
+	LeadershipOverviewGradeNames(ctx context.Context, dollar_1 []uuid.UUID) ([]string, error)
 	LinkGuardianToStudent(ctx context.Context, arg LinkGuardianToStudentParams) error
 	ListAcademicYears(ctx context.Context) ([]AcademicYear, error)
 	// every actively-enrolled student's current class/grade for an academic
@@ -288,8 +298,11 @@ type Querier interface {
 	ListAttendanceSessionsByClass(ctx context.Context, classID uuid.UUID) ([]AttendanceSession, error)
 	// the cross-class daily dashboard: every session on one date, with the class,
 	// grade and teacher resolved, plus enough counts to show marked/pending and
-	// how many of the enrolled students have a record so far
-	ListAttendanceSessionsByDate(ctx context.Context, date pgtype.Date) ([]ListAttendanceSessionsByDateRow, error)
+	// how many of the enrolled students have a record so far.
+	// grade_ids narrows to the caller's authorized grades (whole-school callers
+	// pass NULL); filtered at the SQL WHERE clause level, not in application
+	// code, so a scoped caller can never receive rows outside their grades.
+	ListAttendanceSessionsByDate(ctx context.Context, arg ListAttendanceSessionsByDateParams) ([]ListAttendanceSessionsByDateRow, error)
 	// entity_type/entity_id are optional filters (pass a zero UUID / empty
 	// string to skip that filter — checked in the repository layer, since
 	// sqlc.narg with a nullable uuid comparison reads awkwardly here).

@@ -8,14 +8,17 @@ import (
 	"github.com/openschool-org/openschool/internal/services"
 )
 
-func RegisterStaffAttendanceRoutes(teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
+// RegisterStaffAttendanceRoutes registers on the admin-only group: there is
+// no legitimate teacher-facing use case for marking or reading a
+// colleague's HR attendance/leave record (see docs/plan.md §0.1).
+func RegisterStaffAttendanceRoutes(admin *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewStaffAttendanceRepository(pool)
 	service := services.NewStaffAttendanceService(repo)
 	handler := handlers.NewStaffAttendanceHandler(service)
 
-	teacherOrAdmin.POST("/staff-attendance", handler.Mark)
-	teacherOrAdmin.GET("/staff-attendance", handler.ListByDate)
-	teacherOrAdmin.GET("/staff-attendance/monthly-summary", handler.MonthlySummary)
-	teacherOrAdmin.GET("/staff-attendance/teachers/:id/history", handler.TeacherHistory)
-	teacherOrAdmin.GET("/staff-attendance/non-academic-staff/:id/history", handler.NonAcademicStaffHistory)
+	admin.POST("/staff-attendance", handler.Mark)
+	admin.GET("/staff-attendance", handler.ListByDate)
+	admin.GET("/staff-attendance/monthly-summary", handler.MonthlySummary)
+	admin.GET("/staff-attendance/teachers/:id/history", handler.TeacherHistory)
+	admin.GET("/staff-attendance/non-academic-staff/:id/history", handler.NonAcademicStaffHistory)
 }

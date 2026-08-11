@@ -11,7 +11,8 @@ import (
 func RegisterPositionRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewPositionRepository(pool)
 	sectionHeadRepo := repositories.NewSectionHeadRepository(pool)
-	service := services.NewPositionService(repo, sectionHeadRepo)
+	auditSvc := services.NewAuditService(repositories.NewAuditRepository(pool))
+	service := services.NewPositionService(repo, sectionHeadRepo, auditSvc)
 	handler := handlers.NewPositionHandler(service)
 
 	admin.PUT("/positions/principal", handler.AssignPrincipal)

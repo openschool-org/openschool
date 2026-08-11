@@ -52,13 +52,6 @@ func (r *TimetableRepository) GetPublishedForClass(ctx context.Context, classID,
 	return r.queries.GetPublishedTimetableForClass(ctx, db.GetPublishedTimetableForClassParams{ClassID: classID, AcademicYearID: academicYearID})
 }
 
-func (r *TimetableRepository) ListPublishedForTeacher(ctx context.Context, academicYearID, teacherID uuid.UUID) ([]db.Timetable, error) {
-	return r.queries.ListPublishedTimetablesForTeacher(ctx, db.ListPublishedTimetablesForTeacherParams{
-		AcademicYearID: academicYearID,
-		TeacherID:      pgUUID(teacherID),
-	})
-}
-
 func (r *TimetableRepository) ListUnderReviewForGrades(ctx context.Context, academicYearID uuid.UUID, gradeIDs []uuid.UUID) ([]db.ListUnderReviewTimetablesForGradesRow, error) {
 	return r.queries.ListUnderReviewTimetablesForGrades(ctx, db.ListUnderReviewTimetablesForGradesParams{
 		AcademicYearID: academicYearID,

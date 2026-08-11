@@ -89,6 +89,7 @@ func main() {
 	// X-Forwarded-For, undermining rate limiting and IP-based logging.
 	r.SetTrustedProxies(nil)
 	r.Use(middleware.SecurityHeaders())
+	r.Use(middleware.BodySizeLimit())
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     corsOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},

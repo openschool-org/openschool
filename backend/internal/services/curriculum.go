@@ -32,10 +32,6 @@ func (s *CurriculumService) CreateMedium(ctx context.Context, req models.CreateM
 	return s.repo.CreateMedium(ctx, req.Name)
 }
 
-func (s *CurriculumService) GetMedium(ctx context.Context, id uuid.UUID) (db.Medium, error) {
-	return s.repo.GetMediumByID(ctx, id)
-}
-
 func (s *CurriculumService) ListMediums(ctx context.Context) ([]db.Medium, error) {
 	return s.repo.ListMediums(ctx)
 }
@@ -143,10 +139,6 @@ func (s *CurriculumService) CreateSelectionGroup(ctx context.Context, levelID uu
 		MaxSelect: req.MaxSelect,
 		SortOrder: req.SortOrder,
 	})
-}
-
-func (s *CurriculumService) GetSelectionGroup(ctx context.Context, id uuid.UUID) (db.SelectionGroup, error) {
-	return s.repo.GetSelectionGroupByID(ctx, id)
 }
 
 func (s *CurriculumService) ListSelectionGroupsByLevel(ctx context.Context, levelID uuid.UUID) ([]db.SelectionGroup, error) {

@@ -39,6 +39,18 @@ export interface PositionSummary {
   notify_whole_school: boolean;
 }
 
+// §9.3's deepened dashboard panel — real scoped counts, not just label
+// text. "school" for Principal/an unrestricted Vice Principal, "grades" for
+// a scoped Vice Principal or Section Head (see grade_names for which).
+export interface LeadershipOverviewSummary {
+  scope: "school" | "grades";
+  grade_names: string[];
+  class_count: number;
+  student_count: number;
+  sessions_marked_today: number;
+  sessions_pending_today: number;
+}
+
 export const positionApi = {
   list: () => api.get<TeacherPosition[]>("/positions").then((r) => r.data),
 
@@ -51,4 +63,7 @@ export const positionApi = {
   remove: (id: string) => api.delete(`/positions/${id}`).then((r) => r.data),
 
   mySummary: () => api.get<PositionSummary>("/me/teacher/position").then((r) => r.data),
+
+  myLeadershipOverview: () =>
+    api.get<LeadershipOverviewSummary>("/me/teacher/leadership-overview").then((r) => r.data),
 };

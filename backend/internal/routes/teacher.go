@@ -10,13 +10,14 @@ import (
 
 func RegisterTeacherRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewTeacherRepository(pool)
+	auditSvc := services.NewAuditService(repositories.NewAuditRepository(pool))
 	houseSvc := services.NewHouseService(
 		repositories.NewHouseRepository(pool),
 		repositories.NewStudentRepository(pool),
 		repo,
-		services.NewAuditService(repositories.NewAuditRepository(pool)),
+		auditSvc,
 	)
-	service := services.NewTeacherService(repo, newIdentityProvider(), houseSvc)
+	service := services.NewTeacherService(repo, newIdentityProvider(), houseSvc, auditSvc)
 	handler := handlers.NewTeacherHandler(service)
 
 	admin.POST("/teachers", handler.Create)

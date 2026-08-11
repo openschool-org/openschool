@@ -16,9 +16,6 @@ interface Props {
   onConfirm: () => void;
 }
 
-// Mirrors ConfirmDeleteModal for edits that change significant fields —
-// kind="primary" instead of "danger", and a "Saving…"/confirmLabel pending
-// state instead of "Deleting…".
 export default function ConfirmEditModal({
   open,
   title,

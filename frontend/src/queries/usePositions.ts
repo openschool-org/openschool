@@ -4,6 +4,7 @@ import type { AssignPrincipalRequest, AssignVicePrincipalRequest } from "../serv
 
 export const POSITIONS_KEY = ["positions"];
 export const MY_POSITION_KEY = ["me", "teacher", "position"];
+export const MY_LEADERSHIP_OVERVIEW_KEY = ["me", "teacher", "leadership-overview"];
 
 export const usePositions = () =>
   useQuery({
@@ -19,6 +20,16 @@ export const useMyPosition = (enabled = true) =>
   useQuery({
     queryKey: MY_POSITION_KEY,
     queryFn: positionApi.mySummary,
+    enabled,
+  });
+
+// Only fetch for ranks that hold a leadership scope (Section Head and
+// above) — /me/teacher/leadership-overview 403s for a plain Class/Subject
+// Teacher, so callers should pass `enabled: false` below that rank.
+export const useMyLeadershipOverview = (enabled: boolean) =>
+  useQuery({
+    queryKey: MY_LEADERSHIP_OVERVIEW_KEY,
+    queryFn: positionApi.myLeadershipOverview,
     enabled,
   });
 

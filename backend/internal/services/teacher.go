@@ -23,13 +23,14 @@ type TeacherService struct {
 	repo     *repositories.TeacherRepository
 	idp      identity.Provider
 	houseSvc *HouseService
+	audit    *AuditService
 }
 
-func NewTeacherService(repo *repositories.TeacherRepository, idp identity.Provider, houseSvc *HouseService) *TeacherService {
-	return &TeacherService{repo: repo, idp: idp, houseSvc: houseSvc}
+func NewTeacherService(repo *repositories.TeacherRepository, idp identity.Provider, houseSvc *HouseService, audit *AuditService) *TeacherService {
+	return &TeacherService{repo: repo, idp: idp, houseSvc: houseSvc, audit: audit}
 }
 
-func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTeacherRequest) (db.TeacherProfile, error) {
+func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTeacherRequest, actorID uuid.UUID) (db.TeacherProfile, error) {
 	// employee_number is auto-assigned from the shared sequence (Phase 6.1) —
 	// fetched up-front since the identity provider user needs it as an attribute.
 	employeeNumber, err := s.repo.NextEmployeeNumber(ctx)
@@ -109,6 +110,10 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		return db.TeacherProfile{}, fmt.Errorf("failed to create teacher profile: %w", err)
 	}
 
+	if s.audit != nil {
+		_ = s.audit.Record(ctx, "teacher_account", userID, "account_created", actorID, nil, profile, "")
+	}
+
 	return profile, nil
 }
 
@@ -173,7 +178,7 @@ func (s *TeacherService) SetEmploymentStatus(ctx context.Context, id uuid.UUID, 
 	return s.repo.UpdateEmploymentStatus(ctx, id, status)
 }
 
-func (s *TeacherService) DeleteTeacher(ctx context.Context, id uuid.UUID) error {
+func (s *TeacherService) DeleteTeacher(ctx context.Context, id uuid.UUID, actorID uuid.UUID) error {
 	teacher, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return ErrTeacherNotFound
@@ -187,6 +192,10 @@ func (s *TeacherService) DeleteTeacher(ctx context.Context, id uuid.UUID) error 
 	}
 	if rows == 0 {
 		return ErrTeacherInUse
+	}
+
+	if s.audit != nil {
+		_ = s.audit.Record(ctx, "teacher_account", userID, "account_deleted", actorID, teacher, nil, "")
 	}
 
 	if err := s.repo.DeleteUser(ctx, userID); err != nil {

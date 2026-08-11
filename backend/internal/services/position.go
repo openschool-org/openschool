@@ -18,17 +18,19 @@ var ErrPositionNotFound = errors.New("position assignment not found")
 type PositionService struct {
 	repo            *repositories.PositionRepository
 	sectionHeadRepo *repositories.SectionHeadRepository
+	audit           *AuditService
 }
 
-func NewPositionService(repo *repositories.PositionRepository, sectionHeadRepo *repositories.SectionHeadRepository) *PositionService {
-	return &PositionService{repo: repo, sectionHeadRepo: sectionHeadRepo}
+func NewPositionService(repo *repositories.PositionRepository, sectionHeadRepo *repositories.SectionHeadRepository, audit *AuditService) *PositionService {
+	return &PositionService{repo: repo, sectionHeadRepo: sectionHeadRepo, audit: audit}
 }
 
 // AssignPrincipal replaces the school's Principal — a permanent appointment,
 // not renewed per academic year. If the new Principal was previously a Vice
 // Principal, that row is cleared (they can't hold both at once, and being
-// promoted to Principal supersedes it).
-func (s *PositionService) AssignPrincipal(ctx context.Context, req models.AssignPrincipalRequest) (db.TeacherPosition, error) {
+// promoted to Principal supersedes it). Position assignment is one of the
+// highest-privilege actions in the system, so every call is audit-logged.
+func (s *PositionService) AssignPrincipal(ctx context.Context, req models.AssignPrincipalRequest, actorID uuid.UUID) (db.TeacherPosition, error) {
 	teacherID, err := uuid.Parse(req.TeacherID)
 	if err != nil {
 		return db.TeacherPosition{}, fmt.Errorf("invalid teacher id")
@@ -43,10 +45,14 @@ func (s *PositionService) AssignPrincipal(ctx context.Context, req models.Assign
 		return db.TeacherPosition{}, err
 	}
 
+	if s.audit != nil {
+		_ = s.audit.Record(ctx, "teacher_position", teacherID, "assigned_principal", actorID, nil, position, "")
+	}
+
 	return position, nil
 }
 
-func (s *PositionService) AssignVicePrincipal(ctx context.Context, req models.AssignVicePrincipalRequest) (db.TeacherPosition, error) {
+func (s *PositionService) AssignVicePrincipal(ctx context.Context, req models.AssignVicePrincipalRequest, actorID uuid.UUID) (db.TeacherPosition, error) {
 	teacherID, err := uuid.Parse(req.TeacherID)
 	if err != nil {
 		return db.TeacherPosition{}, fmt.Errorf("invalid teacher id")
@@ -75,6 +81,14 @@ func (s *PositionService) AssignVicePrincipal(ctx context.Context, req models.As
 		return db.TeacherPosition{}, err
 	}
 
+	if s.audit != nil {
+		_ = s.audit.Record(ctx, "teacher_position", teacherID, "assigned_vice_principal", actorID, nil,
+			struct {
+				Position db.TeacherPosition `json:"position"`
+				GradeIDs []uuid.UUID        `json:"grade_ids"`
+			}{position, gradeIDs}, "")
+	}
+
 	return position, nil
 }
 
@@ -82,11 +96,7 @@ func (s *PositionService) List(ctx context.Context) ([]db.ListTeacherPositionsRo
 	return s.repo.List(ctx)
 }
 
-func (s *PositionService) ListVicePrincipalScopeGrades(ctx context.Context, positionID uuid.UUID) ([]db.ListVicePrincipalScopeGradesRow, error) {
-	return s.repo.ListVicePrincipalScopeGrades(ctx, positionID)
-}
-
-func (s *PositionService) Delete(ctx context.Context, id uuid.UUID) error {
+func (s *PositionService) Delete(ctx context.Context, id uuid.UUID, actorID uuid.UUID) error {
 	n, err := s.repo.Delete(ctx, id)
 	if err != nil {
 		return err
@@ -94,18 +104,10 @@ func (s *PositionService) Delete(ctx context.Context, id uuid.UUID) error {
 	if n == 0 {
 		return ErrPositionNotFound
 	}
+	if s.audit != nil {
+		_ = s.audit.Record(ctx, "teacher_position", id, "removed", actorID, nil, nil, "")
+	}
 	return nil
-}
-
-// IsPrincipal and IsVicePrincipalAuthorizedForGrade are exposed directly for
-// notification.go's authorizeSender to call — see notification.go's
-// Principal-bypass and Vice-Principal-grade-authorization checks.
-func (s *PositionService) IsPrincipal(ctx context.Context, teacherID uuid.UUID) (bool, error) {
-	return s.repo.IsPrincipal(ctx, teacherID)
-}
-
-func (s *PositionService) IsVicePrincipalAuthorizedForGrade(ctx context.Context, teacherID, gradeID uuid.UUID) (bool, error) {
-	return s.repo.IsVicePrincipalAuthorizedForGrade(ctx, teacherID, gradeID)
 }
 
 // PositionRank is a hierarchy ordinal, lower value outranks higher — Phase
@@ -221,4 +223,107 @@ func (s *PositionService) RankForTeacher(ctx context.Context, teacherID, academi
 	}
 
 	return RankTeacher, db.TeacherPosition{}, nil
+}
+
+// ErrInsufficientRank is returned by LeadershipScope when the teacher holds
+// no leadership position (plain Class/Subject Teacher or Teacher) — callers
+// use this to distinguish "not authorized for this at all" from a genuine
+// lookup failure.
+var ErrInsufficientRank = errors.New("this action requires a leadership position (Principal, Vice Principal, or Section Head)")
+
+// LeadershipScope resolves what a leadership-ranked teacher is authorized to
+// see school-wide: whole-school access (Principal, or a Vice Principal
+// granted notify_whole_school) or a specific set of grade IDs (a scoped Vice
+// Principal, or a Section Head's headed grades). Returns ErrInsufficientRank
+// for anyone below Section Head — a plain Class/Subject Teacher holds no
+// school- or grade-wide scope to resolve.
+func (s *PositionService) LeadershipScope(ctx context.Context, teacherID, academicYearID uuid.UUID) (wholeSchool bool, gradeIDs []uuid.UUID, err error) {
+	rank, position, err := s.RankForTeacher(ctx, teacherID, academicYearID)
+	if err != nil {
+		return false, nil, err
+	}
+
+	switch rank {
+	case RankPrincipal:
+		return true, nil, nil
+	case RankVicePrincipal:
+		if position.NotifyWholeSchool {
+			return true, nil, nil
+		}
+		rows, err := s.repo.ListVicePrincipalScopeGrades(ctx, position.ID)
+		if err != nil {
+			return false, nil, err
+		}
+		ids := make([]uuid.UUID, len(rows))
+		for i, row := range rows {
+			ids[i] = row.ID
+		}
+		return false, ids, nil
+	case RankSectionHead:
+		headedGrades, err := s.sectionHeadRepo.ListGradeIDsHeadedByTeacher(ctx, teacherID, academicYearID)
+		if err != nil {
+			return false, nil, err
+		}
+		return false, headedGrades, nil
+	default:
+		return false, nil, ErrInsufficientRank
+	}
+}
+
+// LeadershipOverview is the §9.3 "School/Grades Overview" panel — real,
+// scoped data (not just label text) for Principal/Vice Principal/Section
+// Head. A plain Class/Subject Teacher gets ErrInsufficientRank, not empty
+// data. Reuses LeadershipScope for authorization, then the grade-filtered
+// aggregate query for the counts.
+type LeadershipOverviewSummary struct {
+	Scope                string   `json:"scope"` // "school" or "grades"
+	GradeNames           []string `json:"grade_names"`
+	ClassCount           int64    `json:"class_count"`
+	StudentCount         int64    `json:"student_count"`
+	SessionsMarkedToday  int64    `json:"sessions_marked_today"`
+	SessionsPendingToday int64    `json:"sessions_pending_today"`
+}
+
+func (s *PositionService) LeadershipOverview(ctx context.Context, teacherID, academicYearID uuid.UUID) (LeadershipOverviewSummary, error) {
+	wholeSchool, gradeIDs, err := s.LeadershipScope(ctx, teacherID, academicYearID)
+	if err != nil {
+		return LeadershipOverviewSummary{}, err
+	}
+
+	var queryGradeIDs []uuid.UUID
+	scope := "grades"
+	if wholeSchool {
+		scope = "school"
+		queryGradeIDs = nil
+	} else {
+		queryGradeIDs = gradeIDs
+	}
+
+	counts, err := s.repo.LeadershipOverviewCounts(ctx, queryGradeIDs)
+	if err != nil {
+		return LeadershipOverviewSummary{}, err
+	}
+
+	var gradeNames []string
+	if !wholeSchool {
+		if len(gradeIDs) == 0 {
+			return LeadershipOverviewSummary{
+				Scope:      scope,
+				GradeNames: []string{},
+			}, nil
+		}
+		gradeNames, err = s.repo.LeadershipOverviewGradeNames(ctx, gradeIDs)
+		if err != nil {
+			return LeadershipOverviewSummary{}, err
+		}
+	}
+
+	return LeadershipOverviewSummary{
+		Scope:                scope,
+		GradeNames:           gradeNames,
+		ClassCount:           counts.ClassCount,
+		StudentCount:         counts.StudentCount,
+		SessionsMarkedToday:  counts.SessionsMarkedToday,
+		SessionsPendingToday: counts.ClassCount - counts.SessionsMarkedToday,
+	}, nil
 }
