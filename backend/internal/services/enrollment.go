@@ -216,10 +216,7 @@ func (s *EnrollmentService) ListByStudent(ctx context.Context, studentID, academ
 	return resp, nil
 }
 
-// Delete removes a single pick. The group's level is resolved internally to
-// check the lock — a locked selection can't be edited this way either,
-// closing the loophole that would otherwise let a single-pick delete bypass
-// Submit's lock check.
+// Delete removes a single pick; the group's level is resolved internally to check the lock, closing the loophole that would let a single-pick delete bypass Submit's lock check.
 func (s *EnrollmentService) Delete(ctx context.Context, studentID, academicYearID, groupID, subjectID uuid.UUID) error {
 	group, err := s.curriculum.GetSelectionGroupByID(ctx, groupID)
 	if err != nil {
@@ -252,9 +249,7 @@ func (s *EnrollmentService) IsLocked(ctx context.Context, studentID, levelID, ac
 	})
 }
 
-// Confirm locks the student's current picks for a level+year so Submit and
-// Delete refuse further changes until an admin calls Unlock. Requires at
-// least one pick already submitted.
+// Confirm locks the student's current picks for a level+year so Submit and Delete refuse further changes until an admin calls Unlock; requires at least one pick already submitted.
 func (s *EnrollmentService) Confirm(ctx context.Context, studentID, levelID, academicYearID uuid.UUID) error {
 	picks, err := s.repo.ListByStudentAndLevel(ctx, db.ListStudentEnrollmentsByLevelParams{
 		StudentID:      studentID,

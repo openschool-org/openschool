@@ -245,10 +245,7 @@ func (s *GradeSectionService) SavePeriods(ctx context.Context, sectionID uuid.UU
 	return s.GetPeriods(ctx, sectionID)
 }
 
-// generatePeriodsFromSettings builds a default period grid for a newly
-// created grade_section from the academic year's timetable_settings
-// template, inserting the section's own interval at the point the running
-// clock reaches its configured interval_start_time.
+// generatePeriodsFromSettings builds a default period grid for a newly created grade_section from the academic year's timetable_settings template, inserting the section's interval at its configured interval_start_time.
 func (s *GradeSectionService) generatePeriodsFromSettings(ctx context.Context, section db.GradeSection) error {
 	settings, err := s.settingsRepo.GetByYear(ctx, section.AcademicYearID)
 	if err != nil {

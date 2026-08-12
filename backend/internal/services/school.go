@@ -19,12 +19,7 @@ var (
 	ErrInvalidLogoURL       = errors.New("logo must be a data:image/... URL under 500KB")
 )
 
-// maxLogoDataURLChars bounds the base64 data: URL string length. The
-// frontend (LogoUpload.tsx) caps the raw image at 500KB before encoding;
-// base64 inflates that by ~4/3, so this is a generous ceiling around that,
-// not a tight byte-for-byte match. logo_url is otherwise an unbounded TEXT
-// column set directly from client input, and the frontend's check is
-// trivially bypassed by calling the API directly.
+// maxLogoDataURLChars bounds the base64 data: URL length — a generous ceiling around the frontend's 500KB raw-image cap (inflated ~4/3 by base64), since logo_url is otherwise unbounded and that client-side check is trivially bypassed by calling the API directly.
 const maxLogoDataURLChars = 700_000
 
 func validateLogoURL(logoURL string) error {

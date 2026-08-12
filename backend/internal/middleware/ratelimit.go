@@ -9,9 +9,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// evictAfter is how long a client IP can go without a request before its
-// limiter is dropped. Generous relative to sweepInterval so a client
-// polling every few minutes never gets evicted mid-session.
+// evictAfter is how long an idle key's limiter is kept before eviction; generous relative to sweepInterval so a client polling every few minutes isn't evicted mid-session.
 const evictAfter = 30 * time.Minute
 
 // sweepInterval is how often the eviction pass runs.
@@ -22,12 +20,7 @@ type limiterEntry struct {
 	lastSeen time.Time
 }
 
-// keyedRateLimit is the shared token-bucket-per-key implementation behind
-// RateLimit (per client IP) and PerAccountRateLimit (per signed-in JWT
-// subject). A background sweep evicts limiters idle for more than
-// evictAfter so memory tracks *active* keys, not every one ever seen since
-// the process started. keyFunc returning "" skips limiting for that
-// request (e.g. no signed-in subject yet).
+// keyedRateLimit is the shared token-bucket-per-key implementation behind RateLimit and PerAccountRateLimit; keyFunc returning "" skips limiting (e.g. no signed-in subject yet).
 func keyedRateLimit(rps float64, burst int, keyFunc func(*gin.Context) string) gin.HandlerFunc {
 	var mu sync.Mutex
 	limiters := make(map[string]*limiterEntry)
@@ -75,24 +68,14 @@ func keyedRateLimit(rps float64, burst int, keyFunc func(*gin.Context) string) g
 	}
 }
 
-// RateLimit throttles requests per client IP with a token-bucket limiter.
-// Originally written for a single unauthenticated, state-changing endpoint
-// (first-run admin registration) — now also used API-wide (see
-// cmd/api/main.go), so unlike a single low-traffic route, the set of
-// distinct client IPs here can grow into the thousands over a school day.
+// RateLimit throttles requests per client IP with a token-bucket limiter, applied API-wide (cmd/api/main.go) so the set of distinct IPs can grow into the thousands over a school day.
 func RateLimit(rps float64, burst int) gin.HandlerFunc {
 	return keyedRateLimit(rps, burst, func(c *gin.Context) string {
 		return c.ClientIP()
 	})
 }
 
-// PerAccountRateLimit throttles requests per signed-in JWT subject, layered
-// on top of the per-IP RateLimit in cmd/api/main.go. The per-IP limiter
-// alone can't isolate one abusive signed-in account from the rest of a
-// school sharing one NAT IP (it throttles everyone together); this fixes
-// that by keying on the account instead. Must run after AuthMiddleware so
-// "userID" is set — falls through unthrottled if it isn't (unauthenticated
-// requests are already covered by the per-IP limiter).
+// PerAccountRateLimit throttles requests per signed-in JWT subject, isolating one abusive account from the rest of a school that may share one NAT IP; must run after AuthMiddleware so "userID" is set.
 func PerAccountRateLimit(rps float64, burst int) gin.HandlerFunc {
 	return keyedRateLimit(rps, burst, func(c *gin.Context) string {
 		return c.GetString("userID")

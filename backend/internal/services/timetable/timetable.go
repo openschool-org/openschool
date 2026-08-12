@@ -70,9 +70,7 @@ func (s *TimetableService) Create(ctx context.Context, req models.CreateTimetabl
 	})
 }
 
-// CopyFrom creates a new draft for the given class/year and pre-fills it
-// with another timetable's entries — used both for "copy previous year's
-// timetable as a template" and for ad-hoc duplication.
+// CopyFrom creates a new draft for the given class/year and pre-fills it with another timetable's entries — used both for "copy previous year as a template" and ad-hoc duplication.
 func (s *TimetableService) CopyFrom(ctx context.Context, req models.CreateTimetableRequest, sourceID, createdBy uuid.UUID) (db.Timetable, error) {
 	draft, err := s.Create(ctx, req, createdBy)
 	if err != nil {
@@ -91,7 +89,7 @@ func (s *TimetableService) ReviseFromPublished(ctx context.Context, publishedID,
 	if err != nil {
 		return db.Timetable{}, err
 	}
-	if published.Status != "published" {
+	if published.Status != models.StatusPublished {
 		return db.Timetable{}, ErrInvalidTransition
 	}
 	maxVersion, err := s.repo.GetMaxVersionForClass(ctx, published.ClassID, published.AcademicYearID)
@@ -152,7 +150,7 @@ func (s *TimetableService) SaveEntries(ctx context.Context, timetableID uuid.UUI
 	if err != nil {
 		return err
 	}
-	if tt.Status != "draft" {
+	if tt.Status != models.StatusDraft {
 		return fmt.Errorf("timetable can only be edited while in draft status")
 	}
 	for _, e := range req.Entries {
@@ -182,7 +180,7 @@ func (s *TimetableService) DeleteEntry(ctx context.Context, timetableID uuid.UUI
 	if err != nil {
 		return err
 	}
-	if tt.Status != "draft" {
+	if tt.Status != models.StatusDraft {
 		return fmt.Errorf("timetable can only be edited while in draft status")
 	}
 	return s.repo.DeleteEntry(ctx, timetableID, dayOfWeek, periodNumber)
@@ -374,7 +372,7 @@ func (s *TimetableService) Submit(ctx context.Context, id, submittedByUserID uui
 	if err != nil {
 		return db.Timetable{}, err
 	}
-	if tt.Status != "draft" {
+	if tt.Status != models.StatusDraft {
 		return db.Timetable{}, ErrInvalidTransition
 	}
 
@@ -391,8 +389,8 @@ func (s *TimetableService) Submit(ctx context.Context, id, submittedByUserID uui
 		return db.Timetable{}, err
 	}
 
-	fromStatus := "draft"
-	_, _ = s.repo.AddStatusHistory(ctx, id, &fromStatus, "under_review", submittedByUserID, "")
+	fromStatus := models.StatusDraft
+	_, _ = s.repo.AddStatusHistory(ctx, id, &fromStatus, models.StatusUnderReview, submittedByUserID, "")
 
 	if class, err := s.classRepo.GetByID(ctx, tt.ClassID); err == nil {
 		reviewers, err := s.resolveAuthorizedReviewerIDs(ctx, class.GradeID, tt.AcademicYearID)
@@ -416,7 +414,7 @@ func (s *TimetableService) Approve(ctx context.Context, id, reviewerUserID uuid.
 	if err != nil {
 		return db.Timetable{}, err
 	}
-	if tt.Status != "under_review" {
+	if tt.Status != models.StatusUnderReview {
 		return db.Timetable{}, ErrInvalidTransition
 	}
 	reviewerTeacher, err := s.teacherRepo.GetByUserID(ctx, reviewerUserID)
@@ -440,8 +438,8 @@ func (s *TimetableService) Approve(ctx context.Context, id, reviewerUserID uuid.
 		return db.Timetable{}, err
 	}
 
-	fromStatus := "under_review"
-	_, _ = s.repo.AddStatusHistory(ctx, id, &fromStatus, "approved", reviewerUserID, comment)
+	fromStatus := models.StatusUnderReview
+	_, _ = s.repo.AddStatusHistory(ctx, id, &fromStatus, models.StatusApproved, reviewerUserID, comment)
 	_ = s.notifications.SendDirect(ctx, "Timetable Approved", fmt.Sprintf("The timetable for %s was approved.", class.Name), "timetable", "normal", reviewerUserID, []uuid.UUID{tt.CreatedBy})
 
 	return updated, nil
@@ -452,7 +450,7 @@ func (s *TimetableService) Reject(ctx context.Context, id, reviewerUserID uuid.U
 	if err != nil {
 		return db.Timetable{}, err
 	}
-	if tt.Status != "under_review" {
+	if tt.Status != models.StatusUnderReview {
 		return db.Timetable{}, ErrInvalidTransition
 	}
 	reviewerTeacher, err := s.teacherRepo.GetByUserID(ctx, reviewerUserID)
@@ -476,8 +474,8 @@ func (s *TimetableService) Reject(ctx context.Context, id, reviewerUserID uuid.U
 		return db.Timetable{}, err
 	}
 
-	fromStatus := "under_review"
-	_, _ = s.repo.AddStatusHistory(ctx, id, &fromStatus, "rejected", reviewerUserID, comment)
+	fromStatus := models.StatusUnderReview
+	_, _ = s.repo.AddStatusHistory(ctx, id, &fromStatus, models.StatusRejected, reviewerUserID, comment)
 	_ = s.notifications.SendDirect(ctx, "Timetable Rejected", fmt.Sprintf("The timetable for %s was rejected: %s", class.Name, comment), "timetable", "important", reviewerUserID, []uuid.UUID{tt.CreatedBy})
 
 	return updated, nil
@@ -488,7 +486,7 @@ func (s *TimetableService) Publish(ctx context.Context, id, publishedByUserID uu
 	if err != nil {
 		return db.Timetable{}, err
 	}
-	if tt.Status != "approved" {
+	if tt.Status != models.StatusApproved {
 		return db.Timetable{}, ErrInvalidTransition
 	}
 
@@ -500,8 +498,8 @@ func (s *TimetableService) Publish(ctx context.Context, id, publishedByUserID uu
 		return db.Timetable{}, err
 	}
 
-	fromStatus := "approved"
-	_, _ = s.repo.AddStatusHistory(ctx, id, &fromStatus, "published", publishedByUserID, "")
+	fromStatus := models.StatusApproved
+	_, _ = s.repo.AddStatusHistory(ctx, id, &fromStatus, models.StatusPublished, publishedByUserID, "")
 
 	s.notifyPublication(ctx, updated, publishedByUserID)
 

@@ -41,9 +41,7 @@ func (r *AttendanceRepository) ListSessionsByClass(ctx context.Context, classID 
 	return r.queries.ListAttendanceSessionsByClass(ctx, classID)
 }
 
-// ListSessionsByDate returns every attendance session on the given date. A
-// nil gradeIDs means unfiltered (whole-school callers); a non-nil slice
-// restricts results to those grades at the SQL WHERE clause level.
+// ListSessionsByDate returns every attendance session on the given date; a nil gradeIDs means unfiltered, a non-nil slice restricts to those grades at the SQL WHERE clause level.
 func (r *AttendanceRepository) ListSessionsByDate(ctx context.Context, date time.Time, gradeIDs []uuid.UUID) ([]db.ListAttendanceSessionsByDateRow, error) {
 	return r.queries.ListAttendanceSessionsByDate(ctx, db.ListAttendanceSessionsByDateParams{
 		Date:     pgtype.Date{Time: date, Valid: true},
@@ -64,9 +62,7 @@ func (r *AttendanceRepository) MarkAttendance(ctx context.Context, sessionID uui
 	})
 }
 
-// GetRecord returns the existing attendance record for a session+student,
-// or pgx.ErrNoRows if the student hasn't been marked yet this session —
-// used to detect status transitions (e.g. into "absent") before upserting.
+// GetRecord returns the existing attendance record, or pgx.ErrNoRows if unmarked this session — used to detect status transitions (e.g. into "absent") before upserting.
 func (r *AttendanceRepository) GetRecord(ctx context.Context, sessionID, studentID uuid.UUID) (db.AttendanceRecord, error) {
 	return r.queries.GetAttendanceRecord(ctx, db.GetAttendanceRecordParams{SessionID: sessionID, StudentID: studentID})
 }

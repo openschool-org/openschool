@@ -1,5 +1,12 @@
 package models
 
+const (
+	AttendanceStatusPresent = "present"
+	AttendanceStatusAbsent  = "absent"
+	AttendanceStatusLate    = "late"
+	AttendanceStatusExcused = "excused"
+)
+
 type CreateAttendanceSessionRequest struct {
 	ClassID string `json:"class_id" binding:"required"`
 	Date    string `json:"date" binding:"required"`

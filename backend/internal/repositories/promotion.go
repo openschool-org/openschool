@@ -64,13 +64,7 @@ func (r *PromotionRepository) CountClassesInYear(ctx context.Context, academicYe
 	})
 }
 
-// CommitAssignments clears any existing enrollment for these students in
-// this academic year, then bulk-inserts the new class assignments in one
-// batched UNNEST write. Wrapped in a transaction so a crash or dropped
-// connection between the delete and the insert can't leave every student in
-// the batch with no class assignment at all — it's still safe to re-run
-// (idempotent), but that no longer has to be the only thing standing between
-// a mid-write interruption and a grade's worth of "unassigned" students.
+// CommitAssignments clears existing enrollment for these students, then bulk-inserts the new class assignments in one batched UNNEST write, wrapped in a transaction so a crash mid-write can't leave students with no class assignment (idempotent — safe to re-run either way).
 func (r *PromotionRepository) CommitAssignments(ctx context.Context, academicYearID uuid.UUID, studentIDs, classIDs []uuid.UUID) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {

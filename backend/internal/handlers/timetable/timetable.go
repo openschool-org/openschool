@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/openschool-org/openschool/internal/middleware"
 	models "github.com/openschool-org/openschool/internal/models/timetable"
 	services "github.com/openschool-org/openschool/internal/services/timetable"
 )
@@ -28,7 +29,7 @@ func NewTimetableHandler(service *services.TimetableService) *TimetableHandler {
 }
 
 func (h *TimetableHandler) callerID(c *gin.Context) (uuid.UUID, bool) {
-	id, err := uuid.Parse(c.GetString("userID"))
+	id, err := middleware.UserIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
 		return uuid.UUID{}, false

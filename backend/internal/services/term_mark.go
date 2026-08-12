@@ -30,7 +30,7 @@ func NewTermMarkService(repo *repositories.TermMarkRepository, teacherRepo *repo
 // the class_subject_teachers-assigned teacher for this class+subject. Admins
 // bypass the check entirely.
 func (s *TermMarkService) authorizeTeacherForClassSubject(ctx context.Context, actor Actor, classID, subjectID uuid.UUID) error {
-	if actor.Role == "admin" {
+	if actor.Role == models.RoleAdmin {
 		return nil
 	}
 
@@ -123,13 +123,9 @@ func (s *TermMarkService) ListClassMarks(ctx context.Context, actor Actor, class
 	})
 }
 
-// authorizeTeacherForStudentMarks ensures the acting user, if a teacher,
-// teaches at least one subject in the class the student is currently
-// enrolled in. Marks span every subject for a term (not just one), so this
-// is a class-level check rather than authorizeTeacherForClassSubject's
-// subject-specific one.
+// authorizeTeacherForStudentMarks is a class-level check (teaches any subject in the student's class), unlike authorizeTeacherForClassSubject's subject-specific one, since marks span every subject for a term.
 func (s *TermMarkService) authorizeTeacherForStudentMarks(ctx context.Context, actor Actor, studentID uuid.UUID) error {
-	if actor.Role == "admin" {
+	if actor.Role == models.RoleAdmin {
 		return nil
 	}
 	class, err := s.classRepo.GetStudentCurrentClass(ctx, studentID)
@@ -150,11 +146,7 @@ func (s *TermMarkService) authorizeTeacherForStudentMarks(ctx context.Context, a
 	return nil
 }
 
-// ListStudentMarks is for contexts that have already verified the caller
-// may see this student's marks by some other means (a student viewing
-// their own via /me/student/marks, a parent viewing their own linked child
-// via /me/children/:id/marks). For the teacher/admin-facing
-// /students/:id/marks route, use ListStudentMarksForTeacher instead.
+// ListStudentMarks is only for contexts that already verified access by other means (self/parent routes); the teacher/admin-facing route must use ListStudentMarksForTeacher instead.
 func (s *TermMarkService) ListStudentMarks(ctx context.Context, studentID, termID uuid.UUID) ([]db.ListStudentMarksByTermRow, error) {
 	return s.repo.ListStudentMarksByTerm(ctx, db.ListStudentMarksByTermParams{
 		StudentID: studentID,
@@ -179,7 +171,7 @@ func (s *TermMarkService) DeleteMark(ctx context.Context, actor Actor, id uuid.U
 	}
 	class, err := s.classRepo.GetStudentCurrentClass(ctx, mark.StudentID)
 	if err != nil {
-		if actor.Role != "admin" {
+		if actor.Role != models.RoleAdmin {
 			return ErrNotAssignedToSubject
 		}
 	} else if err := s.authorizeTeacherForClassSubject(ctx, actor, class.ID, mark.SubjectID); err != nil {

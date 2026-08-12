@@ -82,10 +82,7 @@ func (r *PositionRepository) IsVicePrincipalAuthorizedForGrade(ctx context.Conte
 	})
 }
 
-// IsFormTeacherOfAnyClass reports whether the teacher is the form (class)
-// teacher of at least one class in the given academic year. Unlike
-// Principal/Vice Principal, this stays year-scoped — form-teacher
-// assignment legitimately changes every year.
+// IsFormTeacherOfAnyClass reports whether the teacher is form (class) teacher of at least one class that year; unlike Principal/Vice Principal, this stays year-scoped since form-teacher assignment legitimately changes every year.
 func (r *PositionRepository) IsFormTeacherOfAnyClass(ctx context.Context, teacherID, academicYearID uuid.UUID) (bool, error) {
 	return r.queries.IsFormTeacherOfAnyClass(ctx, db.IsFormTeacherOfAnyClassParams{
 		FormTeacherID:  pgtype.UUID{Bytes: teacherID, Valid: true},
@@ -102,9 +99,7 @@ func (r *PositionRepository) IsSubjectTeacherOfAnyClass(ctx context.Context, tea
 	})
 }
 
-// LeadershipOverviewCounts returns class/student/today's-marked-session
-// counts for the current academic year, filtered at the SQL level to
-// gradeIDs (nil means whole school).
+// LeadershipOverviewCounts returns class/student/today's-marked-session counts for the current academic year, filtered at the SQL level to gradeIDs (nil means whole school).
 func (r *PositionRepository) LeadershipOverviewCounts(ctx context.Context, gradeIDs []uuid.UUID) (db.LeadershipOverviewCountsRow, error) {
 	return r.queries.LeadershipOverviewCounts(ctx, gradeIDs)
 }

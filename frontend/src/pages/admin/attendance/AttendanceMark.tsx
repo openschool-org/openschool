@@ -1,17 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import { Button, Tag, InlineNotification, TextInput } from "@carbon/react";
-import {
-  ArrowLeft,
-  Save,
-  CheckmarkFilled,
-  CloseFilled,
-  Time,
-  Certificate,
-  Search,
-  UserMultiple,
-  Warning,
-} from "@carbon/icons-react";
+import { ArrowLeft, Save, CheckmarkFilled, Search, UserMultiple, Warning } from "@carbon/icons-react";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import { useSession, useSessionRecords, useMarkAttendance } from "../../../queries/useAttendance";
 import { useClass, useClassStudents } from "../../../queries/useClasses";
@@ -20,75 +10,8 @@ import { useTeachers } from "../../../queries/useTeachers";
 import { useRole } from "../../../hooks/useRole";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
-import type { AttendanceRecordRow } from "../../../services/attendance";
-
-type Status = "present" | "absent" | "late" | "excused" | null;
-
-const STATUS_STYLES: Record<
-  NonNullable<Status>,
-  { bg: string; border: string; color: string; label: string }
-> = {
-  present: { bg: "#defbe6", border: "#24a148", color: "#0e6027", label: "Present" },
-  absent: { bg: "#fff1f1", border: "#da1e28", color: "#a2191f", label: "Absent" },
-  late: { bg: "#fdf6dd", border: "#f1c21b", color: "#7d5a00", label: "Late" },
-  excused: { bg: "#f6f2ff", border: "#8a3ffc", color: "#6929c4", label: "Excused" },
-};
-
-function StatusButton({
-  value,
-  selected,
-  onClick,
-}: {
-  value: NonNullable<Status>;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  const cfg = STATUS_STYLES[value];
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: "0.3rem 0.75rem",
-        fontSize: "0.75rem",
-        fontWeight: selected ? 600 : 400,
-        fontFamily: "inherit",
-        cursor: "pointer",
-        border: `1px solid ${selected ? cfg.border : "#e0e0e0"}`,
-        borderRadius: "2px",
-        background: selected ? cfg.bg : "#ffffff",
-        color: selected ? cfg.color : "#525252",
-        transition: "all 0.1s",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {value === "present" && (
-        <CheckmarkFilled size={12} style={{ marginRight: "4px", fill: selected ? cfg.color : "#8d8d8d", verticalAlign: "middle" }} />
-      )}
-      {value === "absent" && (
-        <CloseFilled size={12} style={{ marginRight: "4px", fill: selected ? cfg.color : "#8d8d8d", verticalAlign: "middle" }} />
-      )}
-      {value === "late" && (
-        <Time size={12} style={{ marginRight: "4px", fill: selected ? cfg.color : "#8d8d8d", verticalAlign: "middle" }} />
-      )}
-      {value === "excused" && (
-        <Certificate size={12} style={{ marginRight: "4px", fill: selected ? cfg.color : "#8d8d8d", verticalAlign: "middle" }} />
-      )}
-      {cfg.label}
-    </button>
-  );
-}
-
-function recordsToState(records: AttendanceRecordRow[]) {
-  const statuses: Record<string, Status> = {};
-  const notes: Record<string, string> = {};
-  for (const r of records) {
-    if (r.status === "present" || r.status === "absent" || r.status === "late" || r.status === "excused") {
-      statuses[r.student_id] = r.status;
-    }
-    if (r.note) notes[r.student_id] = r.note;
-  }
-  return { statuses, notes };
-}
+import { recordsToState, type Status } from "./constants";
+import StudentAttendanceRow from "./components/StudentAttendanceRow";
 
 export default function AttendanceMark() {
   const { id = "" } = useParams();
@@ -341,95 +264,18 @@ export default function AttendanceMark() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((student, idx) => {
-                    const status = statuses[student.id] ?? null;
-                    return (
-                      <tr
-                        key={student.id}
-                        style={{ background: status ? STATUS_STYLES[status].bg + "66" : "transparent" }}
-                      >
-                        <td style={{ color: "#8d8d8d", fontFamily: "IBM Plex Mono, monospace", fontSize: "0.75rem" }}>
-                          {idx + 1}
-                        </td>
-                        <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
-                            <div
-                              style={{
-                                width: "1.75rem",
-                                height: "1.75rem",
-                                borderRadius: "50%",
-                                background: status ? STATUS_STYLES[status].bg : "#eef4f8",
-                                border: `1px solid ${status ? STATUS_STYLES[status].border : "#b3cedc"}`,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: "0.6rem",
-                                fontWeight: 700,
-                                color: status ? STATUS_STYLES[status].color : "#406AAF",
-                                flexShrink: 0,
-                              }}
-                            >
-                              {student.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                            </div>
-                            <span style={{ fontWeight: 500, fontSize: "0.875rem" }}>{student.full_name}</span>
-                          </div>
-                        </td>
-                        <td className="os-table__mono">{student.index_number}</td>
-                        <td>
-                          {readOnly ? (
-                            status ? (
-                              <span
-                                style={{
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  padding: "0.2rem 0.6rem",
-                                  fontSize: "0.75rem",
-                                  fontWeight: 600,
-                                  border: `1px solid ${STATUS_STYLES[status].border}`,
-                                  background: STATUS_STYLES[status].bg,
-                                  color: STATUS_STYLES[status].color,
-                                  borderRadius: "2px",
-                                }}
-                              >
-                                {STATUS_STYLES[status].label}
-                              </span>
-                            ) : (
-                              <span style={{ color: "#c6c6c6", fontSize: "0.75rem" }}>Not marked</span>
-                            )
-                          ) : (
-                            <div style={{ display: "flex", gap: "0.375rem" }}>
-                              {(["present", "absent", "late", "excused"] as const).map((s) => (
-                                <StatusButton
-                                  key={s}
-                                  value={s}
-                                  selected={status === s}
-                                  onClick={() => mark(student.id, s)}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </td>
-                        <td>
-                          {readOnly ? (
-                            <span style={{ fontSize: "0.75rem", color: notes[student.id] ? "#525252" : "#c6c6c6" }}>
-                              {notes[student.id] || "—"}
-                            </span>
-                          ) : status === "absent" || status === "late" || status === "excused" ? (
-                            <input
-                              placeholder="Optional note…"
-                              value={notes[student.id] ?? ""}
-                              onChange={(e) =>
-                                setNotes((prev) => ({ ...prev, [student.id]: e.target.value }))
-                              }
-                              style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontFamily: "inherit", border: "1px solid #e0e0e0", outline: "none", width: "140px" }}
-                            />
-                          ) : (
-                            <span style={{ color: "#c6c6c6", fontSize: "0.75rem" }}>—</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {filtered.map((student, idx) => (
+                    <StudentAttendanceRow
+                      key={student.id}
+                      student={student}
+                      idx={idx}
+                      status={statuses[student.id] ?? null}
+                      note={notes[student.id] ?? ""}
+                      readOnly={readOnly}
+                      onMark={(s) => mark(student.id, s)}
+                      onNoteChange={(value) => setNotes((prev) => ({ ...prev, [student.id]: value }))}
+                    />
+                  ))}
                 </tbody>
               </table>
 

@@ -1,16 +1,7 @@
 import { useState } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router";
-import {
-  Button,
-  Tag,
-  TextInput,
-  Select,
-  SelectItem,
-  RadioButtonGroup,
-  RadioButton,
-  InlineNotification,
-} from "@carbon/react";
-import { ArrowLeft, TrashCan, Edit, Save, Book } from "@carbon/icons-react";
+import { Button, InlineNotification } from "@carbon/react";
+import { ArrowLeft, TrashCan, Edit, Save } from "@carbon/icons-react";
 import {
   useTeacher,
   useTeacherSubjects,
@@ -26,16 +17,10 @@ import ErrorMessage from "../../../components/common/ErrorMessage";
 import ProfileBanner from "../../../components/common/ProfileBanner";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 import ConfirmEditModal from "../../../components/common/ConfirmEditModal";
-import type { Teacher, TeacherTitle, TeacherEmploymentStatus } from "../../../services/teacher";
+import type { Teacher, TeacherTitle } from "../../../services/teacher";
 import { splitFullName } from "../../../lib/name";
-
-const TITLES: TeacherTitle[] = ["Mr", "Miss", "Mrs", "Ms", "Dr", "Von", "Prof"];
-
-const EMPLOYMENT_STATUSES: { value: TeacherEmploymentStatus; label: string }[] = [
-  { value: "active", label: "Active" },
-  { value: "resigned", label: "Resigned" },
-  { value: "transferred", label: "Transferred" },
-];
+import { EMPLOYMENT_STATUSES } from "./constants";
+import TeacherProfileSections from "./components/TeacherProfileSections";
 
 function teacherToForm(t: Teacher) {
   return {
@@ -207,208 +192,19 @@ export default function TeacherDetail() {
           />
         )}
 
-        <div className="os-section">
-          <div className="os-section__header">
-            <h2 className="os-section__title">Profile</h2>
-          </div>
-          <div className="os-section__body">
-            {updateError && (
-              <InlineNotification
-                kind="error"
-                title="Error"
-                subtitle={updateError}
-                lowContrast
-                hideCloseButton
-                style={{ marginBottom: "1rem", maxWidth: "100%" }}
-              />
-            )}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "1.25rem",
-              }}
-            >
-              <Select
-                id="title"
-                labelText="Title"
-                value={form.title}
-                disabled={!editing}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value as TeacherTitle | "" }))}
-              >
-                <SelectItem value="" text="None" />
-                {TITLES.map((t) => (
-                  <SelectItem key={t} value={t} text={t} />
-                ))}
-              </Select>
-              <div>
-                <RadioButtonGroup
-                  legendText="Gender"
-                  name="gender"
-                  valueSelected={form.gender}
-                  disabled={!editing}
-                  onChange={(value) => setForm((f) => ({ ...f, gender: value as "male" | "female" }))}
-                >
-                  <RadioButton id="edit-gender-male" labelText="Male" value="male" />
-                  <RadioButton id="edit-gender-female" labelText="Female" value="female" />
-                </RadioButtonGroup>
-              </div>
-              <TextInput
-                id="given-name"
-                labelText="First Name"
-                value={form.given_name}
-                readOnly={!editing}
-                onChange={(e) => change("given_name", e.target.value)}
-              />
-              <TextInput
-                id="family-name"
-                labelText="Last Name"
-                value={form.family_name}
-                readOnly={!editing}
-                onChange={(e) => change("family_name", e.target.value)}
-              />
-              <TextInput
-                id="employee-number"
-                labelText="Employee Number"
-                value={teacher.employee_number}
-                readOnly
-              />
-              <TextInput
-                id="phone"
-                labelText="Phone"
-                value={form.phone_number}
-                readOnly={!editing}
-                onChange={(e) => change("phone_number", e.target.value)}
-              />
-              <TextInput
-                id="nic-number"
-                labelText="NIC Number"
-                value={form.nic_number}
-                readOnly={!editing}
-                onChange={(e) => change("nic_number", e.target.value)}
-              />
-              <TextInput
-                id="joined-date"
-                labelText="Joined Date"
-                value={teacher.joined_date ?? "-"}
-                readOnly
-              />
-              <TextInput
-                id="created-at"
-                labelText="Created"
-                value={
-                  teacher.created_at
-                    ? new Date(teacher.created_at).toLocaleDateString()
-                    : "-"
-                }
-                readOnly
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="os-section">
-          <div className="os-section__header">
-            <h2 className="os-section__title">Subjects</h2>
-            <span style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>
-              {subjects?.length ?? 0} assigned
-            </span>
-          </div>
-          <div
-            className="os-section__body"
-            style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}
-          >
-            {subjects && subjects.length > 0 ? (
-              subjects.map((s) => (
-                <div
-                  key={s.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    padding: "0.5rem 0.875rem",
-                    border: "1px solid #e0e0e0",
-                    background: "#f4f4f4",
-                  }}
-                >
-                  <Book size={14} style={{ fill: "#406AAF" }} />
-                  <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>
-                    {s.name}
-                  </span>
-                  <Tag type="blue" size="sm">
-                    {s.code}
-                  </Tag>
-                </div>
-              ))
-            ) : (
-              <span style={{ fontSize: "0.875rem", color: "#8d8d8d" }}>
-                No subjects assigned.
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="os-section">
-          <div className="os-section__header">
-            <h2 className="os-section__title">House</h2>
-          </div>
-          <div className="os-section__body">
-            {(() => {
-              const current = houses?.find((h) => h.id === teacher.house_id);
-              return current ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
-                  <span
-                    style={{
-                      display: "inline-block",
-                      width: "0.75rem",
-                      height: "0.75rem",
-                      borderRadius: "50%",
-                      backgroundColor: current.color,
-                    }}
-                  />
-                  <span style={{ fontSize: "0.875rem", fontWeight: 600 }}>{current.name}</span>
-                </div>
-              ) : null;
-            })()}
-            <Select
-              id="teacher-house"
-              labelText="Assigned house"
-              helperText="Assigned automatically to keep houses balanced. Only a System Administrator can change it — every change is recorded in the audit log."
-              value={teacher.house_id ?? ""}
-              disabled={updateHouse.isPending}
-              onChange={(e) =>
-                updateHouse.mutate({ id: teacher.id, houseId: e.target.value })
-              }
-            >
-              <SelectItem value="" text="No house" />
-              {houses?.map((h) => (
-                <SelectItem key={h.id} value={h.id} text={h.name} />
-              ))}
-            </Select>
-          </div>
-        </div>
-
-        <div className="os-section">
-          <div className="os-section__header">
-            <h2 className="os-section__title">Employment Status</h2>
-          </div>
-          <div className="os-section__body">
-            <Select
-              id="teacher-employment-status"
-              labelText="Status"
-              helperText="Mark resigned or transferred when a teacher leaves the school."
-              value={teacher.employment_status}
-              disabled={updateStatus.isPending}
-              onChange={(e) =>
-                updateStatus.mutate({ id: teacher.id, status: e.target.value as TeacherEmploymentStatus })
-              }
-            >
-              {EMPLOYMENT_STATUSES.map((s) => (
-                <SelectItem key={s.value} value={s.value} text={s.label} />
-              ))}
-            </Select>
-          </div>
-        </div>
+        <TeacherProfileSections
+          teacher={teacher}
+          subjects={subjects}
+          houses={houses}
+          form={form}
+          editing={editing}
+          onChange={change}
+          onTitleChange={(value) => setForm((f) => ({ ...f, title: value }))}
+          onGenderChange={(value) => setForm((f) => ({ ...f, gender: value }))}
+          updateError={updateError}
+          updateHouse={updateHouse}
+          updateStatus={updateStatus}
+        />
       </div>
 
       <ConfirmDeleteModal
