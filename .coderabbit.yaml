@@ -1,30 +1,65 @@
 # CodeRabbit configuration for OpenSchool.
 # Reference: https://docs.coderabbit.ai/reference/yaml-template
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 
 language: "en-US"
 
 tone_instructions: >
-  Be concise and direct. This is a Go (Gin/sqlc) + React (Vite/TypeScript/Carbon)
-  monorepo for a self-hosted school management system. Prioritize correctness,
-  security, and data-integrity issues over style nitpicks — gofmt, staticcheck,
-  eslint, and tsc already run in CI, so skip anything those would already catch.
+  Be direct — this is assertive-profile deep review. Surface every correctness,
+  security, concurrency, and data-integrity issue found, however minor. Skip
+  pure style: gofmt/staticcheck/eslint/tsc already enforce that in CI.
 
 early_access: false
 
 reviews:
-  profile: "chill"
+  profile: "assertive"
   high_level_summary: true
   poem: false
   review_status: true
+  review_details: true
+  estimate_code_review_effort: true
+  assess_linked_issues: true
+  related_issues: true
+  related_prs: true
+  sequence_diagrams: true
+  changed_files_summary: true
   collapse_walkthrough: true
   request_changes_workflow: false
   abort_on_close: true
+  enable_prompt_for_ai_agents: true
 
   auto_review:
     enabled: true
     drafts: false
+    auto_incremental_review: true
+    # "main" is already covered as the repo's default branch; this repo's
+    # flow is feature -> development -> main, so add development explicitly.
     base_branches:
-      - "main"
+      - "development"
+
+  finishing_touches:
+    simplify:
+      enabled: true
+    unit_tests:
+      enabled: true
+
+  tools:
+    golangci-lint:
+      enabled: true
+    eslint:
+      enabled: true
+    shellcheck:
+      enabled: true
+    actionlint:
+      enabled: true
+    sqlfluff:
+      enabled: true
+    gitleaks:
+      enabled: true
+    osvScanner:
+      enabled: true
+    semgrep:
+      enabled: true
 
   path_filters:
     - "!backend/db/sqlc/**"
@@ -85,7 +120,37 @@ reviews:
         flag a service function whose payload/response shape has drifted from the
         corresponding Go model or route.
 
+    - path: "backend/db/queries/**"
+      instructions: >
+        Raw SQL annotated for sqlc. On tables scoped by academic_year_id, flag
+        any SELECT/UPDATE/DELETE missing that filter unless the query is
+        deliberately cross-year (e.g. promotion, portfolio history). Flag
+        queries issued in a loop from Go call sites (N+1) and any JOIN/WHERE/
+        ORDER BY that looks unindexed given backend/db/migrations/.
+
+    - path: "backend/internal/services/**"
+      instructions: >
+        Business-logic layer. DB access must go through internal/repositories/,
+        not raw pgx/sqlc calls inlined here — flag any that bypass the
+        repository layer. Also flag business rules duplicated across services
+        instead of shared.
+
+    - path: "backend/internal/repositories/**"
+      instructions: >
+        Data-access layer only — flag any HTTP-specific concern (gin.Context,
+        status codes, request/response shaping) leaking in here; that belongs
+        in internal/routes/.
+
+    - path: "frontend/src/components/common/**"
+      instructions: >
+        Shared CRUD building blocks (ConfirmDeleteModal, EntityCombobox,
+        EmptyState, FormModal, Avatar, StatusTag) that most admin pages compose
+        from. Review changes here for effects on every consumer, not just the
+        page that motivated the change.
+
 knowledge_base:
+  web_search:
+    enabled: true
   code_guidelines:
     filePatterns:
       - "docs/ARCHITECTURE.md"

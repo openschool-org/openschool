@@ -78,6 +78,75 @@ findings above into a tracked queue instead of noise.
 
 ---
 
+## Exploratory — modules platform, instance identity & demo playground
+
+Brainstormed direction, not yet scoped into an actual plan or committed to
+the backlog above — captured here so the reasoning isn't lost. Three
+separate concerns; none blocks the others.
+
+1. **Modules platform (agents live in separate repos, not this monorepo).**
+   Since a deployment is single-tenant (one `school` row per install, per
+   the Data Model) and this is open source (no centrally-hosted marketplace
+   to operate), the lightest workable shape is:
+   - Each module/agent ships its own repo with a manifest
+     (name, version, config as JSON Schema, which read-scopes/webhook
+     events it needs) instead of living in `backend/`/`frontend/`.
+   - Core gets a `modules` table (manifest URL, config JSON, enabled,
+     a scoped API token per module) and an admin page that renders the
+     config form *from* the manifest's JSON Schema — no bespoke UI per
+     module.
+   - A small versioned "Agent API" + webhook dispatcher for exactly the
+     events modules need — start scoped to what the three items in
+     § Proposed — maintenance/ops agents (above) actually require
+     (attendance-session state, term-marks state, timetable-review state)
+     rather than a general permission system up front.
+   - Discovery/"marketplace" can start as nothing more than the admin
+     pasting a manifest URL directly; a public JSON index of manifests
+     (à la Home Assistant's HACS) is a later nicety, not a v1 requirement.
+   - Real cost is designing the manifest/webhook/token contract once,
+     deliberately — not the admin page itself.
+
+2. **Per-school instance identity (not a license).** Open source means a
+   hard license lock doesn't hold — anyone with DB access to their own
+   self-hosted server can bypass a check baked into code they control
+   (same reason GitLab EE / Odoo Enterprise / Zabbix don't try to DRM the
+   local binary). What's actually useful is an **instance identity**:
+   - At first-run (the existing School Setup wizard, § Setup in
+     `FEATURES.md`), generate a UUID *and* an asymmetric keypair for the
+     instance; store both locally (new `instance` table or alongside the
+     single `school` row). Private key never leaves the server.
+   - The UUID + public key is what the instance presents to anything
+     external — a module registry, opt-in telemetry, a support channel —
+     so requests can be verified as coming from one consistent install,
+     via signed requests rather than a password-like license string.
+   - This is the identity a module (item 1 above) would use to
+     authenticate itself to the instance, and vice versa.
+   - An open-core paid-module gate, if ever wanted, is a separate signed
+     JWT-license-file layer on top of this (GitLab-license-style) —
+     explicitly deferred until there's something to gate.
+
+3. **1-hour demo playground (OpenChoreo.dev-style).** Deliberately *outside*
+   this repo — demo infra, not app code. Two shapes considered, in
+   increasing cost:
+   - **Shared demo instance, session-scoped (recommended starting point).**
+     One always-on OpenSchool instance seeded with realistic fake data,
+     reset on a nightly cron; each visitor gets a 1-hour signed session
+     token that logs them out on expiry. A day of infra work, not a
+     platform build.
+   - **Per-visitor ephemeral instance.** A script (naturally living in
+     `openschool-web` or a dedicated demo/infra repo, per the user's
+     suggestion) spins up a fresh containerized backend+DB+seed data per
+     visitor with a TTL teardown. Best experience, real ongoing cost —
+     upgrade path if the shared-instance demo proves popular.
+   - Either shape needs its own demo ThunderID tenant with pre-seeded
+     demo admin/teacher/student/parent accounts — a demo-auth bypass
+     should never live in core app code.
+
+**Next step:** pick one of the three to scope into an actual plan (see
+proposal above) before any implementation starts.
+
+---
+
 ## Phase 10 — Code quality & style refactor
 
 **Status: complete.** A dedicated pass over both workspaces to raise the baseline code quality and consistency now that the v1 feature set (Phases 1–9) is functionally complete — no behavior changes, comments and style only. Frontend component decomposition (last item below) extends beyond this phase's original scope; added when the pass was carried out, kept here since it's the same "no behavior change" cleanup spirit.
