@@ -34,11 +34,7 @@ func NewGuardianService(repo *repositories.GuardianRepository, users *repositori
 	return &GuardianService{repo: repo, users: users, idp: idp, notifications: notifications, audit: audit}
 }
 
-// CreateGuardian creates a new guardian record and also returns any
-// existing guardians that share the same phone/email — a soft duplicate
-// warning the caller can surface ("link this one instead?") without ever
-// being blocked from creating a legitimate second record (e.g. a shared
-// home phone).
+// CreateGuardian creates a new guardian record and also returns any existing guardians sharing the same phone/email — a soft duplicate warning, never a hard block (e.g. a shared home phone is legitimate).
 func (s *GuardianService) CreateGuardian(ctx context.Context, req models.CreateGuardianRequest) (db.Guardian, []db.Guardian, error) {
 	duplicates, err := s.repo.FindDuplicateCandidates(ctx, req.Phone, req.Email)
 	if err != nil {
@@ -63,10 +59,7 @@ func (s *GuardianService) ListStudentsFor(ctx context.Context, guardianID uuid.U
 	return s.repo.ListStudentsByGuardianID(ctx, guardianID)
 }
 
-// DeleteGuardian removes a guardian record outright. Blocked while linked
-// to any student — the caller must unlink each one first, since silently
-// cascading the delete would remove a shared guardian from every child at
-// once.
+// DeleteGuardian removes a guardian record outright; blocked while linked to any student, since silently cascading would remove a shared guardian from every child at once.
 func (s *GuardianService) DeleteGuardian(ctx context.Context, id uuid.UUID, actorID uuid.UUID) error {
 	before, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -87,9 +80,7 @@ func (s *GuardianService) DeleteGuardian(ctx context.Context, id uuid.UUID, acto
 	return nil
 }
 
-// ListNotifications returns the notification history for a guardian's
-// portal account (empty if they don't have one yet) — for the directory's
-// "notification history" panel.
+// ListNotifications returns the notification history for a guardian's portal account (empty if they don't have one) — for the directory's "notification history" panel.
 func (s *GuardianService) ListNotifications(ctx context.Context, guardianID uuid.UUID) ([]notificationsmodels.MyNotificationResponse, error) {
 	guardian, err := s.repo.GetByID(ctx, guardianID)
 	if err != nil {
@@ -125,9 +116,7 @@ func (s *GuardianService) ListByStudent(ctx context.Context, studentID uuid.UUID
 	return s.repo.ListByStudent(ctx, studentID)
 }
 
-// ProvisionLogin creates a ThunderID identity for an existing guardian
-// record and links it via guardians.user_id, giving them access to the
-// parent portal. Mirrors RegisterFirstAdmin's identity-provisioning flow.
+// ProvisionLogin creates a ThunderID identity for an existing guardian and links it via guardians.user_id, giving them access to the parent portal — mirrors RegisterFirstAdmin's provisioning flow.
 func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UUID, req models.ProvisionGuardianLoginRequest, actorID uuid.UUID) (db.Guardian, error) {
 	guardian, err := s.repo.GetByID(ctx, guardianID)
 	if err != nil {
@@ -146,7 +135,7 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 	// The guardian's NIC number (already on file, Phase 8.1) becomes their
 	// initial (one-time) portal password (Phase 8.2) — there is no separate
 	// manual password entry anymore.
-	idpUser, err := s.idp.CreateUser(ctx, "parent", map[string]interface{}{
+	idpUser, err := s.idp.CreateUser(ctx, models.RoleParent, map[string]interface{}{
 		"username":    req.Username,
 		"email":       guardian.Email.String,
 		"given_name":  req.GivenName,
@@ -170,7 +159,7 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 		ID:                 userID,
 		Email:              guardian.Email.String,
 		FullName:           guardian.FullName,
-		Role:               "parent",
+		Role:               models.RoleParent,
 		MustChangePassword: true,
 	}); err != nil {
 		rollbackIDPUser(ctx, s.idp, "ProvisionLogin", idpUser.ID)
@@ -182,7 +171,7 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 		return db.Guardian{}, fmt.Errorf("failed to link guardian record: %w", err)
 	}
 
-	if err := s.idp.AssignRole(ctx, identity.RoleID("parent"), idpUser.ID); err != nil {
+	if err := s.idp.AssignRole(ctx, identity.RoleID(models.RoleParent), idpUser.ID); err != nil {
 		return db.Guardian{}, fmt.Errorf("failed to assign parent role: %w", err)
 	}
 

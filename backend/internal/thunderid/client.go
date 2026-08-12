@@ -18,13 +18,7 @@ import (
 	"github.com/openschool-org/openschool/internal/identity"
 )
 
-// idpError logs the raw ThunderID response server-side and returns a
-// sanitized error safe to surface to an HTTP caller. Several handlers
-// return err.Error() straight to the client (see audit.md M-6); the upstream
-// body can contain internal details (stack traces, field names, config
-// hints) that shouldn't cross that boundary, so the sanitizing has to happen
-// here — the one place every ThunderID call funnels through — rather than
-// being re-applied at each of those call sites.
+// idpError logs the raw ThunderID response server-side and returns a sanitized error safe to surface to an HTTP caller (the raw body can leak internals; see audit.md M-6).
 func idpError(op string, statusCode int, body []byte) error {
 	log.Printf("thunderid: %s failed (status %d): %s", op, statusCode, string(body))
 	return fmt.Errorf("identity provider request failed (status %d)", statusCode)
@@ -296,14 +290,10 @@ func (c *Client) AssignRole(ctx context.Context, roleID string, userID string) e
 	return nil
 }
 
-// thunderIDListPageSize is the page size requested per GET /users call.
-// ThunderID's own default (30) would take an impractical number of round
-// trips for a school-sized user base.
+// thunderIDListPageSize is the page size requested per GET /users call; ThunderID's own default (30) would take an impractical number of round trips for a school-sized user base.
 const thunderIDListPageSize = 100
 
-// thunderIDListMaxPages bounds the pagination loop as a safety valve
-// against an unexpected pagination-metadata bug looping forever — 500
-// pages at 100/page covers 50,000 users, far beyond any real deployment.
+// thunderIDListMaxPages is a safety valve against an unexpected pagination-metadata bug looping forever; 500 pages at 100/page covers 50,000 users, far beyond any real deployment.
 const thunderIDListMaxPages = 500
 
 type thunderIDUserListResponse struct {
@@ -317,9 +307,7 @@ type thunderIDListedUser struct {
 	Attributes json.RawMessage `json:"attributes"`
 }
 
-// ListUsers pages through GET /users and returns every account. Best-effort
-// extracts username/email from each user's attributes for display purposes
-// only.
+// ListUsers pages through GET /users and returns every account, best-effort extracting username/email from each user's attributes for display purposes only.
 func (c *Client) ListUsers(ctx context.Context) ([]identity.User, error) {
 	token, err := c.getAccessToken(ctx)
 	if err != nil {

@@ -1,15 +1,6 @@
 import { useMemo, useState } from "react";
-import { Add, ArrowUp, ArrowDown, Warning } from "@carbon/icons-react";
-import {
-  Button,
-  TextInput,
-  InlineNotification,
-  ComposedModal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  SkeletonText,
-} from "@carbon/react";
+import { Add } from "@carbon/icons-react";
+import { Button, InlineNotification, SkeletonText } from "@carbon/react";
 import {
   useGrades,
   useCreateGrade,
@@ -23,6 +14,8 @@ import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import GradeRow from "./components/GradeRow";
+import GradeFormModal from "./components/GradeFormModal";
 
 function GradeRowSkeleton() {
   return (
@@ -41,23 +34,6 @@ function GradeRowSkeleton() {
   );
 }
 
-function gradeNumber(name: string): number | null {
-  const m = name.match(/\d+/);
-  return m ? Number(m[0]) : null;
-}
-
-function nameWarning(
-  name: string,
-  from: number | null,
-  to: number | null,
-): string | null {
-  const n = gradeNumber(name);
-  if (n === null) return "No number in this name";
-  if (from !== null && n < from) return `Below your grade range (${from}-${to})`;
-  if (to !== null && n > to) return `Above your grade range (${from}-${to})`;
-  return null;
-}
-
 export default function Grades() {
   const { data: grades, isLoading, isError, refetch } = useGrades();
   const { data: school } = useSchool();
@@ -70,7 +46,6 @@ export default function Grades() {
   const [editing, setEditing] = useState<Grade | null>(null);
   const [name, setName] = useState("");
   const [toDelete, setToDelete] = useState<Grade | null>(null);
-  const [hovered, setHovered] = useState<string | null>(null);
   const [nameTouched, setNameTouched] = useState(false);
 
   // display order: sort_order first, name as a stable tie-break so duplicated
@@ -261,157 +236,39 @@ export default function Grades() {
 
         {!isLoading && ordered.length > 0 && (
           <div style={{ opacity: busy ? 0.6 : 1 }}>
-            {ordered.map((g, i) => {
-              const warning = nameWarning(g.name, from, to);
-              return (
-                <div
-                  key={g.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "0.875rem 1.5rem",
-                    borderBottom:
-                      i < ordered.length - 1 ? "1px solid #e0e0e0" : "none",
-                    gap: "1rem",
-                    backgroundColor:
-                      hovered === g.id ? "#f4f4f4" : "transparent",
-                  }}
-                  onMouseEnter={() => setHovered(g.id)}
-                  onMouseLeave={() => setHovered(null)}
-                >
-                  <span
-                    style={{
-                      width: "1.75rem",
-                      height: "1.75rem",
-                      borderRadius: "4px",
-                      background: "#edf2fa",
-                      color: "#406AAF",
-                      fontSize: "0.8125rem",
-                      fontWeight: 600,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {i + 1}
-                  </span>
-
-                  <span
-                    style={{
-                      fontWeight: 600,
-                      fontSize: "0.9rem",
-                      color: "#161616",
-                    }}
-                  >
-                    {g.name}
-                  </span>
-
-                  {warning && (
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "0.25rem",
-                        fontSize: "0.75rem",
-                        color: "#8a6a00",
-                      }}
-                    >
-                      <Warning size={14} style={{ fill: "#b28600" }} />
-                      {warning}
-                    </span>
-                  )}
-
-                  <div style={{ flex: 1 }} />
-
-                  <Button
-                    hasIconOnly
-                    kind="ghost"
-                    size="sm"
-                    iconDescription="Move up"
-                    renderIcon={ArrowUp}
-                    disabled={i === 0 || busy}
-                    onClick={() => move(i, -1)}
-                  />
-                  <Button
-                    hasIconOnly
-                    kind="ghost"
-                    size="sm"
-                    iconDescription="Move down"
-                    renderIcon={ArrowDown}
-                    disabled={i === ordered.length - 1 || busy}
-                    onClick={() => move(i, 1)}
-                  />
-                  <Button
-                    kind="ghost"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => openEdit(g)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    kind="danger--ghost"
-                    size="sm"
-                    disabled={busy}
-                    onClick={() => setToDelete(g)}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              );
-            })}
+            {ordered.map((g, i) => (
+              <GradeRow
+                key={g.id}
+                grade={g}
+                index={i}
+                isLast={i === ordered.length - 1}
+                from={from}
+                to={to}
+                busy={busy}
+                onMoveUp={() => move(i, -1)}
+                onMoveDown={() => move(i, 1)}
+                onEdit={() => openEdit(g)}
+                onDelete={() => setToDelete(g)}
+              />
+            ))}
           </div>
         )}
       </div>
 
-      <ComposedModal open={!!modal} size="sm" onClose={() => setModal(null)}>
-        <ModalHeader title={modal === "create" ? "Add grade" : "Edit grade"} />
-        <ModalBody>
-          {(createGrade.isError || updateGrade.isError) && (
-            <InlineNotification
-              kind="error"
-              title="Error"
-              subtitle={getErrorMessage(
-                createGrade.error ?? updateGrade.error,
-                "Failed to save grade",
-              )}
-              lowContrast
-              hideCloseButton
-              style={{ marginBottom: "1rem", maxWidth: "100%" }}
-            />
-          )}
-          <TextInput
-            id="grade-name"
-            labelText="Name"
-            placeholder="e.g. Grade 6"
-            helperText={
-              modal === "create"
-                ? "Added at the end; use the arrows to move it."
-                : "Position is changed with the arrows, not here."
-            }
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => setNameTouched(true)}
-            invalid={nameTouched && !name.trim()}
-            invalidText="Grade name is required."
-          />
-        </ModalBody>
-        <ModalFooter>
-          <Button kind="secondary" onClick={() => setModal(null)}>
-            Cancel
-          </Button>
-          <Button
-            kind="primary"
-            onClick={handleSave}
-            disabled={
-              !name.trim() || createGrade.isPending || updateGrade.isPending
-            }
-          >
-            {createGrade.isPending || updateGrade.isPending ? "Saving…" : "Save"}
-          </Button>
-        </ModalFooter>
-      </ComposedModal>
+      {modal && (
+        <GradeFormModal
+          mode={modal}
+          name={name}
+          onNameChange={setName}
+          nameTouched={nameTouched}
+          onNameBlur={() => setNameTouched(true)}
+          onClose={() => setModal(null)}
+          onSubmit={handleSave}
+          isPending={createGrade.isPending || updateGrade.isPending}
+          isError={createGrade.isError || updateGrade.isError}
+          error={createGrade.error ?? updateGrade.error}
+        />
+      )}
 
       <ConfirmDeleteModal
         open={!!toDelete}

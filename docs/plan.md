@@ -31,28 +31,42 @@
 
 Everything still outstanding, in one place (deduplicated from the former per-phase carryover and pre-v1 checklist sections):
 
-- **CI hardening** — `pnpm audit`, `govulncheck`, and `staticcheck`/`deadcode` are still informational-only in CI (`continue-on-error: true`); flip to blocking once the items below are resolved. Bump the vulnerable frontend packages found by `pnpm audit` (`brace-expansion`, `immutable`, `react-router`, `postcss`, `dompurify`) to patched versions, verifying each for breaking changes since none are direct dependencies of app code.
+- **CI hardening** — `pnpm audit`, `govulncheck`, and `staticcheck`/`deadcode` are still informational-only in CI (`continue-on-error: true`); flip to blocking once the items below are resolved. `pnpm audit --prod` now flags only `react-router` and `dompurify` (down from 5 packages — `brace-expansion`/`immutable`/`postcss` are already clean); both remaining ones are transitive via `@thunderid/react`, not direct deps, so they need an upstream bump rather than a local one.
 - **Teacher self-service profile edit (product decision needed)** — `PUT /teachers/:id` (`internal/routes/teacher.go`) is admin-only today, so a teacher has no way to update their own phone number/title. If wanted, add a dedicated `/me/teacher` `PUT` that only lets a teacher touch their own row (check `actor.ID` against the resolved `teacher.UserID`), not an arbitrary `:id`.
-- **Notification fan-out swallows lookup failures (Low)** — `internal/services/notifications/notification.go` and `internal/services/timetable/timetable.go` build recipient lists with `_, _ := ...`-style calls; a failed lookup silently drops a guardian/teacher from a notification with no log line. Add logging at each recipient-resolution step.
-- **Duplicated `todayISODate()` helper (Low)** — `TeacherDashboard.tsx` and `TeacherAttendance.tsx` each define an identical local date helper. Extract to a shared `src/lib/date.ts` next time either file is touched.
 - **ThunderID attribute-name fragility (Low, informational)** — hand-typed identity-provider attribute/type-name strings have to match out-of-repo ThunderID console configuration, failing silently at runtime rather than at build/test time (root cause of two prior production bugs). Consider a small integration test exercising `CreateTeacher`/`ProvisionLogin`/`CreateStudent` against a real or recorded ThunderID response, or centralizing the attribute-name constants in one place.
 - **Load test — script prepared, not yet run.** `backend/scripts/loadtest_attendance_rush.js` (k6) simulates a morning attendance rush. Needs a seeded dataset and real teacher access tokens (ThunderID has no OAuth2 `password` grant, so tokens must come from a real sign-in flow). Run it by hand before trusting the current DB-pool (25/5) and rate-limit defaults for a real rollout.
 - **Unbounded list endpoints** — several `teacherOrAdmin`/`admin` list routes (`/students`, `/teachers`, `/notifications/sent`, etc.) return the entire table in one response with no pagination. Fine at the current ~2,500-student scale; add server-side pagination before a much larger school or a shared multi-tenant deployment makes that response size a real DoS/performance vector.
-- **Low-priority cross-file duplication** — the `userID`-from-context helper repeated across `parent.go`/`student_self.go`/`teacher_self.go`/`timetable/timetable.go`/`notifications/notification.go`, and role/status strings as raw literals instead of shared constants. Cosmetic; folded into Phase 10 below.
 - **Redis-backed rate limiting** — the per-IP and per-account limiters (`internal/middleware/ratelimit.go`) are in-process and token-bucket only, resetting on restart with no shared state across instances. Move to a shared store (Redis) before running more than one backend instance. Deliberately deferred — infrastructure/deployment decision, not blocking a single-instance deployment.
 
 ---
 
 ## Phase 10 — Code quality & style refactor
 
-**Status: planned, not yet started.** A dedicated pass over both workspaces to raise the baseline code quality and consistency now that the v1 feature set (Phases 1–9) is functionally complete — no behavior changes, comments and style only.
+**Status: complete.** A dedicated pass over both workspaces to raise the baseline code quality and consistency now that the v1 feature set (Phases 1–9) is functionally complete — no behavior changes, comments and style only. Frontend component decomposition (last item below) extends beyond this phase's original scope; added when the pass was carried out, kept here since it's the same "no behavior change" cleanup spirit.
 
-- ⬜ **Comment quality pass (backend + frontend).** Audit every multi-line comment block; condense verbose, multi-paragraph explanations down to a single concise line that keeps only the non-obvious *why* (drop anything that just restates what the code already shows). Example of the target style, already applied in `backend/internal/config/env.go`:
-  ```go
-  // LoadEnv loads .env into the process environment; only logs errors other than a missing file.
-  func LoadEnv() {
-  ```
-  Leave swagger/godoc annotation blocks (`// @Summary`, `// @Router`, etc.) untouched — those are functional API-doc generation comments, not prose. Preserve Go doc-comment convention (an exported symbol's comment still starts with its name).
-- ⬜ **Coding style consistency check** — run `gofmt`/`go vet`/`staticcheck` across the backend and `pnpm lint` across the frontend, fixing anything flagged; confirm no drift between modules that should share a convention (error handling, naming, file layout).
-- ⬜ **Cross-file duplication cleanup** — resolves the "Low-priority cross-file duplication" backlog item above: extract the repeated `userID`-from-context helper into one shared place, and replace raw role/status string literals with shared constants.
-- ⬜ **Dead-code re-check** — re-run `deadcode` after this pass to confirm the Phase 9 cleanup didn't leave anything new unreachable.
+- ✅ **Comment quality pass.** Backend: condensed ~50 wrapped multi-line `//` comments to single concise "why" lines across `internal/services/`, `internal/repositories/`, `internal/middleware/`, `internal/thunderid/`; normalized the one ASCII-divider comment block in `curriculum_preset.go`. Swagger annotation blocks and Go doc-comment convention (comment starts with the symbol's name) left untouched/enforced. Frontend comment density was already minimal and load-bearing — audited, no changes needed.
+- ✅ **Coding style consistency check** — `gofmt -l`, `go vet ./...`, `staticcheck ./...` all clean on backend; `pnpm lint` (`eslint .`), `npx tsc -b`, and `npx vite build` all clean on frontend.
+- ✅ **Cross-file duplication cleanup** — added `middleware.UserIDFromContext`, replacing the duplicated/triplicated inline `uuid.Parse(c.GetString("userID"))` pattern across `parent.go`, `timetable/timetable.go`, `student_self.go`, `teacher_self.go` (3 inline copies), `staff_attendance.go`, `student_portfolio.go`, `attendance.go`, `non_academic_staff.go`, `notifications/notification.go`. Added `models.Role{Admin,Teacher,Student,Parent}` plus attendance/timetable/notification status constants, replacing ~60 raw string-literal call sites (`internal/services/*`, `internal/routes/routes.go`).
+- ✅ **Dead-code re-check** — `deadcode ./...` clean.
+- ✅ **Frontend component decomposition (new item, beyond original scope), 16/16 files.** No page had a local `components/` folder before this pass; one convention was established and applied to every admin page over 400 lines:
+
+  | File | Before | After | Extracted into |
+  |---|---|---|---|
+  | `pages/admin/setup/SchoolSetup.tsx` | 997 | 321 | `components/` (6 step components + `StepShell`/`RepeatableRow`), `hooks/useSchoolSetupSubmit.ts`, `constants.ts` |
+  | `pages/admin/classes/ClassDetail.tsx` | 949 | 444 | `components/` (3 tab components, 5 modals — `Marks` tab was already `ClassMarks.tsx`) |
+  | `pages/admin/curriculum/LevelDetail.tsx` | 675 | 233 | `components/` (`SubjectCard`, `GroupsList`, `GroupFormModal`, `AddSubjectModal`) |
+  | `pages/admin/academic-years/AcademicYears.tsx` | 649 | 125 | `components/` (`YearsList`, `CreateYearModal`, `TermsModal`, row skeleton) |
+  | `pages/admin/curriculum/Curriculum.tsx` | 620 | 252 | `components/` (`LevelsList`, 3 form modals, `PresetConfirmModal`, row skeleton) |
+  | `pages/admin/students/StudentGuardians.tsx` | 545 | 106 | `components/` (`AddGuardianModal`, `ProvisionLoginModal`, `GuardianRow`) |
+  | `pages/admin/attendance/AttendanceMark.tsx` | 497 | 343 | `components/` (`StatusButton`, `StudentAttendanceRow`), `constants.ts`; built shared `StatusTag` |
+  | `pages/notifications/NotificationComposer.tsx` | 494 | 208 | `components/` (`RecipientPicker`, `SentHistoryRow`, `DraftRow`), `constants.ts` |
+  | `pages/admin/promotion/Promotion.tsx` | 479 | 248 | `components/` (`PromotionGroup`, with the round-robin/shuffle helpers) |
+  | `pages/admin/students/StudentDetail.tsx` | 464 | 264 | `components/` (`StudentProfileTab` — Profile/Current Class/House/Enrollment sections) |
+  | `pages/admin/teachers/TeacherDetail.tsx` | 438 | 234 | `components/` (`TeacherProfileSections`), `constants.ts` |
+  | `pages/admin/staff/NonAcademicStaff.tsx` | 434 | 125 | `components/` (`StaffFormModal`, `StaffDetail`), `constants.ts` |
+  | `pages/admin/guardians/GuardiansDirectory.tsx` | 431 | 119 | `components/` (`EditGuardianModal`, `GuardianDetail`), `constants.ts` |
+  | `pages/admin/grades/Grades.tsx` | 431 | 288 | `components/` (`GradeRow`, `GradeFormModal`) |
+  | `pages/admin/timetable/GradeSections.tsx` | 410 | 215 | `components/` (`PeriodsEditor`, `SectionRow`, `SectionFormModal`), `constants.ts` |
+  | `pages/admin/dashboard/Dashboard.tsx` | 401 | 108 | `components/` (`StatCard`, `AttendanceByClassSection`, `RecentActivitySection`, `AttendanceTodaySidebar`, `AcademicYearSidebar`), `constants.ts` |
+
+  New shared pieces in `src/components/common/`: `FormModal` (the header/body/error-notification/footer skeleton every create/edit modal was hand-duplicating), `Avatar` (the initials-circle renderer), and `StatusTag` (the colored status-pill pattern, built out from `AttendanceMark.tsx` where it originated). Every extraction verified with `npx tsc --noEmit`, `npx eslint <path>` per file, and a final `npx tsc -b && npx eslint . && npx vite build` across the whole frontend — all clean. No page was manually exercised in a browser as part of this pass; this was a mechanical extract-with-identical-JSX refactor (no logic, prop, or markup changes), not a functional change, so it wasn't spot-checked live.

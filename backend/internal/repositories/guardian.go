@@ -21,9 +21,7 @@ func (r *GuardianRepository) GetByID(ctx context.Context, id uuid.UUID) (db.Guar
 	return r.queries.GetGuardianByID(ctx, id)
 }
 
-// List returns every guardian, optionally filtered by a search term matched
-// against name/phone/email (pass "" for no filter) and/or restricted to
-// orphans — guardians linked to no student.
+// List returns every guardian, optionally filtered by a name/phone/email search term (pass "" for no filter) and/or restricted to orphans — guardians linked to no student.
 func (r *GuardianRepository) List(ctx context.Context, search string, orphansOnly bool) ([]db.Guardian, error) {
 	return r.queries.ListGuardians(ctx, db.ListGuardiansParams{
 		Search:      pgtype.Text{String: search, Valid: search != ""},
@@ -31,9 +29,7 @@ func (r *GuardianRepository) List(ctx context.Context, search string, orphansOnl
 	})
 }
 
-// FindDuplicateCandidates returns guardians that share the given phone (or
-// email, if provided) — a soft "this may already exist" signal surfaced at
-// create time, never a hard block.
+// FindDuplicateCandidates returns guardians sharing the given phone (or email) — a soft "this may already exist" signal at create time, never a hard block.
 func (r *GuardianRepository) FindDuplicateCandidates(ctx context.Context, phone, email string) ([]db.Guardian, error) {
 	return r.queries.FindGuardianDuplicateCandidates(ctx, db.FindGuardianDuplicateCandidatesParams{
 		Phone: phone,
@@ -41,9 +37,7 @@ func (r *GuardianRepository) FindDuplicateCandidates(ctx context.Context, phone,
 	})
 }
 
-// ListStudentsByGuardianID returns the students linked to a guardian,
-// regardless of whether that guardian has a portal login — used by the
-// guardian directory's "children" column.
+// ListStudentsByGuardianID returns the students linked to a guardian, regardless of portal login — used by the guardian directory's "children" column.
 func (r *GuardianRepository) ListStudentsByGuardianID(ctx context.Context, guardianID uuid.UUID) ([]db.StudentProfile, error) {
 	return r.queries.ListStudentsByGuardianID(ctx, guardianID)
 }
@@ -78,10 +72,7 @@ func (r *GuardianRepository) ListByStudent(ctx context.Context, studentID uuid.U
 	return r.queries.ListGuardiansByStudent(ctx, studentID)
 }
 
-// ListGuardianUserIDsByStudentIDs resolves every linked-in guardian's local
-// user ID for a batch of students in one round trip (guardians without a
-// provisioned portal login are excluded, since they have no user ID to
-// notify).
+// ListGuardianUserIDsByStudentIDs resolves guardians' local user IDs for a batch of students, excluding guardians with no portal login (nothing to notify).
 func (r *GuardianRepository) ListGuardianUserIDsByStudentIDs(ctx context.Context, studentIDs []uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := r.queries.ListGuardianUserIDsByStudentIDs(ctx, studentIDs)
 	if err != nil {

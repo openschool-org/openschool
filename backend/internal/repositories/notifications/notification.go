@@ -113,9 +113,7 @@ func (r *NotificationRepository) ListStudentIDsByGuardian(ctx context.Context, g
 	return r.queries.ListStudentIDsByGuardian(ctx, guardianID)
 }
 
-// IsTeacherAssignedToSubject reuses the query already generated for the
-// timetable module's validator — sqlc queries share one flat db.Queries
-// type across the whole app regardless of which package registered them.
+// IsTeacherAssignedToSubject reuses the query generated for the timetable module's validator — sqlc queries share one flat db.Queries type across the whole app regardless of which package registered them.
 func (r *NotificationRepository) IsTeacherAssignedToSubject(ctx context.Context, teacherID, subjectID uuid.UUID) (bool, error) {
 	return r.queries.IsTeacherAssignedToSubject(ctx, db.IsTeacherAssignedToSubjectParams{TeacherID: teacherID, SubjectID: subjectID})
 }

@@ -16,17 +16,9 @@ func NewDashboardService(repo *repositories.DashboardRepository) *DashboardServi
 	return &DashboardService{repo: repo}
 }
 
-// Analytics composes every Phase 7 aggregate into one response. Each
-// section is independent, so a failure in one query doesn't need to fail
-// the whole page — but to keep this a straightforward first pass, any
-// query error fails the whole request; the dashboard already tolerates a
-// full-page error state.
+// Analytics composes every dashboard aggregate into one response; any query error fails the whole request rather than degrading section-by-section, since the dashboard already tolerates a full-page error state.
 func (s *DashboardService) Analytics(ctx context.Context) (models.DashboardAnalyticsResponse, error) {
-	// Every slice below is built with append onto a nil starting slice, so an
-	// aggregate with zero rows (e.g. no attendance sessions yet) would stay
-	// nil and marshal to JSON `null` instead of `[]` — the frontend maps
-	// over these unconditionally, so `null` crashes it. Starting from empty
-	// (non-nil) slices keeps the JSON shape stable regardless of row count.
+	// Slices start non-nil (not built by append onto nil) so a zero-row aggregate marshals to JSON `[]`, not `null` — the frontend maps over these unconditionally and `null` would crash it.
 	resp := models.DashboardAnalyticsResponse{
 		Student: models.DashboardStudentAnalytics{
 			ByGrade:            []models.CountRow{},

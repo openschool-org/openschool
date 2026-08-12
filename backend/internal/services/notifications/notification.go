@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/openschool-org/openschool/db/sqlc"
+	rootmodels "github.com/openschool-org/openschool/internal/models"
 	models "github.com/openschool-org/openschool/internal/models/notifications"
 	rootrepositories "github.com/openschool-org/openschool/internal/repositories"
 	repositories "github.com/openschool-org/openschool/internal/repositories/notifications"
@@ -101,9 +102,7 @@ func (s *NotificationService) gradesForRule(ctx context.Context, rule models.Rec
 	}
 }
 
-// isTeacherAuthorizedForGrade mirrors the section-head resolution used to
-// gate timetable review: either the grade's per-grade TIC or its
-// grade_sections group head may notify that grade's members.
+// isTeacherAuthorizedForGrade mirrors the section-head resolution used to gate timetable review: either the grade's per-grade TIC or its grade_sections group head may notify that grade's members.
 func (s *NotificationService) isTeacherAuthorizedForGrade(ctx context.Context, teacherID, gradeID uuid.UUID) (bool, error) {
 	yearID, err := s.currentAcademicYearID(ctx)
 	if err != nil {
@@ -128,15 +127,12 @@ func (s *NotificationService) isTeacherAuthorizedForGrade(ctx context.Context, t
 	return false, nil
 }
 
-// authorizeSender enforces that a non-admin sender only targets audiences
-// they're actually responsible for: their own classes (form or subject
-// teacher), grades/grade-sections they head, subjects they teach, and the
-// students/guardians that fall under those. Admins may target anything.
+// authorizeSender enforces that a non-admin sender only targets audiences they're actually responsible for: their own classes, grades/sections they head, subjects they teach, and the students/guardians under those.
 func (s *NotificationService) authorizeSender(ctx context.Context, callerRole string, callerUserID uuid.UUID, rules []models.RecipientRule) error {
-	if callerRole == "admin" {
+	if callerRole == rootmodels.RoleAdmin {
 		return nil
 	}
-	if callerRole != "teacher" {
+	if callerRole != rootmodels.RoleTeacher {
 		return ErrForbiddenRecipients
 	}
 	teacher, err := s.teacherRepo.GetByUserID(ctx, callerUserID)
@@ -424,10 +420,10 @@ func (s *NotificationService) Create(ctx context.Context, req models.CreateNotif
 		return models.NotificationResponse{}, err
 	}
 
-	status := "sent"
+	status := models.StatusSent
 	var sentAt pgtype.Timestamptz
 	if req.SaveAsDraft {
-		status = "draft"
+		status = models.StatusDraft
 	} else {
 		sentAt = pgtype.Timestamptz{Time: time.Now(), Valid: true}
 	}
@@ -457,10 +453,10 @@ func (s *NotificationService) UpdateDraft(ctx context.Context, id uuid.UUID, req
 	if err != nil {
 		return models.NotificationResponse{}, ErrNotificationNotFound
 	}
-	if existing.Status != "draft" {
+	if existing.Status != models.StatusDraft {
 		return models.NotificationResponse{}, ErrNotADraft
 	}
-	if existing.CreatedBy != callerUserID && callerRole != "admin" {
+	if existing.CreatedBy != callerUserID && callerRole != rootmodels.RoleAdmin {
 		return models.NotificationResponse{}, ErrForbiddenRecipients
 	}
 	if err := s.authorizeSender(ctx, callerRole, callerUserID, req.RecipientRules); err != nil {
@@ -486,10 +482,10 @@ func (s *NotificationService) SendDraft(ctx context.Context, id, callerUserID uu
 	if err != nil {
 		return models.NotificationResponse{}, ErrNotificationNotFound
 	}
-	if existing.Status != "draft" {
+	if existing.Status != models.StatusDraft {
 		return models.NotificationResponse{}, ErrNotADraft
 	}
-	if existing.CreatedBy != callerUserID && callerRole != "admin" {
+	if existing.CreatedBy != callerUserID && callerRole != rootmodels.RoleAdmin {
 		return models.NotificationResponse{}, ErrForbiddenRecipients
 	}
 
@@ -516,7 +512,7 @@ func (s *NotificationService) DeleteDraft(ctx context.Context, id, callerUserID 
 	if err != nil {
 		return ErrNotificationNotFound
 	}
-	if existing.CreatedBy != callerUserID && callerRole != "admin" {
+	if existing.CreatedBy != callerUserID && callerRole != rootmodels.RoleAdmin {
 		return ErrForbiddenRecipients
 	}
 	n, err := s.repo.DeleteDraft(ctx, id)
@@ -530,7 +526,7 @@ func (s *NotificationService) DeleteDraft(ctx context.Context, id, callerUserID 
 }
 
 func (s *NotificationService) ListSent(ctx context.Context, callerUserID uuid.UUID, callerRole string) ([]models.NotificationResponse, error) {
-	if callerRole == "admin" {
+	if callerRole == rootmodels.RoleAdmin {
 		rows, err := s.repo.ListAllSent(ctx)
 		if err != nil {
 			return nil, err
@@ -573,11 +569,7 @@ func (s *NotificationService) ListMyDrafts(ctx context.Context, callerUserID uui
 	return result, nil
 }
 
-// SendDirect creates and immediately delivers a notification to an
-// explicit list of user IDs, bypassing recipient-rule resolution and
-// sender authorization. Used by system-triggered notifications (e.g. the
-// timetable workflow) where the exact recipients are already known and
-// there's no end-user "composing" the message.
+// SendDirect creates and immediately delivers a notification to an explicit list of user IDs, bypassing recipient-rule resolution and sender authorization — for system-triggered notifications (e.g. the timetable workflow) where recipients are already known.
 func (s *NotificationService) SendDirect(ctx context.Context, title, message, category, priority string, createdBy uuid.UUID, userIDs []uuid.UUID) error {
 	if len(userIDs) == 0 {
 		return nil
@@ -587,7 +579,7 @@ func (s *NotificationService) SendDirect(ctx context.Context, title, message, ca
 	}
 	notification, err := s.repo.Create(ctx, db.CreateNotificationParams{
 		Title: title, Message: message, Category: category, Priority: priority,
-		Status: "sent", RecipientRules: []byte("[]"), CreatedBy: createdBy,
+		Status: models.StatusSent, RecipientRules: []byte("[]"), CreatedBy: createdBy,
 		SentAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	})
 	if err != nil {
@@ -606,7 +598,7 @@ func (s *NotificationService) GetStats(ctx context.Context, id, callerUserID uui
 	if err != nil {
 		return models.NotificationStatsResponse{}, ErrNotificationNotFound
 	}
-	if existing.CreatedBy != callerUserID && callerRole != "admin" {
+	if existing.CreatedBy != callerUserID && callerRole != rootmodels.RoleAdmin {
 		return models.NotificationStatsResponse{}, ErrForbiddenRecipients
 	}
 

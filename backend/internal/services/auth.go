@@ -49,16 +49,7 @@ func NewAuthService(
 	return &AuthService{users: users, teachers: teachers, students: students, guardians: guardians, tokens: tokens, idp: idp, mailer: mailSender}
 }
 
-// ForgotPassword verifies the caller knows both a user's login identifier
-// (email) and the secret that matches their initial default password
-// (Phase 8.2), then mints a short-lived one-time token and emails a reset
-// link to the address on file. ThunderID exposes no reset primitive itself
-// (confirmed — identity.Provider is CreateUser/UpdateUser/DeleteUser/AssignRole
-// only), so this whole flow — including the token — is hand-rolled at the
-// app level. The token is deliberately never returned in the API response:
-// NIC/index numbers aren't secret enough on their own (they appear on ID
-// cards/report cards) to let whoever supplies one also receive the token
-// that lets them take over the account — see docs audit C-1.
+// ForgotPassword verifies the caller knows a user's login identifier and initial-password secret, then mints a short-lived one-time token and emails a reset link — hand-rolled since ThunderID exposes no reset primitive. The token is never returned in the response: NIC/index numbers appear on ID cards/report cards, so aren't secret enough to also hand over the takeover token (see docs audit C-1).
 func (s *AuthService) ForgotPassword(ctx context.Context, req models.ForgotPasswordRequest) (models.ForgotPasswordResponse, error) {
 	user, err := s.users.GetByEmail(ctx, req.Identifier)
 	if err != nil || user.Role != req.Role {
@@ -66,16 +57,16 @@ func (s *AuthService) ForgotPassword(ctx context.Context, req models.ForgotPassw
 	}
 
 	switch req.Role {
-	case "teacher":
+	case models.RoleTeacher:
 		if _, err := s.teachers.GetByUserIDAndNIC(ctx, user.ID, req.Secret); err != nil {
 			return models.ForgotPasswordResponse{}, ErrInvalidCredentials
 		}
-	case "student":
+	case models.RoleStudent:
 		student, err := s.students.GetByUserID(ctx, user.ID)
 		if err != nil || student.IndexNumber != req.Secret {
 			return models.ForgotPasswordResponse{}, ErrInvalidCredentials
 		}
-	case "parent":
+	case models.RoleParent:
 		if _, err := s.guardians.GetByUserIDAndNIC(ctx, user.ID, req.Secret); err != nil {
 			return models.ForgotPasswordResponse{}, ErrInvalidCredentials
 		}
@@ -139,16 +130,12 @@ func (s *AuthService) ResetPassword(ctx context.Context, req models.ResetPasswor
 	return s.tokens.MarkPasswordResetTokenUsed(ctx, record.ID)
 }
 
-// ChangePassword is used by an already-authenticated caller: the "Change
-// password" profile action, and the first-login "Set a new password"
-// choice (Phase 8.3) — both already have a verified session, so no reset
-// token is needed.
+// ChangePassword is used by an already-authenticated caller (profile action or first-login "Set a new password") — a verified session already exists, so no reset token is needed.
 func (s *AuthService) ChangePassword(ctx context.Context, userID uuid.UUID, newPassword string) error {
 	return s.setPassword(ctx, userID, newPassword)
 }
 
-// KeepDefaultPassword clears the must-change flag without touching the
-// password — the first-login "Keep this password" choice (Phase 8.3).
+// KeepDefaultPassword clears the must-change flag without touching the password — the first-login "Keep this password" choice.
 func (s *AuthService) KeepDefaultPassword(ctx context.Context, userID uuid.UUID) error {
 	return s.users.SetMustChangePassword(ctx, userID, false)
 }

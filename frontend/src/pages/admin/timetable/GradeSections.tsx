@@ -1,17 +1,6 @@
 import { useState } from "react";
-import { Add, Time, TrashCan } from "@carbon/icons-react";
-import {
-  Button,
-  TextInput,
-  MultiSelect,
-  Tag,
-  InlineNotification,
-  ComposedModal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  SkeletonText,
-} from "@carbon/react";
+import { Add } from "@carbon/icons-react";
+import { Button, InlineNotification, SkeletonText } from "@carbon/react";
 import { useCurrentAcademicYear } from "../../../queries/useAcademicYears";
 import { useGrades } from "../../../queries/useGrades";
 import { useTeachers } from "../../../queries/useTeachers";
@@ -21,121 +10,16 @@ import {
   useUpdateGradeSection,
   useDeleteGradeSection,
   useAssignGradesToSection,
-  useGradeSectionPeriods,
-  useSaveGradeSectionPeriods,
-  useRegenerateGradeSectionPeriods,
 } from "../../../queries/timetable/useGradeSections";
-import type { GradeSection, TimetablePeriod } from "../../../services/timetable/gradeSection";
+import type { GradeSection } from "../../../services/timetable/gradeSection";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
-import EntityCombobox from "../../../components/common/EntityCombobox";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
-
-type Form = { name: string; interval_start_time: string; interval_end_time: string; sort_order: number };
-const EMPTY_FORM: Form = { name: "", interval_start_time: "10:30", interval_end_time: "11:00", sort_order: 0 };
-
-function PeriodsEditor({ section, onClose }: { section: GradeSection; onClose: () => void }) {
-  const { data: periods, isLoading } = useGradeSectionPeriods(section.id);
-  const save = useSaveGradeSectionPeriods(section.id);
-  const regenerate = useRegenerateGradeSectionPeriods(section.id);
-  const [rows, setRows] = useState<Omit<TimetablePeriod, "id">[] | null>(null);
-
-  const active = rows ?? periods ?? [];
-
-  const updateRow = (index: number, patch: Partial<TimetablePeriod>) => {
-    const next = [...active];
-    next[index] = { ...next[index], ...patch };
-    setRows(next);
-  };
-
-  const handleSave = () => {
-    if (!rows) return;
-    save.mutate(rows, { onSuccess: () => setRows(null) });
-  };
-
-  return (
-    <ComposedModal open size="md" onClose={onClose}>
-      <ModalHeader title={`${section.name} — period grid`} />
-      <ModalBody>
-        {save.isError && (
-          <InlineNotification
-            kind="error"
-            title="Could not save periods"
-            subtitle={getErrorMessage(save.error)}
-            lowContrast
-            style={{ marginBottom: "1rem", maxWidth: "100%" }}
-          />
-        )}
-        <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "flex-end" }}>
-          <Button
-            kind="ghost"
-            size="sm"
-            onClick={() => regenerate.mutate(undefined, { onSuccess: () => setRows(null) })}
-            disabled={regenerate.isPending}
-          >
-            {regenerate.isPending ? "Regenerating…" : "Regenerate from Timetable Settings"}
-          </Button>
-        </div>
-        {isLoading ? (
-          <SkeletonText width="60%" />
-        ) : active.length === 0 ? (
-          <EmptyState
-            title="No periods configured"
-            description="Configure Timetable Settings for this academic year, then regenerate."
-          />
-        ) : (
-          <table className="os-table">
-            <thead>
-              <tr>
-                <th>Slot</th>
-                <th>Period #</th>
-                <th>Start</th>
-                <th>End</th>
-              </tr>
-            </thead>
-            <tbody>
-              {active.map((p, i) => (
-                <tr key={i} style={p.slot_type === "interval" ? { background: "#fff8e1" } : undefined}>
-                  <td>{p.slot_type === "interval" ? "Interval" : "Period"}</td>
-                  <td>{p.period_number ?? "-"}</td>
-                  <td>
-                    <TextInput
-                      id={`start-${i}`}
-                      labelText=""
-                      type="time"
-                      size="sm"
-                      value={p.start_time}
-                      onChange={(e) => updateRow(i, { start_time: e.target.value })}
-                    />
-                  </td>
-                  <td>
-                    <TextInput
-                      id={`end-${i}`}
-                      labelText=""
-                      type="time"
-                      size="sm"
-                      value={p.end_time}
-                      onChange={(e) => updateRow(i, { end_time: e.target.value })}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </ModalBody>
-      <ModalFooter>
-        <Button kind="secondary" onClick={onClose}>
-          Close
-        </Button>
-        <Button kind="primary" onClick={handleSave} disabled={!rows || save.isPending}>
-          {save.isPending ? "Saving…" : "Save changes"}
-        </Button>
-      </ModalFooter>
-    </ComposedModal>
-  );
-}
+import { EMPTY_GRADE_SECTION_FORM, type GradeSectionForm } from "./constants";
+import PeriodsEditor from "./components/PeriodsEditor";
+import SectionRow from "./components/SectionRow";
+import SectionFormModal from "./components/SectionFormModal";
 
 export default function GradeSections() {
   const { data: currentYear } = useCurrentAcademicYear();
@@ -150,14 +34,14 @@ export default function GradeSections() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<GradeSection | null>(null);
-  const [form, setForm] = useState<Form>(EMPTY_FORM);
+  const [form, setForm] = useState<GradeSectionForm>(EMPTY_GRADE_SECTION_FORM);
   const [selectedGradeIds, setSelectedGradeIds] = useState<string[]>([]);
   const [toDelete, setToDelete] = useState<GradeSection | null>(null);
   const [periodsFor, setPeriodsFor] = useState<GradeSection | null>(null);
 
   const openCreate = () => {
     createSection.reset();
-    setForm(EMPTY_FORM);
+    setForm(EMPTY_GRADE_SECTION_FORM);
     setSelectedGradeIds([]);
     setEditing(null);
     setModalOpen(true);
@@ -285,115 +169,36 @@ export default function GradeSections() {
         {!isLoading && sections && sections.length > 0 && (
           <div>
             {sections.map((s, i) => (
-              <div
+              <SectionRow
                 key={s.id}
-                style={{ padding: "1rem 1.5rem", borderBottom: i < sections.length - 1 ? "1px solid #e0e0e0" : "none" }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <Time size={16} style={{ fill: "#406AAF" }} />
-                    <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>{s.name}</span>
-                    <span style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>
-                      Interval {s.interval_start_time}–{s.interval_end_time}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <Button kind="ghost" size="sm" onClick={() => setPeriodsFor(s)}>
-                      Periods
-                    </Button>
-                    <Button kind="ghost" size="sm" onClick={() => openEdit(s)}>
-                      Edit
-                    </Button>
-                    <Button kind="ghost" size="sm" renderIcon={TrashCan} iconDescription="Delete" hasIconOnly onClick={() => setToDelete(s)} />
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.375rem", marginBottom: "0.75rem" }}>
-                  {s.grade_ids.length === 0 ? (
-                    <span style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>No grades assigned</span>
-                  ) : (
-                    s.grade_ids.map((gid) => (
-                      <Tag key={gid} type="teal" size="sm">
-                        {gradeName(gid)}
-                      </Tag>
-                    ))
-                  )}
-                </div>
-
-                <div style={{ width: "20rem" }}>
-                  <EntityCombobox
-                    id={`section-head-${s.id}`}
-                    items={teachers ?? []}
-                    selectedId={s.section_head_teacher_id ?? ""}
-                    onSelect={(id) => handleAssignHead(s.id, id)}
-                    getId={(t) => t.id}
-                    itemToString={(t) => `${t.full_name} — ${t.employee_number}`}
-                    labelText="Section Head"
-                    placeholder="Search teachers…"
-                  />
-                </div>
-              </div>
+                section={s}
+                isLast={i === sections.length - 1}
+                teachers={teachers}
+                gradeName={gradeName}
+                onPeriods={() => setPeriodsFor(s)}
+                onEdit={() => openEdit(s)}
+                onDelete={() => setToDelete(s)}
+                onAssignHead={(teacherId) => handleAssignHead(s.id, teacherId)}
+              />
             ))}
           </div>
         )}
       </div>
 
-      <ComposedModal open={modalOpen} size="md" onClose={() => setModalOpen(false)}>
-        <ModalHeader title={editing ? "Edit grade section" : "New grade section"} />
-        <ModalBody>
-          {pending.isError && (
-            <InlineNotification
-              kind="error"
-              title="Error"
-              subtitle={getErrorMessage(pending.error)}
-              lowContrast
-              style={{ marginBottom: "1rem", maxWidth: "100%" }}
-            />
-          )}
-          <div style={{ display: "grid", gap: "1rem" }}>
-            <TextInput
-              id="section-name"
-              labelText="Section name"
-              placeholder="e.g. Junior Secondary"
-              value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-              <TextInput
-                id="section-interval-start"
-                labelText="Interval start"
-                type="time"
-                value={form.interval_start_time}
-                onChange={(e) => setForm((f) => ({ ...f, interval_start_time: e.target.value }))}
-              />
-              <TextInput
-                id="section-interval-end"
-                labelText="Interval end"
-                type="time"
-                value={form.interval_end_time}
-                onChange={(e) => setForm((f) => ({ ...f, interval_end_time: e.target.value }))}
-              />
-            </div>
-            <MultiSelect
-              id="section-grades"
-              titleText="Grades in this section"
-              label="Select grades…"
-              items={grades ?? []}
-              itemToString={(g) => g?.name ?? ""}
-              selectedItems={(grades ?? []).filter((g) => selectedGradeIds.includes(g.id))}
-              onChange={({ selectedItems }) => setSelectedGradeIds((selectedItems ?? []).map((g) => g.id))}
-            />
-          </div>
-        </ModalBody>
-        <ModalFooter>
-          <Button kind="secondary" onClick={() => setModalOpen(false)}>
-            Cancel
-          </Button>
-          <Button kind="primary" onClick={handleSave} disabled={!form.name.trim() || pending.isPending}>
-            {pending.isPending ? "Saving…" : "Save"}
-          </Button>
-        </ModalFooter>
-      </ComposedModal>
+      <SectionFormModal
+        open={modalOpen}
+        isEdit={!!editing}
+        form={form}
+        onFormChange={setForm}
+        grades={grades}
+        selectedGradeIds={selectedGradeIds}
+        onSelectedGradeIdsChange={setSelectedGradeIds}
+        onClose={() => setModalOpen(false)}
+        onSubmit={handleSave}
+        isPending={pending.isPending}
+        isError={pending.isError}
+        error={pending.error}
+      />
 
       {periodsFor && <PeriodsEditor section={periodsFor} onClose={() => setPeriodsFor(null)} />}
 

@@ -22,9 +22,7 @@ func NewStaffAttendanceService(repo *repositories.StaffAttendanceRepository) *St
 	return &StaffAttendanceService{repo: repo}
 }
 
-// MarkAttendance upserts a single staff member's attendance for a date —
-// exactly one of TeacherID/NonAcademicStaffID must be set, mirroring the
-// staff_attendance_exactly_one_staff DB constraint.
+// MarkAttendance upserts a single staff member's attendance for a date — exactly one of TeacherID/NonAcademicStaffID must be set, mirroring the staff_attendance_exactly_one_staff DB constraint.
 func (s *StaffAttendanceService) MarkAttendance(ctx context.Context, req models.MarkStaffAttendanceRequest, markedBy uuid.UUID) (db.StaffAttendanceRecord, error) {
 	hasTeacher := req.TeacherID != ""
 	hasStaff := req.NonAcademicStaffID != ""
@@ -94,9 +92,7 @@ func (s *StaffAttendanceService) ListByDate(ctx context.Context, date time.Time)
 	return teachers, staff, nil
 }
 
-// MonthlySummary returns per-status counts for every active teacher and
-// non-academic staff member across [from, to] (the caller passes the first
-// and last day of the target month).
+// MonthlySummary returns per-status counts for every active teacher and non-academic staff member across [from, to] (first/last day of the target month).
 func (s *StaffAttendanceService) MonthlySummary(ctx context.Context, from, to time.Time) ([]models.StaffAttendanceSummaryRow, []models.StaffAttendanceSummaryRow, error) {
 	teacherRows, err := s.repo.MonthlyTeacherSummary(ctx, from, to)
 	if err != nil {

@@ -9,26 +9,17 @@ import (
 	"github.com/openschool-org/openschool/internal/repositories"
 )
 
-// ErrOrphanNoLongerOrphaned is returned by DeleteOrphaned when the account
-// now has a matching local `users` row — the delete is refused rather than
-// proceeding, since it would no longer be an orphan cleanup at that point.
+// ErrOrphanNoLongerOrphaned is returned by DeleteOrphaned when the account now has a matching local `users` row — the delete is refused rather than proceeding.
 var ErrOrphanNoLongerOrphaned = errors.New("this identity provider account now has a matching local user — refusing to delete")
 
-// OrphanedIdentity is a ThunderID account with no matching row in the
-// local `users` table — left behind when a signup rollback's compensating
-// ThunderID delete failed (identity_rollback.go's rollbackIDPUser only logs
-// on that failure, by design, so it can't surface the original error).
+// OrphanedIdentity is a ThunderID account with no matching local `users` row — left behind when a signup rollback's compensating ThunderID delete failed (identity_rollback.go's rollbackIDPUser only logs on that failure, by design).
 type OrphanedIdentity struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
 	Email    string `json:"email"`
 }
 
-// IdentityReconciliationService finds and removes orphaned ThunderID
-// accounts (docs/plan.md §0). Admin-triggered rather than fully automatic —
-// deleting a live identity account is not something to do unattended
-// without a human confirming it's genuinely orphaned, not, say, a user who
-// signed up moments ago in a request still in flight.
+// IdentityReconciliationService finds and removes orphaned ThunderID accounts; admin-triggered rather than automatic, since deleting a live identity account needs a human confirming it's genuinely orphaned and not, say, a signup still in flight.
 type IdentityReconciliationService struct {
 	idp   identity.Provider
 	users *repositories.UserRepository
@@ -66,10 +57,7 @@ func (s *IdentityReconciliationService) FindOrphaned(ctx context.Context) ([]Orp
 	return orphaned, nil
 }
 
-// DeleteOrphaned removes one confirmed-orphaned ThunderID account. Re-checks
-// the account is still orphaned immediately before deleting — a defensive
-// re-verification against the admin acting on a stale list (e.g. a second
-// browser tab open since the account was legitimately provisioned).
+// DeleteOrphaned removes one confirmed-orphaned ThunderID account, re-checking it's still orphaned immediately before deleting — defends against an admin acting on a stale list (e.g. a second tab open since legitimate provisioning).
 func (s *IdentityReconciliationService) DeleteOrphaned(ctx context.Context, idpUserID string, actorID uuid.UUID) error {
 	if parsed, err := uuid.Parse(idpUserID); err == nil {
 		if _, err := s.users.GetByID(ctx, parsed); err == nil {

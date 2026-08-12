@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
+	"github.com/openschool-org/openschool/internal/middleware"
 	"github.com/openschool-org/openschool/internal/repositories"
 	"github.com/openschool-org/openschool/internal/services"
 )
@@ -34,7 +34,7 @@ func NewTeacherSelfHandler(teachers *repositories.TeacherRepository, school *rep
 // @Security     BearerAuth
 // @Router       /me/teacher [get]
 func (h *TeacherSelfHandler) Profile(c *gin.Context) {
-	callerID, err := uuid.Parse(c.GetString("userID"))
+	callerID, err := middleware.UserIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
 		return
@@ -59,7 +59,7 @@ func (h *TeacherSelfHandler) Profile(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /me/teacher/position [get]
 func (h *TeacherSelfHandler) Position(c *gin.Context) {
-	callerID, err := uuid.Parse(c.GetString("userID"))
+	callerID, err := middleware.UserIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
 		return
@@ -97,7 +97,7 @@ func (h *TeacherSelfHandler) Position(c *gin.Context) {
 // @Security     BearerAuth
 // @Router       /me/teacher/leadership-overview [get]
 func (h *TeacherSelfHandler) LeadershipOverview(c *gin.Context) {
-	callerID, err := uuid.Parse(c.GetString("userID"))
+	callerID, err := middleware.UserIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
 		return

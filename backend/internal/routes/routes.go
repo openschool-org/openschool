@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/openschool-org/openschool/internal/handlers"
 	"github.com/openschool-org/openschool/internal/middleware"
+	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
 	notificationroutes "github.com/openschool-org/openschool/internal/routes/notifications"
 	timetableroutes "github.com/openschool-org/openschool/internal/routes/timetable"
@@ -43,10 +44,7 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware())
-	// Layered on top of the per-IP RateLimit in cmd/api/main.go: isolates
-	// one abusive signed-in account from the rest of a school that may
-	// share one NAT IP. Same generous defaults as the per-IP limiter,
-	// tunable independently via env.
+	// Layered on top of the per-IP RateLimit in cmd/api/main.go; tunable independently via env.
 	protected.Use(middleware.PerAccountRateLimit(
 		envFloatOr("API_PER_ACCOUNT_RATE_LIMIT_RPS", 30),
 		envIntOr("API_PER_ACCOUNT_RATE_LIMIT_BURST", 60),
@@ -55,19 +53,19 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	RegisterAuthRoutes(api, protected, pool)
 
 	admin := protected.Group("")
-	admin.Use(middleware.RequireRole("admin"))
+	admin.Use(middleware.RequireRole(models.RoleAdmin))
 
 	teacherOrAdmin := protected.Group("")
-	teacherOrAdmin.Use(middleware.RequireRole("admin", "teacher"))
+	teacherOrAdmin.Use(middleware.RequireRole(models.RoleAdmin, models.RoleTeacher))
 
 	parent := protected.Group("")
-	parent.Use(middleware.RequireRole("parent"))
+	parent.Use(middleware.RequireRole(models.RoleParent))
 
 	student := protected.Group("")
-	student.Use(middleware.RequireRole("student"))
+	student.Use(middleware.RequireRole(models.RoleStudent))
 
 	teacher := protected.Group("")
-	teacher.Use(middleware.RequireRole("teacher"))
+	teacher.Use(middleware.RequireRole(models.RoleTeacher))
 
 	RegisterSchoolRoutes(admin, teacherOrAdmin, protected, pool)
 	RegisterGradeRoutes(admin, teacherOrAdmin, pool)

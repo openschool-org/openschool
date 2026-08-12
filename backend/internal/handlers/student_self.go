@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/openschool-org/openschool/internal/middleware"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
 	"github.com/openschool-org/openschool/internal/services"
@@ -26,7 +27,7 @@ func NewStudentSelfHandler(students *repositories.StudentRepository, attendance 
 }
 
 func (h *StudentSelfHandler) resolveStudentID(c *gin.Context) (uuid.UUID, bool) {
-	callerID, err := uuid.Parse(c.GetString("userID"))
+	callerID, err := middleware.UserIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
 		return uuid.UUID{}, false

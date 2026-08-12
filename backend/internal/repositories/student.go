@@ -71,4 +71,3 @@ func (r *StudentRepository) DeleteStudent(ctx context.Context, id uuid.UUID) err
 func (r *StudentRepository) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	return r.queries.DeleteUser(ctx, id)
 }
-
