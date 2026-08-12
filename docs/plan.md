@@ -40,6 +40,44 @@ Everything still outstanding, in one place (deduplicated from the former per-pha
 
 ---
 
+## Proposed — maintenance/ops agents (not yet built)
+
+Scheduled, read-mostly jobs that support the system's operation without being
+a user-facing feature — none of the app's existing functions depend on
+these; they can be added or dropped independently. Ranked by value (risk
+mitigated vs. effort):
+
+1. **Backup + migration-drift agent.** This is a single-instance,
+   self-hosted deployment with no managed DB failover, so a bad migration or
+   host failure is currently unrecoverable. A cron job running `pg_dump` on
+   a schedule, plus a check that the DB's applied `golang-migrate` version
+   matches what the running binary expects, closes the one gap on this list
+   whose failure mode is permanent data loss rather than an inconvenience.
+2. **Data-invariant checker.** Nearly every table is scoped by
+   `academic_year_id`, and the "exactly one current year" rule
+   ([`docs/adr/0003-single-current-academic-year.md`](./adr/0003-single-current-academic-year.md))
+   is enforced at the app level only, not the DB. A periodic scan for
+   invariant violations (zero/multiple current years, orphaned FKs,
+   post-promotion inconsistencies) catches silent corruption before it
+   propagates into attendance, marks, and timetable data that all trust
+   that invariant.
+3. **Operational nudge agent (attendance / marks / timetable).** The
+   notification system already has `Attendance`/`Academic`/`Timetable`
+   categories and a server-side composer path (§ Notifications,
+   `FEATURES.md`), so this is mostly wiring, not new infrastructure: flag
+   classes with no `AttendanceSession` created by a cutoff time, subjects
+   with missing term marks near a term-lock deadline, and timetables stuck
+   in "submitted for review" past N days — then push through the existing
+   composer to the relevant teacher/Section Head.
+
+Not ranked in the top tier but noted for later: an audit-log anomaly
+watcher (the `audit_logs` table already captures actor/before/after but
+nothing currently alerts on unusual patterns in it) and a scheduled
+`govulncheck`/`pnpm audit` triage job that turns the informational CI
+findings above into a tracked queue instead of noise.
+
+---
+
 ## Phase 10 — Code quality & style refactor
 
 **Status: complete.** A dedicated pass over both workspaces to raise the baseline code quality and consistency now that the v1 feature set (Phases 1–9) is functionally complete — no behavior changes, comments and style only. Frontend component decomposition (last item below) extends beyond this phase's original scope; added when the pass was carried out, kept here since it's the same "no behavior change" cleanup spirit.
