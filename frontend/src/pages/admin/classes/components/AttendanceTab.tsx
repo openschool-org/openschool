@@ -37,9 +37,10 @@ export default function AttendanceTab({
         .sort((a, b) => b.date.localeCompare(a.date)),
     [sessions, sessionDateFilter],
   );
+  const currentSessionPage = Math.min(sessionPage, Math.max(1, Math.ceil(sortedSessions.length / sessionPageSize)));
   const pagedSessions = useMemo(
-    () => sortedSessions.slice((sessionPage - 1) * sessionPageSize, sessionPage * sessionPageSize),
-    [sortedSessions, sessionPage, sessionPageSize],
+    () => sortedSessions.slice((currentSessionPage - 1) * sessionPageSize, currentSessionPage * sessionPageSize),
+    [sortedSessions, currentSessionPage, sessionPageSize],
   );
 
   return (
@@ -156,7 +157,7 @@ export default function AttendanceTab({
           </table>
           <Pagination
             totalItems={sortedSessions.length}
-            page={sessionPage}
+            page={currentSessionPage}
             pageSize={sessionPageSize}
             pageSizes={[10, 20, 30]}
             onChange={({ page, pageSize }) => {

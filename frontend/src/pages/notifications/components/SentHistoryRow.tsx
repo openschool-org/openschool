@@ -8,7 +8,19 @@ export default function SentHistoryRow({ notification }: { notification: Notific
   const { data: stats } = useNotificationStats(expanded ? notification.id : "");
 
   return (
-    <div style={{ padding: "0.875rem 1.5rem", borderBottom: "1px solid #f4f4f4", cursor: "pointer" }} onClick={() => setExpanded((e) => !e)}>
+    <div
+      role="button"
+      tabIndex={0}
+      aria-expanded={expanded}
+      style={{ padding: "0.875rem 1.5rem", borderBottom: "1px solid #f4f4f4", cursor: "pointer" }}
+      onClick={() => setExpanded((e) => !e)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setExpanded((v) => !v);
+        }
+      }}
+    >
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
         <Tag type="blue" size="sm">
           {notification.category}

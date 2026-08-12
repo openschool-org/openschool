@@ -70,6 +70,7 @@ export default function StudentAttendanceRow({
         ) : status === "absent" || status === "late" || status === "excused" ? (
           <input
             placeholder="Optional note…"
+            aria-label={`Note for ${student.full_name}`}
             value={note}
             onChange={(e) => onNoteChange(e.target.value)}
             style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem", fontFamily: "inherit", border: "1px solid #e0e0e0", outline: "none", width: "140px" }}

@@ -14,6 +14,7 @@ export default function StatusButton({
   return (
     <button
       onClick={onClick}
+      aria-pressed={selected}
       style={{
         padding: "0.3rem 0.75rem",
         fontSize: "0.75rem",

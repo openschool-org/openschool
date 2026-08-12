@@ -41,6 +41,15 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
             style={{ marginBottom: "1rem", maxWidth: "100%" }}
           />
         )}
+        {regenerate.isError && (
+          <InlineNotification
+            kind="error"
+            title="Could not regenerate periods"
+            subtitle={getErrorMessage(regenerate.error)}
+            lowContrast
+            style={{ marginBottom: "1rem", maxWidth: "100%" }}
+          />
+        )}
         <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "flex-end" }}>
           <Button
             kind="ghost"

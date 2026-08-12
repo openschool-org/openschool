@@ -94,7 +94,7 @@ export default function RecipientPicker({
         itemToString={(item) => (item as (typeof RULE_TYPES)[number])?.label ?? ""}
         selectedItem={availableRuleTypes.find((r) => r.value === ruleType)}
         onChange={({ selectedItem }) => {
-          setRuleType((selectedItem as (typeof RULE_TYPES)[number]).value);
+          setRuleType((selectedItem as (typeof RULE_TYPES)[number] | null)?.value ?? ruleType);
           reset();
         }}
       />
@@ -102,6 +102,7 @@ export default function RecipientPicker({
       {ruleType === "grade" && (
         <EntityCombobox
           id="rule-grade"
+          labelText="Grade"
           items={grades ?? []}
           selectedId={selectedId}
           onSelect={setSelectedId}
@@ -113,6 +114,7 @@ export default function RecipientPicker({
       {ruleType === "class" && (
         <EntityCombobox
           id="rule-class"
+          labelText="Class"
           items={classes ?? []}
           selectedId={selectedId}
           onSelect={setSelectedId}
@@ -124,6 +126,7 @@ export default function RecipientPicker({
       {ruleType === "grade_section" && (
         <EntityCombobox
           id="rule-grade-section"
+          labelText="Grade section"
           items={gradeSections ?? []}
           selectedId={selectedId}
           onSelect={setSelectedId}
@@ -136,6 +139,7 @@ export default function RecipientPicker({
         <>
           <EntityCombobox
             id="rule-subject"
+            labelText="Subject"
             items={subjects ?? []}
             selectedId={selectedId}
             onSelect={setSelectedId}
@@ -157,6 +161,7 @@ export default function RecipientPicker({
       {ruleType === "student" && (
         <EntityCombobox
           id="rule-student"
+          labelText="Student"
           items={students ?? []}
           selectedId={selectedId}
           onSelect={setSelectedId}
@@ -168,6 +173,7 @@ export default function RecipientPicker({
       {ruleType === "guardian" && (
         <EntityCombobox
           id="rule-guardian"
+          labelText="Guardian"
           items={guardians ?? []}
           selectedId={selectedId}
           onSelect={setSelectedId}
@@ -179,6 +185,7 @@ export default function RecipientPicker({
       {ruleType === "teacher" && (
         <EntityCombobox
           id="rule-teacher"
+          labelText="Teacher"
           items={teachers ?? []}
           selectedId={selectedId}
           onSelect={setSelectedId}

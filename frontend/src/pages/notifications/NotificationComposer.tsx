@@ -160,7 +160,10 @@ export default function NotificationComposer() {
                   ))}
                 </div>
               )}
-              <RecipientPicker onAdd={(rule) => setRules((r) => [...r, rule])} canBroadcastEveryone={canBroadcastEveryone} />
+              <RecipientPicker
+                onAdd={(rule) => setRules((r) => (r.some((x) => ruleKey(x) === ruleKey(rule)) ? r : [...r, rule]))}
+                canBroadcastEveryone={canBroadcastEveryone}
+              />
             </div>
 
             <div style={{ display: "flex", gap: "0.75rem" }}>
