@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 	db "github.com/openschool-org/openschool/db/sqlc"
@@ -166,13 +167,27 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 		return db.Guardian{}, fmt.Errorf("failed to create local user record: %w", err)
 	}
 
-	if err := s.repo.SetUserID(ctx, guardianID, userID); err != nil {
+	// Assigned before the guardian row is linked (not after, as this used
+	// to be ordered): a failure here must be a hard error with a full
+	// rollback, not leave a working login with no role claim on its JWT
+	// (every later request would 403 with no clue why — the same failure
+	// mode StudentService.CreateStudent's identical AssignRole step
+	// documents). Doing this before SetUserID means there's only ever one
+	// linked state to unwind, not two.
+	if err := s.idp.AssignRole(ctx, identity.RoleID(models.RoleParent), idpUser.ID); err != nil {
 		rollbackIDPUser(ctx, s.idp, "ProvisionLogin", idpUser.ID)
-		return db.Guardian{}, fmt.Errorf("failed to link guardian record: %w", err)
+		if delErr := s.users.Delete(ctx, userID); delErr != nil {
+			log.Printf("ProvisionLogin: failed to roll back local user row %s after error: %v (local user now orphaned)", userID, delErr)
+		}
+		return db.Guardian{}, fmt.Errorf("failed to assign parent role: %w", err)
 	}
 
-	if err := s.idp.AssignRole(ctx, identity.RoleID(models.RoleParent), idpUser.ID); err != nil {
-		return db.Guardian{}, fmt.Errorf("failed to assign parent role: %w", err)
+	if err := s.repo.SetUserID(ctx, guardianID, userID); err != nil {
+		rollbackIDPUser(ctx, s.idp, "ProvisionLogin", idpUser.ID)
+		if delErr := s.users.Delete(ctx, userID); delErr != nil {
+			log.Printf("ProvisionLogin: failed to roll back local user row %s after error: %v (local user now orphaned)", userID, delErr)
+		}
+		return db.Guardian{}, fmt.Errorf("failed to link guardian record: %w", err)
 	}
 
 	if s.audit != nil {

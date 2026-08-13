@@ -267,9 +267,9 @@ export default function Grades() {
           onNameBlur={() => setNameTouched(true)}
           onClose={() => setModal(null)}
           onSubmit={handleSave}
-          isPending={createGrade.isPending || updateGrade.isPending}
-          isError={createGrade.isError || updateGrade.isError}
-          error={createGrade.error ?? updateGrade.error}
+          isPending={modal === "edit" ? updateGrade.isPending : createGrade.isPending}
+          isError={modal === "edit" ? updateGrade.isError : createGrade.isError}
+          error={modal === "edit" ? updateGrade.error : createGrade.error}
         />
       )}
 

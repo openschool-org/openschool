@@ -41,7 +41,7 @@ export default function MySociety() {
             </h2>
           </div>
           <div className="os-section__body">
-            <SocietyRoster societyId={society.id} academicYearId={society.academic_year_id} />
+            <SocietyRoster societyId={society.id} />
           </div>
         </div>
       )}

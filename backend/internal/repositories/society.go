@@ -55,8 +55,8 @@ func (r *SocietyRepository) ListMembersBySociety(ctx context.Context, societyID 
 	return r.queries.ListSocietyMembersBySociety(ctx, societyID)
 }
 
-func (r *SocietyRepository) RemoveMember(ctx context.Context, id uuid.UUID) (int64, error) {
-	return r.queries.RemoveSocietyMember(ctx, id)
+func (r *SocietyRepository) RemoveMember(ctx context.Context, societyID, id uuid.UUID) (int64, error) {
+	return r.queries.RemoveSocietyMember(ctx, db.RemoveSocietyMemberParams{ID: id, SocietyID: societyID})
 }
 
 func (r *SocietyRepository) ListMembershipsByStudent(ctx context.Context, studentID uuid.UUID) ([]db.ListSocietyMembershipsByStudentRow, error) {

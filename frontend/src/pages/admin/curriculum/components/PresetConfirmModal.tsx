@@ -18,6 +18,9 @@ export default function PresetConfirmModal({ open, runPreset, onClose, onLoad }:
       isPending={runPreset.isPending}
       submitLabel="Load Preset"
       pendingLabel="Loading…"
+      isError={runPreset.isError}
+      error={runPreset.error}
+      errorFallback="Failed to load the curriculum preset"
     >
       <p style={{ fontSize: "0.875rem", color: "#525252", marginBottom: "0.75rem" }}>
         This creates the standard Grade 1–13 curriculum — compulsory subjects for primary and junior secondary,

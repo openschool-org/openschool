@@ -12,6 +12,7 @@ import { ACTIVITY_CATEGORIES } from "../../../services/studentPortfolio";
 import type { ActivityCategory } from "../../../services/studentPortfolio";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import EmptyState from "../../../components/common/EmptyState";
+import ErrorMessage from "../../../components/common/ErrorMessage";
 
 const SOCIETY_ROLE_LABELS: Record<string, string> = {
   leader: "Leader",
@@ -22,9 +23,19 @@ const SOCIETY_ROLE_LABELS: Record<string, string> = {
 };
 
 function StudentSocietyMemberships({ studentId }: { studentId: string }) {
-  const { data: memberships, isLoading } = useStudentSocietyMemberships(studentId);
+  const { data: memberships, isLoading, isError, refetch } = useStudentSocietyMemberships(studentId);
 
-  if (isLoading || (memberships?.length ?? 0) === 0) return null;
+  if (isLoading) return null;
+
+  if (isError) {
+    return (
+      <div style={{ marginBottom: "1.5rem" }}>
+        <ErrorMessage message="Could not load society memberships." onRetry={refetch} />
+      </div>
+    );
+  }
+
+  if ((memberships?.length ?? 0) === 0) return null;
 
   return (
     <div style={{ marginBottom: "1.5rem" }}>

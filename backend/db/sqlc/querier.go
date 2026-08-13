@@ -436,6 +436,11 @@ type Querier interface {
 	ListSelectionGroupsWithSubjectIDsByLevel(ctx context.Context, levelID uuid.UUID) ([]ListSelectionGroupsWithSubjectIDsByLevelRow, error)
 	ListSentNotificationsByUser(ctx context.Context, createdBy uuid.UUID) ([]ListSentNotificationsByUserRow, error)
 	ListSocietiesByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListSocietiesByYearRow, error)
+	// class_students carries one row per (student, academic_year) — filtering
+	// to the membership's own year here (not just at the classes join below)
+	// keeps this to at most one row per student; without it, a student with
+	// class history in other years produced one duplicate output row per
+	// extra year, each with grade_name NULL except the matching one.
 	ListSocietyMembersBySociety(ctx context.Context, societyID uuid.UUID) ([]ListSocietyMembersBySocietyRow, error)
 	// every society membership a student holds, across all years — for the
 	// student portfolio view.
@@ -563,7 +568,10 @@ type Querier interface {
 	RejectTimetable(ctx context.Context, arg RejectTimetableParams) (Timetable, error)
 	RemoveGradeFromSection(ctx context.Context, arg RemoveGradeFromSectionParams) error
 	RemoveGroupSubject(ctx context.Context, arg RemoveGroupSubjectParams) error
-	RemoveSocietyMember(ctx context.Context, id uuid.UUID) (int64, error)
+	// scoped by society_id as well as id: the caller is only authorized for one
+	// society (SocietyService.authorizeTeacherInCharge), so the delete itself
+	// must not be able to reach a membership row belonging to a different one.
+	RemoveSocietyMember(ctx context.Context, arg RemoveSocietyMemberParams) (int64, error)
 	RemoveSubjectFromTeacher(ctx context.Context, arg RemoveSubjectFromTeacherParams) error
 	SetCurrentAcademicYear(ctx context.Context, id uuid.UUID) error
 	SetCurrentTerm(ctx context.Context, id uuid.UUID) error

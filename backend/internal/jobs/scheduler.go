@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
+	"sync"
 	"time"
 
 	"github.com/openschool-org/openschool/internal/repositories"
@@ -15,6 +17,13 @@ import (
 // read-mostly background checks, not latency-sensitive request handlers.
 const runTimeout = 5 * time.Minute
 
+// finishRunTimeout bounds the job_runs bookkeeping write specifically. It
+// runs on context.Background() (deliberately decoupled from runCtx, which
+// is already cancelled by the time this fires) rather than the caller's
+// context, but still needs its own bound so a wedged DB can't leak a
+// goroutine forever.
+const finishRunTimeout = 10 * time.Second
+
 // Scheduler owns the cron loop that ticks every registered Job on its own
 // schedule. It is the only piece of this package that knows about
 // job_settings/job_runs — individual jobs stay ignorant of scheduling,
@@ -23,17 +32,34 @@ type Scheduler struct {
 	cron    *cron.Cron
 	jobs    map[string]Job
 	setting *repositories.JobSchedulerRepository
+	// running guards each job against overlapping with itself — a
+	// scheduled tick landing while an admin's "Run now" (or a previous
+	// tick that's still going) is mid-flight for the *same* job. Built
+	// once from the job list and never mutated afterward, so concurrent
+	// reads of the map itself are safe without their own lock.
+	running map[string]*sync.Mutex
 }
 
+// NewScheduler panics on a duplicate job Name() — two jobs sharing an
+// identifier is a programming error (one would silently shadow the other
+// in both the cron loop and the admin API), not a runtime condition to
+// degrade gracefully from, so this fails loudly at startup instead.
 func NewScheduler(jobList []Job, settingRepo *repositories.JobSchedulerRepository) *Scheduler {
 	byName := make(map[string]Job, len(jobList))
+	running := make(map[string]*sync.Mutex, len(jobList))
 	for _, j := range jobList {
-		byName[j.Name()] = j
+		name := j.Name()
+		if _, exists := byName[name]; exists {
+			panic(fmt.Sprintf("jobs: duplicate job name %q", name))
+		}
+		byName[name] = j
+		running[name] = &sync.Mutex{}
 	}
 	return &Scheduler{
-		cron:    cron.New(),
+		cron:    cron.New(cron.WithChain(cron.Recover(cron.DefaultLogger))),
 		jobs:    byName,
 		setting: settingRepo,
+		running: running,
 	}
 }
 
@@ -59,13 +85,15 @@ func (s *Scheduler) Stop() {
 	<-s.cron.Stop().Done()
 }
 
-// Jobs returns every registered job in a stable order, for the admin
-// Automation panel's listing.
+// Jobs returns every registered job sorted by name, for the admin
+// Automation panel's listing — deterministic regardless of Go's randomized
+// map iteration order.
 func (s *Scheduler) Jobs() []Job {
 	out := make([]Job, 0, len(s.jobs))
 	for _, j := range s.jobs {
 		out = append(out, j)
 	}
+	sort.Slice(out, func(i, k int) bool { return out[i].Name() < out[k].Name() })
 	return out
 }
 
@@ -104,12 +132,28 @@ func (s *Scheduler) runOne(ctx context.Context, job Job) {
 	}
 }
 
+// execute is the single chokepoint both RunNow and runOne funnel through,
+// which is what makes a per-job mutex here sufficient to prevent a job from
+// overlapping with itself regardless of which path triggered each run (a
+// scheduled tick landing mid-"Run now", two "Run now" clicks, etc.) — no
+// separate coordination needed between the two callers. TryLock (rather
+// than blocking) means a job that's still running when its next trigger
+// fires is skipped, not queued.
 func (s *Scheduler) execute(ctx context.Context, job Job) (Result, error) {
+	lock := s.running[job.Name()]
+	if !lock.TryLock() {
+		return Result{}, fmt.Errorf("job %q is already running", job.Name())
+	}
+	defer lock.Unlock()
+
 	runCtx, cancel := context.WithTimeout(ctx, runTimeout)
 	defer cancel()
 
 	started := time.Now()
 	run, startErr := s.setting.StartRun(runCtx, job.Name(), started)
+	if startErr != nil {
+		log.Printf("jobs: %s — failed to record run start: %v", job.Name(), startErr)
+	}
 
 	result, runErr := job.Run(runCtx)
 
@@ -121,7 +165,12 @@ func (s *Scheduler) execute(ctx context.Context, job Job) (Result, error) {
 	}
 
 	if startErr == nil {
-		if err := s.setting.FinishRun(context.Background(), run.ID, job.Name(), time.Now(), status, summary, int32(result.Findings)); err != nil {
+		// Deliberately not runCtx (already cancelled/expired by the time
+		// job.Run returns) — but still its own bound rather than running
+		// forever if the DB is wedged.
+		finishCtx, finishCancel := context.WithTimeout(context.Background(), finishRunTimeout)
+		defer finishCancel()
+		if err := s.setting.FinishRun(finishCtx, run.ID, job.Name(), time.Now(), status, summary, int32(result.Findings)); err != nil {
 			log.Printf("jobs: %s — failed to record run result: %v", job.Name(), err)
 		}
 	}

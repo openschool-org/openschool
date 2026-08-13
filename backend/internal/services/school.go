@@ -75,6 +75,19 @@ func (s *SchoolService) UpdateSchool(ctx context.Context, id uuid.UUID, req mode
 		return db.School{}, err
 	}
 
+	// Unlike Create (where an empty field genuinely means "not set yet, use
+	// the column default"), an empty school_type on Update must not silently
+	// overwrite whatever the school already has — it means the caller didn't
+	// send one, not that they want it reset to "mixed".
+	schoolType := req.SchoolType
+	if schoolType == "" {
+		current, err := s.repo.Get(ctx)
+		if err != nil {
+			return db.School{}, err
+		}
+		schoolType = current.SchoolType
+	}
+
 	return s.repo.Update(ctx, db.UpdateSchoolParams{
 		ID:         id,
 		Name:       req.Name,
@@ -84,13 +97,13 @@ func (s *SchoolService) UpdateSchool(ctx context.Context, id uuid.UUID, req mode
 		LogoUrl:    pgtype.Text{String: req.LogoURL, Valid: req.LogoURL != ""},
 		GradeFrom:  optionalInt4(req.GradeFrom),
 		GradeTo:    optionalInt4(req.GradeTo),
-		SchoolType: schoolTypeOrDefault(req.SchoolType),
+		SchoolType: schoolType,
 	})
 }
 
 // schoolTypeOrDefault treats an empty request field as "mixed", matching the
-// column's DB-level default so omitting school_type in a request behaves the
-// same as never having set it.
+// column's DB-level default — used only by Create, where there is no
+// existing value to fall back to.
 func schoolTypeOrDefault(schoolType string) string {
 	if schoolType == "" {
 		return "mixed"

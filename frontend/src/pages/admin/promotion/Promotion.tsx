@@ -16,7 +16,6 @@ export default function Promotion() {
   const { data: years, isLoading: yearsLoading } = useAcademicYears();
 
   const currentYear = years?.find((y) => y.is_current);
-  const otherYears = (years ?? []).filter((y) => !y.is_current);
 
   const [sourceYearId, setSourceYearId] = useState("");
   const [targetYearId, setTargetYearId] = useState("");
@@ -24,6 +23,10 @@ export default function Promotion() {
   const [rankByMarks, setRankByMarks] = useState(false);
 
   const effectiveSourceYearId = sourceYearId || currentYear?.id || "";
+  // Excludes both the current year and whichever year is currently chosen
+  // as the source — promoting a year's students into that same year (an
+  // in-place reassignment, not a promotion) isn't a valid target.
+  const otherYears = (years ?? []).filter((y) => !y.is_current && y.id !== effectiveSourceYearId);
 
   const { data: terms } = useTerms(effectiveSourceYearId);
   const { data: targetClasses } = useClassesByAcademicYear(targetYearId);
@@ -84,7 +87,7 @@ export default function Promotion() {
   const readyToCommit = Object.keys(assignments).length > 0;
 
   const handleCommit = () => {
-    if (!targetYearId) return;
+    if (!targetYearId || targetYearId === effectiveSourceYearId) return;
     const entries = Object.entries(assignments)
       .filter(([, classId]) => !!classId)
       .map(([studentId, classId]) => ({ student_id: studentId, class_id: classId }));
@@ -210,6 +213,7 @@ export default function Promotion() {
           <PromotionGroup
             key={group.gradeId}
             gradeId={group.gradeId}
+            isGraduating={group.gradeId === "graduating"}
             gradeName={group.gradeName}
             rows={group.rows}
             targetClasses={(targetClasses ?? []).filter((c) => c.grade_id === group.gradeId)}

@@ -8,7 +8,13 @@ import AcademicYearRowSkeleton from "./AcademicYearRowSkeleton";
 
 function formatDate(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-LK", {
+  // start_date/end_date are PG DATE-only ("YYYY-MM-DD", no time/offset).
+  // new Date(iso) parses that as UTC midnight, which toLocaleDateString
+  // then renders in the browser's local zone — shifting to the previous
+  // day in any negative-UTC-offset timezone. Building the Date from the
+  // parsed Y/M/D components (as a local date) avoids that entirely.
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-LK", {
     month: "short",
     year: "numeric",
   });

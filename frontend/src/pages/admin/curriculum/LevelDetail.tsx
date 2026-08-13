@@ -32,7 +32,7 @@ export default function LevelDetail() {
   const { id = "" } = useParams();
 
   const { data: tree, isLoading, isError, refetch } = useLevelTree(id);
-  const { data: subjects } = useSubjects();
+  const { data: subjects, isLoading: subjectsLoading, isError: subjectsError, refetch: refetchSubjects } = useSubjects();
   const { data: mediums } = useMediums();
 
   const createGroup = useCreateSelectionGroup(id);
@@ -97,7 +97,10 @@ export default function LevelDetail() {
 
   const openAddSubject = (g: CurriculumTreeGroup) => {
     addSubject.reset();
-    setSubjectForm({ ...EMPTY_SUBJECT, sort_order: g.subjects.length });
+    // Max existing + 1, not length — a gap from a deleted subject would
+    // otherwise hand out a colliding sort_order.
+    const nextSortOrder = g.subjects.reduce((max, s) => Math.max(max, s.sort_order), -1) + 1;
+    setSubjectForm({ ...EMPTY_SUBJECT, sort_order: nextSortOrder });
     setSubjectModalGroup(g);
   };
 
@@ -194,6 +197,9 @@ export default function LevelDetail() {
       <AddSubjectModal
         subjectModalGroup={subjectModalGroup}
         subjects={subjects}
+        subjectsLoading={subjectsLoading}
+        subjectsError={subjectsError}
+        onRetrySubjects={refetchSubjects}
         available={available}
         mediums={mediums}
         subjectForm={subjectForm}

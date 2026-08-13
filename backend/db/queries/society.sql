@@ -55,8 +55,13 @@ SELECT
     g.name          AS grade_name
 FROM society_members sm
 INNER JOIN student_profiles sp ON sp.id = sm.student_id
-LEFT JOIN  class_students cs   ON cs.student_id = sp.id
-LEFT JOIN  classes c           ON c.id = cs.class_id AND c.academic_year_id = sm.academic_year_id
+-- class_students carries one row per (student, academic_year) — filtering
+-- to the membership's own year here (not just at the classes join below)
+-- keeps this to at most one row per student; without it, a student with
+-- class history in other years produced one duplicate output row per
+-- extra year, each with grade_name NULL except the matching one.
+LEFT JOIN  class_students cs   ON cs.student_id = sp.id AND cs.academic_year_id = sm.academic_year_id
+LEFT JOIN  classes c           ON c.id = cs.class_id
 LEFT JOIN  grades g            ON g.id = c.grade_id
 WHERE sm.society_id = $1
 ORDER BY
@@ -70,7 +75,10 @@ ORDER BY
     sp.full_name ASC;
 
 -- name: RemoveSocietyMember :execrows
-DELETE FROM society_members WHERE id = $1;
+-- scoped by society_id as well as id: the caller is only authorized for one
+-- society (SocietyService.authorizeTeacherInCharge), so the delete itself
+-- must not be able to reach a membership row belonging to a different one.
+DELETE FROM society_members WHERE id = $1 AND society_id = $2;
 
 -- name: ListSocietyYears :many
 -- every academic year that has at least one society — powers the

@@ -1,10 +1,11 @@
 import type { Dispatch, SetStateAction } from "react";
 import { Link } from "react-router";
-import { Select, SelectItem, TextArea } from "@carbon/react";
+import { Select, SelectItem, TextArea, SkeletonText } from "@carbon/react";
 import type { useAddGroupSubject, useMediums } from "../../../../queries/useCurriculum";
 import type { useSubjects } from "../../../../queries/useSubjects";
 import type { CurriculumTreeGroup } from "../../../../services/curriculum";
 import FormModal from "../../../../components/common/FormModal";
+import ErrorMessage from "../../../../components/common/ErrorMessage";
 
 export interface SubjectForm {
   subject_id: string;
@@ -16,6 +17,9 @@ export interface SubjectForm {
 interface Props {
   subjectModalGroup: CurriculumTreeGroup | null;
   subjects: ReturnType<typeof useSubjects>["data"];
+  subjectsLoading: boolean;
+  subjectsError: boolean;
+  onRetrySubjects: () => void;
   available: NonNullable<ReturnType<typeof useSubjects>["data"]>;
   mediums: ReturnType<typeof useMediums>["data"];
   subjectForm: SubjectForm;
@@ -28,6 +32,9 @@ interface Props {
 export default function AddSubjectModal({
   subjectModalGroup,
   subjects,
+  subjectsLoading,
+  subjectsError,
+  onRetrySubjects,
   available,
   mediums,
   subjectForm,
@@ -50,7 +57,11 @@ export default function AddSubjectModal({
       error={addSubject.error}
       errorFallback="Failed to add subject"
     >
-      {subjects && subjects.length === 0 ? (
+      {subjectsLoading ? (
+        <SkeletonText width="70%" />
+      ) : subjectsError ? (
+        <ErrorMessage message="Could not load the subject catalogue." onRetry={onRetrySubjects} />
+      ) : subjects && subjects.length === 0 ? (
         <p style={{ fontSize: "0.875rem" }}>
           No subjects in the catalogue yet. <Link to="/subjects/new">Add a subject</Link> first.
         </p>

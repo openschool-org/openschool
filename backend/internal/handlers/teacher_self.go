@@ -116,7 +116,11 @@ func (h *TeacherSelfHandler) Society(c *gin.Context) {
 
 	society, err := h.societies.GetForTeacher(c.Request.Context(), teacher.ID, year.ID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "you are not the Teacher-in-Charge of any society this year"})
+		if errors.Is(err, services.ErrSocietyNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "you are not the Teacher-in-Charge of any society this year"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

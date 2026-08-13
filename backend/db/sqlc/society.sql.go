@@ -157,8 +157,8 @@ SELECT
     g.name          AS grade_name
 FROM society_members sm
 INNER JOIN student_profiles sp ON sp.id = sm.student_id
-LEFT JOIN  class_students cs   ON cs.student_id = sp.id
-LEFT JOIN  classes c           ON c.id = cs.class_id AND c.academic_year_id = sm.academic_year_id
+LEFT JOIN  class_students cs   ON cs.student_id = sp.id AND cs.academic_year_id = sm.academic_year_id
+LEFT JOIN  classes c           ON c.id = cs.class_id
 LEFT JOIN  grades g            ON g.id = c.grade_id
 WHERE sm.society_id = $1
 ORDER BY
@@ -184,6 +184,11 @@ type ListSocietyMembersBySocietyRow struct {
 	GradeName      pgtype.Text        `json:"grade_name"`
 }
 
+// class_students carries one row per (student, academic_year) — filtering
+// to the membership's own year here (not just at the classes join below)
+// keeps this to at most one row per student; without it, a student with
+// class history in other years produced one duplicate output row per
+// extra year, each with grade_name NULL except the matching one.
 func (q *Queries) ListSocietyMembersBySociety(ctx context.Context, societyID uuid.UUID) ([]ListSocietyMembersBySocietyRow, error) {
 	rows, err := q.db.Query(ctx, listSocietyMembersBySociety, societyID)
 	if err != nil {
@@ -306,11 +311,19 @@ func (q *Queries) ListSocietyYears(ctx context.Context) ([]ListSocietyYearsRow, 
 }
 
 const removeSocietyMember = `-- name: RemoveSocietyMember :execrows
-DELETE FROM society_members WHERE id = $1
+DELETE FROM society_members WHERE id = $1 AND society_id = $2
 `
 
-func (q *Queries) RemoveSocietyMember(ctx context.Context, id uuid.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, removeSocietyMember, id)
+type RemoveSocietyMemberParams struct {
+	ID        uuid.UUID `json:"id"`
+	SocietyID uuid.UUID `json:"society_id"`
+}
+
+// scoped by society_id as well as id: the caller is only authorized for one
+// society (SocietyService.authorizeTeacherInCharge), so the delete itself
+// must not be able to reach a membership row belonging to a different one.
+func (q *Queries) RemoveSocietyMember(ctx context.Context, arg RemoveSocietyMemberParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeSocietyMember, arg.ID, arg.SocietyID)
 	if err != nil {
 		return 0, err
 	}

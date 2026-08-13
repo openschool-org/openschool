@@ -84,8 +84,11 @@ export const useAssignSocietyMember = (societyId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (data: AssignSocietyMemberRequest) => societyApi.assignMember(societyId, data),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: societyMembersKey(societyId) });
+      // Keeps the student's portfolio "Society Memberships" list (if
+      // already cached from a prior visit) from showing stale data.
+      queryClient.invalidateQueries({ queryKey: studentSocietyMembershipsKey(data.student_id) });
     },
   });
 };
@@ -93,9 +96,10 @@ export const useAssignSocietyMember = (societyId: string) => {
 export const useRemoveSocietyMember = (societyId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (memberId: string) => societyApi.removeMember(societyId, memberId),
-    onSuccess: () => {
+    mutationFn: ({ memberId }: { memberId: string; studentId: string }) => societyApi.removeMember(societyId, memberId),
+    onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: societyMembersKey(societyId) });
+      queryClient.invalidateQueries({ queryKey: studentSocietyMembershipsKey(variables.studentId) });
     },
   });
 };

@@ -95,7 +95,9 @@ export default function TermsModal({ year, onClose }: { year: AcademicYear; onCl
         name: form.name.trim(),
         start_date: new Date(form.start_date).toISOString(),
         end_date: new Date(form.end_date).toISOString(),
-        sort_order: terms?.length ?? 0,
+        // Max existing + 1, not length — a gap from a deleted term (e.g.
+        // orders [0, 2]) would otherwise hand out a colliding sort_order.
+        sort_order: (terms ?? []).reduce((max, t) => Math.max(max, t.sort_order), -1) + 1,
       },
       { onSuccess: resetForm },
     );
@@ -123,6 +125,16 @@ export default function TermsModal({ year, onClose }: { year: AcademicYear; onCl
               kind="error"
               title="Error"
               subtitle={getErrorMessage(updateTerm.error, "Failed to update term")}
+              lowContrast
+              hideCloseButton
+              style={{ marginBottom: "1rem", maxWidth: "100%" }}
+            />
+          )}
+          {deleteTerm.isError && (
+            <InlineNotification
+              kind="error"
+              title="Error"
+              subtitle={getErrorMessage(deleteTerm.error, "Failed to delete term")}
               lowContrast
               hideCloseButton
               style={{ marginBottom: "1rem", maxWidth: "100%" }}
@@ -280,7 +292,7 @@ export default function TermsModal({ year, onClose }: { year: AcademicYear; onCl
         isPending={deleteTerm.isPending}
         onClose={() => setToDelete(null)}
         onConfirm={() => {
-          if (toDelete) deleteTerm.mutate(toDelete.id, { onSettled: () => setToDelete(null) });
+          if (toDelete) deleteTerm.mutate(toDelete.id, { onSuccess: () => setToDelete(null) });
         }}
       />
     </>

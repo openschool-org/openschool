@@ -268,22 +268,48 @@ readable admin-only at `/settings` → Audit Log.
 
 Scheduled, read-mostly background jobs (`internal/jobs/`) that support the
 system's operation without any user-facing feature depending on them —
-each can be toggled off independently from `/automation` (admin-only, System
-nav) with no other effect. An in-process `github.com/robfig/cron/v3`
-scheduler, started alongside the Gin server, runs each job on its own
-schedule; a `job_settings` row (default enabled) gates each one, and
-`job_runs` keeps the last 50 executions per job so the Automation panel can
-show a real last-status/summary/finding-count instead of a bare toggle.
-Admins can also trigger any enabled job immediately ("Run now").
+14 of the 15 can be toggled off independently from `/automation`
+(admin-only, System nav) with no other effect; the one exception is
+Backup + migration-drift (see below). None of them ever sit on a user
+request's critical path: they run on their own cron schedule or via an
+explicit admin-triggered "Run now", never as part of handling a page load
+or API call. An in-process `github.com/robfig/cron/v3` scheduler, started
+alongside the Gin server, runs each job on its own schedule with panic
+recovery (`cron.Recover`) and a per-job overlap guard (a `sync.Mutex`,
+`TryLock`ed in `Scheduler.execute` — the single chokepoint both the cron
+tick and an admin's "Run now" funnel through) so a job can never run
+concurrently with itself; a `job_settings` row (default enabled) gates
+each one, and `job_runs` keeps the last 50 executions per job so the
+Automation panel can show a real last-status/summary/finding-count instead
+of a bare toggle.
 
-15 jobs ship today. Each is deliberately single-purpose — three of the
-original eight were later split (see below) once it became clear a job
+**Disabling a job stops it from running; it does not clear what it already
+found.** Its most recent `job_runs` row — and therefore both the
+Automation panel's status and any page-specific `AgentFindingsBanner`
+reading it — keeps showing that last finding, unchanged, until the job is
+re-enabled and runs again (on its next schedule or via "Run now"). A
+disabled job's banner is effectively frozen, not "no known issues" — there
+is no separate "stale" indicator today.
+
+15 jobs ship today. Nearly all are deliberately single-purpose — three of
+the original eight were later split (see below) once it became clear a job
 that bundles several unrelated checks into one summary can't be shown
-correctly on a specific page, only in the general Automation panel:
+correctly on a specific page, only in the general Automation panel. The one
+exception is Backup + migration-drift, which still does two distinct
+things (a `pg_dump` and a migration-version check) in one job — left
+unsplit because it has no page binding to make single-purpose-ness matter
+for (see below), and a backup failing shouldn't be distinguishable from a
+drift-check failing when there's only ever one place either shows up.
 
-- **Backup + migration-drift** — nightly `pg_dump` plus a check that the
-  DB's applied `golang-migrate` version matches this binary's. No page
-  binding (Automation panel only).
+- **Backup + migration-drift** — nightly `pg_dump` (credentials passed via
+  a temp-file `PGPASSFILE`, never as a process argument, so they don't leak
+  through `ps`/`/proc`) plus a check that the DB's applied `golang-migrate`
+  version matches this binary's. No page binding (Automation panel only).
+  The one job that **cannot be disabled** — enforced both server-side
+  (`JobsHandler.SetEnabled` rejects it) and in the UI (its Automation-panel
+  row shows "Always on" instead of a toggle) — since disabling it would
+  silently stop the school's only backup with no symptom until an
+  incident.
 - **Current-academic-year invariant** — flags a current-academic-year count
   other than 1. Surfaced on Academic Years.
 - **Student gender / school-type watcher** — active students whose gender

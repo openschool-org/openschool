@@ -28,6 +28,12 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
     save.mutate(rows, { onSuccess: () => setRows(null) });
   };
 
+  // Regenerate replaces `active` wholesale on success — editing a time
+  // field or saving while it's in flight could race against that reset
+  // (or submit rows based on data regenerate is about to discard), so both
+  // controls and the grid itself are locked while either mutation runs.
+  const busy = save.isPending || regenerate.isPending;
+
   return (
     <ComposedModal open size="md" onClose={onClose}>
       <ModalHeader title={`${section.name} — period grid`} />
@@ -55,7 +61,7 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
             kind="ghost"
             size="sm"
             onClick={() => regenerate.mutate(undefined, { onSuccess: () => setRows(null) })}
-            disabled={regenerate.isPending}
+            disabled={busy}
           >
             {regenerate.isPending ? "Regenerating…" : "Regenerate from Timetable Settings"}
           </Button>
@@ -89,6 +95,7 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
                       type="time"
                       size="sm"
                       value={p.start_time}
+                      disabled={busy}
                       onChange={(e) => updateRow(i, { start_time: e.target.value })}
                     />
                   </td>
@@ -99,6 +106,7 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
                       type="time"
                       size="sm"
                       value={p.end_time}
+                      disabled={busy}
                       onChange={(e) => updateRow(i, { end_time: e.target.value })}
                     />
                   </td>
@@ -112,7 +120,7 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
         <Button kind="secondary" onClick={onClose}>
           Close
         </Button>
-        <Button kind="primary" onClick={handleSave} disabled={!rows || save.isPending}>
+        <Button kind="primary" onClick={handleSave} disabled={!rows || busy}>
           {save.isPending ? "Saving…" : "Save changes"}
         </Button>
       </ModalFooter>

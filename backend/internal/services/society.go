@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
@@ -81,7 +82,10 @@ func (s *SocietyService) ListYears(ctx context.Context) ([]db.ListSocietyYearsRo
 func (s *SocietyService) GetForTeacher(ctx context.Context, teacherID, academicYearID uuid.UUID) (db.Society, error) {
 	society, err := s.repo.GetForTeacher(ctx, teacherID, academicYearID)
 	if err != nil {
-		return db.Society{}, ErrSocietyNotFound
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.Society{}, ErrSocietyNotFound
+		}
+		return db.Society{}, err
 	}
 	return society, nil
 }
@@ -96,31 +100,37 @@ func (s *SocietyService) ListMembershipsByStudent(ctx context.Context, studentID
 
 // authorizeTeacherInCharge mirrors AttendanceService.authorizeTeacherForClass
 // (attendance.go): admins bypass, a teacher must be the TIC of the society
-// they're trying to modify the roster of.
-func (s *SocietyService) authorizeTeacherInCharge(ctx context.Context, actor Actor, societyID uuid.UUID) error {
+// they're trying to modify the roster of. Returns the society itself so
+// callers can use its authoritative academic_year_id instead of trusting
+// one supplied by the request.
+func (s *SocietyService) authorizeTeacherInCharge(ctx context.Context, actor Actor, societyID uuid.UUID) (db.Society, error) {
+	society, err := s.repo.GetByID(ctx, societyID)
+	if err != nil {
+		return db.Society{}, ErrSocietyNotFound
+	}
+
 	if actor.Role == models.RoleAdmin {
-		return nil
+		return society, nil
 	}
 
 	teacher, err := s.teacherRepo.GetByUserID(ctx, actor.ID)
 	if err != nil {
-		return ErrNotTeacherInCharge
-	}
-
-	society, err := s.repo.GetByID(ctx, societyID)
-	if err != nil {
-		return ErrSocietyNotFound
+		return db.Society{}, ErrNotTeacherInCharge
 	}
 	if society.TeacherInChargeID != teacher.ID {
-		return ErrNotTeacherInCharge
+		return db.Society{}, ErrNotTeacherInCharge
 	}
-	return nil
+	return society, nil
 }
 
 // AssignMember appoints (or re-appoints) a student to a society's roster.
-// Restricted to the society's own Teacher-in-Charge or an admin.
+// Restricted to the society's own Teacher-in-Charge or an admin. The
+// membership's academic_year_id is always the society's own year, never a
+// client-supplied one — otherwise a caller could create a membership row
+// whose year doesn't match the society it's supposedly a member of.
 func (s *SocietyService) AssignMember(ctx context.Context, actor Actor, societyID uuid.UUID, req models.AssignSocietyMemberRequest) (db.SocietyMember, error) {
-	if err := s.authorizeTeacherInCharge(ctx, actor, societyID); err != nil {
+	society, err := s.authorizeTeacherInCharge(ctx, actor, societyID)
+	if err != nil {
 		return db.SocietyMember{}, err
 	}
 
@@ -128,28 +138,26 @@ func (s *SocietyService) AssignMember(ctx context.Context, actor Actor, societyI
 	if err != nil {
 		return db.SocietyMember{}, fmt.Errorf("invalid student_id")
 	}
-	yearID, err := uuid.Parse(req.AcademicYearID)
-	if err != nil {
-		return db.SocietyMember{}, fmt.Errorf("invalid academic_year_id")
-	}
 
 	return s.repo.UpsertMember(ctx, db.UpsertSocietyMemberParams{
 		SocietyID:      societyID,
 		StudentID:      studentID,
 		Role:           req.Role,
-		AcademicYearID: yearID,
+		AcademicYearID: society.AcademicYearID,
 	})
 }
 
 // RemoveMember removes a student from a society's roster. societyID is
 // passed explicitly (rather than looked up from the membership row) so
-// authorization happens before any read of the membership itself.
+// authorization happens before any read of the membership itself, and the
+// delete itself is scoped by societyID too — otherwise an authorized TIC of
+// one society could delete a memberID belonging to a different society.
 func (s *SocietyService) RemoveMember(ctx context.Context, actor Actor, societyID, memberID uuid.UUID) error {
-	if err := s.authorizeTeacherInCharge(ctx, actor, societyID); err != nil {
+	if _, err := s.authorizeTeacherInCharge(ctx, actor, societyID); err != nil {
 		return err
 	}
 
-	n, err := s.repo.RemoveMember(ctx, memberID)
+	n, err := s.repo.RemoveMember(ctx, societyID, memberID)
 	if err != nil {
 		return err
 	}

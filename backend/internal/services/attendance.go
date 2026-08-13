@@ -260,28 +260,44 @@ func (s *AttendanceService) MarkAttendance(ctx context.Context, actor Actor, ses
 		previousByStudent[r.StudentID] = r
 	}
 
-	for _, record := range req.Records {
+	// Parsed and validated as a whole pass before any write — otherwise an
+	// invalid record late in the list (bad status, bad UUID) would return an
+	// error after earlier records in the same request had already been
+	// written, leaving a partial, silently-inconsistent submission.
+	type parsedRecord struct {
+		studentID uuid.UUID
+		status    string
+		note      string
+	}
+	parsed := make([]parsedRecord, len(req.Records))
+	for i, record := range req.Records {
 		studentID, err := uuid.Parse(record.StudentID)
 		if err != nil {
 			return fmt.Errorf("invalid student id: %s", record.StudentID)
 		}
-
 		if record.Status != models.AttendanceStatusPresent && record.Status != models.AttendanceStatusAbsent && record.Status != models.AttendanceStatusLate && record.Status != models.AttendanceStatusExcused {
 			return fmt.Errorf("invalid status: %s — must be present, absent, late or excused", record.Status)
 		}
+		parsed[i] = parsedRecord{studentID: studentID, status: record.Status, note: record.Note}
+	}
 
+	for _, record := range parsed {
+		studentID := record.studentID
 		previous, hadPrevious := previousByStudent[studentID]
 
-		updated, err := s.repo.MarkAttendance(ctx, sessionID, studentID, record.Status, record.Note)
+		updated, err := s.repo.MarkAttendance(ctx, sessionID, studentID, record.status, record.note)
 		if err != nil {
-			return fmt.Errorf("failed to mark attendance for student %s: %w", record.StudentID, err)
+			return fmt.Errorf("failed to mark attendance for student %s: %w", studentID, err)
 		}
+		// Keeps a duplicate studentID later in the same request comparing
+		// against what this loop just wrote, not the pre-request snapshot.
+		previousByStudent[studentID] = updated
 
 		if locked && s.audit != nil {
 			_ = s.audit.Record(ctx, "attendance_record", updated.ID, "edited_after_lock", actor.ID, previous, updated, req.Reason)
 		}
 
-		becameAbsent := record.Status == models.AttendanceStatusAbsent && (!hadPrevious || previous.Status != models.AttendanceStatusAbsent)
+		becameAbsent := record.status == models.AttendanceStatusAbsent && (!hadPrevious || previous.Status != models.AttendanceStatusAbsent)
 		if becameAbsent {
 			s.notifyGuardiansOfAbsence(ctx, session, studentID, takenBy)
 		}

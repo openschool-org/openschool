@@ -30,7 +30,6 @@ const ROLES: { value: SocietyRole; label: string }[] = [
 
 interface Props {
   societyId: string;
-  academicYearId: string;
   readOnly?: boolean;
 }
 
@@ -38,7 +37,7 @@ interface Props {
 // Shared by the admin Societies page (managing any society) and the
 // teacher-portal My Society page (managing only the caller's own) — the
 // backend enforces who's allowed to call the mutations either way.
-export default function SocietyRoster({ societyId, academicYearId, readOnly }: Props) {
+export default function SocietyRoster({ societyId, readOnly }: Props) {
   const { data: members, isLoading, isError, refetch } = useSocietyMembers(societyId);
   const { data: students } = useStudents();
   const assignMember = useAssignSocietyMember(societyId);
@@ -58,13 +57,13 @@ export default function SocietyRoster({ societyId, academicYearId, readOnly }: P
   const handleAssign = () => {
     if (!studentChoice) return;
     assignMember.mutate(
-      { student_id: studentChoice, role: roleChoice, academic_year_id: academicYearId },
+      { student_id: studentChoice, role: roleChoice },
       { onSuccess: () => setAssignOpen(false) },
     );
   };
 
   const handleRemove = (m: SocietyMember) => {
-    removeMember.mutate(m.id);
+    removeMember.mutate({ memberId: m.id, studentId: m.student_id });
   };
 
   const byRole = (role: SocietyRole) => (members ?? []).filter((m) => m.role === role);

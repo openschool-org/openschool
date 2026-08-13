@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { Button, Tag, InlineNotification } from "@carbon/react";
 import { Add, UserMultiple } from "@carbon/icons-react";
-import type { useClass, useClassStudents, useEnrollStudent, useUnenrollStudent } from "../../../../queries/useClasses";
+import type { useClass, useClassStudents, useUnenrollStudent } from "../../../../queries/useClasses";
 import type { Student } from "../../../../services/student";
 import { getErrorMessage as apiError } from "../../../../lib/errorMessage";
 import LoadingSpinner from "../../../../components/common/LoadingSpinner";
@@ -11,7 +11,6 @@ interface Props {
   cls: NonNullable<ReturnType<typeof useClass>["data"]>;
   students: ReturnType<typeof useClassStudents>["data"];
   studentsLoading: boolean;
-  enrollStudent: ReturnType<typeof useEnrollStudent>;
   unenrollStudent: ReturnType<typeof useUnenrollStudent>;
   onOpenEnrol: () => void;
   onRequestUnenroll: (student: Student) => void;
@@ -21,7 +20,6 @@ export default function StudentsTab({
   cls,
   students,
   studentsLoading,
-  enrollStudent,
   unenrollStudent,
   onOpenEnrol,
   onRequestUnenroll,
@@ -35,16 +33,8 @@ export default function StudentsTab({
         </Button>
       </div>
 
-      {enrollStudent.isError && (
-        <InlineNotification
-          kind="error"
-          title="Could not enrol student"
-          subtitle={apiError(enrollStudent.error, "Please try again.")}
-          lowContrast
-          onClose={() => enrollStudent.reset()}
-          style={{ maxWidth: "100%", margin: "0 1.5rem 1rem" }}
-        />
-      )}
+      {/* enrollStudent's error is shown inside EnrolStudentModal, where the
+          user is actively enrolling — not duplicated here. */}
       {unenrollStudent.isError && (
         <InlineNotification
           kind="error"

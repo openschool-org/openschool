@@ -18,6 +18,10 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const hasStudents = (students?.length ?? 0) > 0;
+  // While the linked-students query is still in flight, hasStudents would
+  // otherwise read as false (nothing loaded yet), letting a fast double-click
+  // slip past the "still linked" warning before it's known to be safe.
+  const deleteBlocked = studentsLoading || hasStudents;
 
   return (
     <div className="os-section" style={{ marginTop: 0 }}>
@@ -108,7 +112,9 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
           <p style={{ fontSize: "0.8125rem", color: "#8d8d8d", marginBottom: "1.5rem" }}>No students linked.</p>
         )}
 
-        <h3 style={{ fontSize: "0.8125rem", fontWeight: 600, margin: "0 0 0.75rem" }}>Notification history</h3>
+        <h3 style={{ fontSize: "0.8125rem", fontWeight: 600, margin: "0 0 0.75rem" }}>
+          Notification history{notifications && notifications.length > 20 ? " (most recent 20)" : ""}
+        </h3>
         {!guardian.user_id ? (
           <p style={{ fontSize: "0.8125rem", color: "#8d8d8d" }}>
             This guardian has no portal login, so they haven't received any in-app notifications.
@@ -144,7 +150,9 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
         open={confirmDelete}
         title="Delete guardian"
         description={
-          hasStudents ? (
+          studentsLoading ? (
+            "Checking linked students…"
+          ) : hasStudents ? (
             <>
               <strong>{guardian.full_name}</strong> is still linked to {students?.length} student
               {students && students.length !== 1 ? "s" : ""}. Unlink them from this guardian first
@@ -157,12 +165,10 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
           )
         }
         isPending={deleteGuardian.isPending}
+        disabled={deleteBlocked}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => {
-          if (hasStudents) {
-            setConfirmDelete(false);
-            return;
-          }
+          if (deleteBlocked) return;
           deleteGuardian.mutate(guardian.id, {
             onSuccess: () => {
               setConfirmDelete(false);

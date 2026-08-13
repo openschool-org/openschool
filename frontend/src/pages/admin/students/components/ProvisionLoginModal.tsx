@@ -3,6 +3,7 @@ import { TextInput, InlineNotification } from "@carbon/react";
 import { useProvisionGuardianLogin } from "../../../../queries/useGuardians";
 import type { GuardianWithPrimary } from "../../../../services/guardian";
 import FormModal from "../../../../components/common/FormModal";
+import { splitFullName } from "../../../../lib/name";
 
 const EMPTY_LOGIN_FORM = { given_name: "", family_name: "", username: "" };
 
@@ -16,10 +17,7 @@ export default function ProvisionLoginModal({
   onClose: () => void;
 }) {
   const provision = useProvisionGuardianLogin(studentId);
-  const [form, setForm] = useState(() => {
-    const [given, ...rest] = guardian.full_name.trim().split(/\s+/);
-    return { ...EMPTY_LOGIN_FORM, given_name: given ?? "", family_name: rest.join(" ") };
-  });
+  const [form, setForm] = useState(() => ({ ...EMPTY_LOGIN_FORM, ...splitFullName(guardian.full_name) }));
   const [touched, setTouched] = useState<Record<keyof typeof EMPTY_LOGIN_FORM, boolean>>({
     given_name: false,
     family_name: false,

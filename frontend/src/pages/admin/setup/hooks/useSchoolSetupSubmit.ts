@@ -149,10 +149,20 @@ export function useSchoolSetupSubmit(input: Input) {
           const regularGrades = createdGrades.filter((g) => !AL_GRADE_NUMBERS.has(Number(g.name.replace(/\D/g, ""))));
           const alGrades = createdGrades.filter((g) => AL_GRADE_NUMBERS.has(Number(g.name.replace(/\D/g, ""))));
 
+          // Derived from the label the admin actually typed (e.g. "2025"),
+          // not the real-world current year — those two can differ when
+          // setting the system up for a past or upcoming academic year.
+          // Falls back to the current year only if the label has no
+          // 4-digit year in it (e.g. a fully custom label).
+          const labelYear = Number(yearLabel.trim().match(/\d{4}/)?.[0] ?? now.getFullYear());
           const year = await createAcademicYear.mutateAsync({
             label: yearLabel.trim(),
-            start_date: new Date(now.getFullYear(), 0, 1).toISOString(),
-            end_date: new Date(now.getFullYear(), 11, 31).toISOString(),
+            // Built at UTC midnight directly (Date.UTC), not via the local-
+            // timezone Date constructor — for any timezone ahead of UTC
+            // (Sri Lanka included, UTC+5:30), `new Date(y, 0, 1).toISOString()`
+            // shifts to December 31 of the previous year once converted to UTC.
+            start_date: new Date(Date.UTC(labelYear, 0, 1)).toISOString(),
+            end_date: new Date(Date.UTC(labelYear, 11, 31)).toISOString(),
             is_current: true,
           });
 

@@ -199,7 +199,7 @@ export default function Societies() {
               <p style={{ margin: "0 0 1.25rem", fontSize: "0.8125rem", color: "#525252" }}>
                 Teacher-in-Charge: {selected.teacher_name}
               </p>
-              <SocietyRoster societyId={selected.id} academicYearId={selected.academic_year_id} readOnly={isArchive} />
+              <SocietyRoster societyId={selected.id} readOnly={isArchive} />
             </div>
           </div>
         ) : (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@carbon/react";
+import { Button, InlineNotification } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import {
   useGuardiansByStudent,
@@ -7,6 +7,7 @@ import {
   useSetPrimaryGuardian,
 } from "../../../queries/useGuardians";
 import type { GuardianWithPrimary } from "../../../services/guardian";
+import { getErrorMessage } from "../../../lib/errorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 import AddGuardianModal from "./components/AddGuardianModal";
@@ -42,6 +43,26 @@ export default function StudentGuardians({ studentId }: { studentId: string }) {
         </Button>
       </div>
       <div className="os-section__body">
+        {setPrimary.isError && (
+          <InlineNotification
+            kind="error"
+            title="Could not set primary contact"
+            subtitle={getErrorMessage(setPrimary.error, "Please try again.")}
+            lowContrast
+            onClose={() => setPrimary.reset()}
+            style={{ marginBottom: "1rem", maxWidth: "100%" }}
+          />
+        )}
+        {unlinkGuardian.isError && (
+          <InlineNotification
+            kind="error"
+            title="Could not remove guardian"
+            subtitle={getErrorMessage(unlinkGuardian.error, "Please try again.")}
+            lowContrast
+            onClose={() => unlinkGuardian.reset()}
+            style={{ marginBottom: "1rem", maxWidth: "100%" }}
+          />
+        )}
         {atMax && (
           <p style={{ margin: "0 0 1rem", fontSize: "0.75rem", color: "#8d8d8d" }}>
             A student can have at most {MAX_GUARDIANS} guardians on file. Remove one to add another.

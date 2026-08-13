@@ -257,7 +257,6 @@ export default function ClassDetail() {
                     cls={cls}
                     students={students}
                     studentsLoading={studentsLoading}
-                    enrollStudent={enrollStudent}
                     unenrollStudent={unenrollStudent}
                     onOpenEnrol={openEnrol}
                     onRequestUnenroll={setToUnenroll}

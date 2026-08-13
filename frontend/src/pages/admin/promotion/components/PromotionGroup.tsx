@@ -29,6 +29,7 @@ function shuffled<T>(items: T[]): T[] {
 
 export default function PromotionGroup({
   gradeId,
+  isGraduating,
   gradeName,
   rows,
   targetClasses,
@@ -40,6 +41,7 @@ export default function PromotionGroup({
   rankByMarks,
 }: {
   gradeId: string;
+  isGraduating: boolean;
   gradeName: string;
   rows: PromotionPreviewRow[];
   targetClasses: { id: string; name: string; medium_id: string | null }[];
@@ -51,13 +53,16 @@ export default function PromotionGroup({
   rankByMarks: boolean;
 }) {
   const [bulkClassId, setBulkClassId] = useState("");
-  const isGraduating = gradeId === "graduating";
   const selectedInGroup = rows.filter((r) => selected.has(r.student_id));
   const hasMarks = rankByMarks && rows.some((r) => r.total_marks != null);
 
+  // Same one-map-then-onBulkAssign-once shape as distributeByMarks/
+  // distributeRandomly below, rather than calling onAssign once per student.
   const applyBulk = () => {
     if (!bulkClassId) return;
-    for (const r of selectedInGroup) onAssign(r.student_id, bulkClassId);
+    const map: Record<string, string> = {};
+    for (const r of selectedInGroup) map[r.student_id] = bulkClassId;
+    onBulkAssign(map);
   };
 
   // Students in a medium-designated class carry straight over to the same
@@ -154,7 +159,7 @@ export default function PromotionGroup({
                 <td>
                   <Checkbox
                     id={`select-${r.student_id}`}
-                    labelText=""
+                    labelText={`Select ${r.student_name}`}
                     hideLabel
                     checked={selected.has(r.student_id)}
                     onChange={() => onToggleSelected(r.student_id)}

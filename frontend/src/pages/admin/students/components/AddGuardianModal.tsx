@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button, TextInput, Select, SelectItem, InlineNotification, ComposedModal, ModalHeader, ModalBody, ModalFooter } from "@carbon/react";
 import { Search } from "@carbon/icons-react";
 import { useAddGuardian, useSearchGuardians, useLinkGuardian } from "../../../../queries/useGuardians";
 import { GUARDIAN_RELATIONSHIPS } from "../../../../services/guardian";
 import type { GuardianRelationship } from "../../../../services/guardian";
 import { getErrorMessage } from "../../../../lib/errorMessage";
+import { useDebounced } from "../../../../hooks/useDebounced";
 
 const RELATIONSHIPS = GUARDIAN_RELATIONSHIPS;
 
@@ -15,15 +16,6 @@ const EMPTY_GUARDIAN_FORM = {
   email: "",
   nic_number: "",
 };
-
-function useDebounced<T>(value: T, delayMs: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delayMs);
-    return () => clearTimeout(timer);
-  }, [value, delayMs]);
-  return debounced;
-}
 
 export default function AddGuardianModal({
   studentId,
@@ -113,6 +105,7 @@ export default function AddGuardianModal({
               <Search size={16} className="os-search__icon" />
               <input
                 className="os-search__input"
+                aria-label="Search guardians by name, phone, or email"
                 placeholder="Search by name, phone, or email…"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}

@@ -9,6 +9,11 @@ function humanizeJobName(name: string) {
   return name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// The backup job can't be disabled — see the matching check in
+// internal/handlers/jobs.go's SetEnabled. Disabling it silently stops the
+// school's only backup mechanism, with no other symptom until an incident.
+const NON_DISABLEABLE_JOBS = new Set(["backup_migration_drift"]);
+
 function statusTag(status: JobRunStatus) {
   switch (status) {
     case "ok":
@@ -33,7 +38,7 @@ export default function Automation() {
           <p className="os-page__subtitle">
             Scheduled background checks that support the system's operation —
             none of the app's other features depend on them, so any of these
-            can be turned off safely.
+            can be turned off safely, except the backup job.
           </p>
         </div>
       </div>
@@ -114,15 +119,19 @@ export default function Automation() {
                 >
                   Run now
                 </Button>
-                <Toggle
-                  id={`job-toggle-${job.name}`}
-                  size="sm"
-                  labelText=""
-                  hideLabel
-                  toggled={job.enabled}
-                  disabled={setEnabled.isPending}
-                  onToggle={(checked) => setEnabled.mutate({ name: job.name, enabled: checked })}
-                />
+                {NON_DISABLEABLE_JOBS.has(job.name) ? (
+                  <Tag type="gray" size="sm">Always on</Tag>
+                ) : (
+                  <Toggle
+                    id={`job-toggle-${job.name}`}
+                    size="sm"
+                    labelText=""
+                    hideLabel
+                    toggled={job.enabled}
+                    disabled={setEnabled.isPending}
+                    onToggle={(checked) => setEnabled.mutate({ name: job.name, enabled: checked })}
+                  />
+                )}
               </div>
             </div>
           ))}

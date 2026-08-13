@@ -66,10 +66,11 @@ export interface UpdateSocietyRequest {
   teacher_in_charge_id: string;
 }
 
+// The membership's academic year is always the society's own — the backend
+// derives it server-side, so it isn't part of this request.
 export interface AssignSocietyMemberRequest {
   student_id: string;
   role: SocietyRole;
-  academic_year_id: string;
 }
 
 export const societyApi = {
@@ -78,10 +79,12 @@ export const societyApi = {
 
   listYears: () => api.get<SocietyYear[]>("/societies/years").then((r) => r.data),
 
-  create: (data: CreateSocietyRequest) => api.post<Society>("/societies", data).then((r) => r.data),
+  // The backend returns the raw db.Society row here (no teacher_name/
+  // member_count join) — same shape as GET /me/teacher/society.
+  create: (data: CreateSocietyRequest) => api.post<SocietyBase>("/societies", data).then((r) => r.data),
 
   update: (id: string, data: UpdateSocietyRequest) =>
-    api.put<Society>(`/societies/${id}`, data).then((r) => r.data),
+    api.put<SocietyBase>(`/societies/${id}`, data).then((r) => r.data),
 
   remove: (id: string) => api.delete(`/societies/${id}`).then((r) => r.data),
 

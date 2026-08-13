@@ -163,6 +163,26 @@ modules from becoming coupled to core's own development.
    stops being a safe "helper" and becomes a distributed-systems problem
    this design deliberately avoids taking on.
 
+**Outbound request hardening (SSRF), required before implementation —
+applies to both the manifest fetch in step 2 and every dispatch callback in
+step 6.** Core (a trusted server) making outbound HTTP requests to
+admin-supplied URLs is a textbook SSRF vector — an admin (or a manifest URL
+they were tricked into pasting) could point either at internal-only
+services (metadata endpoints, the DB's own network segment, other
+containers) that a module's actual purpose could never justify accessing.
+None of this is implemented (nothing outbound exists yet), but it has to be
+part of the contract from the first line of code, not bolted on after:
+   - HTTPS-only; reject plain HTTP outright.
+   - Reject loopback, private (RFC 1918), link-local, and cloud metadata
+     (169.254.169.254 and equivalents) destinations — checked against the
+     *resolved* IP, not the hostname string, since a hostname can resolve
+     differently at request time than at validation time (DNS rebinding).
+   - Re-validate on every redirect hop, not just the initial URL — a
+     validated URL can still redirect somewhere disallowed.
+   - Bounded request timeout and bounded response size on both the
+     manifest fetch and every dispatch callback, so a slow or oversized
+     response from a module can't tie up core resources.
+
 **Where each piece would live, following existing convention:**
 - Backend: `db/migrations/0000XX_create_modules.up/down.sql`,
   `db/queries/modules.sql`, `internal/repositories/modules.go`,
@@ -196,8 +216,8 @@ specifically (NIC numbers, index numbers, language mediums, A/L streams,
 prefects/houses) — item 3 is grounded in how that system actually works,
 not a generic school software feature.
 
-3. **Agent enhancements — extensions of § Maintenance/ops agents,
-   not new standalone agents:**
+- **Item 3 — Agent enhancements — extensions of § Maintenance/ops agents,
+  not new standalone agents:**
    - **Gender-aware promotion distribution.** `PromotionGroup.tsx`'s
      existing shuffle helpers (`roundRobinAssign`/`distributeByMarks`/
      `distributeRandomly`, from Phase 10) balance only on count or marks,

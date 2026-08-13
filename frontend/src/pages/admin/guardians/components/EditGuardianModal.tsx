@@ -50,7 +50,6 @@ export default function EditGuardianModal({ guardian, onClose }: { guardian: Gua
       onClose={onClose}
       onSubmit={handleSave}
       isPending={updateGuardian.isPending}
-      submitDisabled={!isValid}
       isError={updateGuardian.isError}
       error={updateGuardian.error}
       errorFallback="Failed to update guardian"

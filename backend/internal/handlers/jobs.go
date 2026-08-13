@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"sort"
 
 	"github.com/gin-gonic/gin"
 	db "github.com/openschool-org/openschool/db/sqlc"
@@ -89,7 +88,6 @@ func (h *JobsHandler) List(c *gin.Context) {
 		}
 		out = append(out, status)
 	}
-	sort.Slice(out, func(i, k int) bool { return out[i].Name < out[k].Name })
 
 	c.JSON(http.StatusOK, out)
 }
@@ -115,6 +113,16 @@ func (h *JobsHandler) SetEnabled(c *gin.Context) {
 	var req models.SetJobEnabledRequest
 	if err := bindStrict(c, &req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// The backup job is the one exception to "every job is safely
+	// optional": disabling it silently stops the school's only backup
+	// mechanism, with no other symptom until data loss during a real
+	// incident. Blocked outright rather than just warned about, both here
+	// and in the Automation UI (which never renders its toggle).
+	if !req.Enabled && name == jobs.BackupJobName {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "the backup job cannot be disabled"})
 		return
 	}
 

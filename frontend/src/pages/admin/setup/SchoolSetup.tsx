@@ -23,6 +23,13 @@ import {
   type AlStreamsState,
 } from "./constants";
 
+// STEPS is [School, Houses, Grades, Mediums, Classes, Done] — Done is
+// always the last entry, and Classes (the final data-entry step) the one
+// before it. Derived here so every step === <literal> comparison below
+// stays in sync if STEPS' length ever changes, instead of drifting.
+const DONE_STEP = STEPS.length - 1;
+const LAST_INPUT_STEP = DONE_STEP - 1;
+
 export default function SchoolSetup() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
@@ -256,7 +263,7 @@ export default function SchoolSetup() {
           />
         )}
 
-        {step === 4 && (
+        {step === LAST_INPUT_STEP && (
           <ClassesStep
             yearLabel={yearLabel}
             setYearLabel={setYearLabel}
@@ -273,7 +280,7 @@ export default function SchoolSetup() {
           />
         )}
 
-        {step === 5 && (
+        {step === DONE_STEP && (
           <DoneStep
             submitting={submitting}
             submitError={submitError}
@@ -283,13 +290,13 @@ export default function SchoolSetup() {
           />
         )}
 
-        {step < 5 && (
+        {step < DONE_STEP && (
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "1.75rem" }}>
             <Button kind="ghost" onClick={goBack} disabled={step === 0}>
               Back
             </Button>
             <div style={{ display: "flex", gap: "0.5rem" }}>
-              {(step === 1 || step === 3 || step === 4) && (
+              {(step === 1 || step === 3 || step === LAST_INPUT_STEP) && (
                 <Button
                   kind="secondary"
                   onClick={() => {
@@ -311,7 +318,7 @@ export default function SchoolSetup() {
                   else handleClassesNext(false);
                 }}
               >
-                {step === 4 ? "Finish Setup" : "Continue"}
+                {step === LAST_INPUT_STEP ? "Finish Setup" : "Continue"}
               </Button>
             </div>
           </div>
