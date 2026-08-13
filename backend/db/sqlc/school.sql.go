@@ -235,7 +235,7 @@ SET
     logo_url    = $6,
     grade_from  = $7,
     grade_to    = $8,
-    school_type = $9
+    school_type = COALESCE($9, school_type)
 WHERE id = $1
 RETURNING id, name, address, phone, email, logo_url, created_at, grade_from, grade_to, school_type
 `
@@ -249,7 +249,7 @@ type UpdateSchoolParams struct {
 	LogoUrl    pgtype.Text `json:"logo_url"`
 	GradeFrom  pgtype.Int4 `json:"grade_from"`
 	GradeTo    pgtype.Int4 `json:"grade_to"`
-	SchoolType string      `json:"school_type"`
+	SchoolType pgtype.Text `json:"school_type"`
 }
 
 func (q *Queries) UpdateSchool(ctx context.Context, arg UpdateSchoolParams) (School, error) {

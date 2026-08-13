@@ -80,6 +80,13 @@ export const useDeleteSociety = () => {
   });
 };
 
+// societyListPrefixKey invalidates every useSocieties list regardless of
+// academic year — SocietyRoster (where the member mutations below fire from)
+// only knows societyId, not the academic year the roster's society belongs
+// to, so a targeted societiesKey(academicYearId) invalidation isn't possible
+// from here.
+const societyListPrefixKey = ["societies"];
+
 export const useAssignSocietyMember = (societyId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -89,6 +96,8 @@ export const useAssignSocietyMember = (societyId: string) => {
       // Keeps the student's portfolio "Society Memberships" list (if
       // already cached from a prior visit) from showing stale data.
       queryClient.invalidateQueries({ queryKey: studentSocietyMembershipsKey(data.student_id) });
+      // Refreshes member_count on the society list page.
+      queryClient.invalidateQueries({ queryKey: societyListPrefixKey });
     },
   });
 };
@@ -100,6 +109,7 @@ export const useRemoveSocietyMember = (societyId: string) => {
     onSuccess: (_result, variables) => {
       queryClient.invalidateQueries({ queryKey: societyMembersKey(societyId) });
       queryClient.invalidateQueries({ queryKey: studentSocietyMembershipsKey(variables.studentId) });
+      queryClient.invalidateQueries({ queryKey: societyListPrefixKey });
     },
   });
 };

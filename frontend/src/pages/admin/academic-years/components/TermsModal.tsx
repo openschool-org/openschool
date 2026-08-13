@@ -292,7 +292,7 @@ export default function TermsModal({ year, onClose }: { year: AcademicYear; onCl
         isPending={deleteTerm.isPending}
         onClose={() => setToDelete(null)}
         onConfirm={() => {
-          if (toDelete) deleteTerm.mutate(toDelete.id, { onSuccess: () => setToDelete(null) });
+          if (toDelete) deleteTerm.mutate(toDelete.id, { onSettled: () => setToDelete(null) });
         }}
       />
     </>

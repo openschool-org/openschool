@@ -27,7 +27,7 @@ SET
     logo_url    = $6,
     grade_from  = $7,
     grade_to    = $8,
-    school_type = $9
+    school_type = COALESCE(sqlc.narg('school_type'), school_type)
 WHERE id = $1
 RETURNING *;
 

@@ -11,11 +11,12 @@ import (
 )
 
 type AttendanceRepository struct {
+	pool    *pgxpool.Pool
 	queries *db.Queries
 }
 
 func NewAttendanceRepository(pool *pgxpool.Pool) *AttendanceRepository {
-	return &AttendanceRepository{queries: db.New(pool)}
+	return &AttendanceRepository{pool: pool, queries: db.New(pool)}
 }
 
 func (r *AttendanceRepository) CreateSession(ctx context.Context, classID uuid.UUID, takenBy uuid.UUID, date time.Time) (db.AttendanceSession, error) {
@@ -60,6 +61,47 @@ func (r *AttendanceRepository) MarkAttendance(ctx context.Context, sessionID uui
 		Status:    status,
 		Note:      pgtype.Text{String: note, Valid: note != ""},
 	})
+}
+
+// MarkAttendanceInput is one row of a MarkAttendanceBatch call.
+type MarkAttendanceInput struct {
+	StudentID uuid.UUID
+	Status    string
+	Note      string
+}
+
+// MarkAttendanceBatch marks attendance for every input row inside a single
+// transaction: if any write fails (e.g. a constraint violation partway
+// through), the whole batch rolls back instead of leaving the session with
+// some students updated and others not. Returned records are in the same
+// order as the input.
+func (r *AttendanceRepository) MarkAttendanceBatch(ctx context.Context, sessionID uuid.UUID, records []MarkAttendanceInput) ([]db.AttendanceRecord, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := r.queries.WithTx(tx)
+
+	out := make([]db.AttendanceRecord, len(records))
+	for i, rec := range records {
+		updated, err := qtx.MarkAttendance(ctx, db.MarkAttendanceParams{
+			SessionID: sessionID,
+			StudentID: rec.StudentID,
+			Status:    rec.Status,
+			Note:      pgtype.Text{String: rec.Note, Valid: rec.Note != ""},
+		})
+		if err != nil {
+			return nil, err
+		}
+		out[i] = updated
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 // GetRecord returns the existing attendance record, or pgx.ErrNoRows if unmarked this session — used to detect status transitions (e.g. into "absent") before upserting.

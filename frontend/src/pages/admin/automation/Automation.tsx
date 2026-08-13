@@ -125,7 +125,7 @@ export default function Automation() {
                   <Toggle
                     id={`job-toggle-${job.name}`}
                     size="sm"
-                    labelText=""
+                    labelText={`Enable ${humanizeJobName(job.name)}`}
                     hideLabel
                     toggled={job.enabled}
                     disabled={setEnabled.isPending}

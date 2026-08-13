@@ -106,7 +106,10 @@ func (s *SocietyService) ListMembershipsByStudent(ctx context.Context, studentID
 func (s *SocietyService) authorizeTeacherInCharge(ctx context.Context, actor Actor, societyID uuid.UUID) (db.Society, error) {
 	society, err := s.repo.GetByID(ctx, societyID)
 	if err != nil {
-		return db.Society{}, ErrSocietyNotFound
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.Society{}, ErrSocietyNotFound
+		}
+		return db.Society{}, err
 	}
 
 	if actor.Role == models.RoleAdmin {
@@ -115,7 +118,10 @@ func (s *SocietyService) authorizeTeacherInCharge(ctx context.Context, actor Act
 
 	teacher, err := s.teacherRepo.GetByUserID(ctx, actor.ID)
 	if err != nil {
-		return db.Society{}, ErrNotTeacherInCharge
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.Society{}, ErrNotTeacherInCharge
+		}
+		return db.Society{}, err
 	}
 	if society.TeacherInChargeID != teacher.ID {
 		return db.Society{}, ErrNotTeacherInCharge

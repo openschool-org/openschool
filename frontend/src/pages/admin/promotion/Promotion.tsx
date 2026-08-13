@@ -136,7 +136,17 @@ export default function Promotion() {
             id="source-year"
             labelText="Source year"
             value={effectiveSourceYearId}
-            onChange={(e) => setSourceYearId(e.target.value)}
+            onChange={(e) => {
+              const nextSourceYearId = e.target.value;
+              setSourceYearId(nextSourceYearId);
+              // A target year that now matches the newly chosen source isn't
+              // a valid selection anymore (see otherYears above) — clearing
+              // it here keeps usePromotionPreview from ever being called
+              // with identical source and target years.
+              if (targetYearId && targetYearId === (nextSourceYearId || currentYear?.id)) {
+                setTargetYearId("");
+              }
+            }}
           >
             <SelectItem value="" text={currentYear ? `${currentYear.label} (current)` : "Select…"} />
             {(years ?? []).map((y) => (

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
 	db "github.com/openschool-org/openschool/db/sqlc"
@@ -175,18 +176,25 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 	// documents). Doing this before SetUserID means there's only ever one
 	// linked state to unwind, not two.
 	if err := s.idp.AssignRole(ctx, identity.RoleID(models.RoleParent), idpUser.ID); err != nil {
-		rollbackIDPUser(ctx, s.idp, "ProvisionLogin", idpUser.ID)
-		if delErr := s.users.Delete(ctx, userID); delErr != nil {
+		// A cleanup context of its own, not ctx — ctx may be exactly why this
+		// failed (e.g. a request timeout), and reusing it here would make the
+		// rollback fail for the same reason instead of actually cleaning up.
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		rollbackIDPUser(cleanupCtx, s.idp, "ProvisionLogin", idpUser.ID)
+		if delErr := s.users.Delete(cleanupCtx, userID); delErr != nil {
 			log.Printf("ProvisionLogin: failed to roll back local user row %s after error: %v (local user now orphaned)", userID, delErr)
 		}
+		cleanupCancel()
 		return db.Guardian{}, fmt.Errorf("failed to assign parent role: %w", err)
 	}
 
 	if err := s.repo.SetUserID(ctx, guardianID, userID); err != nil {
-		rollbackIDPUser(ctx, s.idp, "ProvisionLogin", idpUser.ID)
-		if delErr := s.users.Delete(ctx, userID); delErr != nil {
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		rollbackIDPUser(cleanupCtx, s.idp, "ProvisionLogin", idpUser.ID)
+		if delErr := s.users.Delete(cleanupCtx, userID); delErr != nil {
 			log.Printf("ProvisionLogin: failed to roll back local user row %s after error: %v (local user now orphaned)", userID, delErr)
 		}
+		cleanupCancel()
 		return db.Guardian{}, fmt.Errorf("failed to link guardian record: %w", err)
 	}
 

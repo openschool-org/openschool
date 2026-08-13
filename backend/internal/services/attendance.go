@@ -281,20 +281,29 @@ func (s *AttendanceService) MarkAttendance(ctx context.Context, actor Actor, ses
 		parsed[i] = parsedRecord{studentID: studentID, status: record.Status, note: record.Note}
 	}
 
-	for _, record := range parsed {
+	batch := make([]repositories.MarkAttendanceInput, len(parsed))
+	for i, record := range parsed {
+		batch[i] = repositories.MarkAttendanceInput{StudentID: record.studentID, Status: record.status, Note: record.note}
+	}
+
+	// Written as one transaction — a mid-batch failure (e.g. a constraint
+	// violation) rolls back every record in this request instead of leaving
+	// some students updated and others not. Audit records and guardian
+	// notifications only fire once the whole batch has committed.
+	updated, err := s.repo.MarkAttendanceBatch(ctx, sessionID, batch)
+	if err != nil {
+		return fmt.Errorf("failed to mark attendance: %w", err)
+	}
+
+	for i, record := range parsed {
 		studentID := record.studentID
 		previous, hadPrevious := previousByStudent[studentID]
-
-		updated, err := s.repo.MarkAttendance(ctx, sessionID, studentID, record.status, record.note)
-		if err != nil {
-			return fmt.Errorf("failed to mark attendance for student %s: %w", studentID, err)
-		}
 		// Keeps a duplicate studentID later in the same request comparing
 		// against what this loop just wrote, not the pre-request snapshot.
-		previousByStudent[studentID] = updated
+		previousByStudent[studentID] = updated[i]
 
 		if locked && s.audit != nil {
-			_ = s.audit.Record(ctx, "attendance_record", updated.ID, "edited_after_lock", actor.ID, previous, updated, req.Reason)
+			_ = s.audit.Record(ctx, "attendance_record", updated[i].ID, "edited_after_lock", actor.ID, previous, updated[i], req.Reason)
 		}
 
 		becameAbsent := record.status == models.AttendanceStatusAbsent && (!hadPrevious || previous.Status != models.AttendanceStatusAbsent)

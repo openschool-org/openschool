@@ -155,7 +155,7 @@ func (s *Scheduler) execute(ctx context.Context, job Job) (Result, error) {
 		log.Printf("jobs: %s — failed to record run start: %v", job.Name(), startErr)
 	}
 
-	result, runErr := job.Run(runCtx)
+	result, runErr := runJobRecovering(runCtx, job)
 
 	status := "ok"
 	summary := result.Summary
@@ -176,4 +176,19 @@ func (s *Scheduler) execute(ctx context.Context, job Job) (Result, error) {
 	}
 
 	return result, runErr
+}
+
+// runJobRecovering runs job.Run and converts a panic into a failed Result
+// and error instead of letting it unwind past execute — a panicking job
+// would otherwise skip FinishRun entirely (leaving its job_runs row stuck
+// at "running" forever) and, when triggered via RunNow, crash the request
+// goroutine handling the admin's "Run now" click.
+func runJobRecovering(ctx context.Context, job Job) (result Result, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("job %q panicked: %v", job.Name(), r)
+			result = Result{Summary: err.Error()}
+		}
+	}()
+	return job.Run(ctx)
 }
