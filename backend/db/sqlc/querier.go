@@ -51,6 +51,7 @@ type Querier interface {
 	CreateGradeSection(ctx context.Context, arg CreateGradeSectionParams) (GradeSection, error)
 	CreateGuardian(ctx context.Context, arg CreateGuardianParams) (Guardian, error)
 	CreateHouse(ctx context.Context, arg CreateHouseParams) (House, error)
+	CreateJobRun(ctx context.Context, arg CreateJobRunParams) (JobRun, error)
 	// ── levels ──────────────────────────────────────────────────────────────────
 	CreateLevel(ctx context.Context, arg CreateLevelParams) (Level, error)
 	// ── mediums ─────────────────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ type Querier interface {
 	CreateSchool(ctx context.Context, arg CreateSchoolParams) (School, error)
 	// ── selection groups ────────────────────────────────────────────────────────
 	CreateSelectionGroup(ctx context.Context, arg CreateSelectionGroupParams) (SelectionGroup, error)
+	CreateSociety(ctx context.Context, arg CreateSocietyParams) (Society, error)
 	CreateStream(ctx context.Context, name string) (Stream, error)
 	CreateStreamGroup(ctx context.Context, arg CreateStreamGroupParams) (StreamGroup, error)
 	// Activities ---------------------------------------------------------------
@@ -116,6 +118,8 @@ type Querier interface {
 	DeleteDisciplinaryRecord(ctx context.Context, arg DeleteDisciplinaryRecordParams) (int64, error)
 	DeleteDraftNotification(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteDraftTimetable(ctx context.Context, id uuid.UUID) (int64, error)
+	// ── Password reset token sweep ───────────────────────────────────────────────
+	DeleteExpiredPasswordResetTokens(ctx context.Context) (int64, error)
 	DeleteGrade(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteGradeSection(ctx context.Context, id uuid.UUID) (int64, error)
 	// Blocked while linked to any student, since student_guardians cascades on
@@ -132,6 +136,7 @@ type Querier interface {
 	DeleteSectionHead(ctx context.Context, id uuid.UUID) (int64, error)
 	// blocked while enrollments reference it
 	DeleteSelectionGroup(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteSociety(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStream(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStreamGroup(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteStudentActivity(ctx context.Context, arg DeleteStudentActivityParams) (int64, error)
@@ -175,6 +180,7 @@ type Querier interface {
 	// never hard-blocked, since a shared home phone across two guardians is
 	// legitimate.
 	FindGuardianDuplicateCandidates(ctx context.Context, arg FindGuardianDuplicateCandidatesParams) ([]Guardian, error)
+	FinishJobRun(ctx context.Context, arg FinishJobRunParams) error
 	GetAcademicYearByID(ctx context.Context, id uuid.UUID) (AcademicYear, error)
 	GetAttendanceRecord(ctx context.Context, arg GetAttendanceRecordParams) (AttendanceRecord, error)
 	GetAttendanceSessionByClassAndDate(ctx context.Context, arg GetAttendanceSessionByClassAndDateParams) (AttendanceSession, error)
@@ -206,6 +212,7 @@ type Querier interface {
 	// minted for their account.
 	GetGuardianByUserIDAndNIC(ctx context.Context, arg GetGuardianByUserIDAndNICParams) (Guardian, error)
 	GetHouseByID(ctx context.Context, id uuid.UUID) (House, error)
+	GetJobSetting(ctx context.Context, jobName string) (JobSetting, error)
 	GetLevelByID(ctx context.Context, id uuid.UUID) (Level, error)
 	GetMaxVersionForClass(ctx context.Context, arg GetMaxVersionForClassParams) (int32, error)
 	GetMediumByID(ctx context.Context, id uuid.UUID) (Medium, error)
@@ -221,6 +228,10 @@ type Querier interface {
 	GetPublishedTimetableForClass(ctx context.Context, arg GetPublishedTimetableForClassParams) (Timetable, error)
 	GetSchool(ctx context.Context) (School, error)
 	GetSelectionGroupByID(ctx context.Context, id uuid.UUID) (SelectionGroup, error)
+	GetSocietyByID(ctx context.Context, id uuid.UUID) (Society, error)
+	// resolves the "My Society" page: the society a teacher is TIC of, for a
+	// given academic year.
+	GetSocietyForTeacher(ctx context.Context, arg GetSocietyForTeacherParams) (Society, error)
 	GetStreamByID(ctx context.Context, id uuid.UUID) (Stream, error)
 	GetStreamGroupByID(ctx context.Context, id uuid.UUID) (StreamGroup, error)
 	GetStudentByID(ctx context.Context, id uuid.UUID) (StudentProfile, error)
@@ -262,6 +273,12 @@ type Querier interface {
 	IsStudentEnrollmentLocked(ctx context.Context, arg IsStudentEnrollmentLockedParams) (bool, error)
 	// used by PositionService.RankForTeacher to detect "Subject Teacher" rank.
 	IsSubjectTeacherOfAnyClass(ctx context.Context, arg IsSubjectTeacherOfAnyClassParams) (bool, error)
+	// true if teacher_id is the form teacher or a subject teacher of the
+	// *current-year* class of any of the given student_ids — one query
+	// answering what would otherwise be a GetStudentCurrentClass +
+	// IsTeacherAssignedToClass pair per student (e.g. authorizing a
+	// guardian-targeted notification against all of that guardian's children).
+	IsTeacherAssignedToAnyStudentClass(ctx context.Context, arg IsTeacherAssignedToAnyStudentClassParams) (bool, error)
 	// true if the teacher is the class's form teacher OR teaches any subject in it
 	IsTeacherAssignedToClass(ctx context.Context, arg IsTeacherAssignedToClassParams) (bool, error)
 	IsTeacherAssignedToSubject(ctx context.Context, arg IsTeacherAssignedToSubjectParams) (bool, error)
@@ -284,6 +301,19 @@ type Querier interface {
 	// every actively-enrolled student's current class/grade for an academic
 	// year — the source list for a promotion/reassignment preview.
 	ListActiveStudentsForYear(ctx context.Context, academicYearID uuid.UUID) ([]ListActiveStudentsForYearRow, error)
+	// ── Unclassed student watcher ────────────────────────────────────────────────
+	// an active student with no class_students row in the current academic
+	// year's classes — the kind of gap promotion or manual enrollment edits
+	// can silently leave behind.
+	ListActiveStudentsWithoutCurrentClass(ctx context.Context) ([]ListActiveStudentsWithoutCurrentClassRow, error)
+	// ── Zero-guardian student watcher ───────────────────────────────────────────
+	ListActiveStudentsWithoutGuardian(ctx context.Context) ([]ListActiveStudentsWithoutGuardianRow, error)
+	// Ad-hoc, read-mostly queries backing the § Proposed — maintenance/ops
+	// agents in docs/plan.md (internal/jobs/*.go). Grouped in one file since
+	// each is a one-off used by exactly one job, not a full entity's CRUD.
+	// used by internal/jobs to resolve who gets notified, and to attribute
+	// system-triggered notifications' created_by (NOT NULL FK to users).
+	ListAdminUserIDs(ctx context.Context) ([]uuid.UUID, error)
 	ListAllSentNotifications(ctx context.Context) ([]ListAllSentNotificationsRow, error)
 	// Recipient-resolution queries for the notification composer. Each rule
 	// type in a notification's recipient_rules resolves through one or more
@@ -292,6 +322,10 @@ type Querier interface {
 	ListAllUserIDs(ctx context.Context) ([]uuid.UUID, error)
 	ListAttendanceBySession(ctx context.Context, sessionID uuid.UUID) ([]ListAttendanceBySessionRow, error)
 	ListAttendanceByStudent(ctx context.Context, studentID uuid.UUID) ([]ListAttendanceByStudentRow, error)
+	// raw records for a session, no join — batches the "does this student
+	// already have a record, and what was it" check MarkAttendance needs for
+	// every student in one query instead of one GetAttendanceRecord per student.
+	ListAttendanceRecordsBySession(ctx context.Context, sessionID uuid.UUID) ([]AttendanceRecord, error)
 	// every attendance record for a class across a date range — for the
 	// Phase 7 attendance report export.
 	ListAttendanceRecordsForClassInRange(ctx context.Context, arg ListAttendanceRecordsForClassInRangeParams) ([]ListAttendanceRecordsForClassInRangeRow, error)
@@ -307,6 +341,12 @@ type Querier interface {
 	// string to skip that filter — checked in the repository layer, since
 	// sqlc.narg with a nullable uuid comparison reads awkwardly here).
 	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]ListAuditLogsRow, error)
+	// ── Audit-log anomaly watcher ────────────────────────────────────────────────
+	// actors with an unusually high volume of audit-logged changes in the last
+	// hour — the simplest defensible anomaly heuristic (a fixed threshold)
+	// rather than a statistical model, per docs/plan.md's own note that this
+	// one needs real heuristics to design.
+	ListBurstAuditActors(ctx context.Context, threshold int32) ([]ListBurstAuditActorsRow, error)
 	ListClassIDsByGrade(ctx context.Context, arg ListClassIDsByGradeParams) ([]uuid.UUID, error)
 	// Every student in the class, with their mark for this term+subject if one
 	// has been entered yet (NULL columns otherwise) — powers the marks-entry
@@ -314,11 +354,24 @@ type Querier interface {
 	ListClassMarksForTermSubject(ctx context.Context, arg ListClassMarksForTermSubjectParams) ([]ListClassMarksForTermSubjectRow, error)
 	ListClassesByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]ListClassesByAcademicYearRow, error)
 	ListClassrooms(ctx context.Context) ([]Classroom, error)
+	// ── Current-academic-year invariant checker ─────────────────────────────────
+	// should always return exactly 1 row
+	// (docs/adr/0003-single-current-academic-year.md); 0 or 2+ means the
+	// app-level invariant has been violated. Listed (not just counted) so the
+	// finding can name which years are wrongly marked current.
+	ListCurrentAcademicYears(ctx context.Context) ([]AcademicYear, error)
 	ListCurrentClasses(ctx context.Context) ([]ListCurrentClassesRow, error)
+	// ── Missing attendance session watcher ───────────────────────────────────────
+	ListCurrentYearClassesMissingTodaySession(ctx context.Context) ([]ListCurrentYearClassesMissingTodaySessionRow, error)
 	ListDisciplinaryRecordsByStudent(ctx context.Context, studentID uuid.UUID) ([]StudentDisciplinaryRecord, error)
 	// every booked (teacher or classroom) cell across other timetables in the
 	// same academic year, used for cross-timetable clash detection
 	ListEntriesForYearExcludingTimetable(ctx context.Context, arg ListEntriesForYearExcludingTimetableParams) ([]ListEntriesForYearExcludingTimetableRow, error)
+	// ── Student gender / school-type watcher ────────────────────────────────────
+	// a single-sex school's own student roster drifting out of sync with
+	// school.school_type (Phase 11 item 1) — e.g. the type was flipped after
+	// students of the other gender were already enrolled.
+	ListGenderSchoolTypeMismatches(ctx context.Context) ([]ListGenderSchoolTypeMismatchesRow, error)
 	// grades in sections this teacher is the group-level head of, for a given year
 	ListGradeIDsForSectionHeadTeacher(ctx context.Context, arg ListGradeIDsForSectionHeadTeacherParams) ([]uuid.UUID, error)
 	// whole-grade TICs only (stream_id IS NULL) — used to resolve which grades'
@@ -327,6 +380,11 @@ type Querier interface {
 	ListGradeSectionsByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListGradeSectionsByYearRow, error)
 	ListGrades(ctx context.Context) ([]Grade, error)
 	ListGradesBySection(ctx context.Context, gradeSectionID uuid.UUID) ([]Grade, error)
+	// ── Empty grade / stream watchers ────────────────────────────────────────────
+	// a grade defined in the curriculum with zero classes in the current
+	// academic year — either never set up, or every class under it was deleted
+	// without anyone noticing the grade itself was left dangling.
+	ListGradesWithNoCurrentClasses(ctx context.Context) ([]ListGradesWithNoCurrentClassesRow, error)
 	ListGroupSubjects(ctx context.Context, groupID uuid.UUID) ([]ListGroupSubjectsRow, error)
 	ListGuardianUserIDsByClass(ctx context.Context, classID uuid.UUID) ([]pgtype.UUID, error)
 	// Distinct guardian user_ids (portal logins only) for a set of students in
@@ -341,6 +399,15 @@ type Querier interface {
 	ListGuardians(ctx context.Context, arg ListGuardiansParams) ([]Guardian, error)
 	ListGuardiansByStudent(ctx context.Context, studentID uuid.UUID) ([]ListGuardiansByStudentRow, error)
 	ListHouses(ctx context.Context) ([]House, error)
+	// ── Employment-status consistency checker ───────────────────────────────────
+	// a resigned/transferred teacher still wired in as a form teacher or
+	// subject teacher on a current-year class — attendance/marks/notifications
+	// would still route to them.
+	ListInactiveTeachersStillAssigned(ctx context.Context) ([]ListInactiveTeachersStillAssignedRow, error)
+	ListJobRunHistory(ctx context.Context, arg ListJobRunHistoryParams) ([]JobRun, error)
+	ListJobSettings(ctx context.Context) ([]JobSetting, error)
+	// one row per job_name: its most recent run, for the Automation panel.
+	ListLatestJobRuns(ctx context.Context) ([]JobRun, error)
 	ListLevels(ctx context.Context) ([]Level, error)
 	ListLevelsByGrade(ctx context.Context, gradeID pgtype.UUID) ([]Level, error)
 	ListMediums(ctx context.Context) ([]Medium, error)
@@ -368,8 +435,28 @@ type Querier interface {
 	// everything needed to validate a set of picks against a level in one round trip
 	ListSelectionGroupsWithSubjectIDsByLevel(ctx context.Context, levelID uuid.UUID) ([]ListSelectionGroupsWithSubjectIDsByLevelRow, error)
 	ListSentNotificationsByUser(ctx context.Context, createdBy uuid.UUID) ([]ListSentNotificationsByUserRow, error)
+	ListSocietiesByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListSocietiesByYearRow, error)
+	ListSocietyMembersBySociety(ctx context.Context, societyID uuid.UUID) ([]ListSocietyMembersBySocietyRow, error)
+	// every society membership a student holds, across all years — for the
+	// student portfolio view.
+	ListSocietyMembershipsByStudent(ctx context.Context, studentID uuid.UUID) ([]ListSocietyMembershipsByStudentRow, error)
+	// every academic year that has at least one society — powers the
+	// year-selector's archive view, same pattern as ListPrefectYears.
+	ListSocietyYears(ctx context.Context) ([]ListSocietyYearsRow, error)
+	// ── Stale/incomplete attendance session watcher ─────────────────────────────
+	// a session created more than the given interval ago with fewer attendance
+	// records than the class's roster size — a teacher started it and never
+	// finished marking, indistinguishable from "not started" without this.
+	ListStaleIncompleteSessions(ctx context.Context, olderThanHours int32) ([]ListStaleIncompleteSessionsRow, error)
+	// ── Onboarding watchers (role-scoped) ────────────────────────────────────────
+	// provisioned but never completed first login, past the given age, scoped
+	// to one role — so the finding can be shown correctly on a role-specific
+	// page (Teachers vs Students) instead of a mixed list.
+	ListStaleMustChangePasswordUsersByRole(ctx context.Context, arg ListStaleMustChangePasswordUsersByRoleParams) ([]ListStaleMustChangePasswordUsersByRoleRow, error)
 	ListStreamGroupsByStream(ctx context.Context, streamID uuid.UUID) ([]StreamGroup, error)
 	ListStreams(ctx context.Context) ([]Stream, error)
+	// same gap, for A/L streams — defined but no Grade 12/13 class uses it this year.
+	ListStreamsWithNoCurrentClasses(ctx context.Context) ([]ListStreamsWithNoCurrentClassesRow, error)
 	ListStudentActivitiesByStudent(ctx context.Context, studentID uuid.UUID) ([]StudentActivity, error)
 	ListStudentAwardsByStudent(ctx context.Context, studentID uuid.UUID) ([]StudentAward, error)
 	ListStudentEnrollments(ctx context.Context, arg ListStudentEnrollmentsParams) ([]ListStudentEnrollmentsRow, error)
@@ -402,6 +489,11 @@ type Querier interface {
 	// The signed-in parent's linked children, for the parent portal.
 	ListStudentsByGuardianUserID(ctx context.Context, userID pgtype.UUID) ([]ListStudentsByGuardianUserIDRow, error)
 	ListStudentsBySubject(ctx context.Context, arg ListStudentsBySubjectParams) ([]ListStudentsBySubjectRow, error)
+	// batched form of GetStudentCurrentClass: of the given student_ids, which
+	// are (this academic year) enrolled in exactly class_id. Used to validate a
+	// whole batch of term-mark entries in one query instead of one
+	// GetStudentCurrentClass call per student.
+	ListStudentsEnrolledInCurrentClass(ctx context.Context, arg ListStudentsEnrolledInCurrentClassParams) ([]uuid.UUID, error)
 	ListStudentsMissingHouse(ctx context.Context) ([]StudentProfile, error)
 	ListSubjectPeriodRequirementsByGrade(ctx context.Context, arg ListSubjectPeriodRequirementsByGradeParams) ([]ListSubjectPeriodRequirementsByGradeRow, error)
 	ListSubjectTeachersByClass(ctx context.Context, classID uuid.UUID) ([]ListSubjectTeachersByClassRow, error)
@@ -420,9 +512,18 @@ type Querier interface {
 	// every class+subject a teacher is assigned to teach, across academic years
 	ListTeacherWorkload(ctx context.Context, teacherID uuid.UUID) ([]ListTeacherWorkloadRow, error)
 	ListTeachers(ctx context.Context) ([]TeacherProfile, error)
+	// batched form of GetTeacherByID for resolving several teacher_profile IDs
+	// (e.g. to their user_id, for a notification recipient list) in one query
+	// instead of one per teacher.
+	ListTeachersByIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]TeacherProfile, error)
 	ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID) ([]TeacherProfile, error)
 	ListTeachersMissingHouse(ctx context.Context) ([]TeacherProfile, error)
 	ListTermsByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]Term, error)
+	// ── Term-marks deadline watcher ──────────────────────────────────────────────
+	// terms ending within the given number of days (and not already past) with
+	// zero term_marks rows entered anywhere — nobody has started marks entry
+	// for a term that's about to lock.
+	ListTermsNearDeadlineWithNoMarks(ctx context.Context, withinDays int32) ([]ListTermsNearDeadlineWithNoMarksRow, error)
 	ListTimetableEntriesByTimetable(ctx context.Context, timetableID uuid.UUID) ([]ListTimetableEntriesByTimetableRow, error)
 	ListTimetablePeriodsBySection(ctx context.Context, gradeSectionID uuid.UUID) ([]TimetablePeriod, error)
 	ListTimetableStatusHistory(ctx context.Context, timetableID uuid.UUID) ([]ListTimetableStatusHistoryRow, error)
@@ -455,16 +556,21 @@ type Querier interface {
 	// Same balancing logic as PickBalancedHouseForStudent, but against the
 	// teacher_profiles pool — staff and students are balanced independently.
 	PickBalancedHouseForTeacher(ctx context.Context) (uuid.UUID, error)
+	// keeps only the most recent N runs for a job so history never grows
+	// unbounded on a job that runs hourly/daily forever.
+	PruneJobRuns(ctx context.Context, arg PruneJobRunsParams) error
 	PublishTimetable(ctx context.Context, arg PublishTimetableParams) (Timetable, error)
 	RejectTimetable(ctx context.Context, arg RejectTimetableParams) (Timetable, error)
 	RemoveGradeFromSection(ctx context.Context, arg RemoveGradeFromSectionParams) error
 	RemoveGroupSubject(ctx context.Context, arg RemoveGroupSubjectParams) error
+	RemoveSocietyMember(ctx context.Context, id uuid.UUID) (int64, error)
 	RemoveSubjectFromTeacher(ctx context.Context, arg RemoveSubjectFromTeacherParams) error
 	SetCurrentAcademicYear(ctx context.Context, id uuid.UUID) error
 	SetCurrentTerm(ctx context.Context, id uuid.UUID) error
 	// Links a guardian record to the ThunderID identity created for their
 	// portal login (see internal/services/guardian.go ProvisionLogin).
 	SetGuardianUserID(ctx context.Context, arg SetGuardianUserIDParams) error
+	SetJobEnabled(ctx context.Context, arg SetJobEnabledParams) (JobSetting, error)
 	SetMustChangePassword(ctx context.Context, arg SetMustChangePasswordParams) error
 	SetNotificationRecipientArchived(ctx context.Context, arg SetNotificationRecipientArchivedParams) error
 	SetPrimaryContact(ctx context.Context, arg SetPrimaryContactParams) error
@@ -488,6 +594,7 @@ type Querier interface {
 	UpdateProgressReport(ctx context.Context, arg UpdateProgressReportParams) (StudentProgressReport, error)
 	UpdateSchool(ctx context.Context, arg UpdateSchoolParams) (School, error)
 	UpdateSelectionGroup(ctx context.Context, arg UpdateSelectionGroupParams) (SelectionGroup, error)
+	UpdateSociety(ctx context.Context, arg UpdateSocietyParams) (Society, error)
 	UpdateStream(ctx context.Context, arg UpdateStreamParams) (Stream, error)
 	UpdateStreamGroup(ctx context.Context, arg UpdateStreamGroupParams) (StreamGroup, error)
 	UpdateStudentActivity(ctx context.Context, arg UpdateStudentActivityParams) (StudentActivity, error)
@@ -511,6 +618,7 @@ type Querier interface {
 	// Swaps who the Principal is (at most one row can ever exist — permanent
 	// until resignation/promotion, not renewed per year).
 	UpsertPrincipal(ctx context.Context, teacherID uuid.UUID) (TeacherPosition, error)
+	UpsertSocietyMember(ctx context.Context, arg UpsertSocietyMemberParams) (SocietyMember, error)
 	// Teacher-in-charge for one A/L stream within a grade.
 	UpsertStreamSectionHead(ctx context.Context, arg UpsertStreamSectionHeadParams) (SectionHead, error)
 	UpsertSubjectPeriodRequirement(ctx context.Context, arg UpsertSubjectPeriodRequirementParams) (SubjectPeriodRequirement, error)

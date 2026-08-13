@@ -7,6 +7,7 @@ import { useClassMarks, useSaveClassMarks } from "../../../queries/useTermMarks"
 import { getErrorMessage } from "../../../lib/errorMessage";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import EmptyState from "../../../components/common/EmptyState";
+import AgentFindingsBanner from "../../../components/common/AgentFindingsBanner";
 
 export default function ClassMarks({
   classId,
@@ -48,7 +49,9 @@ export default function ClassMarks({
   };
 
   return (
-    <div className="os-section">
+    <div>
+      <AgentFindingsBanner jobNames={["term_marks_deadline_watcher"]} />
+      <div className="os-section">
       <div className="os-section__header" style={{ flexWrap: "wrap", rowGap: "0.75rem" }}>
         <h2 className="os-section__title">Term Marks</h2>
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
@@ -182,6 +185,7 @@ export default function ClassMarks({
           description="Enrol students into this class before recording marks."
         />
       )}
+      </div>
     </div>
   );
 }

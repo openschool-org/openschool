@@ -86,8 +86,11 @@ dashboard shows them (a `RoleBadge` and, for Section Head and above, a
   Mediums → Done. Blocks access to the rest of the app until the school
   record and grade range exist. See `SETUP.md` §3 for the full walkthrough.
 - **School profile** — name, address, phone, email, an inline-stored logo,
-  and the grade range the school runs (1–13), editable afterward from
-  Settings.
+  the grade range the school runs (1–13), and a school type (boys / girls /
+  mixed), editable afterward from Settings. A single-sex school type is
+  enforced against `student_profiles.gender` at student create/update time —
+  gender stays optional under `mixed`, but must be set and match under
+  `boys`/`girls`.
 - **Academic years** — create/list years, and flip exactly one to "current"
   (`SetCurrentAcademicYear`), which is what almost every other module reads
   as its implicit scope.
@@ -141,6 +144,15 @@ dashboard shows them (a `RoleBadge` and, for Section Head and above, a
 - **Prefect board** — rank-based appointments (Head Prefect down to House
   Captain / Vice House Captain) per academic year, with a year selector that
   switches past years into a read-only archive view.
+- **Societies** — clubs/societies (Science Society, Interact/Leo Club,
+  Scouts, etc.), each with an admin-assigned Teacher-in-Charge and a
+  five-role student roster (Leader, Deputy Leader, Secretary, Treasurer,
+  Member) per academic year, with the same year-selector archive view as the
+  prefect board. The Teacher-in-Charge manages their own society's roster
+  from a "My Society" page in the teacher portal; admins can manage any
+  society. Distinct from the free-text `student_activities` "society"
+  category — memberships here are FK-linked to a real society record and
+  surface in the student's Activities tab alongside it.
 - **Positions** — the Principal/Vice Principal admin screen (§ Roles &
   positions).
 
@@ -251,6 +263,70 @@ an in-app notification.
 Every house reassignment, attendance-lock override, and other sensitive
 change is recorded with actor, before/after state, and an optional reason,
 readable admin-only at `/settings` → Audit Log.
+
+## Automation
+
+Scheduled, read-mostly background jobs (`internal/jobs/`) that support the
+system's operation without any user-facing feature depending on them —
+each can be toggled off independently from `/automation` (admin-only, System
+nav) with no other effect. An in-process `github.com/robfig/cron/v3`
+scheduler, started alongside the Gin server, runs each job on its own
+schedule; a `job_settings` row (default enabled) gates each one, and
+`job_runs` keeps the last 50 executions per job so the Automation panel can
+show a real last-status/summary/finding-count instead of a bare toggle.
+Admins can also trigger any enabled job immediately ("Run now").
+
+15 jobs ship today. Each is deliberately single-purpose — three of the
+original eight were later split (see below) once it became clear a job
+that bundles several unrelated checks into one summary can't be shown
+correctly on a specific page, only in the general Automation panel:
+
+- **Backup + migration-drift** — nightly `pg_dump` plus a check that the
+  DB's applied `golang-migrate` version matches this binary's. No page
+  binding (Automation panel only).
+- **Current-academic-year invariant** — flags a current-academic-year count
+  other than 1. Surfaced on Academic Years.
+- **Student gender / school-type watcher** — active students whose gender
+  doesn't match a single-sex school's type. Surfaced on Students.
+- **Unclassed student watcher** — active students with no class in the
+  current year. Surfaced on Students and Classes.
+- **Empty grade watcher** — a grade with zero classes this year. Surfaced
+  on Grades.
+- **Empty stream watcher** — an A/L stream with zero classes this year.
+  Surfaced on Streams.
+- **Zero-guardian student watcher** — active students with no guardian on
+  file (the absence-notification path silently no-ops for these). Surfaced
+  on Students.
+- **Employment-status consistency checker** — resigned/transferred teachers
+  still assigned as a form teacher or subject teacher on a current-year
+  class. Surfaced on Teachers and Classes.
+- **Missing attendance session watcher** — classes with no attendance
+  session taken today. Surfaced on Attendance.
+- **Term-marks deadline watcher** — terms nearing their lock date with zero
+  marks entered anywhere. Surfaced on Class Marks.
+- **Stale/incomplete attendance session watcher** — sessions older than 24h
+  with fewer records than the class roster. Surfaced on Attendance.
+- **Teacher onboarding watcher** / **Student onboarding watcher** —
+  role-scoped: accounts of that role stuck on first-login setup past 14
+  days. Surfaced on Teachers / Students respectively — split by role so
+  neither page's banner ever shows the other role's accounts.
+- **Password reset token sweep** — deletes expired, unused
+  password-reset tokens. Pure cleanup, no finding to show, no page binding.
+- **Audit-log anomaly watcher** — any account with more than 50
+  audit-logged changes in the last hour. Surfaced on Settings → Audit Log.
+
+Every job that finds something notifies every admin account through the
+normal notification pipeline (`NotificationService.SendDirect`), attributed
+to the earliest-created admin account. Where a job's finding is relevant to
+a specific admin page, a small dismissible `AgentFindingsBanner` component
+(`frontend/src/components/common/AgentFindingsBanner.tsx`) shows it right
+there — reading the same `/jobs` endpoint the Automation panel uses, so
+this is presentation only, not a second backend surface. See
+[`plan.md`](./plan.md#maintenanceops-agents) for the two items from the
+original proposal that were deliberately not built this way (a promotion
+pre-commit check that doesn't fit the scheduled-job shape, and a
+vulnerability-scan triage job that would need toolchains not guaranteed to
+exist on a deployed API host).
 
 ## Portals at a glance
 

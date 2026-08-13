@@ -60,6 +60,13 @@ RETURNING *;
 SELECT * FROM attendance_records
 WHERE session_id = $1 AND student_id = $2;
 
+-- name: ListAttendanceRecordsBySession :many
+-- raw records for a session, no join — batches the "does this student
+-- already have a record, and what was it" check MarkAttendance needs for
+-- every student in one query instead of one GetAttendanceRecord per student.
+SELECT * FROM attendance_records
+WHERE session_id = $1;
+
 -- name: ListAttendanceBySession :many
 SELECT
     ar.*,

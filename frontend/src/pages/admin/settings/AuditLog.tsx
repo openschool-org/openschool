@@ -2,6 +2,7 @@ import { SkeletonText, Tag } from "@carbon/react";
 import { useAuditLogs } from "../../../queries/useAuditLogs";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
+import AgentFindingsBanner from "../../../components/common/AgentFindingsBanner";
 
 function formatEntity(entityType: string) {
   return entityType.replace(/_/g, " ");
@@ -27,6 +28,8 @@ export default function AuditLog() {
           </p>
         </div>
       </div>
+
+      <AgentFindingsBanner jobNames={["audit_log_anomaly_watcher"]} />
 
       {isError && <ErrorMessage message="Could not load the audit log." onRetry={refetch} />}
 

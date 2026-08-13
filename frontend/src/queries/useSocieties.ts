@@ -1,0 +1,101 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { societyApi } from "../services/society";
+import type { AssignSocietyMemberRequest, CreateSocietyRequest, UpdateSocietyRequest } from "../services/society";
+
+export const societiesKey = (academicYearId: string) => ["societies", academicYearId];
+
+export const useSocieties = (academicYearId: string) =>
+  useQuery({
+    queryKey: societiesKey(academicYearId),
+    queryFn: () => societyApi.listByYear(academicYearId),
+    enabled: !!academicYearId,
+  });
+
+export const societyYearsKey = ["societies", "years"];
+
+// Academic years that have at least one society — for the archive view's
+// year selector, same pattern as usePrefectYears.
+export const useSocietyYears = () =>
+  useQuery({
+    queryKey: societyYearsKey,
+    queryFn: () => societyApi.listYears(),
+  });
+
+export const societyMembersKey = (societyId: string) => ["societies", societyId, "members"];
+
+export const useSocietyMembers = (societyId: string) =>
+  useQuery({
+    queryKey: societyMembersKey(societyId),
+    queryFn: () => societyApi.listMembers(societyId),
+    enabled: !!societyId,
+  });
+
+export const MY_SOCIETY_KEY = ["me", "teacher", "society"];
+
+export const useMySociety = () =>
+  useQuery({
+    queryKey: MY_SOCIETY_KEY,
+    queryFn: societyApi.me,
+    retry: false,
+  });
+
+export const studentSocietyMembershipsKey = (studentId: string) => ["students", studentId, "society-memberships"];
+
+export const useStudentSocietyMemberships = (studentId: string) =>
+  useQuery({
+    queryKey: studentSocietyMembershipsKey(studentId),
+    queryFn: () => societyApi.listByStudent(studentId),
+    enabled: !!studentId,
+  });
+
+export const useCreateSociety = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateSocietyRequest) => societyApi.create(data),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: societiesKey(variables.academic_year_id) });
+      queryClient.invalidateQueries({ queryKey: societyYearsKey });
+    },
+  });
+};
+
+export const useUpdateSociety = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateSocietyRequest }) => societyApi.update(id, data),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: societiesKey(result.academic_year_id) });
+    },
+  });
+};
+
+export const useDeleteSociety = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: string; academicYearId: string }) => societyApi.remove(id),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: societiesKey(variables.academicYearId) });
+      queryClient.invalidateQueries({ queryKey: societyYearsKey });
+    },
+  });
+};
+
+export const useAssignSocietyMember = (societyId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AssignSocietyMemberRequest) => societyApi.assignMember(societyId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: societyMembersKey(societyId) });
+    },
+  });
+};
+
+export const useRemoveSocietyMember = (societyId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (memberId: string) => societyApi.removeMember(societyId, memberId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: societyMembersKey(societyId) });
+    },
+  });
+};

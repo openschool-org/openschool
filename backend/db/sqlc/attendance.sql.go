@@ -250,6 +250,40 @@ func (q *Queries) ListAttendanceByStudent(ctx context.Context, studentID uuid.UU
 	return items, nil
 }
 
+const listAttendanceRecordsBySession = `-- name: ListAttendanceRecordsBySession :many
+SELECT id, session_id, student_id, status, note FROM attendance_records
+WHERE session_id = $1
+`
+
+// raw records for a session, no join — batches the "does this student
+// already have a record, and what was it" check MarkAttendance needs for
+// every student in one query instead of one GetAttendanceRecord per student.
+func (q *Queries) ListAttendanceRecordsBySession(ctx context.Context, sessionID uuid.UUID) ([]AttendanceRecord, error) {
+	rows, err := q.db.Query(ctx, listAttendanceRecordsBySession, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AttendanceRecord{}
+	for rows.Next() {
+		var i AttendanceRecord
+		if err := rows.Scan(
+			&i.ID,
+			&i.SessionID,
+			&i.StudentID,
+			&i.Status,
+			&i.Note,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAttendanceRecordsForClassInRange = `-- name: ListAttendanceRecordsForClassInRange :many
 SELECT
     ar.id,

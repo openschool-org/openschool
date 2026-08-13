@@ -13,6 +13,7 @@ import TableSkeleton from "../../../components/common/TableSkeleton";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import AgentFindingsBanner from "../../../components/common/AgentFindingsBanner";
 
 const STUDENT_TABLE_HEADERS = [
   "Index No.",
@@ -84,6 +85,15 @@ export default function Students() {
           Enrol Student
         </Button>
       </div>
+
+      <AgentFindingsBanner
+        jobNames={[
+          "zero_guardian_watcher",
+          "student_gender_school_type_watcher",
+          "unclassed_student_watcher",
+          "student_onboarding_watcher",
+        ]}
+      />
 
       <div className="os-section">
         <div className="os-toolbar">

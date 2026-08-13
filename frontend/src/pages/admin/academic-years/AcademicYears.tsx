@@ -9,6 +9,7 @@ import {
 } from "../../../queries/useAcademicYears";
 import type { AcademicYear } from "../../../services/academicYear";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import AgentFindingsBanner from "../../../components/common/AgentFindingsBanner";
 import YearsList from "./components/YearsList";
 import CreateYearModal, { type YearForm, type YearFormTouched } from "./components/CreateYearModal";
 import TermsModal from "./components/TermsModal";
@@ -83,6 +84,8 @@ export default function AcademicYears() {
           New Academic Year
         </Button>
       </div>
+
+      <AgentFindingsBanner jobNames={["current_academic_year_invariant"]} />
 
       <YearsList
         years={years}

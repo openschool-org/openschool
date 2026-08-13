@@ -19,10 +19,11 @@ type TeacherSelfHandler struct {
 	teachers  *repositories.TeacherRepository
 	school    *repositories.SchoolRepository
 	positions *services.PositionService
+	societies *services.SocietyService
 }
 
-func NewTeacherSelfHandler(teachers *repositories.TeacherRepository, school *repositories.SchoolRepository, positions *services.PositionService) *TeacherSelfHandler {
-	return &TeacherSelfHandler{teachers: teachers, school: school, positions: positions}
+func NewTeacherSelfHandler(teachers *repositories.TeacherRepository, school *repositories.SchoolRepository, positions *services.PositionService, societies *services.SocietyService) *TeacherSelfHandler {
+	return &TeacherSelfHandler{teachers: teachers, school: school, positions: positions, societies: societies}
 }
 
 // Profile godoc
@@ -84,6 +85,42 @@ func (h *TeacherSelfHandler) Position(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, summary)
+}
+
+// Society godoc
+// @Summary      The society the signed-in teacher is Teacher-in-Charge of, for the current academic year
+// @Tags         teacher
+// @Produce      json
+// @Success      200  {object}  map[string]any
+// @Failure      404  {object}  map[string]string
+// @Security     BearerAuth
+// @Router       /me/teacher/society [get]
+func (h *TeacherSelfHandler) Society(c *gin.Context) {
+	callerID, err := middleware.UserIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
+		return
+	}
+
+	teacher, err := h.teachers.GetByUserID(c.Request.Context(), callerID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no teacher profile linked to this account"})
+		return
+	}
+
+	year, err := h.school.GetCurrentAcademicYear(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no current academic year configured"})
+		return
+	}
+
+	society, err := h.societies.GetForTeacher(c.Request.Context(), teacher.ID, year.ID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "you are not the Teacher-in-Charge of any society this year"})
+		return
+	}
+
+	c.JSON(http.StatusOK, society)
 }
 
 // LeadershipOverview godoc

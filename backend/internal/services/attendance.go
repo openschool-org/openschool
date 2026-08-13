@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
@@ -249,6 +248,18 @@ func (s *AttendanceService) MarkAttendance(ctx context.Context, actor Actor, ses
 		return err
 	}
 
+	// Batched once up front instead of one GetRecord call per student in
+	// the loop below — a class of 40 students previously cost 40 extra
+	// round-trips just to detect status transitions.
+	existing, err := s.repo.ListRecordsBySession(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to load existing attendance records: %w", err)
+	}
+	previousByStudent := make(map[uuid.UUID]db.AttendanceRecord, len(existing))
+	for _, r := range existing {
+		previousByStudent[r.StudentID] = r
+	}
+
 	for _, record := range req.Records {
 		studentID, err := uuid.Parse(record.StudentID)
 		if err != nil {
@@ -259,11 +270,7 @@ func (s *AttendanceService) MarkAttendance(ctx context.Context, actor Actor, ses
 			return fmt.Errorf("invalid status: %s — must be present, absent, late or excused", record.Status)
 		}
 
-		previous, prevErr := s.repo.GetRecord(ctx, sessionID, studentID)
-		hadPrevious := prevErr == nil
-		if prevErr != nil && !errors.Is(prevErr, pgx.ErrNoRows) {
-			return fmt.Errorf("failed to check existing attendance for student %s: %w", record.StudentID, prevErr)
-		}
+		previous, hadPrevious := previousByStudent[studentID]
 
 		updated, err := s.repo.MarkAttendance(ctx, sessionID, studentID, record.Status, record.Note)
 		if err != nil {

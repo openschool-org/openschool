@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 
@@ -13,18 +14,53 @@ import (
 	"github.com/openschool-org/openschool/internal/repositories"
 )
 
+// ErrGenderMismatchSchoolType is returned when a student's gender doesn't
+// match a single-sex school's school_type — see Phase 11, item 1
+// (docs/plan.md). Government single-sex schools have zero opposite-gender
+// students at any grade, so this is enforced at the service layer since the
+// DB has no cross-table constraint mechanism for it.
+var ErrGenderMismatchSchoolType = errors.New("student gender does not match the school's single-sex type")
+
 type StudentService struct {
-	repo     *repositories.StudentRepository
-	idp      identity.Provider
-	houseSvc *HouseService
-	audit    *AuditService
+	repo       *repositories.StudentRepository
+	idp        identity.Provider
+	houseSvc   *HouseService
+	audit      *AuditService
+	schoolRepo *repositories.SchoolRepository
 }
 
-func NewStudentService(repo *repositories.StudentRepository, idp identity.Provider, houseSvc *HouseService, audit *AuditService) *StudentService {
-	return &StudentService{repo: repo, idp: idp, houseSvc: houseSvc, audit: audit}
+func NewStudentService(repo *repositories.StudentRepository, idp identity.Provider, houseSvc *HouseService, audit *AuditService, schoolRepo *repositories.SchoolRepository) *StudentService {
+	return &StudentService{repo: repo, idp: idp, houseSvc: houseSvc, audit: audit, schoolRepo: schoolRepo}
+}
+
+// validateGenderForSchoolType enforces docs/plan.md Phase 11 item 1: gender
+// is free when the school is mixed, but must match a single-sex school's
+// type. Skips validation (rather than erroring) when the school row can't be
+// read — CreateStudent must not be blocked by an unrelated lookup failure.
+func (s *StudentService) validateGenderForSchoolType(ctx context.Context, gender string) error {
+	school, err := s.schoolRepo.Get(ctx)
+	if err != nil {
+		return nil
+	}
+	switch school.SchoolType {
+	case "boys":
+		if gender != "male" {
+			return ErrGenderMismatchSchoolType
+		}
+	case "girls":
+		if gender != "female" {
+			return ErrGenderMismatchSchoolType
+		}
+	}
+	// "mixed" (or unset): gender stays optional, any value is fine.
+	return nil
 }
 
 func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStudentRequest, actorID uuid.UUID) (db.StudentProfile, error) {
+	if err := s.validateGenderForSchoolType(ctx, req.Gender); err != nil {
+		return db.StudentProfile{}, err
+	}
+
 	// check index number not already used
 	_, err := s.repo.GetByIndexNumber(ctx, req.IndexNumber)
 	if err == nil {
@@ -126,6 +162,10 @@ func (s *StudentService) ListStudentsByClass(ctx context.Context, classID uuid.U
 }
 
 func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req models.UpdateStudentRequest) (db.StudentProfile, error) {
+	if err := s.validateGenderForSchoolType(ctx, req.Gender); err != nil {
+		return db.StudentProfile{}, err
+	}
+
 	// get student to find user_id
 	student, err := s.repo.GetByID(ctx, id)
 	if err != nil {

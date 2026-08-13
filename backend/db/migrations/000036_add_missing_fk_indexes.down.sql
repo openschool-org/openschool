@@ -1,0 +1,17 @@
+DROP INDEX IF EXISTS idx_student_disciplinary_records_recorded_by;
+DROP INDEX IF EXISTS idx_student_progress_reports_written_by;
+DROP INDEX IF EXISTS idx_staff_attendance_records_marked_by;
+DROP INDEX IF EXISTS idx_audit_logs_actor_id;
+DROP INDEX IF EXISTS idx_timetables_published_by;
+DROP INDEX IF EXISTS idx_timetables_reviewed_by;
+DROP INDEX IF EXISTS idx_timetables_submitted_by;
+DROP INDEX IF EXISTS idx_timetables_created_by;
+DROP INDEX IF EXISTS idx_timetables_parent_timetable_id;
+DROP INDEX IF EXISTS idx_timetable_entries_subject_id;
+DROP INDEX IF EXISTS idx_subject_period_requirements_subject_id;
+DROP INDEX IF EXISTS idx_student_subject_enrollments_medium_id;
+DROP INDEX IF EXISTS idx_class_students_academic_year_id;
+DROP INDEX IF EXISTS idx_classes_boy_monitor_id;
+DROP INDEX IF EXISTS idx_classes_girl_monitor_id;
+DROP INDEX IF EXISTS idx_classes_stream_group_id;
+DROP INDEX IF EXISTS idx_student_siblings_student_id_2;

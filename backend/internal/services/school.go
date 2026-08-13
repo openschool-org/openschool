@@ -55,13 +55,14 @@ func (s *SchoolService) CreateSchool(ctx context.Context, req models.CreateSchoo
 	}
 
 	return s.repo.Create(ctx, db.CreateSchoolParams{
-		Name:      req.Name,
-		Address:   pgtype.Text{String: req.Address, Valid: req.Address != ""},
-		Phone:     pgtype.Text{String: req.Phone, Valid: req.Phone != ""},
-		Email:     pgtype.Text{String: req.Email, Valid: req.Email != ""},
-		LogoUrl:   pgtype.Text{String: req.LogoURL, Valid: req.LogoURL != ""},
-		GradeFrom: optionalInt4(req.GradeFrom),
-		GradeTo:   optionalInt4(req.GradeTo),
+		Name:       req.Name,
+		Address:    pgtype.Text{String: req.Address, Valid: req.Address != ""},
+		Phone:      pgtype.Text{String: req.Phone, Valid: req.Phone != ""},
+		Email:      pgtype.Text{String: req.Email, Valid: req.Email != ""},
+		LogoUrl:    pgtype.Text{String: req.LogoURL, Valid: req.LogoURL != ""},
+		GradeFrom:  optionalInt4(req.GradeFrom),
+		GradeTo:    optionalInt4(req.GradeTo),
+		SchoolType: schoolTypeOrDefault(req.SchoolType),
 	})
 }
 
@@ -75,15 +76,26 @@ func (s *SchoolService) UpdateSchool(ctx context.Context, id uuid.UUID, req mode
 	}
 
 	return s.repo.Update(ctx, db.UpdateSchoolParams{
-		ID:        id,
-		Name:      req.Name,
-		Address:   pgtype.Text{String: req.Address, Valid: req.Address != ""},
-		Phone:     pgtype.Text{String: req.Phone, Valid: req.Phone != ""},
-		Email:     pgtype.Text{String: req.Email, Valid: req.Email != ""},
-		LogoUrl:   pgtype.Text{String: req.LogoURL, Valid: req.LogoURL != ""},
-		GradeFrom: optionalInt4(req.GradeFrom),
-		GradeTo:   optionalInt4(req.GradeTo),
+		ID:         id,
+		Name:       req.Name,
+		Address:    pgtype.Text{String: req.Address, Valid: req.Address != ""},
+		Phone:      pgtype.Text{String: req.Phone, Valid: req.Phone != ""},
+		Email:      pgtype.Text{String: req.Email, Valid: req.Email != ""},
+		LogoUrl:    pgtype.Text{String: req.LogoURL, Valid: req.LogoURL != ""},
+		GradeFrom:  optionalInt4(req.GradeFrom),
+		GradeTo:    optionalInt4(req.GradeTo),
+		SchoolType: schoolTypeOrDefault(req.SchoolType),
 	})
+}
+
+// schoolTypeOrDefault treats an empty request field as "mixed", matching the
+// column's DB-level default so omitting school_type in a request behaves the
+// same as never having set it.
+func schoolTypeOrDefault(schoolType string) string {
+	if schoolType == "" {
+		return "mixed"
+	}
+	return schoolType
 }
 
 func (s *SchoolService) CreateAcademicYear(ctx context.Context, req models.CreateAcademicYearRequest) (db.AcademicYear, error) {

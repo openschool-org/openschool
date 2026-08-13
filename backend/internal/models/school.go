@@ -5,23 +5,25 @@ import "time"
 // GradeFrom/GradeTo bound the grades this instance runs. They drive what the
 // UI offers; no backend logic infers meaning from the numbers.
 type CreateSchoolRequest struct {
-	Name      string `json:"name" binding:"required"`
-	Address   string `json:"address"`
-	Phone     string `json:"phone"`
-	Email     string `json:"email"`
-	LogoURL   string `json:"logo_url"`
-	GradeFrom *int32 `json:"grade_from"`
-	GradeTo   *int32 `json:"grade_to"`
+	Name       string `json:"name" binding:"required"`
+	Address    string `json:"address"`
+	Phone      string `json:"phone"`
+	Email      string `json:"email"`
+	LogoURL    string `json:"logo_url"`
+	GradeFrom  *int32 `json:"grade_from"`
+	GradeTo    *int32 `json:"grade_to"`
+	SchoolType string `json:"school_type" binding:"omitempty,oneof=boys girls mixed"`
 }
 
 type UpdateSchoolRequest struct {
-	Name      string `json:"name" binding:"required"`
-	Address   string `json:"address"`
-	Phone     string `json:"phone"`
-	Email     string `json:"email"`
-	LogoURL   string `json:"logo_url"`
-	GradeFrom *int32 `json:"grade_from"`
-	GradeTo   *int32 `json:"grade_to"`
+	Name       string `json:"name" binding:"required"`
+	Address    string `json:"address"`
+	Phone      string `json:"phone"`
+	Email      string `json:"email"`
+	LogoURL    string `json:"logo_url"`
+	GradeFrom  *int32 `json:"grade_from"`
+	GradeTo    *int32 `json:"grade_to"`
+	SchoolType string `json:"school_type" binding:"omitempty,oneof=boys girls mixed"`
 }
 
 type CreateAcademicYearRequest struct {
@@ -36,15 +38,16 @@ type SetCurrentAcademicYearRequest struct {
 }
 
 type SchoolResponse struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Address   string `json:"address"`
-	Phone     string `json:"phone"`
-	Email     string `json:"email"`
-	LogoURL   string `json:"logo_url"`
-	GradeFrom *int32 `json:"grade_from"`
-	GradeTo   *int32 `json:"grade_to"`
-	CreatedAt string `json:"created_at"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Address    string `json:"address"`
+	Phone      string `json:"phone"`
+	Email      string `json:"email"`
+	LogoURL    string `json:"logo_url"`
+	GradeFrom  *int32 `json:"grade_from"`
+	GradeTo    *int32 `json:"grade_to"`
+	SchoolType string `json:"school_type"`
+	CreatedAt  string `json:"created_at"`
 }
 
 type AcademicYearResponse struct {

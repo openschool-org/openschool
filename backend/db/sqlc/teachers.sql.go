@@ -400,6 +400,49 @@ func (q *Queries) ListTeachers(ctx context.Context) ([]TeacherProfile, error) {
 	return items, nil
 }
 
+const listTeachersByIDs = `-- name: ListTeachersByIDs :many
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
+WHERE id = ANY($1::uuid[])
+`
+
+// batched form of GetTeacherByID for resolving several teacher_profile IDs
+// (e.g. to their user_id, for a notification recipient list) in one query
+// instead of one per teacher.
+func (q *Queries) ListTeachersByIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]TeacherProfile, error) {
+	rows, err := q.db.Query(ctx, listTeachersByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TeacherProfile{}
+	for rows.Next() {
+		var i TeacherProfile
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FullName,
+			&i.EmployeeNumber,
+			&i.JoinedDate,
+			&i.Phone,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Title,
+			&i.Gender,
+			&i.IsActive,
+			&i.HouseID,
+			&i.EmploymentStatus,
+			&i.NicNumber,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTeachersBySubject = `-- name: ListTeachersBySubject :many
 SELECT
     tp.id, tp.user_id, tp.full_name, tp.employee_number, tp.joined_date, tp.phone, tp.created_at, tp.updated_at, tp.title, tp.gender, tp.is_active, tp.house_id, tp.employment_status, tp.nic_number

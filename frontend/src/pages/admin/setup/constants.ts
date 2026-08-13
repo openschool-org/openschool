@@ -16,6 +16,7 @@ export interface SchoolFormState {
   phone: string;
   email: string;
   logo_url: string;
+  school_type: "boys" | "girls" | "mixed";
   grade_from: number | "";
   grade_to: number | "";
 }

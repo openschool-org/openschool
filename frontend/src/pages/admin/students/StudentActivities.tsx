@@ -7,10 +7,40 @@ import {
   useCreateStudentActivity,
   useDeleteStudentActivity,
 } from "../../../queries/useStudentPortfolio";
+import { useStudentSocietyMemberships } from "../../../queries/useSocieties";
 import { ACTIVITY_CATEGORIES } from "../../../services/studentPortfolio";
 import type { ActivityCategory } from "../../../services/studentPortfolio";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import EmptyState from "../../../components/common/EmptyState";
+
+const SOCIETY_ROLE_LABELS: Record<string, string> = {
+  leader: "Leader",
+  deputy_leader: "Deputy Leader",
+  secretary: "Secretary",
+  treasurer: "Treasurer",
+  member: "Member",
+};
+
+function StudentSocietyMemberships({ studentId }: { studentId: string }) {
+  const { data: memberships, isLoading } = useStudentSocietyMemberships(studentId);
+
+  if (isLoading || (memberships?.length ?? 0) === 0) return null;
+
+  return (
+    <div style={{ marginBottom: "1.5rem" }}>
+      <h3 style={{ fontSize: "0.75rem", fontWeight: 600, textTransform: "uppercase", color: "#8d8d8d", margin: "0 0 0.5rem" }}>
+        Society Memberships
+      </h3>
+      {memberships?.map((m) => (
+        <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "0.625rem", padding: "0.625rem 0", borderBottom: "1px solid #e0e0e0" }}>
+          <Tag size="sm" type="purple">{SOCIETY_ROLE_LABELS[m.role] ?? m.role}</Tag>
+          <span style={{ fontWeight: 500, fontSize: "0.875rem" }}>{m.society_name}</span>
+          <span style={{ fontSize: "0.8125rem", color: "#8d8d8d" }}>{m.academic_year_label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function StudentActivities({ studentId }: { studentId: string }) {
   const { data: currentYear } = useCurrentAcademicYear();
@@ -42,6 +72,8 @@ export default function StudentActivities({ studentId }: { studentId: string }) 
         <span style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>Clubs, sports, societies &amp; competitions</span>
       </div>
       <div className="os-section__body">
+        <StudentSocietyMemberships studentId={studentId} />
+
         {createActivity.isError && (
           <InlineNotification
             kind="error"

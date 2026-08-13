@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS job_runs;
+DROP TABLE IF EXISTS job_settings;

@@ -133,6 +133,22 @@ type House struct {
 	Color     string             `json:"color"`
 }
 
+type JobRun struct {
+	ID         uuid.UUID          `json:"id"`
+	JobName    string             `json:"job_name"`
+	StartedAt  pgtype.Timestamptz `json:"started_at"`
+	FinishedAt pgtype.Timestamptz `json:"finished_at"`
+	Status     string             `json:"status"`
+	Summary    pgtype.Text        `json:"summary"`
+	Findings   int32              `json:"findings"`
+}
+
+type JobSetting struct {
+	JobName   string             `json:"job_name"`
+	Enabled   bool               `json:"enabled"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Level struct {
 	ID        uuid.UUID          `json:"id"`
 	Label     string             `json:"label"`
@@ -203,15 +219,16 @@ type Prefect struct {
 }
 
 type School struct {
-	ID        uuid.UUID          `json:"id"`
-	Name      string             `json:"name"`
-	Address   pgtype.Text        `json:"address"`
-	Phone     pgtype.Text        `json:"phone"`
-	Email     pgtype.Text        `json:"email"`
-	LogoUrl   pgtype.Text        `json:"logo_url"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	GradeFrom pgtype.Int4        `json:"grade_from"`
-	GradeTo   pgtype.Int4        `json:"grade_to"`
+	ID         uuid.UUID          `json:"id"`
+	Name       string             `json:"name"`
+	Address    pgtype.Text        `json:"address"`
+	Phone      pgtype.Text        `json:"phone"`
+	Email      pgtype.Text        `json:"email"`
+	LogoUrl    pgtype.Text        `json:"logo_url"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	GradeFrom  pgtype.Int4        `json:"grade_from"`
+	GradeTo    pgtype.Int4        `json:"grade_to"`
+	SchoolType string             `json:"school_type"`
 }
 
 type SectionHead struct {
@@ -231,6 +248,23 @@ type SelectionGroup struct {
 	MaxSelect int32              `json:"max_select"`
 	SortOrder int32              `json:"sort_order"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type Society struct {
+	ID                uuid.UUID          `json:"id"`
+	Name              string             `json:"name"`
+	TeacherInChargeID uuid.UUID          `json:"teacher_in_charge_id"`
+	AcademicYearID    uuid.UUID          `json:"academic_year_id"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+}
+
+type SocietyMember struct {
+	ID             uuid.UUID          `json:"id"`
+	SocietyID      uuid.UUID          `json:"society_id"`
+	StudentID      uuid.UUID          `json:"student_id"`
+	Role           string             `json:"role"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type StaffAttendanceRecord struct {

@@ -14,6 +14,7 @@ import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import AgentFindingsBanner from "../../../components/common/AgentFindingsBanner";
 import GradeRow from "./components/GradeRow";
 import GradeFormModal from "./components/GradeFormModal";
 
@@ -141,6 +142,8 @@ export default function Grades() {
           Add Grade
         </Button>
       </div>
+
+      <AgentFindingsBanner jobNames={["empty_grade_watcher"]} />
 
       {isError && (
         <ErrorMessage message="Could not load grades." onRetry={refetch} />

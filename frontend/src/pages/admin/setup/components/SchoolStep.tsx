@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { TextInput, NumberInput } from "@carbon/react";
+import { TextInput, NumberInput, Select, SelectItem } from "@carbon/react";
 import { Enterprise } from "@carbon/icons-react";
 import LogoUpload from "../../../../components/school/LogoUpload";
 import StepShell from "./StepShell";
@@ -57,6 +57,19 @@ export default function SchoolStep({ school, setSchool, schoolTouched, gradeRang
           editing
           onChange={(v) => setSchool((s) => ({ ...s, logo_url: v }))}
         />
+        <Select
+          id="ss-school-type"
+          labelText="School Type"
+          helperText="Single-sex schools enforce matching student gender on enrollment. Change later in Settings."
+          value={school.school_type}
+          onChange={(e) =>
+            setSchool((s) => ({ ...s, school_type: e.target.value as "boys" | "girls" | "mixed" }))
+          }
+        >
+          <SelectItem value="mixed" text="Mixed" />
+          <SelectItem value="boys" text="Boys" />
+          <SelectItem value="girls" text="Girls" />
+        </Select>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
           <NumberInput
             id="ss-grade-from"

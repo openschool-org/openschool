@@ -11,6 +11,7 @@ import TableSkeleton from "../../../components/common/TableSkeleton";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import AgentFindingsBanner from "../../../components/common/AgentFindingsBanner";
 
 const ATTENDANCE_TABLE_HEADERS = ["Class", "Grade", "Teacher", "Records", "Status", "Actions"];
 
@@ -72,6 +73,8 @@ export default function Attendance() {
           </DatePicker>
         </div>
       </div>
+
+      <AgentFindingsBanner jobNames={["stale_attendance_watcher", "missing_attendance_session_watcher"]} />
 
       {!isToday && (
         <div style={{ marginBottom: "1rem" }}>

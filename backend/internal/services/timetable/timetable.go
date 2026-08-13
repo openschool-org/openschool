@@ -398,8 +398,8 @@ func (s *TimetableService) Submit(ctx context.Context, id, submittedByUserID uui
 			log.Printf("Submit: failed to resolve reviewers for grade %s, timetable %s not notified: %v", class.GradeID, id, err)
 		}
 		var reviewerUserIDs []uuid.UUID
-		for _, reviewerID := range reviewers {
-			if teacher, err := s.teacherRepo.GetByID(ctx, reviewerID); err == nil {
+		if reviewerTeachers, err := s.teacherRepo.ListByIDs(ctx, reviewers); err == nil {
+			for _, teacher := range reviewerTeachers {
 				reviewerUserIDs = append(reviewerUserIDs, teacher.UserID)
 			}
 		}
@@ -526,18 +526,21 @@ func (s *TimetableService) notifyPublication(ctx context.Context, tt db.Timetabl
 	if err != nil {
 		log.Printf("notifyPublication: failed to list entries for timetable %s, teachers not notified: %v", tt.ID, err)
 	}
-	notifiedTeachers := make(map[uuid.UUID]bool)
+	distinctTeacherIDs := make(map[uuid.UUID]bool)
 	for _, e := range entries {
-		if !e.TeacherID.Valid {
-			continue
+		if e.TeacherID.Valid {
+			distinctTeacherIDs[uuid.UUID(e.TeacherID.Bytes)] = true
 		}
-		teacherProfileID := uuid.UUID(e.TeacherID.Bytes)
-		if notifiedTeachers[teacherProfileID] {
-			continue
+	}
+	if len(distinctTeacherIDs) > 0 {
+		ids := make([]uuid.UUID, 0, len(distinctTeacherIDs))
+		for id := range distinctTeacherIDs {
+			ids = append(ids, id)
 		}
-		notifiedTeachers[teacherProfileID] = true
-		if teacher, err := s.teacherRepo.GetByID(ctx, teacherProfileID); err == nil {
-			add(teacher.UserID)
+		if teachers, err := s.teacherRepo.ListByIDs(ctx, ids); err == nil {
+			for _, teacher := range teachers {
+				add(teacher.UserID)
+			}
 		}
 	}
 

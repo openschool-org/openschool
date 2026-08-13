@@ -1,6 +1,7 @@
-import { TextInput } from "@carbon/react";
+import { TextInput, Select, SelectItem } from "@carbon/react";
 import { Building } from "@carbon/icons-react";
 import LogoUpload from "./LogoUpload";
+import type { SchoolType } from "../../services/school";
 
 export interface SchoolFormValues {
   name: string;
@@ -8,6 +9,7 @@ export interface SchoolFormValues {
   phone: string;
   email: string;
   logo_url: string;
+  school_type: SchoolType;
 }
 
 interface SchoolInfoCardProps {
@@ -56,6 +58,18 @@ export default function SchoolInfoCard({ values, editing, onChange }: SchoolInfo
             readOnly={!editing}
             onChange={e => onChange("phone", e.target.value)}
           />
+          <Select
+            id="school-type"
+            labelText="School Type"
+            helperText="Single-sex schools enforce matching student gender on enrollment."
+            value={values.school_type}
+            disabled={!editing}
+            onChange={e => onChange("school_type", e.target.value)}
+          >
+            <SelectItem value="mixed" text="Mixed" />
+            <SelectItem value="boys" text="Boys" />
+            <SelectItem value="girls" text="Girls" />
+          </Select>
           <div style={{ gridColumn: "1 / -1" }}>
             <LogoUpload
               value={values.logo_url}

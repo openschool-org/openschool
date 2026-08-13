@@ -33,6 +33,7 @@ const EMPTY_FORM: SettingsForm = {
   phone: "",
   email: "",
   logo_url: "",
+  school_type: "mixed",
   grade_from: "",
   grade_to: "",
 };
@@ -44,6 +45,7 @@ function schoolToForm(s: School): SettingsForm {
     phone: s.phone ?? "",
     email: s.email ?? "",
     logo_url: s.logo_url ?? "",
+    school_type: s.school_type ?? "mixed",
     grade_from: s.grade_from ?? "",
     grade_to: s.grade_to ?? "",
   };
@@ -98,6 +100,7 @@ export default function SettingsPage() {
       phone: form.phone,
       email: form.email,
       logo_url: form.logo_url,
+      school_type: form.school_type,
       grade_from: form.grade_from === "" ? null : Number(form.grade_from),
       grade_to: form.grade_to === "" ? null : Number(form.grade_to),
     };
@@ -127,7 +130,7 @@ export default function SettingsPage() {
   };
 
   const handleChange = (field: keyof SchoolFormValues, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm(prev => ({ ...prev, [field]: value }) as SettingsForm);
   };
 
   return (

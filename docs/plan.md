@@ -7,7 +7,7 @@
 
 **Role-hierarchy decision:** the position hierarchy (Principal, Vice Principal, Section Head, Class Teacher, Subject Teacher) is implemented as an **in-app position/title layer** on top of the existing 4 ThunderID-backed roles (`admin`/`teacher`/`student`/`parent`), *not* as new identity-provider roles. Reasoning: the role column is 1:1 with ThunderID's IDP role config, and two prior silent production failures were caused by hand-typed strings that have to match out-of-repo ThunderID console configuration. Adding new IDP roles would repeat that exact risk on every environment.
 
-**Phases 1–9 are complete** (session timeout, guardian directory, attendance locking, role hierarchy, promotion/medium-locked classes, staff & profile expansion, analytics/CRUD polish, NIC & password lifecycle, and pre-release hardening/deepened dashboard). No open items remain in them beyond what's listed below.
+**Phases 1–10 are complete** (session timeout, guardian directory, attendance locking, role hierarchy, promotion/medium-locked classes, staff & profile expansion, analytics/CRUD polish, NIC & password lifecycle, pre-release hardening/deepened dashboard, and the code quality/style refactor). No open items remain in them beyond what's listed below.
 
 ---
 
@@ -40,140 +40,198 @@ Everything still outstanding, in one place (deduplicated from the former per-pha
 
 ---
 
-## Proposed — maintenance/ops agents (not yet built)
+## Maintenance/ops agents
 
-Scheduled, read-mostly jobs that support the system's operation without being
-a user-facing feature — none of the app's existing functions depend on
-these; they can be added or dropped independently. Ranked by value (risk
-mitigated vs. effort):
+**Status: built** — 8 of the 10 originally-proposed agents ship as
+scheduled background jobs; see `FEATURES.md` § Automation for the
+as-built shape and `internal/jobs/` for the code. Architecture, exactly as
+recommended below: a new `internal/jobs/` package with an in-process
+`github.com/robfig/cron/v3` scheduler started from `cmd/api/main.go`
+(`routes.Setup` builds it, returns it, main starts/stops it around the
+HTTP server's lifecycle) — no new infra or deployment unit. One file per
+job implementing a small `Job` interface (`Name`/`Schedule`/`Description`/
+`Run`), self-contained; `internal/jobs/registry.go`'s `BuildAll` is the
+single place that lists every job, so adding a new one is one file + one
+line there. On/off state lives in a `job_settings` table (a job with no row
+defaults to enabled, so new jobs need no seed migration) and a `job_runs`
+history table (pruned to the last 50 rows per job) backs a small
+"Automation" panel in the admin System nav — toggle, "Run now", and each
+job's last status/summary/finding-count. Jobs reuse existing services
+exactly as planned: `NotificationService.SendDirect` (the same
+"system-composes-and-fires" path the timetable workflow already uses,
+attributed to the earliest-created admin account since `created_by` is a
+NOT NULL FK) for anything that should alert admins, and the ad-hoc
+read-mostly queries live in `db/queries/job_checks.sql` /
+`internal/repositories/job_checks.go` since each backs exactly one job, not
+a full entity's CRUD.
 
-1. **Backup + migration-drift agent.** This is a single-instance,
-   self-hosted deployment with no managed DB failover, so a bad migration or
-   host failure is currently unrecoverable. A cron job running `pg_dump` on
-   a schedule, plus a check that the DB's applied `golang-migrate` version
-   matches what the running binary expects, closes the one gap on this list
-   whose failure mode is permanent data loss rather than an inconvenience.
-2. **Data-invariant checker.** Nearly every table is scoped by
-   `academic_year_id`, and the "exactly one current year" rule
-   ([`docs/adr/0003-single-current-academic-year.md`](./adr/0003-single-current-academic-year.md))
-   is enforced at the app level only, not the DB. A periodic scan for
-   invariant violations (zero/multiple current years, orphaned FKs,
-   post-promotion inconsistencies) catches silent corruption before it
-   propagates into attendance, marks, and timetable data that all trust
-   that invariant.
-3. **Operational nudge agent (attendance / marks / timetable).** The
-   notification system already has `Attendance`/`Academic`/`Timetable`
-   categories and a server-side composer path (§ Notifications,
-   `FEATURES.md`), so this is mostly wiring, not new infrastructure: flag
-   classes with no `AttendanceSession` created by a cutoff time, subjects
-   with missing term marks near a term-lock deadline, and timetables stuck
-   in "submitted for review" past N days — then push through the existing
-   composer to the relevant teacher/Section Head.
+**Items 1–6, 8, 9 are built**, each smoke-tested against a real seeded DB
+before shipping. Items 2, 5, and 8 originally shipped as one combined job
+apiece, then were each split into single-purpose jobs so a page-specific
+banner never shows a finding unrelated to that page (e.g. a Students-page
+banner showing an academic-year-count issue) — see `FEATURES.md` §
+Automation for the current 15-job list and which page each surfaces on;
+`internal/jobs/onboarding.go` factors the two role-scoped onboarding
+watchers (item 8's split) through one shared unexported type rather than
+duplicating the file, since only the role and display label differ. Two
+deliberate deviations from the original 10-item list:
 
-Not ranked in the top tier but noted for later: an audit-log anomaly
-watcher (the `audit_logs` table already captures actor/before/after but
-nothing currently alerts on unusual patterns in it) and a scheduled
-`govulncheck`/`pnpm audit` triage job that turns the informational CI
-findings above into a tracked queue instead of noise.
+- **Item 7 (promotion pre-commit sanity check) was *not* built as a
+  scheduled job.** Re-examined during implementation: it's a synchronous,
+  admin-triggered, one-time check tied to a specific promotion run, not a
+  recurring background scan — forcing it into the `Job` interface would
+  have meant either running it on a schedule against no particular
+  promotion (meaningless) or triggering it via "Run now" with no way to
+  scope it to the promotion actually being committed. Still open; the
+  right shape is a synchronous method on `PromotionService` surfaced as a
+  warning banner in the Promotion UI before commit, not a cron job.
+- **Item 10 (`govulncheck`/`pnpm audit` triage) was *not* built.**
+  `govulncheck` and `pnpm audit` need the Go/Node toolchains present at
+  scan time — reasonable in CI, not a safe assumption for the deployed API
+  binary in a self-hosted install. Running them in-process would either
+  silently no-op on hosts without those toolchains or add a hard
+  dependency the rest of this package doesn't have. Left as the
+  CI-only, informational check it already is (§ Open items backlog, CI
+  hardening) rather than force a poor fit.
 
----
-
-## Exploratory — modules platform, instance identity & demo playground
-
-Brainstormed direction, not yet scoped into an actual plan or committed to
-the backlog above — captured here so the reasoning isn't lost. Three
-separate concerns; none blocks the others.
-
-1. **Modules platform (agents live in separate repos, not this monorepo).**
-   Since a deployment is single-tenant (one `school` row per install, per
-   the Data Model) and this is open source (no centrally-hosted marketplace
-   to operate), the lightest workable shape is:
-   - Each module/agent ships its own repo with a manifest
-     (name, version, config as JSON Schema, which read-scopes/webhook
-     events it needs) instead of living in `backend/`/`frontend/`.
-   - Core gets a `modules` table (manifest URL, config JSON, enabled,
-     a scoped API token per module) and an admin page that renders the
-     config form *from* the manifest's JSON Schema — no bespoke UI per
-     module.
-   - A small versioned "Agent API" + webhook dispatcher for exactly the
-     events modules need — start scoped to what the three items in
-     § Proposed — maintenance/ops agents (above) actually require
-     (attendance-session state, term-marks state, timetable-review state)
-     rather than a general permission system up front.
-   - Discovery/"marketplace" can start as nothing more than the admin
-     pasting a manifest URL directly; a public JSON index of manifests
-     (à la Home Assistant's HACS) is a later nicety, not a v1 requirement.
-   - Real cost is designing the manifest/webhook/token contract once,
-     deliberately — not the admin page itself.
-
-2. **Per-school instance identity (not a license).** Open source means a
-   hard license lock doesn't hold — anyone with DB access to their own
-   self-hosted server can bypass a check baked into code they control
-   (same reason GitLab EE / Odoo Enterprise / Zabbix don't try to DRM the
-   local binary). What's actually useful is an **instance identity**:
-   - At first-run (the existing School Setup wizard, § Setup in
-     `FEATURES.md`), generate a UUID *and* an asymmetric keypair for the
-     instance; store both locally (new `instance` table or alongside the
-     single `school` row). Private key never leaves the server.
-   - The UUID + public key is what the instance presents to anything
-     external — a module registry, opt-in telemetry, a support channel —
-     so requests can be verified as coming from one consistent install,
-     via signed requests rather than a password-like license string.
-   - This is the identity a module (item 1 above) would use to
-     authenticate itself to the instance, and vice versa.
-   - An open-core paid-module gate, if ever wanted, is a separate signed
-     JWT-license-file layer on top of this (GitLab-license-style) —
-     explicitly deferred until there's something to gate.
-
-3. **1-hour demo playground (OpenChoreo.dev-style).** Deliberately *outside*
-   this repo — demo infra, not app code. Two shapes considered, in
-   increasing cost:
-   - **Shared demo instance, session-scoped (recommended starting point).**
-     One always-on OpenSchool instance seeded with realistic fake data,
-     reset on a nightly cron; each visitor gets a 1-hour signed session
-     token that logs them out on expiry. A day of infra work, not a
-     platform build.
-   - **Per-visitor ephemeral instance.** A script (naturally living in
-     `openschool-web` or a dedicated demo/infra repo, per the user's
-     suggestion) spins up a fresh containerized backend+DB+seed data per
-     visitor with a TTL teardown. Best experience, real ongoing cost —
-     upgrade path if the shared-instance demo proves popular.
-   - Either shape needs its own demo ThunderID tenant with pre-seeded
-     demo admin/teacher/student/parent accounts — a demo-auth bypass
-     should never live in core app code.
-
-**Next step:** pick one of the three to scope into an actual plan (see
-proposal above) before any implementation starts.
+The originally "considered, not pursued" items are unchanged: a
+class-capacity alert (no `capacity` column exists on `classes`) and a
+notification zero-recipient check (no partial-failure signal exists to
+build one on).
 
 ---
 
-## Phase 10 — Code quality & style refactor
+## Exploratory — modules platform (external, third-party agents)
 
-**Status: complete.** A dedicated pass over both workspaces to raise the baseline code quality and consistency now that the v1 feature set (Phases 1–9) is functionally complete — no behavior changes, comments and style only. Frontend component decomposition (last item below) extends beyond this phase's original scope; added when the pass was carried out, kept here since it's the same "no behavior change" cleanup spirit.
+Brainstormed architecture, not yet scoped into an actual implementation
+plan — captured here so the reasoning isn't lost. This section covers a
+different case from the maintenance/ops agents above: **optional,
+third-party or community-built extensions** — something not written by the
+core maintainer, something in a different language, something an admin
+might not want to hand full DB access to. Nothing here has a known
+consumer yet (no such module exists), which is exactly why it stays
+exploratory rather than scoped for implementation.
 
-- ✅ **Comment quality pass.** Backend: condensed ~50 wrapped multi-line `//` comments to single concise "why" lines across `internal/services/`, `internal/repositories/`, `internal/middleware/`, `internal/thunderid/`; normalized the one ASCII-divider comment block in `curriculum_preset.go`. Swagger annotation blocks and Go doc-comment convention (comment starts with the symbol's name) left untouched/enforced. Frontend comment density was already minimal and load-bearing — audited, no changes needed.
-- ✅ **Coding style consistency check** — `gofmt -l`, `go vet ./...`, `staticcheck ./...` all clean on backend; `pnpm lint` (`eslint .`), `npx tsc -b`, and `npx vite build` all clean on frontend.
-- ✅ **Cross-file duplication cleanup** — added `middleware.UserIDFromContext`, replacing the duplicated/triplicated inline `uuid.Parse(c.GetString("userID"))` pattern across `parent.go`, `timetable/timetable.go`, `student_self.go`, `teacher_self.go` (3 inline copies), `staff_attendance.go`, `student_portfolio.go`, `attendance.go`, `non_academic_staff.go`, `notifications/notification.go`. Added `models.Role{Admin,Teacher,Student,Parent}` plus attendance/timetable/notification status constants, replacing ~60 raw string-literal call sites (`internal/services/*`, `internal/routes/routes.go`).
-- ✅ **Dead-code re-check** — `deadcode ./...` clean.
-- ✅ **Frontend component decomposition (new item, beyond original scope), 16/16 files.** No page had a local `components/` folder before this pass; one convention was established and applied to every admin page over 400 lines:
+**Why separate repos, not this monorepo.** Since a deployment is
+single-tenant (one `school` row per install, per the Data Model) and this
+is open source (no centrally-hosted marketplace to operate), the value of
+this platform *is* independent deployability — a module can be added or
+removed by an admin without a PR to core, written in whatever language the
+author prefers, and run with only the access it's granted rather than the
+full trust the core binary has. Folding third-party code into this
+monorepo would defeat that: every module would need core's Go toolchain,
+core's release cadence, and core's review bar. Separate repos, linked
+through a small versioned contract, is the only shape that keeps "helper"
+modules from becoming coupled to core's own development.
 
-  | File | Before | After | Extracted into |
-  |---|---|---|---|
-  | `pages/admin/setup/SchoolSetup.tsx` | 997 | 321 | `components/` (6 step components + `StepShell`/`RepeatableRow`), `hooks/useSchoolSetupSubmit.ts`, `constants.ts` |
-  | `pages/admin/classes/ClassDetail.tsx` | 949 | 444 | `components/` (3 tab components, 5 modals — `Marks` tab was already `ClassMarks.tsx`) |
-  | `pages/admin/curriculum/LevelDetail.tsx` | 675 | 233 | `components/` (`SubjectCard`, `GroupsList`, `GroupFormModal`, `AddSubjectModal`) |
-  | `pages/admin/academic-years/AcademicYears.tsx` | 649 | 125 | `components/` (`YearsList`, `CreateYearModal`, `TermsModal`, row skeleton) |
-  | `pages/admin/curriculum/Curriculum.tsx` | 620 | 252 | `components/` (`LevelsList`, 3 form modals, `PresetConfirmModal`, row skeleton) |
-  | `pages/admin/students/StudentGuardians.tsx` | 545 | 106 | `components/` (`AddGuardianModal`, `ProvisionLoginModal`, `GuardianRow`) |
-  | `pages/admin/attendance/AttendanceMark.tsx` | 497 | 343 | `components/` (`StatusButton`, `StudentAttendanceRow`), `constants.ts`; built shared `StatusTag` |
-  | `pages/notifications/NotificationComposer.tsx` | 494 | 208 | `components/` (`RecipientPicker`, `SentHistoryRow`, `DraftRow`), `constants.ts` |
-  | `pages/admin/promotion/Promotion.tsx` | 479 | 248 | `components/` (`PromotionGroup`, with the round-robin/shuffle helpers) |
-  | `pages/admin/students/StudentDetail.tsx` | 464 | 264 | `components/` (`StudentProfileTab` — Profile/Current Class/House/Enrollment sections) |
-  | `pages/admin/teachers/TeacherDetail.tsx` | 438 | 234 | `components/` (`TeacherProfileSections`), `constants.ts` |
-  | `pages/admin/staff/NonAcademicStaff.tsx` | 434 | 125 | `components/` (`StaffFormModal`, `StaffDetail`), `constants.ts` |
-  | `pages/admin/guardians/GuardiansDirectory.tsx` | 431 | 119 | `components/` (`EditGuardianModal`, `GuardianDetail`), `constants.ts` |
-  | `pages/admin/grades/Grades.tsx` | 431 | 288 | `components/` (`GradeRow`, `GradeFormModal`) |
-  | `pages/admin/timetable/GradeSections.tsx` | 410 | 215 | `components/` (`PeriodsEditor`, `SectionRow`, `SectionFormModal`), `constants.ts` |
-  | `pages/admin/dashboard/Dashboard.tsx` | 401 | 108 | `components/` (`StatCard`, `AttendanceByClassSection`, `RecentActivitySection`, `AttendanceTodaySidebar`, `AcademicYearSidebar`), `constants.ts` |
+**How it would work, end to end:**
 
-  New shared pieces in `src/components/common/`: `FormModal` (the header/body/error-notification/footer skeleton every create/edit modal was hand-duplicating), `Avatar` (the initials-circle renderer), and `StatusTag` (the colored status-pill pattern, built out from `AttendanceMark.tsx` where it originated). Every extraction verified with `npx tsc --noEmit`, `npx eslint <path>` per file, and a final `npx tsc -b && npx eslint . && npx vite build` across the whole frontend — all clean. No page was manually exercised in a browser as part of this pass; this was a mechanical extract-with-identical-JSX refactor (no logic, prop, or markup changes), not a functional change, so it wasn't spot-checked live.
+1. **Manifest contract.** Each module repo publishes a manifest: name,
+   version, config schema (JSON Schema), which webhook events it wants,
+   which read-scopes it needs from the Agent API.
+2. **Registration.** Admin pastes the manifest URL into the "Modules" admin
+   page. Core fetches and validates it, then stores a `modules` row
+   (`manifest_url`, `config jsonb`, `enabled = false`, `token_hash`,
+   `last_seen_at`, `last_status`).
+3. **Config.** Admin fills in the module's config, rendered from the
+   manifest's JSON Schema. *Open question, not resolved here:* the
+   frontend has no JSON-Schema-driven form renderer today — every existing
+   admin form is hand-coded Carbon fields with `react-hook-form`
+   (see e.g. `frontend/src/pages/admin/staff/components/StaffFormModal.tsx`).
+   Whether to hand-roll a minimal schema→Carbon-field mapper or pull in a
+   form library is a decision for when a real manifest exists to render.
+4. **Enable.** Toggling `enabled` on the `modules` row is what makes the
+   module live — same on/off model as the built-in jobs above, but backed
+   by a real external endpoint instead of an in-process function.
+5. **Scoped token.** A 32-byte random token (`crypto/rand`), SHA-256 hash
+   stored server-side, shown to the admin once — the same pattern already
+   used for password-reset tokens (`issueAndEmailResetToken`,
+   `internal/services/auth.go`). The module sends it as bearer auth on any
+   call back into a small "Agent API" scoped to what its manifest declared.
+6. **Dispatch.** A `DispatchEvent(eventType, payload)` call looks up
+   enabled modules subscribed to that event and fires one HTTP POST per
+   module in its own goroutine with a bounded timeout — dispatch, don't
+   call: core never blocks a request on a module's response. Each
+   attempt's outcome updates `last_status`/`last_seen_at`; there's no
+   retry or queue — a failed delivery just shows up as unhealthy on the
+   admin page, and building retry/task-queue logic is left to the module's
+   own repo, not core.
+7. **Health, not control.** The admin page shows each module's
+   `last_seen_at`/`last_status` and the on/off toggle — it does not manage
+   the module's internal task state. Hard boundary: no module/agent is
+   ever allowed on a request's critical path; the moment one is, this
+   stops being a safe "helper" and becomes a distributed-systems problem
+   this design deliberately avoids taking on.
+
+**Where each piece would live, following existing convention:**
+- Backend: `db/migrations/0000XX_create_modules.up/down.sql`,
+  `db/queries/modules.sql`, `internal/repositories/modules.go`,
+  `internal/services/modules.go`, `internal/routes/modules.go`
+  (`RegisterModuleRoutes(admin, pool)`, admin-only, added to `Setup` in
+  `internal/routes/routes.go` the same way every other feature is wired in).
+- Frontend: a new nav entry in `frontend/src/layouts/RootLayout.tsx`,
+  `pages/admin/modules/Modules.tsx` following the existing
+  list+detail/modal-form convention (`NonAcademicStaff.tsx` is the closest
+  precedent), `queries/useModules.ts`, `services/modules.ts`.
+- Discovery/"marketplace" can start as nothing more than the admin pasting
+  a manifest URL directly; a public JSON index of manifests (à la Home
+  Assistant's HACS) is a later nicety, not a v1 requirement.
+- An open-core paid-module gate, if ever wanted, is a separate concern
+  layered on top of this later, not part of this contract.
+
+**Next step:** stays exploratory until there's an actual third-party
+module to build this for — designing the manifest/webhook/token contract
+is real, deliberate work, and premature without a real consumer to shape
+it against.
+
+---
+
+## Phase 11 — School identity & societies
+
+**Status: items 1 and 2 are built** (school type & gender-aware validation;
+the Societies feature) — see `FEATURES.md` § School setup & academic
+structure and § People for the as-built shape. Item 3 below is still open.
+This schema already mirrors the Sri Lankan government-school system
+specifically (NIC numbers, index numbers, language mediums, A/L streams,
+prefects/houses) — item 3 is grounded in how that system actually works,
+not a generic school software feature.
+
+3. **Agent enhancements — extensions of § Maintenance/ops agents,
+   not new standalone agents:**
+   - **Gender-aware promotion distribution.** `PromotionGroup.tsx`'s
+     existing shuffle helpers (`roundRobinAssign`/`distributeByMarks`/
+     `distributeRandomly`, from Phase 10) balance only on count or marks,
+     never on any student attribute. In a `mixed` school (item 1 above),
+     add a `distributeByGender` strategy that balances the boys/girls
+     ratio evenly across target class sections during promotion —
+     irrelevant and skipped entirely for `boys`/`girls` schools, where
+     every promoted student is already the same gender.
+     *Note on "agent" framing:* promotion distribution is a synchronous,
+     admin-triggered, one-time action — confirmed `internal/services/
+     promotion.go`'s `CommitAssignments` is a pure bulk-write with no
+     server-side scheduling. It doesn't fit the scheduled/background
+     definition the rest of § Maintenance/ops agents uses, so
+     this is really a frontend enhancement to the existing Promotion
+     feature, not a new cron job. Grouped here because it was requested
+     alongside the others, not because it shares their architecture.
+   - **Hierarchy-aware escalation, splitting the Operational nudge agent**
+     (§ Maintenance/ops agents, item 5). Today
+     `PositionService.RankForTeacher` (`internal/services/position.go`)
+     only answers "what is *my own* rank" — confirmed there's no existing
+     resolver that walks from a subordinate to their specific superior.
+     Split the one nudge agent into:
+     - a **student-scoped** variant (attendance/marks gaps affecting a
+       student — already what items 3 and 5 in § Maintenance/ops agents cover), and
+     - a **teacher-scoped, escalating** variant: if a Class/Subject Teacher
+       hasn't acted within N days of the first nudge, escalate to their
+       Section Head (`section_heads WHERE grade_id = ... AND
+       academic_year_id = current`), then to the scoped Vice Principal
+       (`vice_principal_grade_scopes`), then to the Principal
+       (`teacher_positions WHERE position = 'principal'`) — walking the
+       same reporting line the position layer already models but doesn't
+       currently resolve top-down. This is genuinely new resolver code,
+       not just reuse of `RankForTeacher`.
+
+**Next step:** architecture-level writeup only, same treatment as
+§ Exploratory — modules platform — not yet scoped into a file-by-file
+implementation plan.

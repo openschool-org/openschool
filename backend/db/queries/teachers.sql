@@ -25,6 +25,13 @@ RETURNING *;
 SELECT * FROM teacher_profiles
 WHERE id = $1;
 
+-- name: ListTeachersByIDs :many
+-- batched form of GetTeacherByID for resolving several teacher_profile IDs
+-- (e.g. to their user_id, for a notification recipient list) in one query
+-- instead of one per teacher.
+SELECT * FROM teacher_profiles
+WHERE id = ANY($1::uuid[]);
+
 -- name: UpdateTeacherEmploymentStatus :one
 UPDATE teacher_profiles
 SET

@@ -105,7 +105,9 @@ func main() {
 	// an abusive client. Tune via env once real traffic patterns are known.
 	r.Use(middleware.RateLimit(envFloat("API_RATE_LIMIT_RPS", 30), envInt("API_RATE_LIMIT_BURST", 60)))
 
-	routes.Setup(r, db)
+	scheduler := routes.Setup(r, db)
+	scheduler.Start()
+	defer scheduler.Stop()
 
 	// Swagger exposes the full API surface (routes, request/response
 	// shapes); harmless to leave public, but there's no reason to serve it

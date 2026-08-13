@@ -86,8 +86,29 @@ func (r *ClassRepository) IsTeacherAssignedToClass(ctx context.Context, classID,
 	})
 }
 
+// IsTeacherAssignedToAnyStudentClass is the batched form of calling
+// GetStudentCurrentClass + IsTeacherAssignedToClass once per student — one
+// query answering whether teacherID is assigned to any of studentIDs'
+// current-year classes.
+func (r *ClassRepository) IsTeacherAssignedToAnyStudentClass(ctx context.Context, studentIDs []uuid.UUID, teacherID uuid.UUID) (bool, error) {
+	return r.queries.IsTeacherAssignedToAnyStudentClass(ctx, db.IsTeacherAssignedToAnyStudentClassParams{
+		StudentIds: studentIDs,
+		TeacherID:  teacherID,
+	})
+}
+
 func (r *ClassRepository) GetStudentCurrentClass(ctx context.Context, studentID uuid.UUID) (db.GetStudentCurrentClassRow, error) {
 	return r.queries.GetStudentCurrentClass(ctx, studentID)
+}
+
+// ListEnrolledStudentIDs returns, of the given studentIDs, which are
+// currently (this academic year) enrolled in exactly classID — the batched
+// form of calling GetStudentCurrentClass once per student.
+func (r *ClassRepository) ListEnrolledStudentIDs(ctx context.Context, classID uuid.UUID, studentIDs []uuid.UUID) ([]uuid.UUID, error) {
+	return r.queries.ListStudentsEnrolledInCurrentClass(ctx, db.ListStudentsEnrolledInCurrentClassParams{
+		ClassID:    classID,
+		StudentIds: studentIDs,
+	})
 }
 
 func (r *ClassRepository) GetStudentCount(ctx context.Context, classID uuid.UUID) (int64, error) {

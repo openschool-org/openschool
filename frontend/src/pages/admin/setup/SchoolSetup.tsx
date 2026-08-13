@@ -44,6 +44,7 @@ export default function SchoolSetup() {
     phone: "",
     email: "",
     logo_url: "",
+    school_type: "mixed" as "boys" | "girls" | "mixed",
     grade_from: GRADE_MIN as number | "",
     grade_to: GRADE_MAX as number | "",
   });

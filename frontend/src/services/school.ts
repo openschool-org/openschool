@@ -1,5 +1,7 @@
 import api from "../lib/api";
 
+export type SchoolType = "boys" | "girls" | "mixed";
+
 export interface School {
   id: string;
   name: string;
@@ -10,6 +12,8 @@ export interface School {
   // the grade range this instance runs; null when not set
   grade_from: number | null;
   grade_to: number | null;
+  // single-sex vs mixed — school-wide, defaults to "mixed"
+  school_type: SchoolType;
   created_at: string | null;
 }
 
@@ -21,6 +25,7 @@ export interface CreateSchoolRequest {
   logo_url?: string;
   grade_from?: number | null;
   grade_to?: number | null;
+  school_type?: SchoolType;
 }
 
 export const schoolApi = {

@@ -32,6 +32,8 @@ import {
   SettingsAdjust,
   Group,
   DocumentPdf,
+  Idea,
+  Bot,
 } from "@carbon/icons-react";
 import { isNotFoundError } from "../lib/errorMessage";
 import { useSchool } from "../queries/useSchool";
@@ -58,6 +60,7 @@ const NAV_GROUPS: {
       { path: "/teachers", label: "Teachers", Icon: Education },
       { path: "/non-academic-staff", label: "Non-Academic Staff", Icon: Group },
       { path: "/prefects", label: "School Prefects", Icon: Trophy },
+      { path: "/societies", label: "Societies", Icon: Idea },
       { path: "/positions", label: "Leadership Positions", Icon: UserRole },
     ],
   },
@@ -95,7 +98,10 @@ const NAV_GROUPS: {
   },
   {
     label: "System",
-    items: [{ path: "/settings", label: "Settings", Icon: Settings }],
+    items: [
+      { path: "/settings", label: "Settings", Icon: Settings },
+      { path: "/automation", label: "Automation", Icon: Bot },
+    ],
   },
 ];
 

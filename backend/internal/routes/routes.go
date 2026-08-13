@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/openschool-org/openschool/internal/handlers"
+	"github.com/openschool-org/openschool/internal/jobs"
 	"github.com/openschool-org/openschool/internal/middleware"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
@@ -33,7 +34,10 @@ func envIntOr(key string, fallback int) int {
 	return fallback
 }
 
-func Setup(r *gin.Engine, pool *pgxpool.Pool) {
+// Setup wires every route group and returns the background job scheduler
+// (internal/jobs) it built along the way — main.go starts and stops it
+// around the HTTP server's own lifecycle.
+func Setup(r *gin.Engine, pool *pgxpool.Pool) *jobs.Scheduler {
 	api := r.Group("/api/v1")
 
 	api.GET("/health", func(c *gin.Context) {
@@ -84,6 +88,7 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	RegisterNonAcademicStaffRoutes(admin, teacherOrAdmin, pool)
 	RegisterSectionHeadRoutes(admin, teacherOrAdmin, pool)
 	RegisterPrefectRoutes(admin, teacherOrAdmin, pool)
+	RegisterSocietyRoutes(admin, teacherOrAdmin, pool)
 	RegisterPositionRoutes(admin, teacherOrAdmin, pool)
 	RegisterPromotionRoutes(admin, pool)
 	RegisterTermRoutes(admin, protected, pool)
@@ -107,4 +112,9 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 
 	meHandler := handlers.NewMeHandler(services.NewMeService(repositories.NewUserRepository(pool)))
 	protected.GET("/me", meHandler.Get)
+
+	scheduler := jobs.NewScheduler(jobs.BuildAll(pool), repositories.NewJobSchedulerRepository(pool))
+	RegisterJobRoutes(admin, pool, scheduler)
+
+	return scheduler
 }

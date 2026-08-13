@@ -67,6 +67,12 @@ func (r *AttendanceRepository) GetRecord(ctx context.Context, sessionID, student
 	return r.queries.GetAttendanceRecord(ctx, db.GetAttendanceRecordParams{SessionID: sessionID, StudentID: studentID})
 }
 
+// ListRecordsBySession returns every existing record for a session in one
+// query — the batched equivalent of calling GetRecord once per student.
+func (r *AttendanceRepository) ListRecordsBySession(ctx context.Context, sessionID uuid.UUID) ([]db.AttendanceRecord, error) {
+	return r.queries.ListAttendanceRecordsBySession(ctx, sessionID)
+}
+
 func (r *AttendanceRepository) ListBySession(ctx context.Context, sessionID uuid.UUID) ([]db.ListAttendanceBySessionRow, error) {
 	return r.queries.ListAttendanceBySession(ctx, sessionID)
 }

@@ -65,19 +65,33 @@ func (s *TermMarkService) BulkUpsertMarks(ctx context.Context, classID uuid.UUID
 		return nil, err
 	}
 
-	results := make([]db.TermMark, 0, len(req.Entries))
+	studentIDs := make([]uuid.UUID, 0, len(req.Entries))
 	for _, entry := range req.Entries {
 		studentID, err := uuid.Parse(entry.StudentID)
 		if err != nil {
 			return nil, err
 		}
+		studentIDs = append(studentIDs, studentID)
+	}
 
-		// The class+subject authorization above only proves the teacher may
-		// enter marks for *this class* — without also checking the student
-		// is actually enrolled in it, a caller could submit marks for any
-		// student UUID from an entirely different class.
-		enrolledClass, err := s.classRepo.GetStudentCurrentClass(ctx, studentID)
-		if err != nil || enrolledClass.ID != classID {
+	// The class+subject authorization above only proves the teacher may
+	// enter marks for *this class* — without also checking each student is
+	// actually enrolled in it, a caller could submit marks for any student
+	// UUID from an entirely different class. Batched into one query instead
+	// of one GetStudentCurrentClass call per entry.
+	enrolledIDs, err := s.classRepo.ListEnrolledStudentIDs(ctx, classID, studentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify class enrollment: %w", err)
+	}
+	enrolled := make(map[uuid.UUID]bool, len(enrolledIDs))
+	for _, id := range enrolledIDs {
+		enrolled[id] = true
+	}
+
+	results := make([]db.TermMark, 0, len(req.Entries))
+	for i, entry := range req.Entries {
+		studentID := studentIDs[i]
+		if !enrolled[studentID] {
 			return nil, fmt.Errorf("student %s is not enrolled in this class", entry.StudentID)
 		}
 

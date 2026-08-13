@@ -92,6 +92,7 @@ export function useSchoolSetupSubmit(input: Input) {
           phone: school.phone.trim(),
           email: school.email.trim(),
           logo_url: school.logo_url || undefined,
+          school_type: school.school_type,
           grade_from: school.grade_from === "" ? null : Number(school.grade_from),
           grade_to: school.grade_to === "" ? null : Number(school.grade_to),
         });

@@ -210,18 +210,8 @@ func (s *NotificationService) authorizeSender(ctx context.Context, callerRole st
 			if err != nil {
 				return err
 			}
-			authorized := false
-			for _, studentID := range studentIDs {
-				class, err := s.classRepo.GetStudentCurrentClass(ctx, studentID)
-				if err != nil {
-					continue
-				}
-				if ok, err := s.classRepo.IsTeacherAssignedToClass(ctx, class.ID, teacher.ID); err == nil && ok {
-					authorized = true
-					break
-				}
-			}
-			if !authorized {
+			authorized, err := s.classRepo.IsTeacherAssignedToAnyStudentClass(ctx, studentIDs, teacher.ID)
+			if err != nil || !authorized {
 				return ErrForbiddenRecipients
 			}
 
