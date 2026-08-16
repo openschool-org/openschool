@@ -1,16 +1,8 @@
 import { useState } from "react";
-import {
-  Button,
-  TextInput,
-  InlineNotification,
-  ComposedModal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-} from "@carbon/react";
+import { TextInput } from "@carbon/react";
 import { useTeachers } from "../../queries/useTeachers";
 import { useCreateSociety, useUpdateSociety } from "../../queries/useSocieties";
-import { getErrorMessage } from "../../lib/errorMessage";
+import FormModal from "../common/FormModal";
 import EntityCombobox from "../common/EntityCombobox";
 import type { Society } from "../../services/society";
 
@@ -51,47 +43,37 @@ export default function SocietyFormModal({ society, academicYearId, onClose }: P
   };
 
   return (
-    <ComposedModal open size="sm" onClose={onClose}>
-      <ModalHeader title={isEditing ? "Edit society" : "New society"} />
-      <ModalBody>
-        {mutation.isError && (
-          <InlineNotification
-            kind="error"
-            title="Error"
-            subtitle={getErrorMessage(mutation.error, "Failed to save society")}
-            lowContrast
-            hideCloseButton
-            style={{ marginBottom: "1rem", maxWidth: "100%" }}
-          />
-        )}
-        <div style={{ display: "grid", gap: "1rem" }}>
-          <TextInput
-            id="society-name"
-            labelText="Society name"
-            placeholder="e.g. Science Society"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <EntityCombobox
-            id="society-tic"
-            labelText="Teacher-in-Charge"
-            items={teachers ?? []}
-            selectedId={teacherChoice}
-            onSelect={setTeacherChoice}
-            getId={(t) => t.id}
-            itemToString={(t) => `${t.full_name} — ${t.employee_number}`}
-            placeholder="Search teachers by name or employee number…"
-          />
-        </div>
-      </ModalBody>
-      <ModalFooter>
-        <Button kind="secondary" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button kind="primary" onClick={handleSave} disabled={!canSave || mutation.isPending}>
-          {mutation.isPending ? "Saving…" : "Save"}
-        </Button>
-      </ModalFooter>
-    </ComposedModal>
+    <FormModal
+      open
+      size="md"
+      title={isEditing ? "Edit society" : "New society"}
+      onClose={onClose}
+      onSubmit={handleSave}
+      isPending={mutation.isPending}
+      submitDisabled={!canSave}
+      isError={mutation.isError}
+      error={mutation.error}
+      errorFallback="Failed to save society"
+    >
+      <div style={{ display: "grid", gap: "1rem" }}>
+        <TextInput
+          id="society-name"
+          labelText="Society name"
+          placeholder="e.g. Science Society"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <EntityCombobox
+          id="society-tic"
+          labelText="Teacher-in-Charge"
+          items={teachers ?? []}
+          selectedId={teacherChoice}
+          onSelect={setTeacherChoice}
+          getId={(t) => t.id}
+          itemToString={(t) => `${t.full_name} — ${t.employee_number}`}
+          placeholder="Search teachers by name or employee number…"
+        />
+      </div>
+    </FormModal>
   );
 }

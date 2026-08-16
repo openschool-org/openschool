@@ -12,6 +12,7 @@ import (
 	"github.com/openschool-org/openschool/internal/identity"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
+	"github.com/openschool-org/openschool/internal/validation"
 )
 
 // ErrGenderMismatchSchoolType is returned when a student's gender doesn't
@@ -57,6 +58,10 @@ func (s *StudentService) validateGenderForSchoolType(ctx context.Context, gender
 }
 
 func (s *StudentService) CreateStudent(ctx context.Context, req models.CreateStudentRequest, actorID uuid.UUID) (db.StudentProfile, error) {
+	if !validation.IsValidSriLankanPhone(req.PhoneNumber) || !validation.IsValidSriLankanPhone(req.WhatsApp) {
+		return db.StudentProfile{}, validation.ErrInvalidPhone
+	}
+
 	if err := s.validateGenderForSchoolType(ctx, req.Gender); err != nil {
 		return db.StudentProfile{}, err
 	}
@@ -162,6 +167,10 @@ func (s *StudentService) ListStudentsByClass(ctx context.Context, classID uuid.U
 }
 
 func (s *StudentService) UpdateStudent(ctx context.Context, id uuid.UUID, req models.UpdateStudentRequest) (db.StudentProfile, error) {
+	if !validation.IsValidSriLankanPhone(req.PhoneNumber) || !validation.IsValidSriLankanPhone(req.WhatsApp) {
+		return db.StudentProfile{}, validation.ErrInvalidPhone
+	}
+
 	if err := s.validateGenderForSchoolType(ctx, req.Gender); err != nil {
 		return db.StudentProfile{}, err
 	}

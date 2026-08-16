@@ -5,6 +5,7 @@ import type { useAddGroupSubject, useMediums } from "../../../../queries/useCurr
 import type { useSubjects } from "../../../../queries/useSubjects";
 import type { CurriculumTreeGroup } from "../../../../services/curriculum";
 import FormModal from "../../../../components/common/FormModal";
+import EntityCombobox from "../../../../components/common/EntityCombobox";
 import ErrorMessage from "../../../../components/common/ErrorMessage";
 
 export interface SubjectForm {
@@ -69,17 +70,16 @@ export default function AddSubjectModal({
         <p style={{ fontSize: "0.875rem" }}>Every subject in the catalogue is already in this group.</p>
       ) : (
         <div style={{ display: "grid", gap: "1rem" }}>
-          <Select
+          <EntityCombobox
             id="gs-subject"
             labelText="Subject"
-            value={subjectForm.subject_id}
-            onChange={(e) => setSubjectForm((f) => ({ ...f, subject_id: e.target.value }))}
-          >
-            <SelectItem value="" text="Choose a subject" />
-            {available.map((s) => (
-              <SelectItem key={s.id} value={s.id} text={`${s.name} (${s.code})`} />
-            ))}
-          </Select>
+            items={available}
+            selectedId={subjectForm.subject_id}
+            onSelect={(id) => setSubjectForm((f) => ({ ...f, subject_id: id }))}
+            getId={(s) => s.id}
+            itemToString={(s) => `${s.name} (${s.code})`}
+            placeholder="Search subjects by name or code…"
+          />
           <Select
             id="gs-medium"
             labelText="Medium restriction (optional)"

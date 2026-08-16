@@ -3,6 +3,7 @@ import { useNavigate, Navigate } from "react-router";
 import { Button, ProgressIndicator, ProgressStep, InlineNotification } from "@carbon/react";
 import { useSchool } from "../../../queries/useSchool";
 import { silentProgressStatus } from "../../../lib/carbonA11y";
+import { isValidSriLankanPhone } from "../../../lib/phone";
 import SchoolStep from "./components/SchoolStep";
 import HousesStep, { type HouseRow } from "./components/HousesStep";
 import GradesStep from "./components/GradesStep";
@@ -63,6 +64,7 @@ export default function SchoolSetup() {
     Number(school.grade_to) < Number(school.grade_from);
   const schoolValid =
     school.name.trim().length > 0 &&
+    isValidSriLankanPhone(school.phone) &&
     school.phone.trim().length > 0 &&
     EMAIL_RE.test(school.email.trim()) &&
     school.address.trim().length > 0 &&

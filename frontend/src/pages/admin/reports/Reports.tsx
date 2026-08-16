@@ -8,6 +8,7 @@ import { useTerms } from "../../../queries/useTerms";
 import { reportExportApi, ATTENDANCE_REPORT_COLUMNS, MARKS_REPORT_COLUMNS } from "../../../services/reportExport";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import { todayISODate, toYmd } from "../../../lib/date";
+import EntityCombobox from "../../../components/common/EntityCombobox";
 
 type Template = "attendance" | "marks";
 
@@ -139,12 +140,16 @@ export default function Reports() {
                     <SelectItem key={t.id} value={t.id} text={t.name} />
                   ))}
                 </Select>
-                <Select id="report-subject" labelText="Subject" value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
-                  <SelectItem value="" text="Select subject…" />
-                  {subjects?.map((s) => (
-                    <SelectItem key={s.id} value={s.id} text={s.name} />
-                  ))}
-                </Select>
+                <EntityCombobox
+                  id="report-subject"
+                  labelText="Subject"
+                  items={subjects ?? []}
+                  selectedId={subjectId}
+                  onSelect={setSubjectId}
+                  getId={(s) => s.id}
+                  itemToString={(s) => s.name}
+                  placeholder="Search subjects by name…"
+                />
               </>
             )}
           </div>

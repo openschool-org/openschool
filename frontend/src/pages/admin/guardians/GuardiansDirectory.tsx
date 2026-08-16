@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { Search } from "@carbon/icons-react";
-import { SkeletonText, Checkbox } from "@carbon/react";
+import { SkeletonText, Checkbox, Pagination } from "@carbon/react";
 import { useGuardians, useSearchGuardians } from "../../../queries/useGuardians";
+import { usePagination } from "../../../hooks/usePagination";
 import EmptyState from "../../../components/common/EmptyState";
 import ErrorMessage from "../../../components/common/ErrorMessage";
+import Avatar from "../../../components/common/Avatar";
 import { relationshipLabel } from "./constants";
 import GuardianDetail from "./components/GuardianDetail";
 
@@ -24,6 +26,8 @@ export default function GuardiansDirectory() {
   }, [guardians]);
 
   const selected = ordered.find((g) => g.id === selectedId) ?? null;
+
+  const { page, pageSize, pageItems, totalItems, onChange } = usePagination(ordered, 10);
 
   return (
     <div className="os-page">
@@ -82,28 +86,62 @@ export default function GuardiansDirectory() {
           )}
 
           {!isLoading &&
-            ordered.map((g, i) => (
+            pageItems.map((g, i) => (
               <button
                 key={g.id}
                 onClick={() => setSelectedId(g.id)}
                 style={{
-                  display: "block",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
                   width: "100%",
                   textAlign: "left",
-                  padding: "0.875rem 1.5rem",
+                  padding: "0.75rem 1.5rem",
                   border: "none",
-                  borderBottom: i < ordered.length - 1 ? "1px solid #e0e0e0" : "none",
+                  borderBottom: i < pageItems.length - 1 ? "1px solid #e0e0e0" : "none",
                   background: selected?.id === g.id ? "#edf5ff" : "transparent",
                   cursor: "pointer",
                   fontFamily: "inherit",
+                  transition: "background 70ms ease",
+                }}
+                onMouseEnter={(e) => {
+                  if (selected?.id !== g.id) e.currentTarget.style.background = "#f4f4f4";
+                }}
+                onMouseLeave={(e) => {
+                  if (selected?.id !== g.id) e.currentTarget.style.background = "transparent";
                 }}
               >
-                <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "#161616" }}>{g.full_name}</div>
-                <div style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>
-                  {relationshipLabel(g.relationship)} · {g.phone}
+                <Avatar name={g.full_name} size="sm" />
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: "0.875rem",
+                      color: "#161616",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {g.full_name}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>
+                    {relationshipLabel(g.relationship)} · {g.phone}
+                  </div>
                 </div>
               </button>
             ))}
+
+          {!isLoading && ordered.length > 0 && (
+            <Pagination
+              totalItems={totalItems}
+              page={page}
+              pageSize={pageSize}
+              pageSizes={[10, 20, 50]}
+              onChange={onChange}
+              size="sm"
+            />
+          )}
         </div>
 
         {selected ? (

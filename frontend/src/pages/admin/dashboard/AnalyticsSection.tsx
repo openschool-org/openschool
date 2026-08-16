@@ -8,11 +8,11 @@ const STATUS_COLORS = { present: "#24a148", late: "#f1c21b", absent: "#da1e28", 
 
 function StatTile({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
-    <div style={{ background: "#ffffff", border: "1px solid #e0e0e0", borderTop: `3px solid ${color}`, padding: "0.875rem 1rem" }}>
-      <p style={{ margin: "0 0 0.25rem", fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.07em", color: "#525252" }}>
+    <div style={{ background: "#ffffff", border: "1px solid #e0e0e0", borderTop: `3px solid ${color}`, padding: "1.25rem 1.5rem" }}>
+      <p style={{ margin: "0 0 0.5rem", fontSize: "0.6875rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#525252" }}>
         {label}
       </p>
-      <p style={{ margin: 0, fontSize: "1.75rem", fontWeight: 300, color: "#161616" }}>{value}</p>
+      <p style={{ margin: 0, fontSize: "2.25rem", fontWeight: 300, color: "#161616", lineHeight: 1 }}>{value}</p>
     </div>
   );
 }
@@ -45,23 +45,75 @@ function BarList({
   );
 }
 
-function Sparkline({ points }: { points: { label: string; pct: number }[] }) {
-  if (points.length === 0) return <p style={{ fontSize: "0.8125rem", color: "#8d8d8d", margin: 0 }}>No attendance sessions in the last 14 days.</p>;
+function Sparkline({
+  points,
+  color = ACCENT,
+  min,
+  max,
+  formatValue,
+  emptyMessage = "No data yet.",
+}: {
+  points: { label: string; value: number }[];
+  color?: string;
+  min?: number;
+  max?: number;
+  formatValue?: (v: number) => string;
+  emptyMessage?: string;
+}) {
+  if (points.length === 0) return <p style={{ fontSize: "0.8125rem", color: "#8d8d8d", margin: 0 }}>{emptyMessage}</p>;
   const w = 100;
   const h = 32;
+  const values = points.map((p) => p.value);
+  const lo = min ?? Math.min(...values);
+  const hi = max ?? Math.max(...values);
+  const range = hi - lo || 1;
   const stepX = points.length > 1 ? w / (points.length - 1) : 0;
-  const coords = points.map((p, i) => ({ x: i * stepX, y: h - (p.pct / 100) * h }));
+  const coords = points.map((p, i) => ({ x: i * stepX, y: h - ((p.value - lo) / range) * h }));
   const path = coords.map((c, i) => `${i === 0 ? "M" : "L"}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ");
+  const fmt = formatValue ?? ((v: number) => `${v}`);
 
   return (
     <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: "100%", height: "64px" }}>
-      <path d={path} fill="none" stroke={ACCENT} strokeWidth={2} vectorEffect="non-scaling-stroke" />
+      <path d={path} fill="none" stroke={color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
       {coords.map((c, i) => (
-        <circle key={points[i].label} cx={c.x} cy={c.y} r={1.6} fill={ACCENT}>
-          <title>{`${points[i].label}: ${points[i].pct}% present`}</title>
+        <circle key={points[i].label} cx={c.x} cy={c.y} r={1.6} fill={color}>
+          <title>{`${points[i].label}: ${fmt(points[i].value)}`}</title>
         </circle>
       ))}
     </svg>
+  );
+}
+
+function TrendSummary({ title, points, color }: { title: string; points: GrowthPoint[]; color: string }) {
+  const latest = points.length > 0 ? points[points.length - 1] : null;
+  const prior = points.length > 1 ? points[points.length - 2] : null;
+  const delta = latest && prior ? latest.count - prior.count : null;
+  const deltaColor = !delta ? "#525252" : delta > 0 ? "#24a148" : "#da1e28";
+
+  return (
+    <Section title={title}>
+      {latest ? (
+        <>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "0.625rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "2rem", fontWeight: 300, color: "#161616", lineHeight: 1 }}>{latest.count}</span>
+            <span style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>as of {latest.label}</span>
+            {delta !== null && (
+              <span style={{ fontSize: "0.75rem", fontWeight: 600, color: deltaColor, marginLeft: "auto" }}>
+                {delta > 0 ? "+" : ""}
+                {delta} vs {prior!.label}
+              </span>
+            )}
+          </div>
+          <Sparkline
+            points={points.map((p) => ({ label: p.label, value: p.count }))}
+            color={color}
+            formatValue={(v) => `${v}`}
+          />
+        </>
+      ) : (
+        <p style={{ fontSize: "0.8125rem", color: "#8d8d8d", margin: 0 }}>No data yet.</p>
+      )}
+    </Section>
   );
 }
 
@@ -122,7 +174,13 @@ export default function AnalyticsSection() {
           <BarList rows={data.student.by_grade.map((r: CountRow) => ({ label: r.label, value: r.count }))} />
         </Section>
         <Section title="Attendance Trend (last 14 days)">
-          <Sparkline points={trendPoints} />
+          <Sparkline
+            points={trendPoints.map((p) => ({ label: p.label, value: p.pct }))}
+            min={0}
+            max={100}
+            formatValue={(v) => `${v}% present`}
+            emptyMessage="No attendance sessions in the last 14 days."
+          />
         </Section>
       </div>
 
@@ -201,12 +259,8 @@ export default function AnalyticsSection() {
 
       {/* School analytics */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
-        <Section title="Student Growth by Year">
-          <BarList rows={data.school.student_growth.map((r: GrowthPoint) => ({ label: r.label, value: r.count }))} />
-        </Section>
-        <Section title="Staff Growth by Joining Year">
-          <BarList rows={data.school.staff_growth.map((r: GrowthPoint) => ({ label: r.label, value: r.count }))} color="#8a3ffc" />
-        </Section>
+        <TrendSummary title="Student Growth by Year" points={data.school.student_growth} color={ACCENT} />
+        <TrendSummary title="Staff Growth by Joining Year" points={data.school.staff_growth} color="#8a3ffc" />
       </div>
     </>
   );

@@ -4,6 +4,7 @@ import { useUpdateGuardian } from "../../../../queries/useGuardians";
 import { GUARDIAN_RELATIONSHIPS } from "../../../../services/guardian";
 import type { Guardian, GuardianRelationship } from "../../../../services/guardian";
 import FormModal from "../../../../components/common/FormModal";
+import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "../../../../lib/phone";
 
 export default function EditGuardianModal({ guardian, onClose }: { guardian: Guardian; onClose: () => void }) {
   const updateGuardian = useUpdateGuardian();
@@ -23,6 +24,7 @@ export default function EditGuardianModal({ guardian, onClose }: { guardian: Gua
   const isValid =
     form.full_name.trim().length > 0 &&
     form.phone.trim().length > 0 &&
+    isValidSriLankanPhone(form.phone) &&
     form.nic_number.trim().length > 0;
 
   const handleSave = () => {
@@ -80,8 +82,8 @@ export default function EditGuardianModal({ guardian, onClose }: { guardian: Gua
           value={form.phone}
           onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
           onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
-          invalid={!!touched.phone && !form.phone.trim()}
-          invalidText="A phone number is required."
+          invalid={!!touched.phone && (!form.phone.trim() || !isValidSriLankanPhone(form.phone))}
+          invalidText={form.phone.trim() ? PHONE_INVALID_TEXT : "A phone number is required."}
         />
         <TextInput
           id="edit-guardian-email"

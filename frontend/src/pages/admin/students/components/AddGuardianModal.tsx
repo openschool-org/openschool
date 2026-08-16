@@ -6,6 +6,7 @@ import { GUARDIAN_RELATIONSHIPS } from "../../../../services/guardian";
 import type { GuardianRelationship } from "../../../../services/guardian";
 import { getErrorMessage } from "../../../../lib/errorMessage";
 import { useDebounced } from "../../../../hooks/useDebounced";
+import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "../../../../lib/phone";
 
 const RELATIONSHIPS = GUARDIAN_RELATIONSHIPS;
 
@@ -44,6 +45,7 @@ export default function AddGuardianModal({
   const isValid =
     form.full_name.trim().length > 0 &&
     form.phone.trim().length > 0 &&
+    isValidSriLankanPhone(form.phone) &&
     form.nic_number.trim().length > 0;
 
   const results = (search.data ?? []).filter((g) => !existingGuardianIds.includes(g.id));
@@ -194,8 +196,8 @@ export default function AddGuardianModal({
                 value={form.phone}
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
                 onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
-                invalid={!!touched.phone && !form.phone.trim()}
-                invalidText="A phone number is required."
+                invalid={!!touched.phone && (!form.phone.trim() || !isValidSriLankanPhone(form.phone))}
+                invalidText={form.phone.trim() ? PHONE_INVALID_TEXT : "A phone number is required."}
               />
               <TextInput
                 id="guardian-email"

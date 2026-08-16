@@ -14,10 +14,11 @@ import { CheckmarkFilled } from "@carbon/icons-react";
 import { useSetupStatus, useRegisterAdmin } from "../queries/useSetup";
 import { getErrorMessage } from "../lib/errorMessage";
 import { silentProgressStatus } from "../lib/carbonA11y";
+import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "../lib/phone";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-type Touched = Partial<Record<"givenName" | "familyName" | "email" | "username" | "password" | "confirmPassword", boolean>>;
+type Touched = Partial<Record<"givenName" | "familyName" | "email" | "username" | "phone" | "password" | "confirmPassword", boolean>>;
 
 function Header() {
   return (
@@ -59,6 +60,7 @@ export default function Setup() {
   const familyNameInvalid = touched.familyName && !familyName.trim();
   const emailInvalid = touched.email && !EMAIL_RE.test(email.trim());
   const usernameInvalid = touched.username && !username.trim();
+  const phoneInvalid = touched.phone && !isValidSriLankanPhone(phone);
   const passwordInvalid = touched.password && password.length < 8;
   const confirmPasswordInvalid = touched.confirmPassword && confirmPassword !== password;
 
@@ -67,6 +69,7 @@ export default function Setup() {
     familyName.trim().length > 0 &&
     EMAIL_RE.test(email.trim()) &&
     username.trim().length > 0 &&
+    isValidSriLankanPhone(phone) &&
     password.length >= 8 &&
     confirmPassword === password;
 
@@ -76,6 +79,7 @@ export default function Setup() {
       familyName: true,
       email: true,
       username: true,
+      phone: true,
       password: true,
       confirmPassword: true,
     });
@@ -193,6 +197,9 @@ export default function Setup() {
             labelText="Phone Number (optional)"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            onBlur={() => markTouched("phone")}
+            invalid={!!phoneInvalid}
+            invalidText={PHONE_INVALID_TEXT}
           />
 
           <PasswordInput

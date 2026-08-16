@@ -41,6 +41,7 @@ import {
   AppHeaderBrand,
   AppHeaderActions,
 } from "../components/AppHeaderChrome";
+import GlobalSearch from "../components/common/GlobalSearch";
 
 // Grouped so the sidebar reads as "who, what, when" instead of one flat
 // alphabet-soup list — each group gets a small uppercase label + divider.
@@ -119,6 +120,7 @@ export default function RootLayout() {
     <>
       <Header aria-label="OpenSchool">
         <AppHeaderBrand />
+        <GlobalSearch />
         <AppHeaderActions />
       </Header>
 

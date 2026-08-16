@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Search, Add, Edit, TrashCan } from "@carbon/icons-react";
 import { Button, IconButton, Select, SelectItem, Pagination, Tag } from "@carbon/react";
+import EntityCombobox from "../../../components/common/EntityCombobox";
 import { useStudents, useDeleteStudent } from "../../../queries/useStudents";
 import { useGrades } from "../../../queries/useGrades";
 import { useHouses } from "../../../queries/useHouses";
@@ -107,32 +108,26 @@ export default function Students() {
             />
           </div>
           <div style={{ minWidth: "9rem" }}>
-            <Select
+            <EntityCombobox
               id="filter-grade"
-              labelText=""
-              size="md"
-              value={grade}
-              onChange={(e) => changeGrade(e.target.value)}
-            >
-              <SelectItem value="" text="All grades" />
-              {grades?.map((g) => (
-                <SelectItem key={g.id} value={g.name} text={g.name} />
-              ))}
-            </Select>
+              items={grades ?? []}
+              selectedId={grade}
+              onSelect={changeGrade}
+              getId={(g) => g.name}
+              itemToString={(g) => g.name}
+              placeholder="All grades"
+            />
           </div>
           <div style={{ minWidth: "9rem" }}>
-            <Select
+            <EntityCombobox
               id="filter-class"
-              labelText=""
-              size="md"
-              value={cls}
-              onChange={(e) => setCls(e.target.value)}
-            >
-              <SelectItem value="" text="All classes" />
-              {classOptions.map((c) => (
-                <SelectItem key={c.id} value={c.name} text={c.name} />
-              ))}
-            </Select>
+              items={classOptions}
+              selectedId={cls}
+              onSelect={setCls}
+              getId={(c) => c.name}
+              itemToString={(c) => c.name}
+              placeholder="All classes"
+            />
           </div>
           <div style={{ minWidth: "8rem" }}>
             <Select

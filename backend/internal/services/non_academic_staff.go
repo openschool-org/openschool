@@ -10,6 +10,7 @@ import (
 	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
+	"github.com/openschool-org/openschool/internal/validation"
 )
 
 var (
@@ -30,6 +31,9 @@ func NewNonAcademicStaffService(repo *repositories.NonAcademicStaffRepository, a
 func (s *NonAcademicStaffService) Create(ctx context.Context, req models.CreateNonAcademicStaffRequest) (db.NonAcademicStaff, error) {
 	if !models.ValidNonAcademicDesignations[req.Designation] {
 		return db.NonAcademicStaff{}, ErrInvalidNonAcademicDesignation
+	}
+	if !validation.IsValidSriLankanPhone(req.Phone) {
+		return db.NonAcademicStaff{}, validation.ErrInvalidPhone
 	}
 
 	employeeNumber, err := s.repo.NextEmployeeNumber(ctx)
@@ -72,6 +76,9 @@ func (s *NonAcademicStaffService) List(ctx context.Context, search, designation 
 func (s *NonAcademicStaffService) Update(ctx context.Context, id uuid.UUID, req models.UpdateNonAcademicStaffRequest) (db.NonAcademicStaff, error) {
 	if !models.ValidNonAcademicDesignations[req.Designation] {
 		return db.NonAcademicStaff{}, ErrInvalidNonAcademicDesignation
+	}
+	if !validation.IsValidSriLankanPhone(req.Phone) {
+		return db.NonAcademicStaff{}, validation.ErrInvalidPhone
 	}
 	return s.repo.Update(ctx, db.UpdateNonAcademicStaffParams{
 		ID:          id,

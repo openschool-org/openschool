@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { Search, Add } from "@carbon/icons-react";
-import { SkeletonText, Button, Select, SelectItem } from "@carbon/react";
+import { SkeletonText, Button, Select, SelectItem, Pagination } from "@carbon/react";
 import { useNonAcademicStaffList } from "../../../queries/useNonAcademicStaff";
 import { NON_ACADEMIC_DESIGNATIONS } from "../../../services/nonAcademicStaff";
+import { usePagination } from "../../../hooks/usePagination";
 import EmptyState from "../../../components/common/EmptyState";
 import ErrorMessage from "../../../components/common/ErrorMessage";
+import Avatar from "../../../components/common/Avatar";
 import { designationLabel } from "./constants";
 import StaffFormModal from "./components/StaffFormModal";
 import StaffDetail from "./components/StaffDetail";
@@ -23,6 +25,8 @@ export default function NonAcademicStaff() {
   }, [staff]);
 
   const selected = ordered.find((s) => s.id === selectedId) ?? null;
+
+  const { page, pageSize, pageItems, totalItems, onChange } = usePagination(ordered, 10);
 
   return (
     <div className="os-page">
@@ -86,28 +90,62 @@ export default function NonAcademicStaff() {
           )}
 
           {!isLoading &&
-            ordered.map((s, i) => (
+            pageItems.map((s, i) => (
               <button
                 key={s.id}
                 onClick={() => setSelectedId(s.id)}
                 style={{
-                  display: "block",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.75rem",
                   width: "100%",
                   textAlign: "left",
-                  padding: "0.875rem 1.5rem",
+                  padding: "0.75rem 1.5rem",
                   border: "none",
-                  borderBottom: i < ordered.length - 1 ? "1px solid #e0e0e0" : "none",
+                  borderBottom: i < pageItems.length - 1 ? "1px solid #e0e0e0" : "none",
                   background: selected?.id === s.id ? "#edf5ff" : "transparent",
                   cursor: "pointer",
                   fontFamily: "inherit",
+                  transition: "background 70ms ease",
+                }}
+                onMouseEnter={(e) => {
+                  if (selected?.id !== s.id) e.currentTarget.style.background = "#f4f4f4";
+                }}
+                onMouseLeave={(e) => {
+                  if (selected?.id !== s.id) e.currentTarget.style.background = "transparent";
                 }}
               >
-                <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "#161616" }}>{s.full_name}</div>
-                <div style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>
-                  {designationLabel(s.designation)} · {s.employee_number}
+                <Avatar name={s.full_name} size="sm" />
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: "0.875rem",
+                      color: "#161616",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {s.full_name}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>
+                    {designationLabel(s.designation)} · {s.employee_number}
+                  </div>
                 </div>
               </button>
             ))}
+
+          {!isLoading && ordered.length > 0 && (
+            <Pagination
+              totalItems={totalItems}
+              page={page}
+              pageSize={pageSize}
+              pageSizes={[10, 20, 50]}
+              onChange={onChange}
+              size="sm"
+            />
+          )}
         </div>
 
         {selected ? (

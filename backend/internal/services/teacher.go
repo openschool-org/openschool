@@ -12,6 +12,7 @@ import (
 	"github.com/openschool-org/openschool/internal/identity"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
+	"github.com/openschool-org/openschool/internal/validation"
 )
 
 var (
@@ -31,6 +32,10 @@ func NewTeacherService(repo *repositories.TeacherRepository, idp identity.Provid
 }
 
 func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTeacherRequest, actorID uuid.UUID) (db.TeacherProfile, error) {
+	if !validation.IsValidSriLankanPhone(req.PhoneNumber) {
+		return db.TeacherProfile{}, validation.ErrInvalidPhone
+	}
+
 	// employee_number is auto-assigned from the shared sequence (Phase 6.1) —
 	// fetched up-front since the identity provider user needs it as an attribute.
 	employeeNumber, err := s.repo.NextEmployeeNumber(ctx)
@@ -126,6 +131,10 @@ func (s *TeacherService) ListTeachers(ctx context.Context) ([]db.TeacherProfile,
 }
 
 func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req models.UpdateTeacherRequest) (db.TeacherProfile, error) {
+	if !validation.IsValidSriLankanPhone(req.PhoneNumber) {
+		return db.TeacherProfile{}, validation.ErrInvalidPhone
+	}
+
 	teacher, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return db.TeacherProfile{}, fmt.Errorf("teacher not found")

@@ -11,6 +11,7 @@ import (
 	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
+	"github.com/openschool-org/openschool/internal/validation"
 )
 
 var (
@@ -53,6 +54,9 @@ func (s *SchoolService) CreateSchool(ctx context.Context, req models.CreateSchoo
 	if err := validateLogoURL(req.LogoURL); err != nil {
 		return db.School{}, err
 	}
+	if !validation.IsValidSriLankanPhone(req.Phone) {
+		return db.School{}, validation.ErrInvalidPhone
+	}
 
 	return s.repo.Create(ctx, db.CreateSchoolParams{
 		Name:       req.Name,
@@ -73,6 +77,9 @@ func (s *SchoolService) GetSchool(ctx context.Context) (db.School, error) {
 func (s *SchoolService) UpdateSchool(ctx context.Context, id uuid.UUID, req models.UpdateSchoolRequest) (db.School, error) {
 	if err := validateLogoURL(req.LogoURL); err != nil {
 		return db.School{}, err
+	}
+	if !validation.IsValidSriLankanPhone(req.Phone) {
+		return db.School{}, validation.ErrInvalidPhone
 	}
 
 	// Unlike Create (where an empty field genuinely means "not set yet, use

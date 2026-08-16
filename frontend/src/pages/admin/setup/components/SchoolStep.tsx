@@ -4,6 +4,7 @@ import { Enterprise } from "@carbon/icons-react";
 import LogoUpload from "../../../../components/school/LogoUpload";
 import StepShell from "./StepShell";
 import { EMAIL_RE, GRADE_MIN, GRADE_MAX, type SchoolFormState } from "../constants";
+import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "../../../../lib/phone";
 
 interface Props {
   school: SchoolFormState;
@@ -31,8 +32,8 @@ export default function SchoolStep({ school, setSchool, schoolTouched, gradeRang
             labelText="Phone"
             value={school.phone}
             onChange={(e) => setSchool((s) => ({ ...s, phone: e.target.value }))}
-            invalid={schoolTouched && !school.phone.trim()}
-            invalidText="Phone number is required."
+            invalid={schoolTouched && (!school.phone.trim() || !isValidSriLankanPhone(school.phone))}
+            invalidText={school.phone.trim() ? PHONE_INVALID_TEXT : "Phone number is required."}
           />
           <TextInput
             id="ss-email"

@@ -14,6 +14,7 @@ import (
 	notificationsmodels "github.com/openschool-org/openschool/internal/models/notifications"
 	"github.com/openschool-org/openschool/internal/repositories"
 	notificationsservices "github.com/openschool-org/openschool/internal/services/notifications"
+	"github.com/openschool-org/openschool/internal/validation"
 )
 
 var (
@@ -38,6 +39,10 @@ func NewGuardianService(repo *repositories.GuardianRepository, users *repositori
 
 // CreateGuardian creates a new guardian record and also returns any existing guardians sharing the same phone/email — a soft duplicate warning, never a hard block (e.g. a shared home phone is legitimate).
 func (s *GuardianService) CreateGuardian(ctx context.Context, req models.CreateGuardianRequest) (db.Guardian, []db.Guardian, error) {
+	if !validation.IsValidSriLankanPhone(req.Phone) {
+		return db.Guardian{}, nil, validation.ErrInvalidPhone
+	}
+
 	duplicates, err := s.repo.FindDuplicateCandidates(ctx, req.Phone, req.Email)
 	if err != nil {
 		return db.Guardian{}, nil, err
@@ -95,6 +100,9 @@ func (s *GuardianService) ListNotifications(ctx context.Context, guardianID uuid
 }
 
 func (s *GuardianService) UpdateGuardian(ctx context.Context, id uuid.UUID, req models.UpdateGuardianRequest) (db.Guardian, error) {
+	if !validation.IsValidSriLankanPhone(req.Phone) {
+		return db.Guardian{}, validation.ErrInvalidPhone
+	}
 	return s.repo.UpdateWithNullable(ctx, id, req.FullName, req.Relationship, req.Phone, req.Email, req.NICNumber)
 }
 

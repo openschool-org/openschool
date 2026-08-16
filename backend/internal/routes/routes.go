@@ -85,6 +85,7 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) *jobs.Scheduler {
 	RegisterAttendanceRoutes(teacherOrAdmin, pool)
 	RegisterStaffAttendanceRoutes(admin, pool)
 	RegisterGuardianRoutes(admin, teacherOrAdmin, pool)
+	RegisterSearchRoutes(admin, pool)
 	RegisterNonAcademicStaffRoutes(admin, teacherOrAdmin, pool)
 	RegisterSectionHeadRoutes(admin, teacherOrAdmin, pool)
 	RegisterPrefectRoutes(admin, teacherOrAdmin, pool)

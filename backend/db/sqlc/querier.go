@@ -573,6 +573,18 @@ type Querier interface {
 	// must not be able to reach a membership row belonging to a different one.
 	RemoveSocietyMember(ctx context.Context, arg RemoveSocietyMemberParams) (int64, error)
 	RemoveSubjectFromTeacher(ctx context.Context, arg RemoveSubjectFromTeacherParams) error
+	// Top 5 guardians matching a name/phone fragment, for the admin header's
+	// global search.
+	SearchGuardians(ctx context.Context, dollar_1 pgtype.Text) ([]SearchGuardiansRow, error)
+	// Top 5 non-academic staff matching a name/employee-number fragment, for
+	// the admin header's global search.
+	SearchNonAcademicStaff(ctx context.Context, dollar_1 pgtype.Text) ([]SearchNonAcademicStaffRow, error)
+	// Top 5 students matching a name/index-number fragment, for the admin
+	// header's global search — not a full paginated list endpoint.
+	SearchStudents(ctx context.Context, dollar_1 pgtype.Text) ([]SearchStudentsRow, error)
+	// Top 5 teachers matching a name/employee-number fragment, for the admin
+	// header's global search.
+	SearchTeachers(ctx context.Context, dollar_1 pgtype.Text) ([]SearchTeachersRow, error)
 	SetCurrentAcademicYear(ctx context.Context, id uuid.UUID) error
 	SetCurrentTerm(ctx context.Context, id uuid.UUID) error
 	// Links a guardian record to the ThunderID identity created for their
