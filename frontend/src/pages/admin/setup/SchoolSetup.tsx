@@ -1,146 +1,35 @@
-import { useRef, useState } from "react";
-import { useNavigate, Navigate, Link } from "react-router";
-import {
-  Button,
-  TextInput,
-  NumberInput,
-  Checkbox,
-  Select,
-  SelectItem,
-  ProgressIndicator,
-  ProgressStep,
-  InlineNotification,
-  InlineLoading,
-} from "@carbon/react";
-import {
-  Enterprise,
-  Home,
-  Education,
-  Building,
-  Language,
-  CheckmarkFilled,
-  TrashCan,
-  Add,
-  ArrowRight,
-  Layers,
-  Book,
-  UserMultiple,
-  EventSchedule,
-  ChevronRight,
-} from "@carbon/icons-react";
-import LogoUpload from "../../../components/school/LogoUpload";
-import { useCreateSchool, useSchool } from "../../../queries/useSchool";
-import { useCreateHouse } from "../../../queries/useHouses";
-import { useCreateGrade } from "../../../queries/useGrades";
-import { useCreateAcademicYear } from "../../../queries/useAcademicYears";
-import { useCreateClass, useCreateStream, useCreateStreamGroup } from "../../../queries/useClasses";
-import { useCreateMedium } from "../../../queries/useCurriculum";
-import { getErrorMessage } from "../../../lib/errorMessage";
+import { useState } from "react";
+import { useNavigate, Navigate } from "react-router";
+import { Button, ProgressIndicator, ProgressStep, InlineNotification } from "@carbon/react";
+import { useSchool } from "../../../queries/useSchool";
 import { silentProgressStatus } from "../../../lib/carbonA11y";
-import type { Grade } from "../../../services/grade";
+import { isValidSriLankanPhone } from "../../../lib/phone";
+import SchoolStep from "./components/SchoolStep";
+import HousesStep, { type HouseRow } from "./components/HousesStep";
+import GradesStep from "./components/GradesStep";
+import MediumsStep from "./components/MediumsStep";
+import ClassesStep from "./components/ClassesStep";
+import DoneStep from "./components/DoneStep";
+import { useSchoolSetupSubmit } from "./hooks/useSchoolSetupSubmit";
+import {
+  AL_GRADE_NUMBERS,
+  AL_STREAM_DEFS,
+  GRADE_MIN,
+  GRADE_MAX,
+  EMAIL_RE,
+  STEPS,
+  HOUSE_COLOR_PALETTE,
+  SUGGESTED_MEDIUMS,
+  type ALStreamKey,
+  type AlStreamsState,
+} from "./constants";
 
-type ALStreamKey = "science_physical" | "science_bio" | "commerce" | "arts" | "technology";
-
-interface ALStreamDef {
-  key: ALStreamKey;
-  label: string;
-  streamName: string;
-  groupName: string | null;
-  defaultCode: string;
-}
-
-const AL_STREAM_DEFS: ALStreamDef[] = [
-  { key: "science_physical", label: "Physical Science", streamName: "Science", groupName: "Physical Science", defaultCode: "M" },
-  { key: "science_bio", label: "Bio Science", streamName: "Science", groupName: "Bio Science", defaultCode: "B" },
-  { key: "commerce", label: "Commerce", streamName: "Commerce", groupName: null, defaultCode: "C" },
-  { key: "arts", label: "Arts", streamName: "Arts", groupName: null, defaultCode: "A" },
-  { key: "technology", label: "Technology", streamName: "Technology", groupName: null, defaultCode: "T" },
-];
-
-const AL_GRADE_NUMBERS = new Set([12, 13]);
-
-const ACCENT = "#406AAF";
-const GRADE_MIN = 1;
-const GRADE_MAX = 13;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// Mediums precede Classes so the Classes step can tag each section with a
-// language of instruction as it is generated.
-const STEPS = ["School", "Houses", "Grades", "Mediums", "Classes", "Done"] as const;
-const HOUSE_COLOR_PALETTE = ["#0f62fe", "#da1e28", "#24a148", "#f1c21b", "#8a3ffc", "#ff832b"];
-
-function StepShell({
-  icon: Icon,
-  title,
-  subtitle,
-  children,
-}: {
-  icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
-  title: string;
-  subtitle: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
-        <div
-          style={{
-            width: "2.5rem",
-            height: "2.5rem",
-            borderRadius: "50%",
-            background: "#edf2fa",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <Icon size={20} style={{ fill: ACCENT }} />
-        </div>
-        <div>
-          <h2 style={{ margin: 0, fontSize: "1.125rem", fontWeight: 600, color: "#161616" }}>{title}</h2>
-          <p style={{ margin: 0, fontSize: "0.8125rem", color: "#525252" }}>{subtitle}</p>
-        </div>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function RepeatableRow({
-  children,
-  onRemove,
-}: {
-  children: React.ReactNode;
-  onRemove: () => void;
-}) {
-  return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: "0.5rem", marginBottom: "0.75rem" }}>
-      <div style={{ flex: 1, display: "flex", gap: "0.5rem" }}>{children}</div>
-      <Button
-        hasIconOnly
-        kind="ghost"
-        size="md"
-        iconDescription="Remove"
-        renderIcon={TrashCan}
-        onClick={onRemove}
-      />
-    </div>
-  );
-}
-
-// Tracks which phases of the final submission have already succeeded, so
-// clicking Retry after a mid-sequence failure resumes instead of
-// re-creating (and duplicating) whatever already went through.
-interface SubmitProgress {
-  school: boolean;
-  houses: boolean;
-  grades: Grade[] | null;
-  // created medium ids keyed by name, so a retry after a partial failure
-  // reuses them instead of creating duplicates
-  mediums: Map<string, string> | null;
-  classes: boolean;
-}
+// STEPS is [School, Houses, Grades, Mediums, Classes, Done] — Done is
+// always the last entry, and Classes (the final data-entry step) the one
+// before it. Derived here so every step === <literal> comparison below
+// stays in sync if STEPS' length ever changes, instead of drifting.
+const DONE_STEP = STEPS.length - 1;
+const LAST_INPUT_STEP = DONE_STEP - 1;
 
 export default function SchoolSetup() {
   const navigate = useNavigate();
@@ -156,15 +45,6 @@ export default function SchoolSetup() {
   // populates the school query before this component unmounts.
   const { data: existingSchool, isLoading: schoolCheckLoading } = useSchool();
 
-  const createSchool = useCreateSchool();
-  const createHouse = useCreateHouse();
-  const createGrade = useCreateGrade();
-  const createAcademicYear = useCreateAcademicYear();
-  const createClass = useCreateClass();
-  const createMedium = useCreateMedium();
-  const createStream = useCreateStream();
-  const createStreamGroup = useCreateStreamGroup();
-
   // ── Step 0: School ──────────────────────────────────────────────────────
   const [school, setSchool] = useState({
     name: "",
@@ -172,6 +52,7 @@ export default function SchoolSetup() {
     phone: "",
     email: "",
     logo_url: "",
+    school_type: "mixed" as "boys" | "girls" | "mixed",
     grade_from: GRADE_MIN as number | "",
     grade_to: GRADE_MAX as number | "",
   });
@@ -183,13 +64,14 @@ export default function SchoolSetup() {
     Number(school.grade_to) < Number(school.grade_from);
   const schoolValid =
     school.name.trim().length > 0 &&
+    isValidSriLankanPhone(school.phone) &&
     school.phone.trim().length > 0 &&
     EMAIL_RE.test(school.email.trim()) &&
     school.address.trim().length > 0 &&
     !gradeRangeInvalid;
 
   // ── Step 1: Houses ───────────────────────────────────────────────────────
-  const [houses, setHouses] = useState([{ name: "", code: "", color: HOUSE_COLOR_PALETTE[0] }]);
+  const [houses, setHouses] = useState<HouseRow[]>([{ name: "", code: "", color: HOUSE_COLOR_PALETTE[0] }]);
   const [housesSkipped, setHousesSkipped] = useState(false);
 
   // ── Step 2: Grades ───────────────────────────────────────────────────────
@@ -224,24 +106,7 @@ export default function SchoolSetup() {
   const regularGradeNumbers = orderedSelectedGrades.filter((n) => !AL_GRADE_NUMBERS.has(n));
   const alGradeNumbers = orderedSelectedGrades.filter((n) => AL_GRADE_NUMBERS.has(n));
 
-  // ── Step 4: Classes ──────────────────────────────────────────────────────
-  const now = new Date();
-  const [yearLabel, setYearLabel] = useState(String(now.getFullYear()));
-  const [sectionsPerGrade, setSectionsPerGrade] = useState<Record<number, number>>({});
-  const [classesSkipped, setClassesSkipped] = useState(false);
-  // language of instruction per generated section, keyed "<grade>-<index>".
-  // Holds the medium *name* because ids don't exist until submit.
-  const [sectionMediums, setSectionMediums] = useState<Record<string, string>>({});
-
-  const [alStreams, setAlStreams] = useState<Record<ALStreamKey, { enabled: boolean; code: string; sections: number }>>(
-    () =>
-      Object.fromEntries(
-        AL_STREAM_DEFS.map((d) => [d.key, { enabled: true, code: d.defaultCode, sections: 1 }]),
-      ) as Record<ALStreamKey, { enabled: boolean; code: string; sections: number }>,
-  );
-
   // ── Step 3: Mediums ──────────────────────────────────────────────────────
-  const SUGGESTED_MEDIUMS = ["Sinhala", "Tamil", "English"];
   const [mediumChecks, setMediumChecks] = useState<Record<string, boolean>>({
     Sinhala: true,
     Tamil: false,
@@ -256,163 +121,39 @@ export default function SchoolSetup() {
     ? []
     : [...SUGGESTED_MEDIUMS.filter((m) => mediumChecks[m]), ...customMediums.filter((m) => m.trim())];
 
+  // ── Step 4: Classes ──────────────────────────────────────────────────────
+  const [yearLabel, setYearLabel] = useState(String(new Date().getFullYear()));
+  const [sectionsPerGrade, setSectionsPerGrade] = useState<Record<number, number>>({});
+  const [classesSkipped, setClassesSkipped] = useState(false);
+  // language of instruction per generated section, keyed "<grade>-<index>".
+  // Holds the medium *name* because ids don't exist until submit.
+  const [sectionMediums, setSectionMediums] = useState<Record<string, string>>({});
+
+  const [alStreams, setAlStreams] = useState<AlStreamsState>(
+    () =>
+      Object.fromEntries(
+        AL_STREAM_DEFS.map((d) => [d.key, { enabled: true, code: d.defaultCode, sections: 1 }]),
+      ) as Record<ALStreamKey, { enabled: boolean; code: string; sections: number }>,
+  );
+
   // ── Final submission (Step 5) ───────────────────────────────────────────
   // Nothing above this point has touched the database — Steps 0-4 are pure
   // local-state navigation, freely back-and-forward-able. Everything is
-  // written here, once, in dependency order.
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
-  const progressRef = useRef<SubmitProgress>({
-    school: false,
-    houses: false,
-    grades: null,
-    mediums: null,
-    classes: false,
+  // written once, in dependency order, by useSchoolSetupSubmit.
+  const { submitting, submitError, submitted, submitAll } = useSchoolSetupSubmit({
+    school,
+    houses,
+    housesSkipped,
+    orderedSelectedGrades,
+    mediumsSkipped,
+    mediumChecks,
+    customMediums,
+    yearLabel,
+    sectionsPerGrade,
+    sectionMediums,
+    alStreams,
+    classesSkipped,
   });
-
-  // skipClassesOverride is passed by the Classes step, whose setState hasn't
-  // applied yet when it kicks off the submit — reading the state here would
-  // see the previous value and create classes the admin chose to skip.
-  const submitAll = async (skipClassesOverride?: boolean) => {
-    const skipClasses = skipClassesOverride ?? classesSkipped;
-    setSubmitting(true);
-    setSubmitError(null);
-    const progress = progressRef.current;
-
-    try {
-      if (!progress.school) {
-        await createSchool.mutateAsync({
-          name: school.name.trim(),
-          address: school.address.trim(),
-          phone: school.phone.trim(),
-          email: school.email.trim(),
-          logo_url: school.logo_url || undefined,
-          grade_from: school.grade_from === "" ? null : Number(school.grade_from),
-          grade_to: school.grade_to === "" ? null : Number(school.grade_to),
-        });
-        progress.school = true;
-      }
-
-      if (!progress.houses) {
-        if (!housesSkipped) {
-          const named = houses.filter((h) => h.name.trim());
-          for (let i = 0; i < named.length; i++) {
-            await createHouse.mutateAsync({
-              name: named[i].name.trim(),
-              code: named[i].code.trim() || undefined,
-              color: named[i].color,
-            });
-          }
-        }
-        progress.houses = true;
-      }
-
-      if (!progress.grades) {
-        const created: Grade[] = [];
-        for (let i = 0; i < orderedSelectedGrades.length; i++) {
-          const g = await createGrade.mutateAsync({
-            name: `Grade ${orderedSelectedGrades[i]}`,
-            sort_order: i,
-          });
-          created.push(g);
-        }
-        progress.grades = created;
-      }
-      const createdGrades = progress.grades;
-
-      // Mediums are written before classes so each generated section can be
-      // tagged with its language of instruction in the same pass.
-      if (!progress.mediums) {
-        const byName = new Map<string, string>();
-        if (!mediumsSkipped) {
-          const names = [
-            ...SUGGESTED_MEDIUMS.filter((m) => mediumChecks[m]),
-            ...customMediums.filter((m) => m.trim()),
-          ];
-          for (const name of names) {
-            const medium = await createMedium.mutateAsync({ name });
-            byName.set(name, medium.id);
-          }
-        }
-        progress.mediums = byName;
-      }
-      const mediumIdByName = progress.mediums;
-
-      if (!progress.classes) {
-        if (!skipClasses && yearLabel.trim() && createdGrades.length > 0) {
-          const regularGrades = createdGrades.filter((g) => !AL_GRADE_NUMBERS.has(Number(g.name.replace(/\D/g, ""))));
-          const alGrades = createdGrades.filter((g) => AL_GRADE_NUMBERS.has(Number(g.name.replace(/\D/g, ""))));
-
-          const year = await createAcademicYear.mutateAsync({
-            label: yearLabel.trim(),
-            start_date: new Date(now.getFullYear(), 0, 1).toISOString(),
-            end_date: new Date(now.getFullYear(), 11, 31).toISOString(),
-            is_current: true,
-          });
-
-          for (const grade of regularGrades) {
-            const gradeNumber = Number(grade.name.replace(/\D/g, ""));
-            const count = sectionsPerGrade[gradeNumber] ?? 1;
-            for (let i = 0; i < count; i++) {
-              const section = String.fromCharCode(65 + i);
-              const mediumName = sectionMediums[`${gradeNumber}-${i}`];
-              await createClass.mutateAsync({
-                grade_id: grade.id,
-                academic_year_id: year.id,
-                name: `${gradeNumber}-${section}`,
-                medium_id: (mediumName && mediumIdByName.get(mediumName)) || null,
-              });
-            }
-          }
-
-          if (alGrades.length > 0) {
-            const enabledDefs = AL_STREAM_DEFS.filter((d) => alStreams[d.key].enabled);
-            const streamIdByName = new Map<string, string>();
-            const groupIdByKey = new Map<ALStreamKey, string>();
-
-            for (const def of enabledDefs) {
-              if (!streamIdByName.has(def.streamName)) {
-                const stream = await createStream.mutateAsync({ name: def.streamName });
-                streamIdByName.set(def.streamName, stream.id);
-              }
-              if (def.groupName) {
-                const group = await createStreamGroup.mutateAsync({
-                  streamId: streamIdByName.get(def.streamName)!,
-                  data: { name: def.groupName },
-                });
-                groupIdByKey.set(def.key, group.id);
-              }
-            }
-
-            for (const grade of alGrades) {
-              const gradeNumber = Number(grade.name.replace(/\D/g, ""));
-              for (const def of enabledDefs) {
-                const config = alStreams[def.key];
-                const code = config.code.trim() || def.defaultCode;
-                for (let i = 0; i < config.sections; i++) {
-                  await createClass.mutateAsync({
-                    grade_id: grade.id,
-                    academic_year_id: year.id,
-                    stream_id: streamIdByName.get(def.streamName)!,
-                    stream_group_id: def.groupName ? groupIdByKey.get(def.key) ?? null : null,
-                    name: `${gradeNumber}-${code}${i + 1}`,
-                  });
-                }
-              }
-            }
-          }
-        }
-        progress.classes = true;
-      }
-
-      setSubmitted(true);
-    } catch (e) {
-      setSubmitError(getErrorMessage(e, "Failed to save your school setup. Please try again."));
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const goNext = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const goBack = () => setStep((s) => Math.max(s - 1, 0));
@@ -495,476 +236,69 @@ export default function SchoolSetup() {
           />
         )}
 
-        {/* ── Step 0: School ─────────────────────────────────────────── */}
         {step === 0 && (
-          <StepShell icon={Enterprise} title="School details" subtitle="The basics - you can fill in the rest later from Settings.">
-            <div style={{ display: "grid", gap: "1rem" }}>
-              <TextInput
-                id="ss-name"
-                labelText="School Name"
-                placeholder="e.g. Royal College"
-                value={school.name}
-                onChange={(e) => setSchool((s) => ({ ...s, name: e.target.value }))}
-                invalid={schoolTouched && !school.name.trim()}
-                invalidText="School name is required."
-              />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                <TextInput
-                  id="ss-phone"
-                  labelText="Phone"
-                  value={school.phone}
-                  onChange={(e) => setSchool((s) => ({ ...s, phone: e.target.value }))}
-                  invalid={schoolTouched && !school.phone.trim()}
-                  invalidText="Phone number is required."
-                />
-                <TextInput
-                  id="ss-email"
-                  labelText="Email"
-                  type="email"
-                  value={school.email}
-                  onChange={(e) => setSchool((s) => ({ ...s, email: e.target.value }))}
-                  invalid={schoolTouched && !EMAIL_RE.test(school.email.trim())}
-                  invalidText="Enter a valid email address."
-                />
-              </div>
-              <TextInput
-                id="ss-address"
-                labelText="Address"
-                value={school.address}
-                onChange={(e) => setSchool((s) => ({ ...s, address: e.target.value }))}
-                invalid={schoolTouched && !school.address.trim()}
-                invalidText="Address is required."
-              />
-              <LogoUpload
-                value={school.logo_url}
-                editing
-                onChange={(v) => setSchool((s) => ({ ...s, logo_url: v }))}
-              />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                <NumberInput
-                  id="ss-grade-from"
-                  label="Lowest grade"
-                  min={GRADE_MIN}
-                  max={GRADE_MAX}
-                  value={school.grade_from}
-                  onChange={(_e, { value }) =>
-                    setSchool((s) => ({ ...s, grade_from: value === "" ? "" : Number(value) }))
-                  }
-                />
-                <NumberInput
-                  id="ss-grade-to"
-                  label="Highest grade"
-                  min={GRADE_MIN}
-                  max={GRADE_MAX}
-                  invalid={gradeRangeInvalid}
-                  invalidText="Must be ≥ lowest grade."
-                  value={school.grade_to}
-                  onChange={(_e, { value }) =>
-                    setSchool((s) => ({ ...s, grade_to: value === "" ? "" : Number(value) }))
-                  }
-                />
-              </div>
-            </div>
-          </StepShell>
+          <SchoolStep
+            school={school}
+            setSchool={setSchool}
+            schoolTouched={schoolTouched}
+            gradeRangeInvalid={gradeRangeInvalid}
+          />
         )}
 
-        {/* ── Step 1: Houses ─────────────────────────────────────────── */}
-        {step === 1 && (
-          <StepShell icon={Home} title="Houses" subtitle="Optional - students and staff are auto-assigned to whichever house has the fewest members.">
-            {houses.map((h, i) => (
-              <RepeatableRow
-                key={i}
-                onRemove={() => setHouses((hs) => hs.filter((_, idx) => idx !== i))}
-              >
-                <TextInput
-                  id={`house-name-${i}`}
-                  labelText="Name"
-                  placeholder="e.g. Vijaya"
-                  size="md"
-                  value={h.name}
-                  onChange={(e) =>
-                    setHouses((hs) => hs.map((row, idx) => (idx === i ? { ...row, name: e.target.value } : row)))
-                  }
-                />
-                <TextInput
-                  id={`house-code-${i}`}
-                  labelText="Code (optional)"
-                  placeholder="e.g. VJ"
-                  size="md"
-                  value={h.code}
-                  onChange={(e) =>
-                    setHouses((hs) => hs.map((row, idx) => (idx === i ? { ...row, code: e.target.value } : row)))
-                  }
-                />
-                <div>
-                  <label htmlFor={`house-color-${i}`} style={{ fontSize: "0.75rem", display: "block", marginBottom: "0.25rem" }}>
-                    Color
-                  </label>
-                  <input
-                    id={`house-color-${i}`}
-                    type="color"
-                    value={h.color}
-                    onChange={(e) =>
-                      setHouses((hs) => hs.map((row, idx) => (idx === i ? { ...row, color: e.target.value } : row)))
-                    }
-                    style={{ width: "2.5rem", height: "2.5rem", padding: 0, border: "1px solid #8d8d8d", cursor: "pointer" }}
-                  />
-                </div>
-              </RepeatableRow>
-            ))}
-            <Button
-              kind="ghost"
-              size="sm"
-              renderIcon={Add}
-              onClick={() =>
-                setHouses((hs) => [...hs, { name: "", code: "", color: HOUSE_COLOR_PALETTE[hs.length % HOUSE_COLOR_PALETTE.length] }])
-              }
-            >
-              Add another house
-            </Button>
-          </StepShell>
-        )}
+        {step === 1 && <HousesStep houses={houses} setHouses={setHouses} />}
 
-        {/* ── Step 2: Grades ─────────────────────────────────────────── */}
         {step === 2 && (
-          <StepShell icon={Education} title="Grades" subtitle="Pre-selected from the range you set. Uncheck any that don't apply.">
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem" }}>
-              {Array.from({ length: gradeRangeEnd - gradeRangeStart + 1 }, (_, i) => i + gradeRangeStart).map((n) => (
-                <Checkbox
-                  key={n}
-                  id={`grade-${n}`}
-                  labelText={`Grade ${n}`}
-                  checked={selectedGrades.has(n)}
-                  onChange={(_e, { checked }) =>
-                    setSelectedGrades((prev) => {
-                      const next = new Set(prev);
-                      if (checked) next.add(n);
-                      else next.delete(n);
-                      return next;
-                    })
-                  }
-                />
-              ))}
-            </div>
-          </StepShell>
+          <GradesStep
+            gradeRangeStart={gradeRangeStart}
+            gradeRangeEnd={gradeRangeEnd}
+            selectedGrades={selectedGrades}
+            setSelectedGrades={setSelectedGrades}
+          />
         )}
 
-        {/* ── Step 3: Mediums ────────────────────────────────────────── */}
         {step === 3 && (
-          <StepShell icon={Language} title="Mediums" subtitle="Optional - languages of instruction. Set these first so the next step can tag each section with one.">
-            <div style={{ display: "flex", gap: "1.5rem", marginBottom: "1rem" }}>
-              {SUGGESTED_MEDIUMS.map((m) => (
-                <Checkbox
-                  key={m}
-                  id={`medium-${m}`}
-                  labelText={m}
-                  checked={!!mediumChecks[m]}
-                  onChange={(_e, { checked }) => setMediumChecks((prev) => ({ ...prev, [m]: checked }))}
-                />
-              ))}
-            </div>
-            {customMediums.map((m, i) => (
-              <RepeatableRow key={i} onRemove={() => setCustomMediums((ms) => ms.filter((_, idx) => idx !== i))}>
-                <TextInput
-                  id={`custom-medium-${i}`}
-                  labelText="Medium"
-                  size="md"
-                  value={m}
-                  onChange={(e) =>
-                    setCustomMediums((ms) => ms.map((row, idx) => (idx === i ? e.target.value : row)))
-                  }
-                />
-              </RepeatableRow>
-            ))}
-            <Button kind="ghost" size="sm" renderIcon={Add} onClick={() => setCustomMediums((ms) => [...ms, ""])}>
-              Add another medium
-            </Button>
-          </StepShell>
+          <MediumsStep
+            mediumChecks={mediumChecks}
+            setMediumChecks={setMediumChecks}
+            customMediums={customMediums}
+            setCustomMediums={setCustomMediums}
+          />
         )}
 
-        {/* ── Step 4: Classes ────────────────────────────────────────── */}
-        {step === 4 && (
-          <StepShell
-            icon={Building}
-            title="Classes"
-            subtitle="Sections are auto-named (10-A, 10-B, …); Grade 12/13 use A/L streams instead (12-M1, 12-C1, …)."
-          >
-            <TextInput
-              id="ss-year-label"
-              labelText="Academic Year Label"
-              value={yearLabel}
-              onChange={(e) => setYearLabel(e.target.value)}
-              style={{ marginBottom: "1.25rem" }}
-            />
-            {orderedSelectedGrades.length === 0 ? (
-              <p style={{ fontSize: "0.875rem", color: "#8d8d8d" }}>
-                No grades were selected in the previous step, so there's nothing to add classes to yet.
-              </p>
-            ) : (
-              <>
-                {regularGradeNumbers.length > 0 && (
-                  <div style={{ display: "grid", gap: "0.75rem", marginBottom: alGradeNumbers.length > 0 ? "1.75rem" : 0 }}>
-                    {regularGradeNumbers.map((gradeNumber) => {
-                      const count = sectionsPerGrade[gradeNumber] ?? 1;
-                      return (
-                        <div
-                          key={gradeNumber}
-                          style={{ padding: "0.5rem 0", borderBottom: "1px solid #f4f4f4" }}
-                        >
-                          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                            <span style={{ flex: 1, fontSize: "0.875rem", fontWeight: 500, color: "#161616" }}>Grade {gradeNumber}</span>
-                            <NumberInput
-                              id={`sections-${gradeNumber}`}
-                              label="Sections"
-                              size="sm"
-                              min={0}
-                              max={10}
-                              value={count}
-                              onChange={(_e, { value }) =>
-                                setSectionsPerGrade((prev) => ({ ...prev, [gradeNumber]: value === "" ? 0 : Number(value) }))
-                              }
-                            />
-                          </div>
-                          {selectedMediumNames.length > 0 && count > 0 && (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.5rem" }}>
-                              {Array.from({ length: count }).map((_, i) => (
-                                <Select
-                                  key={i}
-                                  id={`section-medium-${gradeNumber}-${i}`}
-                                  labelText={`${gradeNumber}-${String.fromCharCode(65 + i)}`}
-                                  size="sm"
-                                  style={{ minWidth: "9rem" }}
-                                  value={sectionMediums[`${gradeNumber}-${i}`] ?? ""}
-                                  onChange={(e) =>
-                                    setSectionMediums((prev) => ({ ...prev, [`${gradeNumber}-${i}`]: e.target.value }))
-                                  }
-                                >
-                                  <SelectItem value="" text="No medium" />
-                                  {selectedMediumNames.map((m) => (
-                                    <SelectItem key={m} value={m} text={m} />
-                                  ))}
-                                </Select>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {alGradeNumbers.length > 0 && (
-                  <div>
-                    <p style={{ margin: "0 0 0.25rem", fontSize: "0.8125rem", fontWeight: 600, color: "#161616" }}>
-                      A/L Streams - {alGradeNumbers.map((n) => `Grade ${n}`).join(" & ")}
-                    </p>
-                    <p style={{ margin: "0 0 0.875rem", fontSize: "0.75rem", color: "#8d8d8d" }}>
-                      Applied to both A/L grades. Uncheck streams your school doesn't offer, and adjust the code and
-                      section count for each.
-                    </p>
-                    <div style={{ display: "grid", gap: "0.5rem" }}>
-                      {AL_STREAM_DEFS.map((def) => {
-                        const cfg = alStreams[def.key];
-                        return (
-                          <div
-                            key={def.key}
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "0.75rem",
-                              padding: "0.5rem 0.25rem",
-                              borderBottom: "1px solid #f4f4f4",
-                              opacity: cfg.enabled ? 1 : 0.5,
-                            }}
-                          >
-                            <Checkbox
-                              id={`al-${def.key}`}
-                              labelText={def.label}
-                              checked={cfg.enabled}
-                              onChange={(_e, { checked }) =>
-                                setAlStreams((prev) => ({ ...prev, [def.key]: { ...prev[def.key], enabled: checked } }))
-                              }
-                            />
-                            <div style={{ flex: 1 }} />
-                            <TextInput
-                              id={`al-code-${def.key}`}
-                              labelText="Code"
-                              size="sm"
-                              maxLength={3}
-                              disabled={!cfg.enabled}
-                              value={cfg.code}
-                              style={{ width: "5rem" }}
-                              onChange={(e) =>
-                                setAlStreams((prev) => ({ ...prev, [def.key]: { ...prev[def.key], code: e.target.value } }))
-                              }
-                            />
-                            <NumberInput
-                              id={`al-sections-${def.key}`}
-                              label="Sections"
-                              size="sm"
-                              min={0}
-                              max={10}
-                              disabled={!cfg.enabled}
-                              value={cfg.sections}
-                              onChange={(_e, { value }) =>
-                                setAlStreams((prev) => ({
-                                  ...prev,
-                                  [def.key]: { ...prev[def.key], sections: value === "" ? 0 : Number(value) },
-                                }))
-                              }
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <p style={{ margin: "0.75rem 0 0", fontSize: "0.75rem", color: "#8d8d8d" }}>
-                      Example: Physical Science with code "M" and 2 sections creates{" "}
-                      {alGradeNumbers.map((n) => `${n}-M1, ${n}-M2`).join(", ")}.
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-          </StepShell>
+        {step === LAST_INPUT_STEP && (
+          <ClassesStep
+            yearLabel={yearLabel}
+            setYearLabel={setYearLabel}
+            orderedSelectedGrades={orderedSelectedGrades}
+            regularGradeNumbers={regularGradeNumbers}
+            alGradeNumbers={alGradeNumbers}
+            sectionsPerGrade={sectionsPerGrade}
+            setSectionsPerGrade={setSectionsPerGrade}
+            selectedMediumNames={selectedMediumNames}
+            sectionMediums={sectionMediums}
+            setSectionMediums={setSectionMediums}
+            alStreams={alStreams}
+            setAlStreams={setAlStreams}
+          />
         )}
 
-        {/* ── Step 5: Done ───────────────────────────────────────────── */}
-        {step === 5 && (
-          <div>
-            {submitting && (
-              <div style={{ display: "flex", justifyContent: "center", padding: "3.5rem 0" }}>
-                <InlineLoading description="Saving your school setup…" />
-              </div>
-            )}
-
-            {!submitting && submitError && (
-              <div style={{ textAlign: "center" }}>
-                <InlineNotification
-                  kind="error"
-                  title="Could not finish setup"
-                  subtitle={submitError}
-                  hideCloseButton
-                  lowContrast
-                  style={{ marginBottom: "1.25rem", maxWidth: "100%", textAlign: "left" }}
-                />
-                <Button onClick={() => submitAll()} style={{ width: "100%", maxWidth: "100%" }}>
-                  Retry
-                </Button>
-              </div>
-            )}
-
-            {!submitting && !submitError && submitted && (
-              <>
-                <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
-                  <div
-                    style={{
-                      width: "3.5rem",
-                      height: "3.5rem",
-                      margin: "0 auto 1rem",
-                      borderRadius: "50%",
-                      background: "#defbe6",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <CheckmarkFilled size={28} style={{ fill: "#24a148" }} />
-                  </div>
-                  <h2 style={{ margin: "0 0 0.35rem", fontSize: "1.25rem", fontWeight: 600, color: "#161616" }}>
-                    Your school is ready
-                  </h2>
-                  <p style={{ margin: 0, fontSize: "0.875rem", color: "#525252" }}>
-                    Here's what OpenSchool helps you run day to day, and where to go next.
-                  </p>
-                </div>
-
-                <div style={{ display: "grid", gap: "0.75rem", marginBottom: "1.5rem" }}>
-                  {[
-                    {
-                      title: "Curriculum",
-                      body: "Define levels (a grade, a stream, an exam class) and selection groups to control which subjects students can pick.",
-                      path: "/curriculum",
-                      icon: Layers,
-                    },
-                    {
-                      title: "Subjects",
-                      body: "Build your subject catalogue, then offer subjects to students through curriculum selection groups.",
-                      path: "/subjects",
-                      icon: Book,
-                    },
-                    {
-                      title: "Students & Teachers",
-                      body: "Enrol students and add teachers - each gets their own sign-in and profile automatically.",
-                      path: "/students",
-                      icon: UserMultiple,
-                    },
-                    {
-                      title: "Attendance",
-                      body: "Once classes have students, teachers can create sessions and mark attendance from the class page.",
-                      path: "/attendance",
-                      icon: EventSchedule,
-                    },
-                  ].map((item) => (
-                    <Link
-                      key={item.title}
-                      to={item.path}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.875rem",
-                        padding: "0.875rem 1rem",
-                        border: "1px solid #e0e0e0",
-                        background: "#fafafa",
-                        textDecoration: "none",
-                        transition: "border-color 0.15s ease, background 0.15s ease",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: "2.25rem",
-                          height: "2.25rem",
-                          borderRadius: "50%",
-                          background: "#edf2fa",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <item.icon size={18} style={{ fill: ACCENT }} />
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: "0 0 0.25rem", fontSize: "0.875rem", fontWeight: 600, color: "#161616" }}>
-                          {item.title}
-                        </p>
-                        <p style={{ margin: 0, fontSize: "0.8125rem", color: "#525252" }}>{item.body}</p>
-                      </div>
-                      <ChevronRight size={16} style={{ fill: "#8d8d8d", flexShrink: 0 }} />
-                    </Link>
-                  ))}
-                </div>
-
-                <Button
-                  renderIcon={ArrowRight}
-                  kind="primary"
-                  onClick={() => navigate("/")}
-                  style={{ width: "100%", maxWidth: "100%" }}
-                >
-                  Go to Dashboard
-                </Button>
-              </>
-            )}
-          </div>
+        {step === DONE_STEP && (
+          <DoneStep
+            submitting={submitting}
+            submitError={submitError}
+            submitted={submitted}
+            onRetry={() => submitAll()}
+            onGoToDashboard={() => navigate("/")}
+          />
         )}
 
-        {/* ── Navigation ─────────────────────────────────────────────── */}
-        {step < 5 && (
+        {step < DONE_STEP && (
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "1.75rem" }}>
             <Button kind="ghost" onClick={goBack} disabled={step === 0}>
               Back
             </Button>
             <div style={{ display: "flex", gap: "0.5rem" }}>
-              {(step === 1 || step === 3 || step === 4) && (
+              {(step === 1 || step === 3 || step === LAST_INPUT_STEP) && (
                 <Button
                   kind="secondary"
                   onClick={() => {
@@ -986,7 +320,7 @@ export default function SchoolSetup() {
                   else handleClassesNext(false);
                 }}
               >
-                {step === 4 ? "Finish Setup" : "Continue"}
+                {step === LAST_INPUT_STEP ? "Finish Setup" : "Continue"}
               </Button>
             </div>
           </div>

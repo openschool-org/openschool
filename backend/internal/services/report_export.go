@@ -14,10 +14,7 @@ import (
 	"github.com/openschool-org/openschool/internal/repositories"
 )
 
-// ReportExportService renders fixed report templates (attendance, marks) to
-// PDF via gofpdf, with an optional column subset per request — the
-// server-side approach chosen for Phase 7's report-export item (no
-// client-side template builder / drag-and-drop layout engine).
+// ReportExportService renders fixed report templates (attendance, marks) to PDF via gofpdf, with an optional column subset per request — server-side rather than a client-side template builder.
 type ReportExportService struct {
 	attendance *repositories.AttendanceRepository
 	termMark   *repositories.TermMarkRepository

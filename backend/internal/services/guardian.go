@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/google/uuid"
 	db "github.com/openschool-org/openschool/db/sqlc"
@@ -12,6 +14,7 @@ import (
 	notificationsmodels "github.com/openschool-org/openschool/internal/models/notifications"
 	"github.com/openschool-org/openschool/internal/repositories"
 	notificationsservices "github.com/openschool-org/openschool/internal/services/notifications"
+	"github.com/openschool-org/openschool/internal/validation"
 )
 
 var (
@@ -34,12 +37,12 @@ func NewGuardianService(repo *repositories.GuardianRepository, users *repositori
 	return &GuardianService{repo: repo, users: users, idp: idp, notifications: notifications, audit: audit}
 }
 
-// CreateGuardian creates a new guardian record and also returns any
-// existing guardians that share the same phone/email — a soft duplicate
-// warning the caller can surface ("link this one instead?") without ever
-// being blocked from creating a legitimate second record (e.g. a shared
-// home phone).
+// CreateGuardian creates a new guardian record and also returns any existing guardians sharing the same phone/email — a soft duplicate warning, never a hard block (e.g. a shared home phone is legitimate).
 func (s *GuardianService) CreateGuardian(ctx context.Context, req models.CreateGuardianRequest) (db.Guardian, []db.Guardian, error) {
+	if !validation.IsValidSriLankanPhone(req.Phone) {
+		return db.Guardian{}, nil, validation.ErrInvalidPhone
+	}
+
 	duplicates, err := s.repo.FindDuplicateCandidates(ctx, req.Phone, req.Email)
 	if err != nil {
 		return db.Guardian{}, nil, err
@@ -63,10 +66,7 @@ func (s *GuardianService) ListStudentsFor(ctx context.Context, guardianID uuid.U
 	return s.repo.ListStudentsByGuardianID(ctx, guardianID)
 }
 
-// DeleteGuardian removes a guardian record outright. Blocked while linked
-// to any student — the caller must unlink each one first, since silently
-// cascading the delete would remove a shared guardian from every child at
-// once.
+// DeleteGuardian removes a guardian record outright; blocked while linked to any student, since silently cascading would remove a shared guardian from every child at once.
 func (s *GuardianService) DeleteGuardian(ctx context.Context, id uuid.UUID, actorID uuid.UUID) error {
 	before, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -87,9 +87,7 @@ func (s *GuardianService) DeleteGuardian(ctx context.Context, id uuid.UUID, acto
 	return nil
 }
 
-// ListNotifications returns the notification history for a guardian's
-// portal account (empty if they don't have one yet) — for the directory's
-// "notification history" panel.
+// ListNotifications returns the notification history for a guardian's portal account (empty if they don't have one) — for the directory's "notification history" panel.
 func (s *GuardianService) ListNotifications(ctx context.Context, guardianID uuid.UUID) ([]notificationsmodels.MyNotificationResponse, error) {
 	guardian, err := s.repo.GetByID(ctx, guardianID)
 	if err != nil {
@@ -102,6 +100,9 @@ func (s *GuardianService) ListNotifications(ctx context.Context, guardianID uuid
 }
 
 func (s *GuardianService) UpdateGuardian(ctx context.Context, id uuid.UUID, req models.UpdateGuardianRequest) (db.Guardian, error) {
+	if !validation.IsValidSriLankanPhone(req.Phone) {
+		return db.Guardian{}, validation.ErrInvalidPhone
+	}
 	return s.repo.UpdateWithNullable(ctx, id, req.FullName, req.Relationship, req.Phone, req.Email, req.NICNumber)
 }
 
@@ -125,9 +126,7 @@ func (s *GuardianService) ListByStudent(ctx context.Context, studentID uuid.UUID
 	return s.repo.ListByStudent(ctx, studentID)
 }
 
-// ProvisionLogin creates a ThunderID identity for an existing guardian
-// record and links it via guardians.user_id, giving them access to the
-// parent portal. Mirrors RegisterFirstAdmin's identity-provisioning flow.
+// ProvisionLogin creates a ThunderID identity for an existing guardian and links it via guardians.user_id, giving them access to the parent portal — mirrors RegisterFirstAdmin's provisioning flow.
 func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UUID, req models.ProvisionGuardianLoginRequest, actorID uuid.UUID) (db.Guardian, error) {
 	guardian, err := s.repo.GetByID(ctx, guardianID)
 	if err != nil {
@@ -146,7 +145,7 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 	// The guardian's NIC number (already on file, Phase 8.1) becomes their
 	// initial (one-time) portal password (Phase 8.2) — there is no separate
 	// manual password entry anymore.
-	idpUser, err := s.idp.CreateUser(ctx, "parent", map[string]interface{}{
+	idpUser, err := s.idp.CreateUser(ctx, models.RoleParent, map[string]interface{}{
 		"username":    req.Username,
 		"email":       guardian.Email.String,
 		"given_name":  req.GivenName,
@@ -170,20 +169,41 @@ func (s *GuardianService) ProvisionLogin(ctx context.Context, guardianID uuid.UU
 		ID:                 userID,
 		Email:              guardian.Email.String,
 		FullName:           guardian.FullName,
-		Role:               "parent",
+		Role:               models.RoleParent,
 		MustChangePassword: true,
 	}); err != nil {
 		rollbackIDPUser(ctx, s.idp, "ProvisionLogin", idpUser.ID)
 		return db.Guardian{}, fmt.Errorf("failed to create local user record: %w", err)
 	}
 
-	if err := s.repo.SetUserID(ctx, guardianID, userID); err != nil {
-		rollbackIDPUser(ctx, s.idp, "ProvisionLogin", idpUser.ID)
-		return db.Guardian{}, fmt.Errorf("failed to link guardian record: %w", err)
+	// Assigned before the guardian row is linked (not after, as this used
+	// to be ordered): a failure here must be a hard error with a full
+	// rollback, not leave a working login with no role claim on its JWT
+	// (every later request would 403 with no clue why — the same failure
+	// mode StudentService.CreateStudent's identical AssignRole step
+	// documents). Doing this before SetUserID means there's only ever one
+	// linked state to unwind, not two.
+	if err := s.idp.AssignRole(ctx, identity.RoleID(models.RoleParent), idpUser.ID); err != nil {
+		// A cleanup context of its own, not ctx — ctx may be exactly why this
+		// failed (e.g. a request timeout), and reusing it here would make the
+		// rollback fail for the same reason instead of actually cleaning up.
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		rollbackIDPUser(cleanupCtx, s.idp, "ProvisionLogin", idpUser.ID)
+		if delErr := s.users.Delete(cleanupCtx, userID); delErr != nil {
+			log.Printf("ProvisionLogin: failed to roll back local user row %s after error: %v (local user now orphaned)", userID, delErr)
+		}
+		cleanupCancel()
+		return db.Guardian{}, fmt.Errorf("failed to assign parent role: %w", err)
 	}
 
-	if err := s.idp.AssignRole(ctx, identity.RoleID("parent"), idpUser.ID); err != nil {
-		return db.Guardian{}, fmt.Errorf("failed to assign parent role: %w", err)
+	if err := s.repo.SetUserID(ctx, guardianID, userID); err != nil {
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		rollbackIDPUser(cleanupCtx, s.idp, "ProvisionLogin", idpUser.ID)
+		if delErr := s.users.Delete(cleanupCtx, userID); delErr != nil {
+			log.Printf("ProvisionLogin: failed to roll back local user row %s after error: %v (local user now orphaned)", userID, delErr)
+		}
+		cleanupCancel()
+		return db.Guardian{}, fmt.Errorf("failed to link guardian record: %w", err)
 	}
 
 	if s.audit != nil {

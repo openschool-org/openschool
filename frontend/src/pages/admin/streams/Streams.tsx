@@ -28,6 +28,7 @@ import {
 import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
+import AgentFindingsBanner from "../../../components/common/AgentFindingsBanner";
 import EntityCombobox from "../../../components/common/EntityCombobox";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
 import type { Stream } from "../../../services/stream";
@@ -153,6 +154,8 @@ export default function Streams() {
           New Stream
         </Button>
       </div>
+
+      <AgentFindingsBanner jobNames={["empty_stream_watcher"]} />
 
       <div className="os-section">
         <div className="os-section__header">

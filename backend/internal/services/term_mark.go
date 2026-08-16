@@ -30,7 +30,7 @@ func NewTermMarkService(repo *repositories.TermMarkRepository, teacherRepo *repo
 // the class_subject_teachers-assigned teacher for this class+subject. Admins
 // bypass the check entirely.
 func (s *TermMarkService) authorizeTeacherForClassSubject(ctx context.Context, actor Actor, classID, subjectID uuid.UUID) error {
-	if actor.Role == "admin" {
+	if actor.Role == models.RoleAdmin {
 		return nil
 	}
 
@@ -65,19 +65,33 @@ func (s *TermMarkService) BulkUpsertMarks(ctx context.Context, classID uuid.UUID
 		return nil, err
 	}
 
-	results := make([]db.TermMark, 0, len(req.Entries))
+	studentIDs := make([]uuid.UUID, 0, len(req.Entries))
 	for _, entry := range req.Entries {
 		studentID, err := uuid.Parse(entry.StudentID)
 		if err != nil {
 			return nil, err
 		}
+		studentIDs = append(studentIDs, studentID)
+	}
 
-		// The class+subject authorization above only proves the teacher may
-		// enter marks for *this class* — without also checking the student
-		// is actually enrolled in it, a caller could submit marks for any
-		// student UUID from an entirely different class.
-		enrolledClass, err := s.classRepo.GetStudentCurrentClass(ctx, studentID)
-		if err != nil || enrolledClass.ID != classID {
+	// The class+subject authorization above only proves the teacher may
+	// enter marks for *this class* — without also checking each student is
+	// actually enrolled in it, a caller could submit marks for any student
+	// UUID from an entirely different class. Batched into one query instead
+	// of one GetStudentCurrentClass call per entry.
+	enrolledIDs, err := s.classRepo.ListEnrolledStudentIDs(ctx, classID, studentIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify class enrollment: %w", err)
+	}
+	enrolled := make(map[uuid.UUID]bool, len(enrolledIDs))
+	for _, id := range enrolledIDs {
+		enrolled[id] = true
+	}
+
+	results := make([]db.TermMark, 0, len(req.Entries))
+	for i, entry := range req.Entries {
+		studentID := studentIDs[i]
+		if !enrolled[studentID] {
 			return nil, fmt.Errorf("student %s is not enrolled in this class", entry.StudentID)
 		}
 
@@ -123,13 +137,9 @@ func (s *TermMarkService) ListClassMarks(ctx context.Context, actor Actor, class
 	})
 }
 
-// authorizeTeacherForStudentMarks ensures the acting user, if a teacher,
-// teaches at least one subject in the class the student is currently
-// enrolled in. Marks span every subject for a term (not just one), so this
-// is a class-level check rather than authorizeTeacherForClassSubject's
-// subject-specific one.
+// authorizeTeacherForStudentMarks is a class-level check (teaches any subject in the student's class), unlike authorizeTeacherForClassSubject's subject-specific one, since marks span every subject for a term.
 func (s *TermMarkService) authorizeTeacherForStudentMarks(ctx context.Context, actor Actor, studentID uuid.UUID) error {
-	if actor.Role == "admin" {
+	if actor.Role == models.RoleAdmin {
 		return nil
 	}
 	class, err := s.classRepo.GetStudentCurrentClass(ctx, studentID)
@@ -150,11 +160,7 @@ func (s *TermMarkService) authorizeTeacherForStudentMarks(ctx context.Context, a
 	return nil
 }
 
-// ListStudentMarks is for contexts that have already verified the caller
-// may see this student's marks by some other means (a student viewing
-// their own via /me/student/marks, a parent viewing their own linked child
-// via /me/children/:id/marks). For the teacher/admin-facing
-// /students/:id/marks route, use ListStudentMarksForTeacher instead.
+// ListStudentMarks is only for contexts that already verified access by other means (self/parent routes); the teacher/admin-facing route must use ListStudentMarksForTeacher instead.
 func (s *TermMarkService) ListStudentMarks(ctx context.Context, studentID, termID uuid.UUID) ([]db.ListStudentMarksByTermRow, error) {
 	return s.repo.ListStudentMarksByTerm(ctx, db.ListStudentMarksByTermParams{
 		StudentID: studentID,
@@ -179,7 +185,7 @@ func (s *TermMarkService) DeleteMark(ctx context.Context, actor Actor, id uuid.U
 	}
 	class, err := s.classRepo.GetStudentCurrentClass(ctx, mark.StudentID)
 	if err != nil {
-		if actor.Role != "admin" {
+		if actor.Role != models.RoleAdmin {
 			return ErrNotAssignedToSubject
 		}
 	} else if err := s.authorizeTeacherForClassSubject(ctx, actor, class.ID, mark.SubjectID); err != nil {

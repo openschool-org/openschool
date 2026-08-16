@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/openschool-org/openschool/internal/middleware"
 	"github.com/openschool-org/openschool/internal/services"
 	timetableservices "github.com/openschool-org/openschool/internal/services/timetable"
 )
@@ -25,7 +26,7 @@ func NewParentHandler(guardians *services.GuardianService, attendance *services.
 }
 
 func (h *ParentHandler) callerID(c *gin.Context) (uuid.UUID, bool) {
-	id, err := uuid.Parse(c.GetString("userID"))
+	id, err := middleware.UserIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
 		return uuid.UUID{}, false

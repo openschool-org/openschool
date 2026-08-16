@@ -24,6 +24,13 @@ func (r *TeacherRepository) GetByID(ctx context.Context, id uuid.UUID) (db.Teach
 	return r.queries.GetTeacherByID(ctx, id)
 }
 
+// ListByIDs is the batched form of GetByID — resolves several
+// teacher_profile IDs (e.g. to their user_id, for a notification recipient
+// list) in one query instead of one per teacher.
+func (r *TeacherRepository) ListByIDs(ctx context.Context, ids []uuid.UUID) ([]db.TeacherProfile, error) {
+	return r.queries.ListTeachersByIDs(ctx, ids)
+}
+
 func (r *TeacherRepository) NextEmployeeNumber(ctx context.Context) (string, error) {
 	return r.queries.NextEmployeeNumber(ctx)
 }

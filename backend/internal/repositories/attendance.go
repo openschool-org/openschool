@@ -11,11 +11,12 @@ import (
 )
 
 type AttendanceRepository struct {
+	pool    *pgxpool.Pool
 	queries *db.Queries
 }
 
 func NewAttendanceRepository(pool *pgxpool.Pool) *AttendanceRepository {
-	return &AttendanceRepository{queries: db.New(pool)}
+	return &AttendanceRepository{pool: pool, queries: db.New(pool)}
 }
 
 func (r *AttendanceRepository) CreateSession(ctx context.Context, classID uuid.UUID, takenBy uuid.UUID, date time.Time) (db.AttendanceSession, error) {
@@ -41,9 +42,7 @@ func (r *AttendanceRepository) ListSessionsByClass(ctx context.Context, classID 
 	return r.queries.ListAttendanceSessionsByClass(ctx, classID)
 }
 
-// ListSessionsByDate returns every attendance session on the given date. A
-// nil gradeIDs means unfiltered (whole-school callers); a non-nil slice
-// restricts results to those grades at the SQL WHERE clause level.
+// ListSessionsByDate returns every attendance session on the given date; a nil gradeIDs means unfiltered, a non-nil slice restricts to those grades at the SQL WHERE clause level.
 func (r *AttendanceRepository) ListSessionsByDate(ctx context.Context, date time.Time, gradeIDs []uuid.UUID) ([]db.ListAttendanceSessionsByDateRow, error) {
 	return r.queries.ListAttendanceSessionsByDate(ctx, db.ListAttendanceSessionsByDateParams{
 		Date:     pgtype.Date{Time: date, Valid: true},
@@ -64,11 +63,56 @@ func (r *AttendanceRepository) MarkAttendance(ctx context.Context, sessionID uui
 	})
 }
 
-// GetRecord returns the existing attendance record for a session+student,
-// or pgx.ErrNoRows if the student hasn't been marked yet this session —
-// used to detect status transitions (e.g. into "absent") before upserting.
+// MarkAttendanceInput is one row of a MarkAttendanceBatch call.
+type MarkAttendanceInput struct {
+	StudentID uuid.UUID
+	Status    string
+	Note      string
+}
+
+// MarkAttendanceBatch marks attendance for every input row inside a single
+// transaction: if any write fails (e.g. a constraint violation partway
+// through), the whole batch rolls back instead of leaving the session with
+// some students updated and others not. Returned records are in the same
+// order as the input.
+func (r *AttendanceRepository) MarkAttendanceBatch(ctx context.Context, sessionID uuid.UUID, records []MarkAttendanceInput) ([]db.AttendanceRecord, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := r.queries.WithTx(tx)
+
+	out := make([]db.AttendanceRecord, len(records))
+	for i, rec := range records {
+		updated, err := qtx.MarkAttendance(ctx, db.MarkAttendanceParams{
+			SessionID: sessionID,
+			StudentID: rec.StudentID,
+			Status:    rec.Status,
+			Note:      pgtype.Text{String: rec.Note, Valid: rec.Note != ""},
+		})
+		if err != nil {
+			return nil, err
+		}
+		out[i] = updated
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// GetRecord returns the existing attendance record, or pgx.ErrNoRows if unmarked this session — used to detect status transitions (e.g. into "absent") before upserting.
 func (r *AttendanceRepository) GetRecord(ctx context.Context, sessionID, studentID uuid.UUID) (db.AttendanceRecord, error) {
 	return r.queries.GetAttendanceRecord(ctx, db.GetAttendanceRecordParams{SessionID: sessionID, StudentID: studentID})
+}
+
+// ListRecordsBySession returns every existing record for a session in one
+// query — the batched equivalent of calling GetRecord once per student.
+func (r *AttendanceRepository) ListRecordsBySession(ctx context.Context, sessionID uuid.UUID) ([]db.AttendanceRecord, error) {
+	return r.queries.ListAttendanceRecordsBySession(ctx, sessionID)
 }
 
 func (r *AttendanceRepository) ListBySession(ctx context.Context, sessionID uuid.UUID) ([]db.ListAttendanceBySessionRow, error) {

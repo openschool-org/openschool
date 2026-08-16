@@ -429,6 +429,41 @@ func (q *Queries) GetStudentCurrentClass(ctx context.Context, studentID uuid.UUI
 	return i, err
 }
 
+const isTeacherAssignedToAnyStudentClass = `-- name: IsTeacherAssignedToAnyStudentClass :one
+SELECT EXISTS (
+    SELECT 1
+    FROM class_students cs
+    INNER JOIN classes c        ON c.id = cs.class_id
+    INNER JOIN academic_years ay ON ay.id = c.academic_year_id
+    WHERE cs.student_id = ANY($1::uuid[])
+      AND ay.is_current = TRUE
+      AND (
+          c.form_teacher_id = $2::uuid
+          OR EXISTS (
+              SELECT 1 FROM class_subject_teachers cst
+              WHERE cst.class_id = c.id AND cst.teacher_id = $2::uuid
+          )
+      )
+) AS assigned
+`
+
+type IsTeacherAssignedToAnyStudentClassParams struct {
+	StudentIds []uuid.UUID `json:"student_ids"`
+	TeacherID  uuid.UUID   `json:"teacher_id"`
+}
+
+// true if teacher_id is the form teacher or a subject teacher of the
+// *current-year* class of any of the given student_ids — one query
+// answering what would otherwise be a GetStudentCurrentClass +
+// IsTeacherAssignedToClass pair per student (e.g. authorizing a
+// guardian-targeted notification against all of that guardian's children).
+func (q *Queries) IsTeacherAssignedToAnyStudentClass(ctx context.Context, arg IsTeacherAssignedToAnyStudentClassParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isTeacherAssignedToAnyStudentClass, arg.StudentIds, arg.TeacherID)
+	var assigned bool
+	err := row.Scan(&assigned)
+	return assigned, err
+}
+
 const isTeacherAssignedToClass = `-- name: IsTeacherAssignedToClass :one
 SELECT EXISTS (
     SELECT 1 FROM classes WHERE id = $1 AND form_teacher_id = $2
@@ -662,6 +697,45 @@ func (q *Queries) ListStreams(ctx context.Context) ([]Stream, error) {
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStudentsEnrolledInCurrentClass = `-- name: ListStudentsEnrolledInCurrentClass :many
+SELECT cs.student_id
+FROM class_students cs
+INNER JOIN classes c ON c.id = cs.class_id
+INNER JOIN academic_years ay ON ay.id = c.academic_year_id
+WHERE cs.class_id = $1
+  AND cs.student_id = ANY($2::uuid[])
+  AND ay.is_current = TRUE
+`
+
+type ListStudentsEnrolledInCurrentClassParams struct {
+	ClassID    uuid.UUID   `json:"class_id"`
+	StudentIds []uuid.UUID `json:"student_ids"`
+}
+
+// batched form of GetStudentCurrentClass: of the given student_ids, which
+// are (this academic year) enrolled in exactly class_id. Used to validate a
+// whole batch of term-mark entries in one query instead of one
+// GetStudentCurrentClass call per student.
+func (q *Queries) ListStudentsEnrolledInCurrentClass(ctx context.Context, arg ListStudentsEnrolledInCurrentClassParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listStudentsEnrolledInCurrentClass, arg.ClassID, arg.StudentIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var student_id uuid.UUID
+		if err := rows.Scan(&student_id); err != nil {
+			return nil, err
+		}
+		items = append(items, student_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

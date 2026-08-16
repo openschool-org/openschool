@@ -1,313 +1,27 @@
 import { useMemo, useState } from "react";
-import {
-  Button,
-  TextInput,
-  TextArea,
-  Dropdown,
-  Tag,
-  InlineNotification,
-  SkeletonText,
-} from "@carbon/react";
-import { Add, Send, Save, TrashCan } from "@carbon/icons-react";
-import { useCurrentAcademicYear } from "../../queries/useAcademicYears";
-import { useGrades } from "../../queries/useGrades";
-import { useCurrentClasses } from "../../queries/useClasses";
-import { useGradeSections } from "../../queries/timetable/useGradeSections";
-import { useSubjects } from "../../queries/useSubjects";
-import { useStudents } from "../../queries/useStudents";
-import { useGuardians } from "../../queries/useGuardians";
-import { useTeachers } from "../../queries/useTeachers";
+import { Button, TextInput, TextArea, Dropdown, Tag, InlineNotification, SkeletonText } from "@carbon/react";
+import { Send, Save } from "@carbon/icons-react";
 import {
   useSentNotifications,
   useDraftNotifications,
   useCreateNotification,
-  useSendNotificationDraft,
-  useDeleteNotificationDraft,
-  useNotificationStats,
 } from "../../queries/notifications/useNotifications";
 import { CATEGORIES, PRIORITIES } from "../../services/notifications/notification";
 import type {
   RecipientRule,
-  RecipientRuleType,
   NotificationCategory,
   NotificationPriority,
-  Notification,
 } from "../../services/notifications/notification";
 import { getErrorMessage } from "../../lib/errorMessage";
-import EntityCombobox from "../../components/common/EntityCombobox";
 import EmptyState from "../../components/common/EmptyState";
 import { useRole } from "../../hooks/useRole";
 import { useMyPosition } from "../../queries/usePositions";
+import { ruleKey } from "./constants";
+import RecipientPicker from "./components/RecipientPicker";
+import SentHistoryRow from "./components/SentHistoryRow";
+import DraftRow from "./components/DraftRow";
 
 const ACCENT = "#406AAF";
-
-// Rules have no id of their own (they're filter descriptors, not entities),
-// but the id field each type actually sets is enough to build a stable key
-// — needed since this list is removable mid-list via each chip's close
-// button, where an index key would cause React to reuse/misattribute DOM
-// nodes after a removal.
-function ruleKey(rule: RecipientRule): string {
-  return [
-    rule.type,
-    rule.grade_id,
-    rule.class_id,
-    rule.grade_section_id,
-    rule.subject_id,
-    rule.subject_audience,
-    rule.student_id,
-    rule.guardian_id,
-    rule.teacher_id,
-  ]
-    .filter(Boolean)
-    .join(":");
-}
-
-const RULE_TYPES: { value: RecipientRuleType; label: string }[] = [
-  { value: "everyone", label: "Everyone" },
-  { value: "grade", label: "By Grade" },
-  { value: "class", label: "By Class" },
-  { value: "grade_section", label: "By Grade Section" },
-  { value: "subject", label: "By Subject" },
-  { value: "student", label: "Specific Student" },
-  { value: "guardian", label: "Specific Guardian" },
-  { value: "teacher", label: "Specific Teacher" },
-];
-
-function RecipientPicker({
-  onAdd,
-  canBroadcastEveryone,
-}: {
-  onAdd: (rule: RecipientRule) => void;
-  canBroadcastEveryone: boolean;
-}) {
-  const { data: currentYear } = useCurrentAcademicYear();
-  const { data: grades } = useGrades();
-  const { data: classes } = useCurrentClasses();
-  const { data: gradeSections } = useGradeSections(currentYear?.id ?? "");
-  const { data: subjects } = useSubjects();
-  const { data: students } = useStudents();
-  const { data: guardians } = useGuardians();
-  const { data: teachers } = useTeachers();
-
-  const [ruleType, setRuleType] = useState<RecipientRuleType>("grade");
-  const [selectedId, setSelectedId] = useState("");
-  const [subjectAudience, setSubjectAudience] = useState<"students" | "teachers">("students");
-
-  const reset = () => setSelectedId("");
-
-  const availableRuleTypes = canBroadcastEveryone ? RULE_TYPES : RULE_TYPES.filter((r) => r.value !== "everyone");
-
-  const handleAdd = () => {
-    if (ruleType === "everyone") {
-      onAdd({ type: "everyone", label: "Everyone" });
-      return;
-    }
-    if (!selectedId) return;
-
-    if (ruleType === "grade") {
-      const grade = grades?.find((g) => g.id === selectedId);
-      onAdd({ type: "grade", grade_id: selectedId, label: grade?.name ?? "Grade" });
-    } else if (ruleType === "class") {
-      const cls = classes?.find((c) => c.id === selectedId);
-      onAdd({ type: "class", class_id: selectedId, label: cls ? `${cls.grade_name} - ${cls.name}` : "Class" });
-    } else if (ruleType === "grade_section") {
-      const section = gradeSections?.find((s) => s.id === selectedId);
-      onAdd({ type: "grade_section", grade_section_id: selectedId, label: section?.name ?? "Grade Section" });
-    } else if (ruleType === "subject") {
-      const subject = subjects?.find((s) => s.id === selectedId);
-      onAdd({
-        type: "subject",
-        subject_id: selectedId,
-        subject_audience: subjectAudience,
-        label: `${subject?.name ?? "Subject"} (${subjectAudience === "teachers" ? "Teachers" : "Students"})`,
-      });
-    } else if (ruleType === "student") {
-      const student = students?.find((s) => s.id === selectedId);
-      onAdd({ type: "student", student_id: selectedId, label: student?.full_name ?? "Student" });
-    } else if (ruleType === "guardian") {
-      const guardian = guardians?.find((g) => g.id === selectedId);
-      onAdd({ type: "guardian", guardian_id: selectedId, label: guardian?.full_name ?? "Guardian" });
-    } else if (ruleType === "teacher") {
-      const teacher = teachers?.find((t) => t.id === selectedId);
-      onAdd({ type: "teacher", teacher_id: selectedId, label: teacher?.full_name ?? "Teacher" });
-    }
-    reset();
-  };
-
-  return (
-    <div style={{ display: "grid", gap: "0.75rem" }}>
-      <Dropdown
-        id="recipient-rule-type"
-        titleText="Recipient type"
-        label="Choose…"
-        items={availableRuleTypes}
-        itemToString={(item) => (item as (typeof RULE_TYPES)[number])?.label ?? ""}
-        selectedItem={availableRuleTypes.find((r) => r.value === ruleType)}
-        onChange={({ selectedItem }) => {
-          setRuleType((selectedItem as (typeof RULE_TYPES)[number]).value);
-          reset();
-        }}
-      />
-
-      {ruleType === "grade" && (
-        <EntityCombobox
-          id="rule-grade"
-          items={grades ?? []}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          getId={(g) => g.id}
-          itemToString={(g) => g.name}
-          placeholder="Search grades…"
-        />
-      )}
-      {ruleType === "class" && (
-        <EntityCombobox
-          id="rule-class"
-          items={classes ?? []}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          getId={(c) => c.id}
-          itemToString={(c) => `${c.grade_name} - ${c.name}`}
-          placeholder="Search classes…"
-        />
-      )}
-      {ruleType === "grade_section" && (
-        <EntityCombobox
-          id="rule-grade-section"
-          items={gradeSections ?? []}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          getId={(s) => s.id}
-          itemToString={(s) => s.name}
-          placeholder="Search grade sections…"
-        />
-      )}
-      {ruleType === "subject" && (
-        <>
-          <EntityCombobox
-            id="rule-subject"
-            items={subjects ?? []}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            getId={(s) => s.id}
-            itemToString={(s) => s.name}
-            placeholder="Search subjects…"
-          />
-          <Dropdown
-            id="rule-subject-audience"
-            titleText="Audience"
-            label=""
-            items={["students", "teachers"]}
-            itemToString={(item) => (item === "teachers" ? "Teachers of this subject" : "Students taking this subject")}
-            selectedItem={subjectAudience}
-            onChange={({ selectedItem }) => setSubjectAudience((selectedItem as "students" | "teachers") ?? "students")}
-          />
-        </>
-      )}
-      {ruleType === "student" && (
-        <EntityCombobox
-          id="rule-student"
-          items={students ?? []}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          getId={(s) => s.id}
-          itemToString={(s) => `${s.full_name} — ${s.index_number}`}
-          placeholder="Search students…"
-        />
-      )}
-      {ruleType === "guardian" && (
-        <EntityCombobox
-          id="rule-guardian"
-          items={guardians ?? []}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          getId={(g) => g.id}
-          itemToString={(g) => `${g.full_name} — ${g.phone}`}
-          placeholder="Search guardians…"
-        />
-      )}
-      {ruleType === "teacher" && (
-        <EntityCombobox
-          id="rule-teacher"
-          items={teachers ?? []}
-          selectedId={selectedId}
-          onSelect={setSelectedId}
-          getId={(t) => t.id}
-          itemToString={(t) => `${t.full_name} — ${t.employee_number}`}
-          placeholder="Search teachers…"
-        />
-      )}
-
-      <Button kind="ghost" size="sm" renderIcon={Add} onClick={handleAdd} disabled={ruleType !== "everyone" && !selectedId}>
-        Add recipient
-      </Button>
-    </div>
-  );
-}
-
-function SentHistoryRow({ notification }: { notification: Notification }) {
-  const [expanded, setExpanded] = useState(false);
-  const { data: stats } = useNotificationStats(expanded ? notification.id : "");
-
-  return (
-    <div style={{ padding: "0.875rem 1.5rem", borderBottom: "1px solid #f4f4f4", cursor: "pointer" }} onClick={() => setExpanded((e) => !e)}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
-        <Tag type="blue" size="sm">
-          {notification.category}
-        </Tag>
-        <span style={{ fontWeight: 500, fontSize: "0.8125rem" }}>{notification.title}</span>
-        <span style={{ marginLeft: "auto", fontSize: "0.75rem", color: "#8d8d8d" }}>
-          {notification.sent_at ? new Date(notification.sent_at).toLocaleString() : ""}
-        </span>
-      </div>
-      <p
-        style={{
-          margin: 0,
-          fontSize: "0.75rem",
-          color: "#525252",
-          lineHeight: 1.5,
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-        }}
-      >
-        {notification.message}
-      </p>
-      {expanded && (
-        <div style={{ marginTop: "0.5rem", fontSize: "0.75rem", color: "#161616" }}>
-          {stats ? (
-            <span>
-              Recipients: <strong>{stats.total}</strong> &middot; Read: <strong>{stats.read}</strong> &middot; Unread: <strong>{stats.unread}</strong>
-            </span>
-          ) : (
-            <SkeletonText width="40%" />
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DraftRow({ draft }: { draft: Notification }) {
-  const send = useSendNotificationDraft();
-  const remove = useDeleteNotificationDraft();
-
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.875rem 1.5rem", borderBottom: "1px solid #f4f4f4" }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: "0 0 0.125rem", fontWeight: 500, fontSize: "0.8125rem" }}>{draft.title}</p>
-        <p style={{ margin: 0, fontSize: "0.75rem", color: "#8d8d8d" }}>{draft.recipient_rules.length} recipient rule(s)</p>
-      </div>
-      <Button kind="ghost" size="sm" renderIcon={Send} onClick={() => send.mutate(draft.id)} disabled={send.isPending}>
-        Send
-      </Button>
-      <Button kind="danger--ghost" size="sm" renderIcon={TrashCan} onClick={() => remove.mutate(draft.id)} disabled={remove.isPending}>
-        Delete
-      </Button>
-    </div>
-  );
-}
 
 export default function NotificationComposer() {
   const [title, setTitle] = useState("");
@@ -446,7 +160,10 @@ export default function NotificationComposer() {
                   ))}
                 </div>
               )}
-              <RecipientPicker onAdd={(rule) => setRules((r) => [...r, rule])} canBroadcastEveryone={canBroadcastEveryone} />
+              <RecipientPicker
+                onAdd={(rule) => setRules((r) => (r.some((x) => ruleKey(x) === ruleKey(rule)) ? r : [...r, rule]))}
+                canBroadcastEveryone={canBroadcastEveryone}
+              />
             </div>
 
             <div style={{ display: "flex", gap: "0.75rem" }}>

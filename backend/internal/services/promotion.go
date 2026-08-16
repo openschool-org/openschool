@@ -22,22 +22,14 @@ func NewPromotionService(repo *repositories.PromotionRepository) *PromotionServi
 	return &PromotionService{repo: repo}
 }
 
-// Preview computes, without writing anything, each actively-enrolled
-// student's next grade and a non-binding suggested target class in
-// targetYearID (same-name carryover, e.g. "6A" -> "7A"). Students at the
-// top grade have no next grade and are flagged Graduating instead. When
-// rankByTermID is set, each row also carries that term's total marks as a
-// manual-distribution sort aid.
+// Preview computes, without writing anything, each actively-enrolled student's next grade and a non-binding suggested target class in targetYearID (same-name carryover, e.g. "6A" -> "7A"); students at the top grade are flagged Graduating instead. When rankByTermID is set, each row also carries that term's total marks as a manual-distribution sort aid.
 func (s *PromotionService) Preview(ctx context.Context, sourceYearID, targetYearID uuid.UUID, rankByTermID *uuid.UUID) ([]models.PromotionPreviewRow, error) {
 	students, err := s.repo.ListActiveStudentsForYear(ctx, sourceYearID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list students for source year: %w", err)
 	}
 
-	// Memoize per-grade "next grade" lookups and per (grade, class-name)
-	// suggestion lookups — many students share the same current grade/class,
-	// so this keeps the query count proportional to distinct grades/classes,
-	// not to student count.
+	// Memoized so the query count stays proportional to distinct grades/classes, not to student count.
 	nextGradeCache := map[uuid.UUID]*db.Grade{}
 	suggestionCache := map[string]*db.Class{}
 
@@ -157,10 +149,7 @@ func (s *PromotionService) Preview(ctx context.Context, sourceYearID, targetYear
 	return rows, nil
 }
 
-// CommitAssignments validates every target class actually belongs to the
-// target academic year, then bulk-writes the assignments in one batched
-// UNNEST call — shared by both promotion-commit and general
-// reassignment/shuffle.
+// CommitAssignments validates every target class belongs to the target academic year, then bulk-writes the assignments in one batched UNNEST call — shared by both promotion-commit and general reassignment/shuffle.
 func (s *PromotionService) CommitAssignments(ctx context.Context, req models.CommitAssignmentsRequest) (int, error) {
 	yearID, err := uuid.Parse(req.AcademicYearID)
 	if err != nil {

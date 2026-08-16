@@ -63,9 +63,7 @@ func (r *GradeSectionRepository) GetForGrade(ctx context.Context, academicYearID
 	})
 }
 
-// ListGradeIDsHeaded returns every grade this teacher is authorized to
-// review timetables for: either as the group-level grade_sections head, or
-// as the per-grade section_heads TIC.
+// ListGradeIDsForSectionHeadTeacher returns every grade this teacher is authorized to review timetables for: either as the group-level grade_sections head, or as the per-grade section_heads TIC.
 func (r *GradeSectionRepository) ListGradeIDsForSectionHeadTeacher(ctx context.Context, teacherID, academicYearID uuid.UUID) ([]uuid.UUID, error) {
 	return r.queries.ListGradeIDsForSectionHeadTeacher(ctx, db.ListGradeIDsForSectionHeadTeacherParams{
 		SectionHeadTeacherID: pgtype.UUID{Bytes: teacherID, Valid: true},

@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/openschool-org/openschool/internal/middleware"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/services"
 )
@@ -38,7 +39,7 @@ func recordIDParam(c *gin.Context) (uuid.UUID, bool) {
 // optionalActorID returns the caller's user id, or nil if the claim is
 // missing/invalid — several portfolio writes credit an actor optionally.
 func optionalActorID(c *gin.Context) *uuid.UUID {
-	id, err := uuid.Parse(c.GetString("userID"))
+	id, err := middleware.UserIDFromContext(c)
 	if err != nil {
 		return nil
 	}
@@ -68,7 +69,7 @@ func (h *StudentPortfolioHandler) CreateProgressReport(c *gin.Context) {
 		return
 	}
 	var writtenBy *uuid.UUID
-	if callerID, err := uuid.Parse(c.GetString("userID")); err == nil {
+	if callerID, err := middleware.UserIDFromContext(c); err == nil {
 		writtenBy = h.service.TeacherProfileIDForUser(c.Request.Context(), callerID)
 	}
 

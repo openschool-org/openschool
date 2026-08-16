@@ -1,21 +1,6 @@
 import { useState } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router";
-import {
-  Button,
-  Tag,
-  TextInput,
-  TextArea,
-  Select,
-  SelectItem,
-  RadioButtonGroup,
-  RadioButton,
-  InlineNotification,
-  Tabs,
-  TabList,
-  Tab,
-  TabPanels,
-  TabPanel,
-} from "@carbon/react";
+import { Button, Tabs, TabList, Tab, TabPanels, TabPanel } from "@carbon/react";
 import { ArrowLeft, TrashCan, Edit, Save } from "@carbon/icons-react";
 import {
   useStudentWithClass,
@@ -25,7 +10,7 @@ import {
   useDeleteStudent,
 } from "../../../queries/useStudents";
 import { useHouses } from "../../../queries/useHouses";
-import type { StudentWithClass, StudentEnrollmentStatus } from "../../../services/student";
+import type { StudentWithClass } from "../../../services/student";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
@@ -39,16 +24,12 @@ import StudentActivities from "./StudentActivities";
 import StudentLeadershipAwards from "./StudentLeadershipAwards";
 import StudentDisciplinary from "./StudentDisciplinary";
 import StudentRecordsRollup from "./StudentRecordsRollup";
+import StudentProfileTab, { type StudentProfileForm } from "./components/StudentProfileTab";
 import { splitFullName } from "../../../lib/name";
 
 type Gender = "" | "male" | "female";
 
-const ENROLLMENT_STATUSES: { value: StudentEnrollmentStatus; label: string }[] = [
-  { value: "active", label: "Active" },
-  { value: "left", label: "Left the school" },
-];
-
-function studentToForm(s: StudentWithClass) {
+function studentToForm(s: StudentWithClass): StudentProfileForm {
   return {
     ...splitFullName(s.full_name),
     phone_number: s.phone ?? "",
@@ -215,198 +196,17 @@ export default function StudentDetail() {
           </TabList>
           <TabPanels>
             <TabPanel style={{ padding: 0 }}>
-              <div className="os-section" style={{ marginTop: "1rem" }}>
-                <div className="os-section__header">
-                  <h2 className="os-section__title">Profile</h2>
-                </div>
-          <div className="os-section__body">
-            {updateError && (
-              <InlineNotification
-                kind="error"
-                title="Error"
-                subtitle={updateError}
-                lowContrast
-                hideCloseButton
-                style={{ marginBottom: "1rem", maxWidth: "100%" }}
+              <StudentProfileTab
+                student={student}
+                form={form}
+                editing={editing}
+                onChange={change}
+                onGenderChange={(value) => setForm((f) => ({ ...f, gender: value }))}
+                updateError={updateError}
+                houses={houses}
+                updateHouse={updateHouse}
+                updateStatus={updateStatus}
               />
-            )}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "1.25rem",
-              }}
-            >
-              <TextInput
-                id="given-name"
-                labelText="First Name"
-                value={form.given_name}
-                readOnly={!editing}
-                onChange={(e) => change("given_name", e.target.value)}
-              />
-              <TextInput
-                id="family-name"
-                labelText="Last Name"
-                value={form.family_name}
-                readOnly={!editing}
-                onChange={(e) => change("family_name", e.target.value)}
-              />
-              <TextInput
-                id="index-number"
-                labelText="Index Number"
-                value={student.index_number}
-                readOnly
-              />
-              <TextInput
-                id="phone"
-                labelText="Phone"
-                value={form.phone_number}
-                readOnly={!editing}
-                onChange={(e) => change("phone_number", e.target.value)}
-              />
-              <TextInput
-                id="whatsapp"
-                labelText="WhatsApp"
-                value={form.whatsapp}
-                readOnly={!editing}
-                onChange={(e) => change("whatsapp", e.target.value)}
-              />
-              <TextInput
-                id="address"
-                labelText="Address"
-                value={form.address}
-                readOnly={!editing}
-                onChange={(e) => change("address", e.target.value)}
-              />
-              {editing ? (
-                <RadioButtonGroup
-                  legendText="Gender"
-                  name="gender"
-                  valueSelected={form.gender}
-                  onChange={(value) =>
-                    setForm((f) => ({ ...f, gender: value as Gender }))
-                  }
-                >
-                  <RadioButton id="gender-male" labelText="Male" value="male" />
-                  <RadioButton id="gender-female" labelText="Female" value="female" />
-                </RadioButtonGroup>
-              ) : (
-                <TextInput
-                  id="gender"
-                  labelText="Gender"
-                  value={
-                    form.gender
-                      ? form.gender[0].toUpperCase() + form.gender.slice(1)
-                      : "-"
-                  }
-                  readOnly
-                />
-              )}
-              <div style={{ gridColumn: "1 / -1" }}>
-                <TextArea
-                  id="special-remarks"
-                  labelText="Special Remarks"
-                  rows={3}
-                  value={form.special_remarks}
-                  readOnly={!editing}
-                  onChange={(e) => change("special_remarks", e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="os-section">
-          <div className="os-section__header">
-            <h2 className="os-section__title">Current Class</h2>
-          </div>
-          <div className="os-section__body">
-            {student.class_name ? (
-              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                <Tag type="blue" size="sm">
-                  {student.class_name}
-                </Tag>
-                {student.grade_name && (
-                  <Tag type="gray" size="sm">
-                    {student.grade_name}
-                  </Tag>
-                )}
-                {student.academic_year && (
-                  <Tag type="cool-gray" size="sm">
-                    {student.academic_year}
-                  </Tag>
-                )}
-              </div>
-            ) : (
-              <span style={{ fontSize: "0.875rem", color: "#8d8d8d" }}>
-                Not enrolled in a class.
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="os-section">
-          <div className="os-section__header">
-            <h2 className="os-section__title">House</h2>
-          </div>
-          <div className="os-section__body">
-            {(() => {
-              const current = houses?.find((h) => h.id === student.house_id);
-              return current ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
-                  <span
-                    style={{
-                      display: "inline-block",
-                      width: "0.75rem",
-                      height: "0.75rem",
-                      borderRadius: "50%",
-                      backgroundColor: current.color,
-                    }}
-                  />
-                  <span style={{ fontSize: "0.875rem", fontWeight: 600 }}>{current.name}</span>
-                </div>
-              ) : null;
-            })()}
-            <Select
-              id="student-house"
-              labelText="Assigned house"
-              helperText="Assigned automatically to keep houses balanced. Only a System Administrator can change it — every change is recorded in the audit log."
-              value={student.house_id ?? ""}
-              disabled={updateHouse.isPending}
-              onChange={(e) =>
-                updateHouse.mutate({ id: student.id, houseId: e.target.value })
-              }
-            >
-              <SelectItem value="" text="No house" />
-              {houses?.map((h) => (
-                <SelectItem key={h.id} value={h.id} text={h.name} />
-              ))}
-            </Select>
-          </div>
-        </div>
-
-        <div className="os-section">
-          <div className="os-section__header">
-            <h2 className="os-section__title">Enrollment Status</h2>
-          </div>
-          <div className="os-section__body">
-            <Select
-              id="student-enrollment-status"
-              labelText="Status"
-              helperText="Mark as left when a student leaves the school."
-              value={student.enrollment_status}
-              disabled={updateStatus.isPending}
-              onChange={(e) =>
-                updateStatus.mutate({ id: student.id, status: e.target.value as StudentEnrollmentStatus })
-              }
-            >
-              {ENROLLMENT_STATUSES.map((s) => (
-                <SelectItem key={s.value} value={s.value} text={s.label} />
-              ))}
-            </Select>
-          </div>
-        </div>
-
             </TabPanel>
             <TabPanel style={{ padding: 0 }}>
               <div style={{ marginTop: "1rem" }}>

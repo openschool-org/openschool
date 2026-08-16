@@ -7,16 +7,13 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
 	notificationsservices "github.com/openschool-org/openschool/internal/services/notifications"
 )
 
-// ErrNotAssignedToClass is returned when a teacher tries to create a
-// session or mark attendance for a class they aren't the form teacher of,
-// or don't teach any subject in.
+// ErrNotAssignedToClass is returned when a teacher tries to create a session or mark attendance for a class they aren't the form teacher of, or don't teach any subject in.
 var ErrNotAssignedToClass = errors.New("you are not assigned to teach this class")
 
 // ErrSessionLocked is returned when a non-admin tries to edit an
@@ -63,7 +60,7 @@ func NewAttendanceService(
 // class's form teacher or teaches at least one subject in it. Admins bypass
 // the check entirely.
 func (s *AttendanceService) authorizeTeacherForClass(ctx context.Context, actor Actor, classID uuid.UUID) error {
-	if actor.Role == "admin" {
+	if actor.Role == models.RoleAdmin {
 		return nil
 	}
 
@@ -176,7 +173,7 @@ func (s *AttendanceService) DeleteSession(ctx context.Context, actor Actor, id u
 	}
 
 	locked := isLocked(session)
-	if locked && actor.Role != "admin" {
+	if locked && actor.Role != models.RoleAdmin {
 		return ErrSessionLocked
 	}
 
@@ -197,19 +194,14 @@ func (s *AttendanceService) ListSessionsByClass(ctx context.Context, actor Actor
 	return s.repo.ListSessionsByClass(ctx, classID)
 }
 
-// ListSessionsByDate is the cross-school attendance dashboard. It requires
-// admin or a leadership rank (Principal/Vice Principal/Section Head) — a
-// plain Class/Subject Teacher gets ErrInsufficientRank, not an unscoped
-// school-wide dump. Results are narrowed to the caller's authorized grades
-// at the SQL WHERE clause level (whole school for admin/Principal/an
-// unrestricted Vice Principal; headed/granted grades otherwise).
+// ListSessionsByDate is the cross-school attendance dashboard: requires admin or a leadership rank, narrowed to the caller's authorized grades at the SQL WHERE clause level; a plain Class/Subject Teacher gets ErrInsufficientRank, not an unscoped dump.
 func (s *AttendanceService) ListSessionsByDate(ctx context.Context, actor Actor, dateStr string) ([]db.ListAttendanceSessionsByDateRow, error) {
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid date format, use YYYY-MM-DD")
 	}
 
-	if actor.Role == "admin" {
+	if actor.Role == models.RoleAdmin {
 		return s.repo.ListSessionsByDate(ctx, date, nil)
 	}
 
@@ -247,7 +239,7 @@ func (s *AttendanceService) MarkAttendance(ctx context.Context, actor Actor, ses
 	}
 
 	locked := isLocked(session)
-	if locked && actor.Role != "admin" {
+	if locked && actor.Role != models.RoleAdmin {
 		return ErrSessionLocked
 	}
 
@@ -256,32 +248,65 @@ func (s *AttendanceService) MarkAttendance(ctx context.Context, actor Actor, ses
 		return err
 	}
 
-	for _, record := range req.Records {
+	// Batched once up front instead of one GetRecord call per student in
+	// the loop below — a class of 40 students previously cost 40 extra
+	// round-trips just to detect status transitions.
+	existing, err := s.repo.ListRecordsBySession(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to load existing attendance records: %w", err)
+	}
+	previousByStudent := make(map[uuid.UUID]db.AttendanceRecord, len(existing))
+	for _, r := range existing {
+		previousByStudent[r.StudentID] = r
+	}
+
+	// Parsed and validated as a whole pass before any write — otherwise an
+	// invalid record late in the list (bad status, bad UUID) would return an
+	// error after earlier records in the same request had already been
+	// written, leaving a partial, silently-inconsistent submission.
+	type parsedRecord struct {
+		studentID uuid.UUID
+		status    string
+		note      string
+	}
+	parsed := make([]parsedRecord, len(req.Records))
+	for i, record := range req.Records {
 		studentID, err := uuid.Parse(record.StudentID)
 		if err != nil {
 			return fmt.Errorf("invalid student id: %s", record.StudentID)
 		}
-
-		if record.Status != "present" && record.Status != "absent" && record.Status != "late" && record.Status != "excused" {
+		if record.Status != models.AttendanceStatusPresent && record.Status != models.AttendanceStatusAbsent && record.Status != models.AttendanceStatusLate && record.Status != models.AttendanceStatusExcused {
 			return fmt.Errorf("invalid status: %s — must be present, absent, late or excused", record.Status)
 		}
+		parsed[i] = parsedRecord{studentID: studentID, status: record.Status, note: record.Note}
+	}
 
-		previous, prevErr := s.repo.GetRecord(ctx, sessionID, studentID)
-		hadPrevious := prevErr == nil
-		if prevErr != nil && !errors.Is(prevErr, pgx.ErrNoRows) {
-			return fmt.Errorf("failed to check existing attendance for student %s: %w", record.StudentID, prevErr)
-		}
+	batch := make([]repositories.MarkAttendanceInput, len(parsed))
+	for i, record := range parsed {
+		batch[i] = repositories.MarkAttendanceInput{StudentID: record.studentID, Status: record.status, Note: record.note}
+	}
 
-		updated, err := s.repo.MarkAttendance(ctx, sessionID, studentID, record.Status, record.Note)
-		if err != nil {
-			return fmt.Errorf("failed to mark attendance for student %s: %w", record.StudentID, err)
-		}
+	// Written as one transaction — a mid-batch failure (e.g. a constraint
+	// violation) rolls back every record in this request instead of leaving
+	// some students updated and others not. Audit records and guardian
+	// notifications only fire once the whole batch has committed.
+	updated, err := s.repo.MarkAttendanceBatch(ctx, sessionID, batch)
+	if err != nil {
+		return fmt.Errorf("failed to mark attendance: %w", err)
+	}
+
+	for i, record := range parsed {
+		studentID := record.studentID
+		previous, hadPrevious := previousByStudent[studentID]
+		// Keeps a duplicate studentID later in the same request comparing
+		// against what this loop just wrote, not the pre-request snapshot.
+		previousByStudent[studentID] = updated[i]
 
 		if locked && s.audit != nil {
-			_ = s.audit.Record(ctx, "attendance_record", updated.ID, "edited_after_lock", actor.ID, previous, updated, req.Reason)
+			_ = s.audit.Record(ctx, "attendance_record", updated[i].ID, "edited_after_lock", actor.ID, previous, updated[i], req.Reason)
 		}
 
-		becameAbsent := record.Status == "absent" && (!hadPrevious || previous.Status != "absent")
+		becameAbsent := record.status == models.AttendanceStatusAbsent && (!hadPrevious || previous.Status != models.AttendanceStatusAbsent)
 		if becameAbsent {
 			s.notifyGuardiansOfAbsence(ctx, session, studentID, takenBy)
 		}
@@ -290,10 +315,7 @@ func (s *AttendanceService) MarkAttendance(ctx context.Context, actor Actor, ses
 	return nil
 }
 
-// notifyGuardiansOfAbsence sends an in-app notification to the student's
-// guardian(s) when they're newly marked absent. Failures are logged but
-// never block the attendance write — a missed notification shouldn't
-// prevent a teacher from recording attendance.
+// notifyGuardiansOfAbsence notifies the student's guardian(s) when newly marked absent; failures never block the attendance write itself.
 func (s *AttendanceService) notifyGuardiansOfAbsence(ctx context.Context, session db.AttendanceSession, studentID, takenBy uuid.UUID) {
 	guardianUserIDs, err := s.guardianRepo.ListGuardianUserIDsByStudentIDs(ctx, []uuid.UUID{studentID})
 	if err != nil || len(guardianUserIDs) == 0 {
@@ -326,11 +348,9 @@ func (s *AttendanceService) ListBySession(ctx context.Context, actor Actor, sess
 	return s.repo.ListBySession(ctx, sessionID)
 }
 
-// authorizeTeacherForStudent ensures the acting user, if a teacher, teaches
-// the class the student is currently enrolled in. A student with no current
-// class enrollment can't be verified against, so non-admins are denied.
+// authorizeTeacherForStudent ensures the acting user, if a teacher, teaches the student's current class; a student with no current class enrollment can't be verified against, so non-admins are denied.
 func (s *AttendanceService) authorizeTeacherForStudent(ctx context.Context, actor Actor, studentID uuid.UUID) error {
-	if actor.Role == "admin" {
+	if actor.Role == models.RoleAdmin {
 		return nil
 	}
 	class, err := s.classRepo.GetStudentCurrentClass(ctx, studentID)
@@ -340,13 +360,7 @@ func (s *AttendanceService) authorizeTeacherForStudent(ctx context.Context, acto
 	return s.authorizeTeacherForClass(ctx, actor, class.ID)
 }
 
-// ListByStudent is for contexts that have already verified the caller is
-// allowed to see this student's records by some other means (a student
-// viewing their own via /me/student/attendance, a parent viewing their own
-// linked child via /me/children/:id/attendance — both resolve studentID
-// from the caller's own identity/relationships, not a free-form path
-// param). For the teacher/admin-facing /students/:id/attendance route, use
-// ListByStudentForTeacher instead, which enforces class assignment.
+// ListByStudent is only for contexts that already verified access by other means (self/parent routes resolving studentID from the caller's own identity, not a free-form path param); the teacher/admin-facing route must use ListByStudentForTeacher instead, which enforces class assignment.
 func (s *AttendanceService) ListByStudent(ctx context.Context, studentID uuid.UUID) ([]db.ListAttendanceByStudentRow, error) {
 	return s.repo.ListByStudent(ctx, studentID)
 }

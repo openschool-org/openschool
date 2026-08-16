@@ -17,7 +17,7 @@ func RegisterStudentRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGro
 		repositories.NewTeacherRepository(pool),
 		auditSvc,
 	)
-	service := services.NewStudentService(repo, newIdentityProvider(), houseSvc, auditSvc)
+	service := services.NewStudentService(repo, newIdentityProvider(), houseSvc, auditSvc, repositories.NewSchoolRepository(pool))
 	handler := handlers.NewStudentHandler(service)
 
 	admin.POST("/students", handler.Create)

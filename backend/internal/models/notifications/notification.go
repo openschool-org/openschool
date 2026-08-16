@@ -25,6 +25,11 @@ const (
 	AudienceTeachers SubjectAudience = "teachers"
 )
 
+const (
+	StatusDraft = "draft"
+	StatusSent  = "sent"
+)
+
 // RecipientRule is one targeting criterion picked in the composer; a
 // notification combines one or more of these, unioned together at send
 // time. Label is display-only (e.g. "Grade 10"), filled in by the

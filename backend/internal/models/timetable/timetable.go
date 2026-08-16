@@ -2,6 +2,14 @@ package timetable
 
 import "github.com/google/uuid"
 
+const (
+	StatusDraft       = "draft"
+	StatusUnderReview = "under_review"
+	StatusApproved    = "approved"
+	StatusRejected    = "rejected"
+	StatusPublished   = "published"
+)
+
 type CreateTimetableRequest struct {
 	AcademicYearID uuid.UUID `json:"academic_year_id" binding:"required"`
 	ClassID        uuid.UUID `json:"class_id" binding:"required"`

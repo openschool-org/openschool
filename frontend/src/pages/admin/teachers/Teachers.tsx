@@ -10,6 +10,7 @@ import TableSkeleton from "../../../components/common/TableSkeleton";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import AgentFindingsBanner from "../../../components/common/AgentFindingsBanner";
 
 const TEACHER_TABLE_HEADERS = ["Employee No.", "Full Name", "Phone", "Joined Date", "Status", "Actions"];
 
@@ -48,6 +49,8 @@ export default function Teachers() {
           Add Teacher
         </Button>
       </div>
+
+      <AgentFindingsBanner jobNames={["employment_status_consistency", "teacher_onboarding_watcher"]} />
 
       <div className="os-section">
         <div className="os-toolbar">

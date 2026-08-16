@@ -11,6 +11,11 @@ interface Props {
   title: string;
   description: React.ReactNode;
   isPending?: boolean;
+  // Blocks confirming without implying a delete is in flight (unlike
+  // isPending, which also swaps the button label to "Deleting…") — for
+  // callers that need to disable confirmation for a reason unrelated to
+  // the mutation itself (e.g. a dependent check still loading).
+  disabled?: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }
@@ -20,6 +25,7 @@ export default function ConfirmDeleteModal({
   title,
   description,
   isPending,
+  disabled,
   onClose,
   onConfirm,
 }: Props) {
@@ -33,7 +39,7 @@ export default function ConfirmDeleteModal({
         <Button kind="secondary" onClick={onClose}>
           Cancel
         </Button>
-        <Button kind="danger" onClick={onConfirm} disabled={isPending}>
+        <Button kind="danger" onClick={onConfirm} disabled={isPending || disabled}>
           {isPending ? "Deleting…" : "Delete"}
         </Button>
       </ModalFooter>

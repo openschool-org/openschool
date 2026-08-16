@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/openschool-org/openschool/internal/middleware"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/services"
 )
@@ -37,7 +38,7 @@ func NewAttendanceHandler(service *services.AttendanceService) *AttendanceHandle
 // already put on the gin context. Shared by any handler that needs to know
 // who's acting, not just who's authenticated (e.g. for assignment checks).
 func actorFromContext(c *gin.Context) (services.Actor, error) {
-	id, err := uuid.Parse(c.GetString("userID"))
+	id, err := middleware.UserIDFromContext(c)
 	if err != nil {
 		return services.Actor{}, fmt.Errorf("invalid caller identity")
 	}

@@ -25,11 +25,7 @@ func NewPositionService(repo *repositories.PositionRepository, sectionHeadRepo *
 	return &PositionService{repo: repo, sectionHeadRepo: sectionHeadRepo, audit: audit}
 }
 
-// AssignPrincipal replaces the school's Principal — a permanent appointment,
-// not renewed per academic year. If the new Principal was previously a Vice
-// Principal, that row is cleared (they can't hold both at once, and being
-// promoted to Principal supersedes it). Position assignment is one of the
-// highest-privilege actions in the system, so every call is audit-logged.
+// AssignPrincipal replaces the school's Principal — a permanent appointment, not renewed per academic year; if the new Principal was previously Vice Principal, that row is cleared since they can't hold both at once.
 func (s *PositionService) AssignPrincipal(ctx context.Context, req models.AssignPrincipalRequest, actorID uuid.UUID) (db.TeacherPosition, error) {
 	teacherID, err := uuid.Parse(req.TeacherID)
 	if err != nil {
@@ -110,11 +106,7 @@ func (s *PositionService) Delete(ctx context.Context, id uuid.UUID, actorID uuid
 	return nil
 }
 
-// PositionRank is a hierarchy ordinal, lower value outranks higher — Phase
-// 4.2's "does A outrank B is a single integer comparison" rank, layered over
-// the existing separate mechanisms (teacher_positions, section_heads,
-// classes.form_teacher_id, class_subject_teachers) rather than a new stored
-// column.
+// PositionRank is a hierarchy ordinal (lower value outranks higher), layered over the existing separate mechanisms (teacher_positions, section_heads, classes.form_teacher_id, class_subject_teachers) rather than a new stored column.
 type PositionRank int
 
 const (
@@ -152,9 +144,7 @@ type PositionSummary struct {
 	NotifyWholeSchool bool         `json:"notify_whole_school"`
 }
 
-// SummaryForTeacher computes RankForTeacher plus whether this teacher can
-// notify the whole school (true for Principal, or a Vice Principal with
-// notify_whole_school granted) — used by GET /me/teacher/position.
+// SummaryForTeacher computes RankForTeacher plus whether this teacher can notify the whole school (Principal, or a Vice Principal with notify_whole_school granted) — used by GET /me/teacher/position.
 func (s *PositionService) SummaryForTeacher(ctx context.Context, teacherID, academicYearID uuid.UUID) (PositionSummary, error) {
 	rank, vicePrincipalPosition, err := s.RankForTeacher(ctx, teacherID, academicYearID)
 	if err != nil {
@@ -173,14 +163,7 @@ func (s *PositionService) SummaryForTeacher(ctx context.Context, teacherID, acad
 	}, nil
 }
 
-// RankForTeacher computes a teacher's highest-ranking position by checking
-// each mechanism in hierarchy order and stopping at the first match.
-// Principal/Vice Principal are permanent (not year-scoped); Section
-// Head/Class Teacher/Subject Teacher are checked for the given academic
-// year since those assignments legitimately change every year. The second
-// return value is only meaningful when rank is RankVicePrincipal — it's the
-// row SummaryForTeacher would otherwise have to re-fetch to read
-// NotifyWholeSchool off of.
+// RankForTeacher computes a teacher's highest-ranking position by checking each mechanism in hierarchy order and stopping at the first match; the second return value is only meaningful when rank is RankVicePrincipal (the row SummaryForTeacher would otherwise re-fetch for NotifyWholeSchool).
 func (s *PositionService) RankForTeacher(ctx context.Context, teacherID, academicYearID uuid.UUID) (PositionRank, db.TeacherPosition, error) {
 	isPrincipal, err := s.repo.IsPrincipal(ctx, teacherID)
 	if err != nil {
@@ -225,18 +208,10 @@ func (s *PositionService) RankForTeacher(ctx context.Context, teacherID, academi
 	return RankTeacher, db.TeacherPosition{}, nil
 }
 
-// ErrInsufficientRank is returned by LeadershipScope when the teacher holds
-// no leadership position (plain Class/Subject Teacher or Teacher) — callers
-// use this to distinguish "not authorized for this at all" from a genuine
-// lookup failure.
+// ErrInsufficientRank is returned by LeadershipScope when the teacher holds no leadership position — callers use this to distinguish "not authorized at all" from a genuine lookup failure.
 var ErrInsufficientRank = errors.New("this action requires a leadership position (Principal, Vice Principal, or Section Head)")
 
-// LeadershipScope resolves what a leadership-ranked teacher is authorized to
-// see school-wide: whole-school access (Principal, or a Vice Principal
-// granted notify_whole_school) or a specific set of grade IDs (a scoped Vice
-// Principal, or a Section Head's headed grades). Returns ErrInsufficientRank
-// for anyone below Section Head — a plain Class/Subject Teacher holds no
-// school- or grade-wide scope to resolve.
+// LeadershipScope resolves what a leadership-ranked teacher is authorized to see school-wide: whole-school access, or a specific set of grade IDs (scoped Vice Principal, or a Section Head's headed grades). Returns ErrInsufficientRank for anyone below Section Head.
 func (s *PositionService) LeadershipScope(ctx context.Context, teacherID, academicYearID uuid.UUID) (wholeSchool bool, gradeIDs []uuid.UUID, err error) {
 	rank, position, err := s.RankForTeacher(ctx, teacherID, academicYearID)
 	if err != nil {
@@ -270,11 +245,7 @@ func (s *PositionService) LeadershipScope(ctx context.Context, teacherID, academ
 	}
 }
 
-// LeadershipOverview is the §9.3 "School/Grades Overview" panel — real,
-// scoped data (not just label text) for Principal/Vice Principal/Section
-// Head. A plain Class/Subject Teacher gets ErrInsufficientRank, not empty
-// data. Reuses LeadershipScope for authorization, then the grade-filtered
-// aggregate query for the counts.
+// LeadershipOverviewSummary is the "School/Grades Overview" panel — real, scoped data for Principal/Vice Principal/Section Head; a plain Class/Subject Teacher gets ErrInsufficientRank, not empty data.
 type LeadershipOverviewSummary struct {
 	Scope                string   `json:"scope"` // "school" or "grades"
 	GradeNames           []string `json:"grade_names"`

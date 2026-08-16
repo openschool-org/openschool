@@ -10,9 +10,7 @@ import (
 	"github.com/openschool-org/openschool/internal/repositories"
 )
 
-// AuditService records accountable, hard-to-reverse actions — manual house
-// re-assignments and admin edits to attendance made after the 24h lock —
-// so they can be traced back to who did what and why.
+// AuditService records accountable, hard-to-reverse actions (e.g. manual house re-assignments, admin edits to attendance after the 24h lock) so they can be traced back to who did what and why.
 type AuditService struct {
 	repo *repositories.AuditRepository
 }

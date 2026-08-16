@@ -27,10 +27,7 @@ func NewStudentPortfolioService(repo *repositories.StudentPortfolioRepository, t
 	return &StudentPortfolioService{repo: repo, teacherRepo: teacherRepo}
 }
 
-// TeacherProfileIDForUser resolves the signed-in caller's teacher_profiles
-// id (nil if they're not a teacher, e.g. an admin) — used to credit
-// "written_by" on a progress report without exposing the teacher lookup to
-// the handler layer.
+// TeacherProfileIDForUser resolves the caller's teacher_profiles id (nil if not a teacher, e.g. an admin) — used to credit "written_by" without exposing the teacher lookup to the handler layer.
 func (s *StudentPortfolioService) TeacherProfileIDForUser(ctx context.Context, userID uuid.UUID) *uuid.UUID {
 	teacher, err := s.teacherRepo.GetByUserID(ctx, userID)
 	if err != nil {

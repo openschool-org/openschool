@@ -27,7 +27,7 @@ func NewSetupService(repo *repositories.UserRepository, idp identity.Provider) *
 }
 
 func (s *SetupService) NeedsSetup(ctx context.Context) (bool, error) {
-	count, err := s.repo.CountByRole(ctx, "admin")
+	count, err := s.repo.CountByRole(ctx, models.RoleAdmin)
 	if err != nil {
 		return false, err
 	}
@@ -43,7 +43,7 @@ func (s *SetupService) RegisterFirstAdmin(ctx context.Context, req models.Regist
 		return db.User{}, ErrSetupAlreadyDone
 	}
 
-	idpUser, err := s.idp.CreateUser(ctx, "admin", map[string]interface{}{
+	idpUser, err := s.idp.CreateUser(ctx, models.RoleAdmin, map[string]interface{}{
 		"username":     req.Username,
 		"email":        req.Email,
 		"given_name":   req.GivenName,
@@ -77,14 +77,14 @@ func (s *SetupService) RegisterFirstAdmin(ctx context.Context, req models.Regist
 		ID:       userID,
 		Email:    req.Email,
 		FullName: fullName,
-		Role:     "admin",
+		Role:     models.RoleAdmin,
 	})
 	if err != nil {
 		rollbackIDPUser(ctx, s.idp, "RegisterFirstAdmin", idpUser.ID)
 		return db.User{}, fmt.Errorf("failed to create user record: %w", err)
 	}
 
-	if err := s.idp.AssignRole(ctx, identity.RoleID("admin"), idpUser.ID); err != nil {
+	if err := s.idp.AssignRole(ctx, identity.RoleID(models.RoleAdmin), idpUser.ID); err != nil {
 		// Unlike every earlier failure branch in this function, this one runs
 		// after the local admin row already exists — NeedsSetup() would
 		// otherwise report false forever, permanently locking /setup behind a

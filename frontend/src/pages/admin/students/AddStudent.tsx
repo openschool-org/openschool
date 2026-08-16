@@ -11,11 +11,12 @@ import {
 import { ArrowLeft, Save } from "@carbon/icons-react";
 import { useCreateStudent } from "../../../queries/useStudents";
 import { getErrorMessage } from "../../../lib/errorMessage";
+import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "../../../lib/phone";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Touched = Partial<
-  Record<"givenName" | "familyName" | "email" | "indexNumber", boolean>
+  Record<"givenName" | "familyName" | "email" | "phone" | "indexNumber" | "whatsapp", boolean>
 >;
 
 export default function AddStudent() {
@@ -41,7 +42,9 @@ export default function AddStudent() {
       givenName: true,
       familyName: true,
       email: true,
+      phone: true,
       indexNumber: true,
+      whatsapp: true,
     });
     if (!isValid) return;
     createStudent.mutate(
@@ -67,13 +70,17 @@ export default function AddStudent() {
   const givenNameInvalid = !!touched.givenName && !givenName.trim();
   const familyNameInvalid = !!touched.familyName && !familyName.trim();
   const emailInvalid = !!touched.email && !EMAIL_RE.test(email.trim());
+  const phoneInvalid = !!touched.phone && !isValidSriLankanPhone(phone);
   const indexNumberInvalid = !!touched.indexNumber && !indexNumber.trim();
+  const whatsappInvalid = !!touched.whatsapp && !isValidSriLankanPhone(whatsapp);
 
   const isValid =
     givenName.trim().length > 0 &&
     familyName.trim().length > 0 &&
     EMAIL_RE.test(email.trim()) &&
-    indexNumber.trim().length > 0;
+    isValidSriLankanPhone(phone) &&
+    indexNumber.trim().length > 0 &&
+    isValidSriLankanPhone(whatsapp);
 
   return (
     <div className="os-page">
@@ -159,6 +166,9 @@ export default function AddStudent() {
               placeholder="e.g. 077 123 4567"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+              onBlur={() => markTouched("phone")}
+              invalid={phoneInvalid}
+              invalidText={PHONE_INVALID_TEXT}
             />
           </div>
         </div>
@@ -182,6 +192,9 @@ export default function AddStudent() {
               placeholder="e.g. 077 123 4567"
               value={whatsapp}
               onChange={(e) => setWhatsapp(e.target.value)}
+              onBlur={() => markTouched("whatsapp")}
+              invalid={whatsappInvalid}
+              invalidText={PHONE_INVALID_TEXT}
             />
             <RadioButtonGroup
               legendText="Gender (optional)"

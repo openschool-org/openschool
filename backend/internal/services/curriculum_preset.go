@@ -12,11 +12,7 @@ import (
 	"github.com/openschool-org/openschool/internal/repositories"
 )
 
-// CurriculumPresetService seeds the Sri Lankan national curriculum (Grades
-// 1-13: primary compulsory subjects, junior secondary, O/L with baskets,
-// A/L streams) onto whichever grades actually exist in this school. It's
-// entirely idempotent — safe to run more than once — since every create is
-// preceded by a lookup, so re-running only fills in whatever's missing.
+// CurriculumPresetService seeds the Sri Lankan national curriculum (Grades 1-13) onto whichever grades exist in this school; idempotent, since every create is preceded by a lookup, so re-running only fills in what's missing.
 type CurriculumPresetService struct {
 	pool       *pgxpool.Pool
 	curriculum *repositories.CurriculumRepository
@@ -47,9 +43,7 @@ type presetLevel struct {
 	Groups      []presetGroup
 }
 
-// PresetSummary reports what the run did (or, for a dry run, what it
-// *would* do), so the admin UI can show something more useful than a bare
-// "success" — a per-grade preview before anything is actually written.
+// PresetSummary reports what the run did (or, for a dry run, would do) — a per-grade preview before anything is actually written.
 type PresetSummary struct {
 	DryRun          bool                 `json:"dry_run"`
 	SubjectsCreated int                  `json:"subjects_created"`
@@ -205,9 +199,7 @@ var olBasket3 = []string{
 }
 var alCommon = []string{"AL-12", "AL-13"}
 
-// alStreams: label -> pool of subjects to pick 3 from (Commerce's pool is
-// exactly 3, so min=max=3 there means "take all three" — that's correct,
-// not a bug; see docs on the source curriculum).
+// alStreams: label -> pool of subjects to pick 3 from (Commerce's pool is exactly 3, so min=max=3 there correctly means "take all three", not a bug).
 var alStreams = []struct {
 	Label string
 	Pool  []string
@@ -308,7 +300,7 @@ func (s *CurriculumPresetService) run(ctx context.Context, dryRun bool) (summary
 		}()
 	}
 
-	// ── grades actually present in this school ──────────────────────────────
+	// Grades actually present in this school.
 	allGrades, err := s.grades.List(ctx)
 	if err != nil {
 		return summary, fmt.Errorf("failed to list grades: %w", err)
@@ -326,7 +318,7 @@ func (s *CurriculumPresetService) run(ctx context.Context, dryRun bool) (summary
 		gradeIDByNumber[n] = g
 	}
 
-	// ── subjects: find-or-create by code ─────────────────────────────────────
+	// Subjects: find-or-create by code.
 	existingSubjects, err := s.subjects.List(ctx)
 	if err != nil {
 		return summary, fmt.Errorf("failed to list subjects: %w", err)
@@ -356,7 +348,7 @@ func (s *CurriculumPresetService) run(ctx context.Context, dryRun bool) (summary
 		summary.SubjectsCreated++
 	}
 
-	// ── levels: find-or-create by label ──────────────────────────────────────
+	// Levels: find-or-create by label.
 	existingLevels, err := s.curriculum.ListLevels(ctx)
 	if err != nil {
 		return summary, fmt.Errorf("failed to list levels: %w", err)

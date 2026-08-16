@@ -32,6 +32,8 @@ import {
   SettingsAdjust,
   Group,
   DocumentPdf,
+  Idea,
+  Bot,
 } from "@carbon/icons-react";
 import { isNotFoundError } from "../lib/errorMessage";
 import { useSchool } from "../queries/useSchool";
@@ -39,6 +41,7 @@ import {
   AppHeaderBrand,
   AppHeaderActions,
 } from "../components/AppHeaderChrome";
+import GlobalSearch from "../components/common/GlobalSearch";
 
 // Grouped so the sidebar reads as "who, what, when" instead of one flat
 // alphabet-soup list — each group gets a small uppercase label + divider.
@@ -58,6 +61,7 @@ const NAV_GROUPS: {
       { path: "/teachers", label: "Teachers", Icon: Education },
       { path: "/non-academic-staff", label: "Non-Academic Staff", Icon: Group },
       { path: "/prefects", label: "School Prefects", Icon: Trophy },
+      { path: "/societies", label: "Societies", Icon: Idea },
       { path: "/positions", label: "Leadership Positions", Icon: UserRole },
     ],
   },
@@ -95,7 +99,10 @@ const NAV_GROUPS: {
   },
   {
     label: "System",
-    items: [{ path: "/settings", label: "Settings", Icon: Settings }],
+    items: [
+      { path: "/settings", label: "Settings", Icon: Settings },
+      { path: "/automation", label: "Automation", Icon: Bot },
+    ],
   },
 ];
 
@@ -113,6 +120,7 @@ export default function RootLayout() {
     <>
       <Header aria-label="OpenSchool">
         <AppHeaderBrand />
+        <GlobalSearch />
         <AppHeaderActions />
       </Header>
 

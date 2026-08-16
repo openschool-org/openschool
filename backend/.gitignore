@@ -13,3 +13,6 @@ tmp/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local pg_dump output (internal/jobs/backup.go), defaults to ./backups
+/backups/

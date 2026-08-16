@@ -12,6 +12,7 @@ import (
 	"github.com/openschool-org/openschool/internal/identity"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
+	"github.com/openschool-org/openschool/internal/validation"
 )
 
 var (
@@ -31,6 +32,10 @@ func NewTeacherService(repo *repositories.TeacherRepository, idp identity.Provid
 }
 
 func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTeacherRequest, actorID uuid.UUID) (db.TeacherProfile, error) {
+	if !validation.IsValidSriLankanPhone(req.PhoneNumber) {
+		return db.TeacherProfile{}, validation.ErrInvalidPhone
+	}
+
 	// employee_number is auto-assigned from the shared sequence (Phase 6.1) —
 	// fetched up-front since the identity provider user needs it as an attribute.
 	employeeNumber, err := s.repo.NextEmployeeNumber(ctx)
@@ -40,7 +45,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 
 	// NIC number doubles as the initial (one-time) password (Phase 8.2) —
 	// there is no separate manual password entry anymore.
-	idpUser, err := s.idp.CreateUser(ctx, "teacher", map[string]interface{}{
+	idpUser, err := s.idp.CreateUser(ctx, models.RoleTeacher, map[string]interface{}{
 		"username":        req.Email,
 		"email":           req.Email,
 		"given_name":      req.GivenName,
@@ -65,7 +70,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 		ID:                 userID,
 		Email:              req.Email,
 		FullName:           fullName,
-		Role:               "teacher",
+		Role:               models.RoleTeacher,
 		MustChangePassword: true,
 	})
 	if err != nil {
@@ -77,7 +82,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 	// a hard error, not just a log line: without it, the account gets
 	// created successfully but no teacher claim ever lands on its JWT, so
 	// every later request from it is rejected with 403 and no clue why.
-	if err := s.idp.AssignRole(ctx, identity.RoleID("teacher"), idpUser.ID); err != nil {
+	if err := s.idp.AssignRole(ctx, identity.RoleID(models.RoleTeacher), idpUser.ID); err != nil {
 		rollbackIDPUser(ctx, s.idp, "CreateTeacher", idpUser.ID)
 		if delErr := s.repo.DeleteUser(ctx, userID); delErr != nil {
 			log.Printf("CreateTeacher: failed to roll back local user row %s after error: %v (local user now orphaned)", userID, delErr)
@@ -126,6 +131,10 @@ func (s *TeacherService) ListTeachers(ctx context.Context) ([]db.TeacherProfile,
 }
 
 func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req models.UpdateTeacherRequest) (db.TeacherProfile, error) {
+	if !validation.IsValidSriLankanPhone(req.PhoneNumber) {
+		return db.TeacherProfile{}, validation.ErrInvalidPhone
+	}
+
 	teacher, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return db.TeacherProfile{}, fmt.Errorf("teacher not found")
@@ -139,7 +148,7 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 		return db.TeacherProfile{}, fmt.Errorf("user not found")
 	}
 
-	err = s.idp.UpdateUser(ctx, userID, "teacher", map[string]interface{}{
+	err = s.idp.UpdateUser(ctx, userID, models.RoleTeacher, map[string]interface{}{
 		"username":    user.Email,
 		"email":       user.Email,
 		"given_name":  req.GivenName,
@@ -160,9 +169,7 @@ func (s *TeacherService) UpdateTeacher(ctx context.Context, id uuid.UUID, req mo
 	})
 }
 
-// UpdateTeacherHouse is the System-Administrator-only override for moving a
-// teacher to a different house once one is assigned. It delegates to
-// HouseService so every change is audit-logged.
+// UpdateTeacherHouse delegates to HouseService so every change is audit-logged.
 func (s *TeacherService) UpdateTeacherHouse(ctx context.Context, id uuid.UUID, houseID string, actorID uuid.UUID) (db.TeacherProfile, error) {
 	return s.houseSvc.ChangeTeacherHouse(ctx, id, houseID, actorID)
 }

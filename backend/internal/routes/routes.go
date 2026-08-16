@@ -7,7 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/openschool-org/openschool/internal/handlers"
+	"github.com/openschool-org/openschool/internal/jobs"
 	"github.com/openschool-org/openschool/internal/middleware"
+	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
 	notificationroutes "github.com/openschool-org/openschool/internal/routes/notifications"
 	timetableroutes "github.com/openschool-org/openschool/internal/routes/timetable"
@@ -32,7 +34,10 @@ func envIntOr(key string, fallback int) int {
 	return fallback
 }
 
-func Setup(r *gin.Engine, pool *pgxpool.Pool) {
+// Setup wires every route group and returns the background job scheduler
+// (internal/jobs) it built along the way — main.go starts and stops it
+// around the HTTP server's own lifecycle.
+func Setup(r *gin.Engine, pool *pgxpool.Pool) *jobs.Scheduler {
 	api := r.Group("/api/v1")
 
 	api.GET("/health", func(c *gin.Context) {
@@ -43,10 +48,7 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware())
-	// Layered on top of the per-IP RateLimit in cmd/api/main.go: isolates
-	// one abusive signed-in account from the rest of a school that may
-	// share one NAT IP. Same generous defaults as the per-IP limiter,
-	// tunable independently via env.
+	// Layered on top of the per-IP RateLimit in cmd/api/main.go; tunable independently via env.
 	protected.Use(middleware.PerAccountRateLimit(
 		envFloatOr("API_PER_ACCOUNT_RATE_LIMIT_RPS", 30),
 		envIntOr("API_PER_ACCOUNT_RATE_LIMIT_BURST", 60),
@@ -55,19 +57,19 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	RegisterAuthRoutes(api, protected, pool)
 
 	admin := protected.Group("")
-	admin.Use(middleware.RequireRole("admin"))
+	admin.Use(middleware.RequireRole(models.RoleAdmin))
 
 	teacherOrAdmin := protected.Group("")
-	teacherOrAdmin.Use(middleware.RequireRole("admin", "teacher"))
+	teacherOrAdmin.Use(middleware.RequireRole(models.RoleAdmin, models.RoleTeacher))
 
 	parent := protected.Group("")
-	parent.Use(middleware.RequireRole("parent"))
+	parent.Use(middleware.RequireRole(models.RoleParent))
 
 	student := protected.Group("")
-	student.Use(middleware.RequireRole("student"))
+	student.Use(middleware.RequireRole(models.RoleStudent))
 
 	teacher := protected.Group("")
-	teacher.Use(middleware.RequireRole("teacher"))
+	teacher.Use(middleware.RequireRole(models.RoleTeacher))
 
 	RegisterSchoolRoutes(admin, teacherOrAdmin, protected, pool)
 	RegisterGradeRoutes(admin, teacherOrAdmin, pool)
@@ -83,9 +85,11 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 	RegisterAttendanceRoutes(teacherOrAdmin, pool)
 	RegisterStaffAttendanceRoutes(admin, pool)
 	RegisterGuardianRoutes(admin, teacherOrAdmin, pool)
+	RegisterSearchRoutes(admin, pool)
 	RegisterNonAcademicStaffRoutes(admin, teacherOrAdmin, pool)
 	RegisterSectionHeadRoutes(admin, teacherOrAdmin, pool)
 	RegisterPrefectRoutes(admin, teacherOrAdmin, pool)
+	RegisterSocietyRoutes(admin, teacherOrAdmin, pool)
 	RegisterPositionRoutes(admin, teacherOrAdmin, pool)
 	RegisterPromotionRoutes(admin, pool)
 	RegisterTermRoutes(admin, protected, pool)
@@ -109,4 +113,9 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) {
 
 	meHandler := handlers.NewMeHandler(services.NewMeService(repositories.NewUserRepository(pool)))
 	protected.GET("/me", meHandler.Get)
+
+	scheduler := jobs.NewScheduler(jobs.BuildAll(pool), repositories.NewJobSchedulerRepository(pool))
+	RegisterJobRoutes(admin, pool, scheduler)
+
+	return scheduler
 }

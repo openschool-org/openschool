@@ -67,9 +67,7 @@ func (s *HouseService) DeleteHouse(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// PickForStudent returns the id of whichever house currently holds the
-// fewest students, breaking ties randomly. ok is false if no house exists
-// yet.
+// PickForStudent returns the id of whichever house currently holds the fewest students, breaking ties randomly; ok is false if no house exists yet.
 func (s *HouseService) PickForStudent(ctx context.Context) (uuid.UUID, bool) {
 	id, ok, err := s.repo.PickForStudent(ctx)
 	if err != nil || !ok {
@@ -87,10 +85,7 @@ func (s *HouseService) PickForTeacher(ctx context.Context) (uuid.UUID, bool) {
 	return id, true
 }
 
-// ReassignMissing assigns a balanced house to every student who doesn't
-// have one yet (e.g. added before any house existed). Students are
-// assigned one at a time, in sequence, so each pick reflects the counts
-// left by the previous one and the cohort still comes out balanced.
+// ReassignMissing assigns a balanced house to every student who doesn't have one yet, one at a time in sequence, so each pick reflects the counts left by the previous one.
 func (s *HouseService) ReassignMissing(ctx context.Context) (int, error) {
 	students, err := s.repo.ListStudentsMissingHouse(ctx)
 	if err != nil {
@@ -160,10 +155,7 @@ func pgUUIDToPtr(id pgtype.UUID) *uuid.UUID {
 	return &u
 }
 
-// ChangeStudentHouse is the only path allowed to move a student to a
-// different house once one is assigned — a student's house is meant to be
-// permanent, and this is the System Administrator override. Every call is
-// recorded in the audit log.
+// ChangeStudentHouse is the only path allowed to move a student to a different house once assigned — a student's house is meant to be permanent, so this is the audit-logged administrator override.
 func (s *HouseService) ChangeStudentHouse(ctx context.Context, studentID uuid.UUID, rawHouseID string, actorID uuid.UUID) (db.StudentProfile, error) {
 	newHouseID, err := parseOptionalHouseID(rawHouseID)
 	if err != nil {

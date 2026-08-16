@@ -14,6 +14,7 @@ import { getErrorMessage } from "../../../lib/errorMessage";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import EmptyState from "../../../components/common/EmptyState";
 import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+import AgentFindingsBanner from "../../../components/common/AgentFindingsBanner";
 
 function ClassRowSkeleton() {
   return (
@@ -83,6 +84,8 @@ export default function Classes() {
           Add Class
         </Button>
       </div>
+
+      <AgentFindingsBanner jobNames={["employment_status_consistency", "unclassed_student_watcher"]} />
 
       <div className="os-section">
         <div className="os-section__header">

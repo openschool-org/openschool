@@ -15,13 +15,14 @@ import { ArrowLeft, Save } from "@carbon/icons-react";
 import { useCreateTeacher } from "../../../queries/useTeachers";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import { toYmd } from "../../../lib/date";
+import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "../../../lib/phone";
 import type { TeacherTitle } from "../../../services/teacher";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TITLES: TeacherTitle[] = ["Mr", "Miss", "Mrs", "Ms", "Dr", "Von", "Prof"];
 
 type Touched = Partial<
-  Record<"givenName" | "familyName" | "email" | "nicNumber" | "joinedDate", boolean>
+  Record<"givenName" | "familyName" | "email" | "phone" | "nicNumber" | "joinedDate", boolean>
 >;
 
 export default function AddTeacher() {
@@ -45,6 +46,7 @@ export default function AddTeacher() {
       givenName: true,
       familyName: true,
       email: true,
+      phone: true,
       nicNumber: true,
       joinedDate: true,
     });
@@ -71,6 +73,7 @@ export default function AddTeacher() {
   const givenNameInvalid = !!touched.givenName && !givenName.trim();
   const familyNameInvalid = !!touched.familyName && !familyName.trim();
   const emailInvalid = !!touched.email && !EMAIL_RE.test(email.trim());
+  const phoneInvalid = !!touched.phone && !isValidSriLankanPhone(phone);
   const nicNumberInvalid = !!touched.nicNumber && !nicNumber.trim();
   const joinedDateInvalid = !!touched.joinedDate && !joinedDate;
 
@@ -78,6 +81,7 @@ export default function AddTeacher() {
     givenName.trim().length > 0 &&
     familyName.trim().length > 0 &&
     EMAIL_RE.test(email.trim()) &&
+    isValidSriLankanPhone(phone) &&
     nicNumber.trim().length > 0 &&
     !!joinedDate;
 
@@ -168,6 +172,9 @@ export default function AddTeacher() {
               placeholder="e.g. 077 123 4567"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+              onBlur={() => markTouched("phone")}
+              invalid={phoneInvalid}
+              invalidText={PHONE_INVALID_TEXT}
             />
             <TextInput
               id="nic-number"

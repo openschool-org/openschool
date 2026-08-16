@@ -6,9 +6,10 @@ INSERT INTO school (
     email,
     logo_url,
     grade_from,
-    grade_to
+    grade_to,
+    school_type
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
 RETURNING *;
 
@@ -19,13 +20,14 @@ LIMIT 1;
 -- name: UpdateSchool :one
 UPDATE school
 SET
-    name       = $2,
-    address    = $3,
-    phone      = $4,
-    email      = $5,
-    logo_url   = $6,
-    grade_from = $7,
-    grade_to   = $8
+    name        = $2,
+    address     = $3,
+    phone       = $4,
+    email       = $5,
+    logo_url    = $6,
+    grade_from  = $7,
+    grade_to    = $8,
+    school_type = COALESCE(sqlc.narg('school_type'), school_type)
 WHERE id = $1
 RETURNING *;
 

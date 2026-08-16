@@ -11,6 +11,7 @@ import (
 	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
+	"github.com/openschool-org/openschool/internal/validation"
 )
 
 var (
@@ -19,12 +20,7 @@ var (
 	ErrInvalidLogoURL       = errors.New("logo must be a data:image/... URL under 500KB")
 )
 
-// maxLogoDataURLChars bounds the base64 data: URL string length. The
-// frontend (LogoUpload.tsx) caps the raw image at 500KB before encoding;
-// base64 inflates that by ~4/3, so this is a generous ceiling around that,
-// not a tight byte-for-byte match. logo_url is otherwise an unbounded TEXT
-// column set directly from client input, and the frontend's check is
-// trivially bypassed by calling the API directly.
+// maxLogoDataURLChars bounds the base64 data: URL length — a generous ceiling around the frontend's 500KB raw-image cap (inflated ~4/3 by base64), since logo_url is otherwise unbounded and that client-side check is trivially bypassed by calling the API directly.
 const maxLogoDataURLChars = 700_000
 
 func validateLogoURL(logoURL string) error {
@@ -58,15 +54,19 @@ func (s *SchoolService) CreateSchool(ctx context.Context, req models.CreateSchoo
 	if err := validateLogoURL(req.LogoURL); err != nil {
 		return db.School{}, err
 	}
+	if !validation.IsValidSriLankanPhone(req.Phone) {
+		return db.School{}, validation.ErrInvalidPhone
+	}
 
 	return s.repo.Create(ctx, db.CreateSchoolParams{
-		Name:      req.Name,
-		Address:   pgtype.Text{String: req.Address, Valid: req.Address != ""},
-		Phone:     pgtype.Text{String: req.Phone, Valid: req.Phone != ""},
-		Email:     pgtype.Text{String: req.Email, Valid: req.Email != ""},
-		LogoUrl:   pgtype.Text{String: req.LogoURL, Valid: req.LogoURL != ""},
-		GradeFrom: optionalInt4(req.GradeFrom),
-		GradeTo:   optionalInt4(req.GradeTo),
+		Name:       req.Name,
+		Address:    pgtype.Text{String: req.Address, Valid: req.Address != ""},
+		Phone:      pgtype.Text{String: req.Phone, Valid: req.Phone != ""},
+		Email:      pgtype.Text{String: req.Email, Valid: req.Email != ""},
+		LogoUrl:    pgtype.Text{String: req.LogoURL, Valid: req.LogoURL != ""},
+		GradeFrom:  optionalInt4(req.GradeFrom),
+		GradeTo:    optionalInt4(req.GradeTo),
+		SchoolType: schoolTypeOrDefault(req.SchoolType),
 	})
 }
 
@@ -78,17 +78,38 @@ func (s *SchoolService) UpdateSchool(ctx context.Context, id uuid.UUID, req mode
 	if err := validateLogoURL(req.LogoURL); err != nil {
 		return db.School{}, err
 	}
+	if !validation.IsValidSriLankanPhone(req.Phone) {
+		return db.School{}, validation.ErrInvalidPhone
+	}
 
+	// Unlike Create (where an empty field genuinely means "not set yet, use
+	// the column default"), an empty school_type on Update must not silently
+	// overwrite whatever the school already has — it means the caller didn't
+	// send one, not that they want it reset to "mixed". Passed as NULL, which
+	// the UPDATE's COALESCE resolves against the existing column value at the
+	// SQL level, so this stays one atomic statement instead of a separate
+	// Get to fetch the current value first.
 	return s.repo.Update(ctx, db.UpdateSchoolParams{
-		ID:        id,
-		Name:      req.Name,
-		Address:   pgtype.Text{String: req.Address, Valid: req.Address != ""},
-		Phone:     pgtype.Text{String: req.Phone, Valid: req.Phone != ""},
-		Email:     pgtype.Text{String: req.Email, Valid: req.Email != ""},
-		LogoUrl:   pgtype.Text{String: req.LogoURL, Valid: req.LogoURL != ""},
-		GradeFrom: optionalInt4(req.GradeFrom),
-		GradeTo:   optionalInt4(req.GradeTo),
+		ID:         id,
+		Name:       req.Name,
+		Address:    pgtype.Text{String: req.Address, Valid: req.Address != ""},
+		Phone:      pgtype.Text{String: req.Phone, Valid: req.Phone != ""},
+		Email:      pgtype.Text{String: req.Email, Valid: req.Email != ""},
+		LogoUrl:    pgtype.Text{String: req.LogoURL, Valid: req.LogoURL != ""},
+		GradeFrom:  optionalInt4(req.GradeFrom),
+		GradeTo:    optionalInt4(req.GradeTo),
+		SchoolType: pgtype.Text{String: req.SchoolType, Valid: req.SchoolType != ""},
 	})
+}
+
+// schoolTypeOrDefault treats an empty request field as "mixed", matching the
+// column's DB-level default — used only by Create, where there is no
+// existing value to fall back to.
+func schoolTypeOrDefault(schoolType string) string {
+	if schoolType == "" {
+		return "mixed"
+	}
+	return schoolType
 }
 
 func (s *SchoolService) CreateAcademicYear(ctx context.Context, req models.CreateAcademicYearRequest) (db.AcademicYear, error) {

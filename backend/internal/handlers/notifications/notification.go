@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/openschool-org/openschool/internal/middleware"
+	rootmodels "github.com/openschool-org/openschool/internal/models"
 	models "github.com/openschool-org/openschool/internal/models/notifications"
 	services "github.com/openschool-org/openschool/internal/services/notifications"
 )
@@ -19,7 +21,7 @@ func NewNotificationHandler(service *services.NotificationService) *Notification
 }
 
 func (h *NotificationHandler) caller(c *gin.Context) (uuid.UUID, string, bool) {
-	id, err := uuid.Parse(c.GetString("userID"))
+	id, err := middleware.UserIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
 		return uuid.UUID{}, "", false
@@ -28,12 +30,12 @@ func (h *NotificationHandler) caller(c *gin.Context) (uuid.UUID, string, bool) {
 	role := ""
 	if list, ok := roles.([]string); ok {
 		for _, r := range list {
-			if r == "admin" {
-				role = "admin"
+			if r == rootmodels.RoleAdmin {
+				role = rootmodels.RoleAdmin
 				break
 			}
-			if r == "teacher" {
-				role = "teacher"
+			if r == rootmodels.RoleTeacher {
+				role = rootmodels.RoleTeacher
 			}
 		}
 	}

@@ -113,6 +113,19 @@ WHERE cs.student_id = $1
   AND ay.is_current = TRUE
 LIMIT 1;
 
+-- name: ListStudentsEnrolledInCurrentClass :many
+-- batched form of GetStudentCurrentClass: of the given student_ids, which
+-- are (this academic year) enrolled in exactly class_id. Used to validate a
+-- whole batch of term-mark entries in one query instead of one
+-- GetStudentCurrentClass call per student.
+SELECT cs.student_id
+FROM class_students cs
+INNER JOIN classes c ON c.id = cs.class_id
+INNER JOIN academic_years ay ON ay.id = c.academic_year_id
+WHERE cs.class_id = $1
+  AND cs.student_id = ANY(sqlc.arg(student_ids)::uuid[])
+  AND ay.is_current = TRUE;
+
 -- name: AssignSubjectTeacherToClass :exec
 INSERT INTO class_subject_teachers (class_id, subject_id, teacher_id)
 VALUES ($1, $2, $3)
@@ -143,6 +156,28 @@ SELECT EXISTS (
     SELECT 1 FROM classes WHERE id = $1 AND form_teacher_id = $2
     UNION
     SELECT 1 FROM class_subject_teachers WHERE class_id = $1 AND teacher_id = $3
+) AS assigned;
+
+-- name: IsTeacherAssignedToAnyStudentClass :one
+-- true if teacher_id is the form teacher or a subject teacher of the
+-- *current-year* class of any of the given student_ids — one query
+-- answering what would otherwise be a GetStudentCurrentClass +
+-- IsTeacherAssignedToClass pair per student (e.g. authorizing a
+-- guardian-targeted notification against all of that guardian's children).
+SELECT EXISTS (
+    SELECT 1
+    FROM class_students cs
+    INNER JOIN classes c        ON c.id = cs.class_id
+    INNER JOIN academic_years ay ON ay.id = c.academic_year_id
+    WHERE cs.student_id = ANY(sqlc.arg(student_ids)::uuid[])
+      AND ay.is_current = TRUE
+      AND (
+          c.form_teacher_id = sqlc.arg(teacher_id)::uuid
+          OR EXISTS (
+              SELECT 1 FROM class_subject_teachers cst
+              WHERE cst.class_id = c.id AND cst.teacher_id = sqlc.arg(teacher_id)::uuid
+          )
+      )
 ) AS assigned;
 
 -- name: UpdateGrade :one

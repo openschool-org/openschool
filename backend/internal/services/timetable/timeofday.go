@@ -7,9 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// parseClockTime parses "HH:MM" (or "HH:MM:SS") into a pgtype.Time. Used
-// throughout the timetable module, whose settings/periods/intervals are all
-// times-of-day rather than full timestamps.
+// parseClockTime parses "HH:MM" (or "HH:MM:SS") into a pgtype.Time; used throughout the timetable module, whose settings/periods/intervals are all times-of-day rather than full timestamps.
 func parseClockTime(s string) (pgtype.Time, error) {
 	t, err := time.Parse("15:04", s)
 	if err != nil {

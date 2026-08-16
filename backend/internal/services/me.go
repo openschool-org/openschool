@@ -6,12 +6,13 @@ import (
 
 	"github.com/google/uuid"
 	db "github.com/openschool-org/openschool/db/sqlc"
+	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/repositories"
 )
 
 // appRolePriority mirrors the frontend's role resolution order
 // (frontend/src/hooks/useRole.ts) — keep the two in sync if it ever changes.
-var appRolePriority = []string{"admin", "teacher", "student", "parent"}
+var appRolePriority = []string{models.RoleAdmin, models.RoleTeacher, models.RoleStudent, models.RoleParent}
 
 // ResolveAppRole picks the highest-priority OpenSchool role out of the roles
 // on a token, or "" if none of them are recognized app roles.
@@ -32,10 +33,7 @@ func NewMeService(repo *repositories.UserRepository) *MeService {
 	return &MeService{repo: repo}
 }
 
-// EnsureProvisioned makes sure a local row exists for an identity that just
-// authenticated, so first-time sign-ins don't need a separate provisioning
-// step. It's a no-op (returning the zero User) if the token carries no
-// recognized app role — nothing meaningful to provision yet.
+// EnsureProvisioned makes sure a local row exists for an identity that just authenticated, so first-time sign-ins don't need a separate provisioning step; a no-op if the token carries no recognized app role.
 func (s *MeService) EnsureProvisioned(ctx context.Context, userID uuid.UUID, email, fullName, role string) (db.User, error) {
 	if role == "" {
 		return db.User{}, nil
