@@ -304,7 +304,7 @@ export default function SettingsPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0" }}>
             {[
               ["Version",    "0.1.0 - development build"],
-              ["License",    "MIT"],
+              ["License",    "Apache 2.0"],
               ["Repository", "github.com/openschool-org"],
               ["Support",    "github.com/openschool-org/issues"],
             ].map(([label, value]) => (

@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/openschool-org/openschool/actions/workflows/backend-ci.yml"><img src="https://github.com/openschool-org/openschool/actions/workflows/backend-ci.yml/badge.svg" alt="Backend CI"></a>
   <a href="https://github.com/openschool-org/openschool/actions/workflows/frontend-ci.yml"><img src="https://github.com/openschool-org/openschool/actions/workflows/frontend-ci.yml/badge.svg" alt="Frontend CI"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT License"></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="Apache 2.0 License"></a>
   <a href="./CODE_OF_CONDUCT.md"><img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg" alt="Contributor Covenant"></a>
 </p>
 
@@ -65,10 +65,9 @@ Found a security issue? Please **don't** open a public GitHub issue — see
 
 ## Maintainers
 
-This project is started and maintained by [Vertex Labs](https://vertexlabs.team),
-and has grown with everyone who's contributed since — see the
+This project is maintained by its open-source contributors — see the
 [contributors graph](https://github.com/openschool-org/openschool/graphs/contributors).
 
 ## License
 
-[MIT](LICENSE) — see the [`LICENSE`](LICENSE) file for the full text.
+[Apache 2.0](LICENSE) — see the [`LICENSE`](LICENSE) file for the full text.
