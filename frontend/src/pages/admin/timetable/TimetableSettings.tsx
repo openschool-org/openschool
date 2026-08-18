@@ -1,11 +1,14 @@
+// This file renders the TimetableSettings page, allowing administrators to configure default templates and custom intervals for different grades.
+
 import { useState } from "react";
 import { Save } from "@carbon/icons-react";
-import { Button, TextInput, NumberInput, InlineNotification, SkeletonText } from "@carbon/react";
+import { Button, TextInput, NumberInput, InlineNotification, SkeletonText, Tabs, TabList, Tab, TabPanels, TabPanel } from "@carbon/react";
 import { useCurrentAcademicYear } from "../../../queries/useAcademicYears";
 import { useTimetableSettings, useUpsertTimetableSettings } from "../../../queries/timetable/useTimetableSettings";
 import type { TimetableSettings as TimetableSettingsData } from "../../../services/timetable/timetableSettings";
 import { getErrorMessage } from "../../../lib/errorMessage";
 import EmptyState from "../../../components/common/EmptyState";
+import GradeSections from "./GradeSections";
 
 const DEFAULTS = {
   school_start_time: "08:00",
@@ -35,12 +38,57 @@ function SettingsForm({
       : DEFAULTS,
   );
 
+  const [loadedForYear, setLoadedForYear] = useState<string | null>(null);
+  if (initial && loadedForYear !== academicYearId) {
+    setForm({
+      school_start_time: initial.school_start_time,
+      school_end_time: initial.school_end_time,
+      number_of_periods: initial.number_of_periods,
+      period_duration_minutes: initial.period_duration_minutes,
+      interval_duration_minutes: initial.interval_duration_minutes,
+    });
+    setLoadedForYear(academicYearId);
+  }
+
   const handleSave = () => {
     upsert.mutate({ academic_year_id: academicYearId, ...form });
   };
 
   return (
     <>
+      {initial && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "1.25rem",
+            background: "#f4f4f4",
+            padding: "1rem 1.5rem",
+            marginBottom: "1.5rem",
+            border: "1px solid #e0e0e0",
+          }}
+        >
+          <div>
+            <p style={{ fontSize: "0.75rem", color: "#525252", margin: "0 0 0.25rem", fontWeight: 600, textTransform: "uppercase" }}>School Hours</p>
+            <p style={{ fontSize: "1.125rem", fontWeight: 300, color: "#161616", margin: 0 }}>
+              {initial.school_start_time} – {initial.school_end_time}
+            </p>
+          </div>
+          <div>
+            <p style={{ fontSize: "0.75rem", color: "#525252", margin: "0 0 0.25rem", fontWeight: 600, textTransform: "uppercase" }}>Periods & Duration</p>
+            <p style={{ fontSize: "1.125rem", fontWeight: 300, color: "#161616", margin: 0 }}>
+              {initial.number_of_periods} periods ({initial.period_duration_minutes} mins)
+            </p>
+          </div>
+          <div>
+            <p style={{ fontSize: "0.75rem", color: "#525252", margin: "0 0 0.25rem", fontWeight: 600, textTransform: "uppercase" }}>Default Interval</p>
+            <p style={{ fontSize: "1.125rem", fontWeight: 300, color: "#161616", margin: 0 }}>
+              {initial.interval_duration_minutes} minutes
+            </p>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>
         <Button renderIcon={Save} kind="primary" onClick={handleSave} disabled={upsert.isPending}>
           {upsert.isPending ? "Saving…" : "Save"}
@@ -115,6 +163,7 @@ function SettingsForm({
   );
 }
 
+
 export default function TimetableSettings() {
   const { data: currentYear } = useCurrentAcademicYear();
   const { data: settings, isLoading } = useTimetableSettings(currentYear?.id ?? "");
@@ -143,19 +192,31 @@ export default function TimetableSettings() {
         <div className="os-page__header-left">
           <h1 className="os-page__title">Timetable Settings</h1>
           <p className="os-page__subtitle">
-            The school's default daily operating time for {currentYear.label}. Used as a starting template when a
-            grade section's period grid is generated — each section can still be hand-edited afterwards.
+            Configure default timetable structures and custom grade interval times for {currentYear.label}.
           </p>
         </div>
       </div>
 
-      <div className="os-section" style={{ padding: "1.5rem" }}>
-        {isLoading ? (
-          <SkeletonText width="40%" />
-        ) : (
-          <SettingsForm key={settings ? "loaded" : "empty"} academicYearId={currentYear.id} initial={settings} />
-        )}
-      </div>
+      <Tabs>
+        <TabList aria-label="Timetable Settings Tabs">
+          <Tab>Default Templates</Tab>
+          <Tab>Grade Interval Times</Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel style={{ padding: "1rem 0" }}>
+            <div className="os-section" style={{ padding: "1.5rem" }}>
+              {isLoading ? (
+                <SkeletonText width="40%" />
+              ) : (
+                <SettingsForm key={settings ? "loaded" : "empty"} academicYearId={currentYear.id} initial={settings} />
+              )}
+            </div>
+          </TabPanel>
+          <TabPanel style={{ padding: "1rem 0" }}>
+            <GradeSections inline />
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
     </div>
   );
 }

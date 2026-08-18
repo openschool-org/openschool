@@ -267,7 +267,7 @@ func (q *Queries) GetTeacherByUserIDAndNIC(ctx context.Context, arg GetTeacherBy
 
 const listSubjectsByTeacher = `-- name: ListSubjectsByTeacher :many
 SELECT
-    s.id, s.name, s.code, s.created_at, s.type
+    s.id, s.name, s.code, s.created_at, s.type, s.max_marks
 FROM subjects s
 INNER JOIN teacher_subjects ts ON ts.subject_id = s.id
 WHERE ts.teacher_id = $1
@@ -289,6 +289,7 @@ func (q *Queries) ListSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID
 			&i.Code,
 			&i.CreatedAt,
 			&i.Type,
+			&i.MaxMarks,
 		); err != nil {
 			return nil, err
 		}

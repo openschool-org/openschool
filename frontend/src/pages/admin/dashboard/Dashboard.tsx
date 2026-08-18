@@ -1,5 +1,9 @@
+// This file renders the admin Overview/Dashboard page: header with the
+// current academic year, stat cards, attendance-by-class (with a teacher
+// attendance summary) and recent activity.
+
 import { useMemo } from "react";
-import { UserMultiple, Education, Building, Book } from "@carbon/icons-react";
+import { Calendar, UserMultiple, Education, Building, Book } from "@carbon/icons-react";
 import { useSchool } from "../../../queries/useSchool";
 import { useStudents } from "../../../queries/useStudents";
 import { useTeachers } from "../../../queries/useTeachers";
@@ -7,14 +11,13 @@ import { useCurrentClasses } from "../../../queries/useClasses";
 import { useSubjects } from "../../../queries/useSubjects";
 import { useAcademicYears } from "../../../queries/useAcademicYears";
 import { useDailySessions } from "../../../queries/useAttendance";
+import { useStaffAttendanceByDate } from "../../../queries/useStaffAttendance";
 import type { DailySession } from "../../../services/attendance";
-import AnalyticsSection from "./AnalyticsSection";
 import { todayISODate } from "../../../lib/date";
 import StatCard from "./components/StatCard";
 import AttendanceByClassSection from "./components/AttendanceByClassSection";
 import RecentActivitySection, { type RecentActivityItem } from "./components/RecentActivitySection";
-import AttendanceTodaySidebar from "./components/AttendanceTodaySidebar";
-import AcademicYearSidebar from "./components/AcademicYearSidebar";
+import { ACCENT } from "./constants";
 
 export default function Dashboard() {
   const { data: school } = useSchool();
@@ -22,8 +25,9 @@ export default function Dashboard() {
   const { data: teachers, isLoading: teachersLoading } = useTeachers();
   const { data: classes, isLoading: classesLoading } = useCurrentClasses();
   const { data: subjects, isLoading: subjectsLoading } = useSubjects();
-  const { data: years, isLoading: yearsLoading } = useAcademicYears();
+  const { data: years } = useAcademicYears();
   const { data: todaySessions, isLoading: sessionsLoading } = useDailySessions(todayISODate());
+  const { data: staffAttendance, isLoading: staffAttendanceLoading } = useStaffAttendanceByDate(todayISODate());
 
   const title = school?.name ? `${school.name} - Admin Dashboard` : "Admin Dashboard";
   const currentYear = years?.find((y) => y.is_current) ?? null;
@@ -67,20 +71,46 @@ export default function Dashboard() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
+      <div className="os-page__header" style={{ flexWrap: "wrap", rowGap: "0.75rem" }}>
         <div className="os-page__header-left">
           <h1 className="os-page__title">{title}</h1>
         </div>
-        {school?.logo_url && (
-          <img
-            src={school.logo_url}
-            alt={school.name ?? "School logo"}
-            style={{ width: "3rem", height: "3rem", objectFit: "contain", flexShrink: 0 }}
-          />
-        )}
+
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          {currentYear && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                padding: "0.5rem 0.875rem",
+                background: "#edf2fa",
+                borderRadius: "999px",
+              }}
+            >
+              <Calendar size={16} style={{ fill: ACCENT, flexShrink: 0 }} />
+              <span style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#161616" }}>
+                {currentYear.label}
+              </span>
+              {currentYear.start_date && currentYear.end_date && (
+                <span style={{ fontSize: "0.75rem", color: "#525252" }}>
+                  {new Date(currentYear.start_date).toLocaleDateString("en-LK", { month: "short", year: "numeric" })}
+                  {" – "}
+                  {new Date(currentYear.end_date).toLocaleDateString("en-LK", { month: "short", year: "numeric" })}
+                </span>
+              )}
+            </div>
+          )}
+          {school?.logo_url && (
+            <img
+              src={school.logo_url}
+              alt={school.name ?? "School logo"}
+              style={{ width: "3rem", height: "3rem", objectFit: "contain", flexShrink: 0 }}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Stat cards */}
       <div className="os-stat-grid">
         <StatCard label="Total Students" value={students?.length ?? 0} loading={studentsLoading} Icon={UserMultiple} path="/students" />
         <StatCard label="Teachers" value={teachers?.length ?? 0} loading={teachersLoading} Icon={Education} path="/teachers" />
@@ -88,21 +118,15 @@ export default function Dashboard() {
         <StatCard label="Subjects" value={subjects?.length ?? 0} loading={subjectsLoading} Icon={Book} path="/subjects" />
       </div>
 
-      <AttendanceByClassSection classes={classes} loading={classAttendanceLoading} sessionByClassId={sessionByClassId} />
+      <AttendanceByClassSection
+        classes={classes}
+        loading={classAttendanceLoading}
+        sessionByClassId={sessionByClassId}
+        teachers={staffAttendance?.teachers}
+        teachersLoading={staffAttendanceLoading}
+      />
 
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1.5rem", alignItems: "start" }}>
-        <div>
-          <RecentActivitySection items={recentActivity} loading={dashboardLoading} />
-        </div>
-
-        {/* Right sidebar */}
-        <div>
-          <AttendanceTodaySidebar sessions={todaySessions} loading={sessionsLoading} />
-          <AcademicYearSidebar currentYear={currentYear} loading={yearsLoading} />
-        </div>
-      </div>
-
-      <AnalyticsSection />
+      <RecentActivitySection items={recentActivity} loading={dashboardLoading} />
     </div>
   );
 }

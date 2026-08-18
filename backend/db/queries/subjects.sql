@@ -1,6 +1,6 @@
 -- name: CreateSubject :one
-INSERT INTO subjects (name, code, type)
-VALUES ($1, $2, $3)
+INSERT INTO subjects (name, code, type, max_marks)
+VALUES ($1, $2, $3, $4)
 RETURNING *;
 
 -- name: GetSubjectByID :one
@@ -20,7 +20,8 @@ UPDATE subjects
 SET
     name = $2,
     code = $3,
-    type = $4
+    type = $4,
+    max_marks = $5
 WHERE id = $1
 RETURNING *;
 

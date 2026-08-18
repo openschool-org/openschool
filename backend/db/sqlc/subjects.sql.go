@@ -13,19 +13,25 @@ import (
 )
 
 const createSubject = `-- name: CreateSubject :one
-INSERT INTO subjects (name, code, type)
-VALUES ($1, $2, $3)
-RETURNING id, name, code, created_at, type
+INSERT INTO subjects (name, code, type, max_marks)
+VALUES ($1, $2, $3, $4)
+RETURNING id, name, code, created_at, type, max_marks
 `
 
 type CreateSubjectParams struct {
-	Name string      `json:"name"`
-	Code string      `json:"code"`
-	Type pgtype.Text `json:"type"`
+	Name     string         `json:"name"`
+	Code     string         `json:"code"`
+	Type     pgtype.Text    `json:"type"`
+	MaxMarks pgtype.Numeric `json:"max_marks"`
 }
 
 func (q *Queries) CreateSubject(ctx context.Context, arg CreateSubjectParams) (Subject, error) {
-	row := q.db.QueryRow(ctx, createSubject, arg.Name, arg.Code, arg.Type)
+	row := q.db.QueryRow(ctx, createSubject,
+		arg.Name,
+		arg.Code,
+		arg.Type,
+		arg.MaxMarks,
+	)
 	var i Subject
 	err := row.Scan(
 		&i.ID,
@@ -33,6 +39,7 @@ func (q *Queries) CreateSubject(ctx context.Context, arg CreateSubjectParams) (S
 		&i.Code,
 		&i.CreatedAt,
 		&i.Type,
+		&i.MaxMarks,
 	)
 	return i, err
 }
@@ -58,7 +65,7 @@ func (q *Queries) DeleteSubject(ctx context.Context, id uuid.UUID) (int64, error
 }
 
 const getSubjectByCode = `-- name: GetSubjectByCode :one
-SELECT id, name, code, created_at, type FROM subjects
+SELECT id, name, code, created_at, type, max_marks FROM subjects
 WHERE code = $1
 `
 
@@ -71,12 +78,13 @@ func (q *Queries) GetSubjectByCode(ctx context.Context, code string) (Subject, e
 		&i.Code,
 		&i.CreatedAt,
 		&i.Type,
+		&i.MaxMarks,
 	)
 	return i, err
 }
 
 const getSubjectByID = `-- name: GetSubjectByID :one
-SELECT id, name, code, created_at, type FROM subjects
+SELECT id, name, code, created_at, type, max_marks FROM subjects
 WHERE id = $1
 `
 
@@ -89,12 +97,13 @@ func (q *Queries) GetSubjectByID(ctx context.Context, id uuid.UUID) (Subject, er
 		&i.Code,
 		&i.CreatedAt,
 		&i.Type,
+		&i.MaxMarks,
 	)
 	return i, err
 }
 
 const listSubjects = `-- name: ListSubjects :many
-SELECT id, name, code, created_at, type FROM subjects
+SELECT id, name, code, created_at, type, max_marks FROM subjects
 ORDER BY name ASC
 `
 
@@ -113,6 +122,7 @@ func (q *Queries) ListSubjects(ctx context.Context) ([]Subject, error) {
 			&i.Code,
 			&i.CreatedAt,
 			&i.Type,
+			&i.MaxMarks,
 		); err != nil {
 			return nil, err
 		}
@@ -129,16 +139,18 @@ UPDATE subjects
 SET
     name = $2,
     code = $3,
-    type = $4
+    type = $4,
+    max_marks = $5
 WHERE id = $1
-RETURNING id, name, code, created_at, type
+RETURNING id, name, code, created_at, type, max_marks
 `
 
 type UpdateSubjectParams struct {
-	ID   uuid.UUID   `json:"id"`
-	Name string      `json:"name"`
-	Code string      `json:"code"`
-	Type pgtype.Text `json:"type"`
+	ID       uuid.UUID      `json:"id"`
+	Name     string         `json:"name"`
+	Code     string         `json:"code"`
+	Type     pgtype.Text    `json:"type"`
+	MaxMarks pgtype.Numeric `json:"max_marks"`
 }
 
 func (q *Queries) UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (Subject, error) {
@@ -147,6 +159,7 @@ func (q *Queries) UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (S
 		arg.Name,
 		arg.Code,
 		arg.Type,
+		arg.MaxMarks,
 	)
 	var i Subject
 	err := row.Scan(
@@ -155,6 +168,7 @@ func (q *Queries) UpdateSubject(ctx context.Context, arg UpdateSubjectParams) (S
 		&i.Code,
 		&i.CreatedAt,
 		&i.Type,
+		&i.MaxMarks,
 	)
 	return i, err
 }

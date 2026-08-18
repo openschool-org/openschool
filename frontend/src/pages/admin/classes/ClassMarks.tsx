@@ -31,10 +31,14 @@ export default function ClassMarks({
   const [draft, setDraft] = useState<Record<string, { marks: number; max_marks: number }>>({});
   const [syncedFor, setSyncedFor] = useState("");
   const rowsKey = `${termId}:${subjectId}`;
+  
+  const currentSubject = subjects?.find((s) => s.id === subjectId);
+  const defaultMaxMarks = currentSubject?.max_marks ?? 100;
+
   if (rows && syncedFor !== rowsKey) {
     setDraft(
       Object.fromEntries(
-        rows.map((r) => [r.student_id, { marks: r.marks ?? 0, max_marks: r.max_marks ?? 100 }]),
+        rows.map((r) => [r.student_id, { marks: r.marks ?? 0, max_marks: r.max_marks ?? defaultMaxMarks }]),
       ),
     );
     setSyncedFor(rowsKey);

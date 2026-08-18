@@ -1,3 +1,5 @@
+// This file defines the RegisterGuardianRoutes function, mapping guardian management and student-guardian linking endpoints to their handlers and middlewares.
+
 package routes
 
 import (
@@ -11,7 +13,7 @@ import (
 	notificationsservices "github.com/openschool-org/openschool/internal/services/notifications"
 )
 
-func RegisterGuardianRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
+func RegisterGuardianRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, studentAccess *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewGuardianRepository(pool)
 	notifications := notificationsservices.NewNotificationService(
 		notificationsrepositories.NewNotificationRepository(pool),
@@ -36,7 +38,7 @@ func RegisterGuardianRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGr
 	admin.DELETE("/guardians/:id", handler.Delete)
 	admin.POST("/students/:id/guardians", handler.LinkToStudent)
 	admin.DELETE("/students/:id/guardians/:guardian_id", handler.UnlinkFromStudent)
-	teacherOrAdmin.GET("/students/:id/guardians", handler.ListByStudent)
+	studentAccess.GET("/students/:id/guardians", handler.ListByStudent)
 	admin.PUT("/students/:id/guardians/:guardian_id/set-primary", handler.SetPrimaryContact)
 	admin.POST("/guardians/:id/provision-login", handler.ProvisionLogin)
 }

@@ -1,27 +1,23 @@
+// This component renders a single grade section row displaying its name, interval time, and assigned grades.
+
 import { Time, TrashCan } from "@carbon/icons-react";
 import { Button, Tag } from "@carbon/react";
-import EntityCombobox from "../../../../components/common/EntityCombobox";
 import type { GradeSection } from "../../../../services/timetable/gradeSection";
-import type { Teacher } from "../../../../services/teacher";
 
 export default function SectionRow({
   section,
   isLast,
-  teachers,
   gradeName,
   onPeriods,
   onEdit,
   onDelete,
-  onAssignHead,
 }: {
   section: GradeSection;
   isLast: boolean;
-  teachers: Teacher[] | undefined;
   gradeName: (id: string) => string;
   onPeriods: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onAssignHead: (teacherId: string) => void;
 }) {
   const s = section;
   return (
@@ -45,7 +41,7 @@ export default function SectionRow({
         </div>
       </div>
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.375rem", marginBottom: "0.75rem" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.375rem" }}>
         {s.grade_ids.length === 0 ? (
           <span style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>No grades assigned</span>
         ) : (
@@ -55,19 +51,6 @@ export default function SectionRow({
             </Tag>
           ))
         )}
-      </div>
-
-      <div style={{ width: "20rem" }}>
-        <EntityCombobox
-          id={`section-head-${s.id}`}
-          items={teachers ?? []}
-          selectedId={s.section_head_teacher_id ?? ""}
-          onSelect={onAssignHead}
-          getId={(t) => t.id}
-          itemToString={(t) => `${t.full_name} — ${t.employee_number}`}
-          labelText="Section Head"
-          placeholder="Search teachers…"
-        />
       </div>
     </div>
   );

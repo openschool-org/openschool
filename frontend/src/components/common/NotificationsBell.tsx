@@ -1,3 +1,5 @@
+// This file renders the NotificationsBell component, displaying an icon in the header that indicates unread notifications and opens a preview panel.
+
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router";
 import { HeaderGlobalAction, Tag } from "@carbon/react";
@@ -35,7 +37,7 @@ export default function NotificationsBell() {
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
-      <HeaderGlobalAction aria-label="Notifications" onClick={() => setOpen((o) => !o)}>
+      <HeaderGlobalAction aria-label="Notifications" onClick={() => setOpen((o) => !o)} isActive={open}>
         <span style={{ position: "relative", display: "inline-flex" }}>
           <NotificationIcon size={20} className="os-header-icon" />
           {!!unreadCount && (

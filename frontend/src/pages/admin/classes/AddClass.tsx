@@ -1,5 +1,9 @@
+// This file renders the Add Class form page: picks grade, name, stream/sub-
+// stream, medium and form teacher, then creates the class for an academic
+// year. Supports preselecting the grade via a `?grade_id=` query param.
+
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   Button,
   Select,
@@ -34,6 +38,8 @@ const EMPTY_FORM = {
 
 export default function AddClass() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preselectedGradeId = searchParams.get("grade_id") ?? "";
 
   const { data: grades, isLoading: gradesLoading } = useGrades();
   const { data: years } = useAcademicYears();
@@ -42,7 +48,7 @@ export default function AddClass() {
   const { data: teachers } = useTeachers();
   const createClass = useCreateClass();
 
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState({ ...EMPTY_FORM, grade_id: preselectedGradeId });
   const [touched, setTouched] = useState<Touched>({});
 
   const markTouched = (field: keyof Touched) => setTouched((t) => ({ ...t, [field]: true }));

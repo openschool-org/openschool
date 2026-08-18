@@ -1,3 +1,5 @@
+// This file defines the query and mutation hooks for interacting with classrooms, stream groups, monitors, and student enrollments.
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { classApi } from "../services/class";
 import { streamApi } from "../services/stream";
@@ -9,9 +11,9 @@ export const CURRENT_CLASSES_KEY = ["classes", "current"];
 export const STREAMS_KEY = ["streams"];
 
 export const classesByYearKey = (academicYearId: string) => ["classes", "by-year", academicYearId];
-
 export const classKey = (id: string) => ["classes", id];
 export const classStudentsKey = (id: string) => ["classes", id, "students"];
+export const classSubjectTeachersKey = (classId: string) => ["classes", classId, "subject-teachers"];
 export const streamGroupsKey = (streamId: string) => [
   ...STREAMS_KEY,
   streamId,
@@ -24,9 +26,6 @@ export const useCurrentClasses = () =>
     queryFn: classApi.listCurrent,
   });
 
-// Classes for an arbitrary (possibly not-yet-current) academic year — used
-// by the promotion/reassignment flow to list target classes in a new year
-// that hasn't been published yet.
 export const useClassesByAcademicYear = (academicYearId: string) =>
   useQuery({
     queryKey: classesByYearKey(academicYearId),
@@ -67,6 +66,24 @@ export const useClassStudents = (id: string) =>
     queryFn: () => studentApi.listByClass(id),
     enabled: !!id,
   });
+
+export const useClassSubjectTeachers = (classId: string) =>
+  useQuery({
+    queryKey: classSubjectTeachersKey(classId),
+    queryFn: () => classApi.listSubjectTeachers(classId),
+    enabled: !!classId,
+  });
+
+export const useAssignSubjectTeacher = (classId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { subject_id: string; teacher_id: string }) =>
+      classApi.assignSubjectTeacher(classId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: classSubjectTeachersKey(classId) });
+    },
+  });
+};
 
 export const useUpdateClass = (classId: string) => {
   const queryClient = useQueryClient();

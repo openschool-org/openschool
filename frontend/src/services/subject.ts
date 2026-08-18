@@ -5,6 +5,7 @@ export interface Subject {
   name: string;
   code: string;
   type: string | null;
+  max_marks: number;
   created_at: string;
 }
 
@@ -12,6 +13,7 @@ export interface CreateSubjectRequest {
   name: string;
   code: string;
   type?: string;
+  max_marks?: number;
 }
 
 export const subjectApi = {

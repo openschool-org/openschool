@@ -1,3 +1,6 @@
+// This file defines the TypeScript types and API call for the school-wide
+// dashboard/analytics aggregate endpoint (student, staff, academic, school).
+
 import api from "../lib/api";
 
 export interface CountRow {
@@ -55,6 +58,7 @@ export interface DashboardAnalytics {
     examination_entries: number;
     students_with_marks: number;
     grade_wise_performance: PerformanceRow[];
+    class_wise_performance: PerformanceRow[];
     attendance_percentage: number;
   };
   school: {

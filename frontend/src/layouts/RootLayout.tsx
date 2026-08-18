@@ -1,3 +1,5 @@
+// This file defines the RootLayout component, which renders the global page shell containing the header navigation and sidebar navigation menu.
+
 import { Outlet, Link, useLocation, Navigate } from "react-router";
 import {
   Header,
@@ -7,14 +9,12 @@ import {
   SideNavDivider,
 } from "@carbon/react";
 import {
-  Dashboard,
   Home,
+  ChartLine,
   UserMultiple,
   Education,
   Building,
   Book,
-  Grid,
-  Layers,
   Language,
   EventSchedule,
   Settings,
@@ -26,7 +26,6 @@ import {
   Trophy,
   Renew,
   Table,
-  Category,
   Location,
   Rule,
   SettingsAdjust,
@@ -41,13 +40,10 @@ import {
   AppHeaderBrand,
   AppHeaderActions,
 } from "../components/AppHeaderChrome";
-import GlobalSearch from "../components/common/GlobalSearch";
 
-// Grouped so the sidebar reads as "who, what, when" instead of one flat
-// alphabet-soup list — each group gets a small uppercase label + divider.
 const NAV_GROUPS: {
   label: string;
-  items: { path: string; label: string; Icon: typeof Dashboard }[];
+  items: { path: string; label: string; Icon: typeof Home }[];
 }[] = [
   {
     label: "Overview",
@@ -56,45 +52,54 @@ const NAV_GROUPS: {
   {
     label: "People",
     items: [
-      { path: "/students", label: "Students", Icon: UserMultiple },
-      { path: "/guardians", label: "Guardians", Icon: UserAdmin },
+      { path: "/positions", label: "Leadership Positions", Icon: UserRole },
       { path: "/teachers", label: "Teachers", Icon: Education },
       { path: "/non-academic-staff", label: "Non-Academic Staff", Icon: Group },
+      { path: "/students", label: "Students", Icon: UserMultiple },
+      { path: "/guardians", label: "Guardians", Icon: UserAdmin },
+    ],
+  },
+  {
+    label: "Student Life",
+    items: [
       { path: "/prefects", label: "School Prefects", Icon: Trophy },
       { path: "/societies", label: "Societies", Icon: Idea },
-      { path: "/positions", label: "Leadership Positions", Icon: UserRole },
     ],
   },
   {
     label: "Academics",
     items: [
-      { path: "/classes", label: "Classes", Icon: Building },
+      { path: "/classes", label: "Grades & Classes", Icon: Building },
       { path: "/streams", label: "Streams", Icon: UserFollow },
-      { path: "/grades", label: "Grades", Icon: Grid },
-      { path: "/subjects", label: "Subjects", Icon: Book },
-      { path: "/curriculum", label: "Curriculum", Icon: Layers },
+      { path: "/subjects", label: "Subjects & Curriculum", Icon: Book },
       { path: "/mediums", label: "Mediums", Icon: Language },
+      { path: "/teacher-subjects", label: "Teacher Subjects", Icon: Education },
     ],
   },
   {
     label: "Scheduling",
     items: [
+      { path: "/academic-years", label: "Academic Years", Icon: Calendar },
       { path: "/timetables", label: "Timetables", Icon: Table },
-      { path: "/grade-sections", label: "Grade Sections", Icon: Category },
       { path: "/classrooms", label: "Classrooms", Icon: Location },
       { path: "/subject-requirements", label: "Subject Requirements", Icon: Rule },
       { path: "/timetable-settings", label: "Timetable Settings", Icon: SettingsAdjust },
     ],
   },
   {
+    label: "Attendance",
+    items: [
+      { path: "/attendance", label: "Student Attendance", Icon: EventSchedule },
+      { path: "/staff-attendance", label: "Staff Attendance", Icon: Group },
+    ],
+  },
+  {
     label: "Operations",
     items: [
-      { path: "/attendance", label: "Attendance", Icon: EventSchedule },
-      { path: "/staff-attendance", label: "Staff Attendance", Icon: Group },
-      { path: "/academic-years", label: "Academic Years", Icon: Calendar },
       { path: "/promotion", label: "Promotion", Icon: Renew },
       { path: "/notifications", label: "Notifications", Icon: Notification },
       { path: "/reports", label: "Reports", Icon: DocumentPdf },
+      { path: "/analytics", label: "Analytics", Icon: ChartLine },
     ],
   },
   {
@@ -120,7 +125,6 @@ export default function RootLayout() {
     <>
       <Header aria-label="OpenSchool">
         <AppHeaderBrand />
-        <GlobalSearch />
         <AppHeaderActions />
       </Header>
 

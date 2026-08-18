@@ -1,5 +1,7 @@
+// This file renders the ClassDetail page, displaying classroom details, enrolled students, attendance sessions, term marks, and assigned subject teachers.
+
 import { useMemo, useState } from "react";
-import { Link, useNavigate, useParams, useLocation } from "react-router";
+import { Link, useParams, useLocation } from "react-router";
 import { Button, Tag, Tabs, Tab, TabList, TabPanels, TabPanel } from "@carbon/react";
 import { ArrowLeft, Edit, UserMultiple, EventSchedule, UserFollow } from "@carbon/icons-react";
 import {
@@ -35,6 +37,7 @@ import AssignTeacherModal from "./components/AssignTeacherModal";
 import AssignMonitorsModal from "./components/AssignMonitorsModal";
 import EnrolStudentModal from "./components/EnrolStudentModal";
 import NewSessionModal from "./components/NewSessionModal";
+import SubjectsTab from "./components/SubjectsTab";
 import { todayISODate } from "../../../lib/date";
 
 function formatClassLabel(name: string) {
@@ -44,7 +47,6 @@ function formatClassLabel(name: string) {
 
 export default function ClassDetail() {
   const { id = "" } = useParams();
-  const navigate = useNavigate();
   const location = useLocation();
   const initialTab = (location.state as { tab?: string } | null)?.tab === "attendance" ? 1 : 0;
 
@@ -154,18 +156,6 @@ export default function ClassDetail() {
     });
   };
 
-  const handleUnenrol = () => {
-    if (!toUnenroll) return;
-    unenrollStudent.mutate(toUnenroll.id, { onSettled: () => setToUnenroll(null) });
-  };
-
-  const handleDeleteSession = () => {
-    if (!toDeleteSession) return;
-    deleteSession.mutate(toDeleteSession.id, {
-      onSettled: () => setToDeleteSession(null),
-    });
-  };
-
   const openNewSession = () => {
     createSession.reset();
     setSessionDate(todayISODate());
@@ -175,38 +165,41 @@ export default function ClassDetail() {
   const handleCreateSession = () => {
     createSession.mutate(
       { class_id: id, date: sessionDate },
-      {
-        onSuccess: (session) => {
-          setSessionOpen(false);
-          navigate(`/attendance/sessions/${session.id}/mark`);
-        },
-      },
+      { onSuccess: () => setSessionOpen(false) },
     );
+  };
+
+  const handleUnenrol = () => {
+    if (!toUnenroll) return;
+    unenrollStudent.mutate(toUnenroll.id, {
+      onSuccess: () => setToUnenroll(null),
+    });
+  };
+
+  const handleDeleteSession = () => {
+    if (!toDeleteSession) return;
+    deleteSession.mutate(toDeleteSession.id, {
+      onSuccess: () => setToDeleteSession(null),
+    });
   };
 
   if (isLoading) return <LoadingSpinner />;
   if (isError || !cls) {
     return (
       <div style={{ padding: "2rem" }}>
-        <ErrorMessage message="Failed to load class" onRetry={refetch} />
+        <ErrorMessage message="Failed to load classroom details" onRetry={refetch} />
       </div>
     );
   }
 
-  const metaParts = [
-    streamName,
-    streamGroupName,
-    formTeacher ? `Class Teacher: ${formTeacher.full_name}` : "No class teacher assigned",
-    academicYearLabel,
-  ].filter(Boolean);
+  const metaParts = [];
+  if (academicYearLabel) metaParts.push(academicYearLabel);
+  if (formTeacher) metaParts.push(`Form teacher: ${formTeacher.full_name}`);
 
   return (
     <div style={{ background: "#f4f4f4", minHeight: "calc(100vh - 3rem)" }}>
       <div className="os-profile__banner">
-        <div
-          className="os-profile__avatar"
-          style={{ borderRadius: "6px", fontSize: "0.875rem", letterSpacing: "0" }}
-        >
+        <div className="os-profile__avatar">
           {cls.name}
         </div>
         <div style={{ flex: 1 }}>
@@ -249,6 +242,7 @@ export default function ClassDetail() {
                 <Tab>Students</Tab>
                 <Tab>Attendance</Tab>
                 <Tab>Marks</Tab>
+                <Tab>Subjects & Teachers</Tab>
                 <Tab>Details</Tab>
               </TabList>
               <TabPanels>
@@ -278,6 +272,10 @@ export default function ClassDetail() {
                   <div style={{ marginTop: "1rem" }}>
                     <ClassMarks classId={id} academicYearId={cls.academic_year_id} />
                   </div>
+                </TabPanel>
+
+                <TabPanel style={{ padding: 0 }}>
+                  <SubjectsTab classId={id} />
                 </TabPanel>
 
                 <TabPanel style={{ padding: 0 }}>

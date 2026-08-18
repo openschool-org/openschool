@@ -24,10 +24,19 @@ func NewSubjectService(repo *repositories.SubjectRepository) *SubjectService {
 }
 
 func (s *SubjectService) CreateSubject(ctx context.Context, req models.CreateSubjectRequest) (db.Subject, error) {
+	maxMarks := 100.00
+	if req.MaxMarks != nil {
+		maxMarks = *req.MaxMarks
+	}
+	maxMarksNumeric, err := pgNumeric(maxMarks)
+	if err != nil {
+		return db.Subject{}, err
+	}
 	return s.repo.Create(ctx, db.CreateSubjectParams{
-		Name: req.Name,
-		Code: req.Code,
-		Type: optionalText(req.Type),
+		Name:     req.Name,
+		Code:     req.Code,
+		Type:     optionalText(req.Type),
+		MaxMarks: maxMarksNumeric,
 	})
 }
 
@@ -40,11 +49,20 @@ func (s *SubjectService) ListSubjects(ctx context.Context) ([]db.Subject, error)
 }
 
 func (s *SubjectService) UpdateSubject(ctx context.Context, id uuid.UUID, req models.UpdateSubjectRequest) (db.Subject, error) {
+	maxMarks := 100.00
+	if req.MaxMarks != nil {
+		maxMarks = *req.MaxMarks
+	}
+	maxMarksNumeric, err := pgNumeric(maxMarks)
+	if err != nil {
+		return db.Subject{}, err
+	}
 	return s.repo.Update(ctx, db.UpdateSubjectParams{
-		ID:   id,
-		Name: req.Name,
-		Code: req.Code,
-		Type: optionalText(req.Type),
+		ID:       id,
+		Name:     req.Name,
+		Code:     req.Code,
+		Type:     optionalText(req.Type),
+		MaxMarks: maxMarksNumeric,
 	})
 }
 

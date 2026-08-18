@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Button, TextInput, InlineNotification } from "@carbon/react";
+import { Button, TextInput, NumberInput, InlineNotification } from "@carbon/react";
 import { ArrowLeft, Save } from "@carbon/icons-react";
 import { useCreateSubject } from "../../../queries/useSubjects";
 import { getErrorMessage } from "../../../lib/errorMessage";
@@ -14,6 +14,7 @@ export default function AddSubject() {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [type, setType] = useState("");
+  const [maxMarks, setMaxMarks] = useState<number>(100);
   const [touched, setTouched] = useState<Touched>({});
 
   const markTouched = (field: keyof Touched) => setTouched((t) => ({ ...t, [field]: true }));
@@ -27,7 +28,7 @@ export default function AddSubject() {
     setTouched({ name: true, code: true });
     if (!isValid) return;
     createSubject.mutate(
-      { name: name.trim(), code: code.trim(), type: type.trim() },
+      { name: name.trim(), code: code.trim(), type: type.trim(), max_marks: maxMarks },
       { onSuccess: () => navigate("/subjects") },
     );
   };
@@ -94,6 +95,15 @@ export default function AddSubject() {
               helperText="A descriptive label only, e.g. core, language, aesthetic."
               value={type}
               onChange={(e) => setType(e.target.value)}
+            />
+            <NumberInput
+              id="subject-max-marks"
+              label="Max Marks"
+              min={1}
+              max={1000}
+              value={maxMarks}
+              onChange={(_e, { value }) => setMaxMarks(Number(value ?? 100))}
+              helperText="The maximum marks a student can get for this subject."
             />
           </div>
         </div>

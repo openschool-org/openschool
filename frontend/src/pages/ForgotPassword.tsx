@@ -12,9 +12,6 @@ const ROLES: { value: SelfServiceResetRole; label: string; secretLabel: string; 
   { value: "parent", label: "Parent / Guardian", secretLabel: "NIC Number", secretHelp: "Your NIC number, as set when your account was created." },
 ];
 
-// Only requests a reset — the actual token is delivered out-of-band by email
-// (see ResetPassword.tsx, which handles the link this flow sends) rather
-// than being handed back to whoever calls this endpoint.
 export default function ForgotPassword() {
   const forgotPassword = useForgotPassword();
 

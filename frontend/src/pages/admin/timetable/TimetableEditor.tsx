@@ -11,7 +11,7 @@ import {
   ModalFooter,
   SkeletonText,
 } from "@carbon/react";
-import { useClass } from "../../../queries/useClasses";
+import { useClass, useClassSubjectTeachers } from "../../../queries/useClasses";
 import { useGrades } from "../../../queries/useGrades";
 import { useTeachers } from "../../../queries/useTeachers";
 import { useSubjects } from "../../../queries/useSubjects";
@@ -61,6 +61,7 @@ export default function TimetableEditor() {
   const { data: subjects } = useSubjects();
   const { data: classrooms } = useClassrooms();
   const { data: gradeSections } = useGradeSections(timetable?.academic_year_id ?? "");
+  const { data: classSubjects } = useClassSubjectTeachers(timetable?.class_id ?? "");
 
   const gradeSection = useMemo(
     () => gradeSections?.find((gs) => cls && gs.grade_ids.includes(cls.grade_id)),
@@ -86,6 +87,17 @@ export default function TimetableEditor() {
 
   const gradeName = grades?.find((g) => g.id === cls?.grade_id)?.name ?? "";
   const isDraft = timetable?.status === "draft";
+
+  const filteredSubjects = useMemo(() => {
+    if (!subjects) return [];
+    const isGrade12or13 = gradeName.toLowerCase().includes("12") || gradeName.toLowerCase().includes("13");
+    if (isGrade12or13) {
+      const assignedSubjectIds = new Set(classSubjects?.map((cs) => cs.subject_id) ?? []);
+      return subjects.filter((s) => assignedSubjectIds.has(s.id));
+    }
+    return subjects;
+  }, [subjects, classSubjects, gradeName]);
+
 
   const entryAt = (day: number, period: number): TimetableEntry | undefined =>
     entries?.find((e) => e.day_of_week === day && e.period_number === period);
@@ -298,8 +310,9 @@ export default function TimetableEditor() {
           <div style={{ display: "grid", gap: "1rem" }}>
             <EntityCombobox
               id="cell-subject"
-              items={subjects ?? []}
+              items={filteredSubjects}
               selectedId={cellForm.subjectId}
+
               onSelect={(sid) => setCellForm((f) => ({ ...f, subjectId: sid }))}
               getId={(s) => s.id}
               itemToString={(s) => s.name}

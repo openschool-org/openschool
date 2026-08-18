@@ -9,6 +9,11 @@ import type { GradeSection, TimetablePeriod } from "../../../../services/timetab
 import { getErrorMessage } from "../../../../lib/errorMessage";
 import EmptyState from "../../../../components/common/EmptyState";
 
+const formatTimeForInput = (t: string) => {
+  if (!t) return "";
+  return t.slice(0, 5);
+};
+
 export default function PeriodsEditor({ section, onClose }: { section: GradeSection; onClose: () => void }) {
   const { data: periods, isLoading } = useGradeSectionPeriods(section.id);
   const save = useSaveGradeSectionPeriods(section.id);
@@ -28,10 +33,6 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
     save.mutate(rows, { onSuccess: () => setRows(null) });
   };
 
-  // Regenerate replaces `active` wholesale on success — editing a time
-  // field or saving while it's in flight could race against that reset
-  // (or submit rows based on data regenerate is about to discard), so both
-  // controls and the grid itself are locked while either mutation runs.
   const busy = save.isPending || regenerate.isPending;
 
   return (
@@ -94,7 +95,7 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
                       labelText=""
                       type="time"
                       size="sm"
-                      value={p.start_time}
+                      value={formatTimeForInput(p.start_time)}
                       disabled={busy}
                       onChange={(e) => updateRow(i, { start_time: e.target.value })}
                     />
@@ -105,7 +106,7 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
                       labelText=""
                       type="time"
                       size="sm"
-                      value={p.end_time}
+                      value={formatTimeForInput(p.end_time)}
                       disabled={busy}
                       onChange={(e) => updateRow(i, { end_time: e.target.value })}
                     />

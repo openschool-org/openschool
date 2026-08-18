@@ -55,6 +55,10 @@ func (r *DashboardRepository) GradeWisePerformance(ctx context.Context) ([]db.Da
 	return r.queries.DashboardGradeWisePerformance(ctx)
 }
 
+func (r *DashboardRepository) ClassWisePerformance(ctx context.Context) ([]db.DashboardClassWisePerformanceRow, error) {
+	return r.queries.DashboardClassWisePerformance(ctx)
+}
+
 func (r *DashboardRepository) AttendancePercentage(ctx context.Context) (db.DashboardAttendancePercentageRow, error) {
 	return r.queries.DashboardAttendancePercentage(ctx)
 }

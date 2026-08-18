@@ -1,3 +1,5 @@
+// This file defines the RegisterSocietyRoutes function, mapping student club/society endpoints to their handlers and middlewares.
+
 package routes
 
 import (
@@ -8,7 +10,7 @@ import (
 	"github.com/openschool-org/openschool/internal/services"
 )
 
-func RegisterSocietyRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
+func RegisterSocietyRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, studentAccess *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewSocietyRepository(pool)
 	service := services.NewSocietyService(repo, repositories.NewTeacherRepository(pool))
 	handler := handlers.NewSocietyHandler(service)
@@ -22,5 +24,5 @@ func RegisterSocietyRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGro
 	teacherOrAdmin.GET("/societies/:id/members", handler.ListMembers)
 	teacherOrAdmin.PUT("/societies/:id/members", handler.AssignMember)
 	teacherOrAdmin.DELETE("/societies/:id/members/:memberId", handler.RemoveMember)
-	teacherOrAdmin.GET("/students/:id/society-memberships", handler.ListByStudent)
+	studentAccess.GET("/students/:id/society-memberships", handler.ListByStudent)
 }

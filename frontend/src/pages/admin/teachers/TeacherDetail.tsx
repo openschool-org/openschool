@@ -9,6 +9,8 @@ import {
   useUpdateTeacher,
   useUpdateTeacherHouse,
   useUpdateTeacherEmploymentStatus,
+  useAssignTeacherSubject,
+  useRemoveTeacherSubject,
 } from "../../../queries/useTeachers";
 import { useHouses } from "../../../queries/useHouses";
 import { getErrorMessage } from "../../../lib/errorMessage";
@@ -42,6 +44,8 @@ export default function TeacherDetail() {
   const updateTeacher = useUpdateTeacher();
   const updateHouse = useUpdateTeacherHouse();
   const updateStatus = useUpdateTeacherEmploymentStatus();
+  const assignSubject = useAssignTeacherSubject(id);
+  const removeSubject = useRemoveTeacherSubject(id);
   const { data: houses } = useHouses();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -204,6 +208,8 @@ export default function TeacherDetail() {
           updateError={updateError}
           updateHouse={updateHouse}
           updateStatus={updateStatus}
+          assignSubject={assignSubject}
+          removeSubject={removeSubject}
         />
       </div>
 

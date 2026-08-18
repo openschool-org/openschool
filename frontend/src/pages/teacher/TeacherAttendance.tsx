@@ -1,10 +1,12 @@
+// This file renders the TeacherAttendance page, displaying historical attendance sessions for classes the teacher is responsible for and allowing them to mark today's sessions.
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Tag } from "@carbon/react";
 import { useQueries } from "@tanstack/react-query";
 import { EventSchedule, Search, CheckmarkFilled, Time } from "@carbon/icons-react";
 import { useMyClasses } from "../../queries/useTeachers";
-import { useDailySessions, useSessionRecords, useCreateSession, classSessionsKey } from "../../queries/useAttendance";
+import { useSessionRecords, useCreateSession, classSessionsKey } from "../../queries/useAttendance";
 import { attendanceApi, type AttendanceSession } from "../../services/attendance";
 import LoadingSpinner from "../../components/common/LoadingSpinner";
 import ErrorMessage from "../../components/common/ErrorMessage";
@@ -82,8 +84,17 @@ export default function TeacherAttendance() {
       enabled: !!id,
     })),
   });
-  const { data: dailySessions } = useDailySessions(todayISODate());
-  const todayClassIds = new Set((dailySessions ?? []).map((s) => s.class_id));
+
+  const todayClassIds = new Set<string>();
+  sessionQueries.forEach((q, i) => {
+    const classId = classIds[i];
+    const classSessions = q.data ?? [];
+    const hasToday = classSessions.some((s) => s.date === todayISODate());
+    if (hasToday) {
+      todayClassIds.add(classId);
+    }
+  });
+
   const pendingToday = myClasses.filter((c) => !todayClassIds.has(c.class_id));
 
   const allSessions = classIds
@@ -131,7 +142,6 @@ export default function TeacherAttendance() {
         </div>
       )}
 
-      {/* Summary stat row */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "1rem", marginBottom: "1.5rem" }}>
         {[
           { label: "Total Sessions", value: allSessions.length, color: "#161616" },
@@ -145,26 +155,40 @@ export default function TeacherAttendance() {
         ))}
       </div>
 
-      {/* Session list */}
       <div className="os-section">
         <div className="os-toolbar">
           <div className="os-search" style={{ maxWidth: "22rem" }}>
             <Search size={16} className="os-search__icon" />
-            <input className="os-search__input" placeholder="Search by class or date…" value={query} onChange={e => setQuery(e.target.value)} />
+            <input
+              className="os-search__input"
+              placeholder="Search by class or date…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
           </div>
         </div>
 
         <table className="os-table">
           <thead>
-            <tr><th>Date</th><th>Class</th><th>Present</th><th>Absent</th><th>Status</th><th></th></tr>
+            <tr>
+              <th>Date</th>
+              <th>Class</th>
+              <th>Present</th>
+              <th>Absent</th>
+              <th>Status</th>
+              <th style={{ width: "4rem" }}>Action</th>
+            </tr>
           </thead>
           <tbody>
-            {visible.length === 0 ? (
-              <tr><td colSpan={6} style={{ textAlign: "center", color: "#8d8d8d", padding: "2.5rem" }}>No sessions found</td></tr>
-            ) : (
-              visible.map(({ session, className }) => (
-                <SessionRow key={session.id} session={session} className={className} />
-              ))
+            {visible.map(({ session, className }) => (
+              <SessionRow key={session.id} session={session} className={className} />
+            ))}
+            {visible.length === 0 && (
+              <tr>
+                <td colSpan={6} style={{ textAlign: "center", color: "#8d8d8d", padding: "2rem" }}>
+                  No sessions found
+                </td>
+              </tr>
             )}
           </tbody>
         </table>

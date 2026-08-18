@@ -4,9 +4,6 @@ import { useThunderID } from "@thunderid/react";
 import { useChangePassword, useKeepDefaultPassword } from "../queries/useAuth";
 import { getErrorMessage } from "../lib/errorMessage";
 
-// Phase 8.3 — interrupts first sign-in when the account is still on its
-// system-assigned default password (NIC/index number). Neither choice is
-// silently skippable: the user must explicitly keep it or set a new one.
 export default function PasswordInterstitial() {
   const { signOut } = useThunderID();
   const keepDefault = useKeepDefaultPassword();

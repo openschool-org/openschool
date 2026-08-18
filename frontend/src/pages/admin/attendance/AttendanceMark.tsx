@@ -1,3 +1,5 @@
+// This file renders the AttendanceMark page, allowing teachers and administrators to view, mark, and update student attendance records for a specific session.
+
 import { useMemo, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router";
 import { Button, Tag, InlineNotification, TextInput } from "@carbon/react";
@@ -27,8 +29,6 @@ export default function AttendanceMark() {
   const markAttendance = useMarkAttendance(id);
 
   const isAdmin = role === "admin";
-  // A session becomes read-only for teachers 24h after it was taken —
-  // admins can always mark/edit, whether or not the session is locked.
   const locked = !!session?.created_at && new Date().getTime() - new Date(session.created_at).getTime() > 24 * 60 * 60 * 1000;
   const readOnly = locked && !isAdmin;
   const isOverride = locked && isAdmin;
@@ -39,10 +39,6 @@ export default function AttendanceMark() {
   const [saved, setSaved] = useState(false);
   const [reason, setReason] = useState("");
 
-  // Seed local edit state from whatever has already been marked for this
-  // session. Adjusted during render (React's recommended pattern for "sync an
-  // editable draft from a prop once it arrives") rather than in an effect, so
-  // there is no extra render and no lint violation for setState-in-effect.
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   if (records && loadedFor !== id) {
     const { statuses: s, notes: n } = recordsToState(records);
@@ -89,6 +85,8 @@ export default function AttendanceMark() {
     [statuses, students],
   );
 
+  const backPath = role === "teacher" ? "/t/attendance" : "/attendance";
+
   const handleSave = () => {
     const recordsToSend = Object.entries(statuses)
       .filter((entry): entry is [string, NonNullable<Status>] => !!entry[1])
@@ -103,7 +101,7 @@ export default function AttendanceMark() {
       {
         onSuccess: () => {
           setSaved(true);
-          setTimeout(() => navigate("/attendance"), 1200);
+          setTimeout(() => navigate(backPath), 1200);
         },
       },
     );
@@ -122,9 +120,12 @@ export default function AttendanceMark() {
     );
   }
 
+  const metaParts = [];
+  if (teacherName) metaParts.push(teacherName);
+  metaParts.push(session.date);
+
   return (
     <div style={{ background: "#f4f4f4", minHeight: "calc(100vh - 3rem)" }}>
-      {/* Session banner */}
       <div
         style={{
           padding: "1.25rem 2rem",
@@ -147,18 +148,14 @@ export default function AttendanceMark() {
             )}
           </div>
           <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap" }}>
-            {[
-              ["Teacher", teacherName ?? "—"],
-              ["Date", session.date],
-            ].map(([label, val]) => (
-              <span key={label} style={{ fontSize: "0.8rem", color: "#525252" }}>
-                <span style={{ color: "#8d8d8d", marginRight: "0.3rem" }}>{label}:</span>
+            {metaParts.map((val, idx) => (
+              <span key={idx} style={{ fontSize: "0.8rem", color: "#525252" }}>
                 {val}
               </span>
             ))}
           </div>
         </div>
-        <Button renderIcon={ArrowLeft} kind="ghost" size="sm" as={Link} to="/attendance">
+        <Button renderIcon={ArrowLeft} kind="ghost" size="sm" as={Link} to={backPath}>
           Back
         </Button>
       </div>
@@ -185,7 +182,6 @@ export default function AttendanceMark() {
           />
         )}
 
-        {/* Summary bar */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.75rem", marginBottom: "1.5rem" }}>
           {[
             { label: "Present", count: summary.present, color: "#24a148" },
@@ -211,7 +207,6 @@ export default function AttendanceMark() {
           ))}
         </div>
 
-        {/* Toolbar */}
         <div className="os-section">
           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.875rem 1.5rem", borderBottom: "1px solid #e0e0e0", flexWrap: "wrap" }}>
             <div className="os-search" style={{ maxWidth: "280px" }}>
@@ -293,49 +288,48 @@ export default function AttendanceMark() {
           )}
         </div>
 
-        {/* Footer actions */}
         {!readOnly && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "1rem 0" }}>
-        {isOverride && (
-          <TextInput
-            id="attendance-override-reason"
-            labelText="Reason for editing this locked session"
-            placeholder="e.g. Corrected after guardian phone call"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            style={{ maxWidth: "28rem" }}
-          />
-        )}
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-          {summary.unmarked > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8125rem", color: "#7d5a00" }}>
-              <Warning size={16} style={{ fill: "#f1c21b" }} />
-              {summary.unmarked} student{summary.unmarked !== 1 ? "s" : ""} not yet marked
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", padding: "1rem 0" }}>
+            {isOverride && (
+              <TextInput
+                id="attendance-override-reason"
+                labelText="Reason for editing this locked session"
+                placeholder="e.g. Corrected after guardian phone call"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                style={{ maxWidth: "28rem" }}
+              />
+            )}
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+              {summary.unmarked > 0 && (
+                <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8125rem", color: "#7d5a00" }}>
+                  <Warning size={16} style={{ fill: "#f1c21b" }} />
+                  {summary.unmarked} student{summary.unmarked !== 1 ? "s" : ""} not yet marked
+                </div>
+              )}
+              {saveError && (
+                <span style={{ fontSize: "0.8125rem", color: "#da1e28" }}>{saveError}</span>
+              )}
+              <div style={{ flex: 1 }} />
+              {saved && (
+                <span style={{ fontSize: "0.8125rem", color: "#24a148", display: "flex", alignItems: "center", gap: "0.375rem" }}>
+                  <CheckmarkFilled size={16} style={{ fill: "#24a148" }} /> Saved — redirecting…
+                </span>
+              )}
+              <Button kind="secondary" size="md" as={Link} to={backPath}>
+                Cancel
+              </Button>
+              <Button
+                renderIcon={Save}
+                kind="primary"
+                size="md"
+                onClick={handleSave}
+                disabled={saved || markAttendance.isPending}
+              >
+                {markAttendance.isPending ? "Saving…" : "Save Attendance"}
+              </Button>
             </div>
-          )}
-          {saveError && (
-            <span style={{ fontSize: "0.8125rem", color: "#da1e28" }}>{saveError}</span>
-          )}
-          <div style={{ flex: 1 }} />
-          {saved && (
-            <span style={{ fontSize: "0.8125rem", color: "#24a148", display: "flex", alignItems: "center", gap: "0.375rem" }}>
-              <CheckmarkFilled size={16} style={{ fill: "#24a148" }} /> Saved — redirecting…
-            </span>
-          )}
-          <Button kind="secondary" size="md" as={Link} to="/attendance">
-            Cancel
-          </Button>
-          <Button
-            renderIcon={Save}
-            kind="primary"
-            size="md"
-            onClick={handleSave}
-            disabled={saved || markAttendance.isPending}
-          >
-            {markAttendance.isPending ? "Saving…" : "Save Attendance"}
-          </Button>
-        </div>
-        </div>
+          </div>
         )}
       </div>
     </div>

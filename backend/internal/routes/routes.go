@@ -1,3 +1,5 @@
+// This file defines the Setup function, configuring RouterGroups, applying rate limiting and auth middlewares, and mapping domain routes.
+
 package routes
 
 import (
@@ -34,9 +36,6 @@ func envIntOr(key string, fallback int) int {
 	return fallback
 }
 
-// Setup wires every route group and returns the background job scheduler
-// (internal/jobs) it built along the way — main.go starts and stops it
-// around the HTTP server's own lifecycle.
 func Setup(r *gin.Engine, pool *pgxpool.Pool) *jobs.Scheduler {
 	api := r.Group("/api/v1")
 
@@ -48,7 +47,6 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) *jobs.Scheduler {
 
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware())
-	// Layered on top of the per-IP RateLimit in cmd/api/main.go; tunable independently via env.
 	protected.Use(middleware.PerAccountRateLimit(
 		envFloatOr("API_PER_ACCOUNT_RATE_LIMIT_RPS", 30),
 		envIntOr("API_PER_ACCOUNT_RATE_LIMIT_BURST", 60),
@@ -71,25 +69,28 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) *jobs.Scheduler {
 	teacher := protected.Group("")
 	teacher.Use(middleware.RequireRole(models.RoleTeacher))
 
+	studentAccess := protected.Group("")
+	studentAccess.Use(middleware.RequireStudentAccess(pool))
+
 	RegisterSchoolRoutes(admin, teacherOrAdmin, protected, pool)
 	RegisterGradeRoutes(admin, teacherOrAdmin, pool)
 	RegisterHouseRoutes(admin, teacherOrAdmin, pool)
 	RegisterSubjectRoutes(admin, teacherOrAdmin, pool)
 	RegisterCurriculumRoutes(admin, protected, pool)
-	RegisterEnrollmentRoutes(admin, teacherOrAdmin, protected, pool)
+	RegisterEnrollmentRoutes(admin, teacherOrAdmin, studentAccess, protected, pool)
 	RegisterStreamRoutes(admin, teacherOrAdmin, pool)
 	RegisterClassRoutes(admin, teacherOrAdmin, pool)
 	RegisterStudentRoutes(admin, teacherOrAdmin, pool)
-	RegisterStudentPortfolioRoutes(teacherOrAdmin, pool)
+	RegisterStudentPortfolioRoutes(teacherOrAdmin, studentAccess, pool)
 	RegisterTeacherRoutes(admin, teacherOrAdmin, pool)
 	RegisterAttendanceRoutes(teacherOrAdmin, pool)
 	RegisterStaffAttendanceRoutes(admin, pool)
-	RegisterGuardianRoutes(admin, teacherOrAdmin, pool)
+	RegisterGuardianRoutes(admin, teacherOrAdmin, studentAccess, pool)
 	RegisterSearchRoutes(admin, pool)
 	RegisterNonAcademicStaffRoutes(admin, teacherOrAdmin, pool)
 	RegisterSectionHeadRoutes(admin, teacherOrAdmin, pool)
-	RegisterPrefectRoutes(admin, teacherOrAdmin, pool)
-	RegisterSocietyRoutes(admin, teacherOrAdmin, pool)
+	RegisterPrefectRoutes(admin, teacherOrAdmin, studentAccess, pool)
+	RegisterSocietyRoutes(admin, teacherOrAdmin, studentAccess, pool)
 	RegisterPositionRoutes(admin, teacherOrAdmin, pool)
 	RegisterPromotionRoutes(admin, pool)
 	RegisterTermRoutes(admin, protected, pool)

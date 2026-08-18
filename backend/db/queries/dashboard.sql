@@ -98,6 +98,21 @@ INNER JOIN grades g ON g.id = c.grade_id
 GROUP BY g.id, g.name, g.sort_order
 ORDER BY g.sort_order ASC;
 
+-- name: DashboardClassWisePerformance :many
+SELECT
+    c.name AS class_name,
+    g.name AS grade_name,
+    ROUND(AVG(tm.marks / tm.max_marks * 100), 1) AS average_percentage
+FROM term_marks tm
+INNER JOIN terms t ON t.id = tm.term_id AND t.is_current = TRUE
+INNER JOIN student_profiles sp ON sp.id = tm.student_id
+INNER JOIN class_students cs ON cs.student_id = sp.id
+INNER JOIN classes c ON c.id = cs.class_id
+    AND c.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE LIMIT 1)
+INNER JOIN grades g ON g.id = c.grade_id
+GROUP BY c.id, c.name, g.name, g.sort_order
+ORDER BY g.sort_order ASC, c.name ASC;
+
 -- name: DashboardAttendancePercentage :one
 SELECT
     COUNT(*) FILTER (WHERE r.status = 'present') AS present_count,

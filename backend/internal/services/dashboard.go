@@ -30,6 +30,7 @@ func (s *DashboardService) Analytics(ctx context.Context) (models.DashboardAnaly
 		Academic: models.DashboardAcademicAnalytics{
 			SubjectPerformance:   []models.PerformanceRow{},
 			GradeWisePerformance: []models.PerformanceRow{},
+			ClassWisePerformance: []models.PerformanceRow{},
 		},
 		School: models.DashboardSchoolAnalytics{
 			StudentGrowth: []models.GrowthPoint{},
@@ -129,6 +130,17 @@ func (s *DashboardService) Analytics(ctx context.Context) (models.DashboardAnaly
 	for _, p := range gradePerf {
 		resp.Academic.GradeWisePerformance = append(resp.Academic.GradeWisePerformance, models.PerformanceRow{
 			Label:             p.GradeName,
+			AveragePercentage: numericToFloat64(p.AveragePercentage),
+		})
+	}
+
+	classPerf, err := s.repo.ClassWisePerformance(ctx)
+	if err != nil {
+		return resp, err
+	}
+	for _, p := range classPerf {
+		resp.Academic.ClassWisePerformance = append(resp.Academic.ClassWisePerformance, models.PerformanceRow{
+			Label:             p.GradeName + " " + p.ClassName,
 			AveragePercentage: numericToFloat64(p.AveragePercentage),
 		})
 	}

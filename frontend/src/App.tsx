@@ -1,5 +1,7 @@
+// This file defines the App component, which configures the main routing hierarchy, authentication guard routing, and lazy-loaded portal pages for each user role (admin, teacher, parent, student).
+
 import { lazy, Suspense } from "react";
-import { Routes, Route } from "react-router";
+import { Routes, Route, Navigate } from "react-router";
 import { useRole } from "./hooks/useRole";
 import { useApi } from "./hooks/useApi";
 import { useProvisionUser } from "./hooks/useProvisionUser";
@@ -9,15 +11,6 @@ import ParentLayout from "./layouts/ParentLayout";
 import StudentLayout from "./layouts/StudentLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// Every routed page is lazy-loaded — only the layouts above (needed
-// synchronously to render each portal's chrome) are eager. Previously every
-// page across all four portals shipped in one ~1.6MB initial bundle
-// regardless of which portal/page a user landed on; splitting per route
-// means an admin's first load no longer pays for teacher/parent/student
-// page code (and vice versa), and each admin sub-page only loads when
-// actually visited. The single <Suspense> boundary below reuses the same
-// full-screen placeholder already shown while role/session resolves, so a
-// chunk load looks identical to that existing loading state.
 const SignIn = lazy(() => import("./pages/SignIn"));
 const Setup = lazy(() => import("./pages/Setup"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
@@ -27,7 +20,6 @@ const AccessRestricted = lazy(() => import("./pages/AccessRestricted"));
 const ComingSoon = lazy(() => import("./pages/ComingSoon"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-// Admin pages
 const Dashboard = lazy(() => import("./pages/admin/dashboard/Dashboard"));
 const Students = lazy(() => import("./pages/admin/students/Students"));
 const AddStudent = lazy(() => import("./pages/admin/students/AddStudent"));
@@ -36,19 +28,20 @@ const GuardiansDirectory = lazy(() => import("./pages/admin/guardians/GuardiansD
 const NonAcademicStaff = lazy(() => import("./pages/admin/staff/NonAcademicStaff"));
 const StaffAttendance = lazy(() => import("./pages/admin/staff/StaffAttendance"));
 const Reports = lazy(() => import("./pages/admin/reports/Reports"));
+const Analytics = lazy(() => import("./pages/admin/analytics/Analytics"));
 const Teachers = lazy(() => import("./pages/admin/teachers/Teachers"));
 const AddTeacher = lazy(() => import("./pages/admin/teachers/AddTeacher"));
 const TeacherDetail = lazy(() => import("./pages/admin/teachers/TeacherDetail"));
+const TeacherSubjects = lazy(() => import("./pages/admin/teachers/TeacherSubjects"));
+
 const Classes = lazy(() => import("./pages/admin/classes/Classes"));
 const Streams = lazy(() => import("./pages/admin/streams/Streams"));
 const Prefects = lazy(() => import("./pages/admin/prefects/Prefects"));
 const Societies = lazy(() => import("./pages/admin/societies/Societies"));
 const Positions = lazy(() => import("./pages/admin/positions/Positions"));
 const AddClass = lazy(() => import("./pages/admin/classes/AddClass"));
-const Subjects = lazy(() => import("./pages/admin/subjects/Subjects"));
+const SubjectsCurriculum = lazy(() => import("./pages/admin/subjects/SubjectsCurriculum"));
 const AddSubject = lazy(() => import("./pages/admin/subjects/AddSubject"));
-const Grades = lazy(() => import("./pages/admin/grades/Grades"));
-const Curriculum = lazy(() => import("./pages/admin/curriculum/Curriculum"));
 const LevelDetail = lazy(() => import("./pages/admin/curriculum/LevelDetail"));
 const Mediums = lazy(() => import("./pages/admin/curriculum/Mediums"));
 const ClassDetail = lazy(() => import("./pages/admin/classes/ClassDetail"));
@@ -66,7 +59,6 @@ const SubjectRequirements = lazy(() => import("./pages/admin/timetable/SubjectRe
 const Timetables = lazy(() => import("./pages/admin/timetable/Timetables"));
 const TimetableEditor = lazy(() => import("./pages/admin/timetable/TimetableEditor"));
 
-// Teacher pages
 const TeacherDashboard = lazy(() => import("./pages/teacher/dashboard/TeacherDashboard"));
 const TeacherClasses = lazy(() => import("./pages/teacher/TeacherClasses"));
 const TeacherAttendance = lazy(() => import("./pages/teacher/TeacherAttendance"));
@@ -74,15 +66,20 @@ const TeacherProfile = lazy(() => import("./pages/teacher/TeacherProfile"));
 const TeacherTimetable = lazy(() => import("./pages/teacher/TeacherTimetable"));
 const TimetableReview = lazy(() => import("./pages/teacher/TimetableReview"));
 const MySociety = lazy(() => import("./pages/teacher/MySociety"));
+const TeacherMarks = lazy(() => import("./pages/teacher/TeacherMarks"));
 
-// Parent pages
 const ParentDashboard = lazy(() => import("./pages/parent/ParentDashboard"));
 const ChildDetail = lazy(() => import("./pages/parent/ChildDetail"));
 
-// Student pages
 const StudentDashboard = lazy(() => import("./pages/student/StudentDashboard"));
+const StudentAttendance = lazy(() => import("./pages/student/StudentAttendance"));
+const StudentMarks = lazy(() => import("./pages/student/StudentMarks"));
+const StudentTimetable = lazy(() => import("./pages/student/StudentTimetable"));
+const StudentGuardians = lazy(() => import("./pages/student/StudentGuardians"));
+const StudentProgress = lazy(() => import("./pages/student/StudentProgress"));
+const StudentPortfolio = lazy(() => import("./pages/student/StudentPortfolio"));
+const StudentEnrollment = lazy(() => import("./pages/student/StudentEnrollment"));
 
-// Shared notifications pages (all portals)
 const NotificationComposer = lazy(() => import("./pages/notifications/NotificationComposer"));
 const NotificationCenter = lazy(() => import("./pages/notifications/NotificationCenter"));
 
@@ -91,14 +88,10 @@ function App() {
   const { data: me, isLoading: meLoading } = useProvisionUser();
   const { role, loading } = useRole();
 
-  // Unconditional — gating meLoading behind `role !== null` created an
-  // implicit coupling where a user whose role resolves after (or alongside)
-  // a slow /me call could flash AccessRestricted despite having a valid
-  // role, since meLoading was only consulted once role was already known.
   const stillLoading = loading || meLoading;
 
   return (
-    <Suspense fallback={<div className="os-loading-placeholder" />}>
+    <Suspense fallback={<div className="os-loading-placeholder" />} >
       <Routes>
         <Route path="/signin" element={<SignIn />} />
         <Route path="/setup" element={<Setup />} />
@@ -148,6 +141,7 @@ function App() {
             <Route path="/t/notifications" element={<NotificationComposer />} />
             <Route path="/notification-center" element={<NotificationCenter />} />
             <Route path="/t/profile" element={<TeacherProfile />} />
+            <Route path="/t/marks" element={<TeacherMarks />} />
             <Route
               path="/attendance/sessions/:id/mark"
               element={<AttendanceMark />}
@@ -179,9 +173,12 @@ function App() {
               <Route path="/non-academic-staff" element={<NonAcademicStaff />} />
               <Route path="/staff-attendance" element={<StaffAttendance />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/analytics" element={<Analytics />} />
               <Route path="/teachers" element={<Teachers />} />
               <Route path="/teachers/new" element={<AddTeacher />} />
               <Route path="/teachers/:id" element={<TeacherDetail />} />
+              <Route path="/teacher-subjects" element={<TeacherSubjects />} />
+
               <Route path="/classes" element={<Classes />} />
               <Route path="/classes/new" element={<AddClass />} />
               <Route path="/classes/:id" element={<ClassDetail />} />
@@ -189,10 +186,10 @@ function App() {
               <Route path="/prefects" element={<Prefects />} />
               <Route path="/societies" element={<Societies />} />
               <Route path="/positions" element={<Positions />} />
-              <Route path="/subjects" element={<Subjects />} />
+              <Route path="/subjects" element={<SubjectsCurriculum />} />
               <Route path="/subjects/new" element={<AddSubject />} />
-              <Route path="/grades" element={<Grades />} />
-              <Route path="/curriculum" element={<Curriculum />} />
+              <Route path="/grades" element={<Navigate to="/classes" replace />} />
+              <Route path="/curriculum" element={<SubjectsCurriculum />} />
               <Route path="/curriculum/:id" element={<LevelDetail />} />
               <Route path="/mediums" element={<Mediums />} />
               <Route path="/attendance" element={<Attendance />} />
@@ -243,6 +240,13 @@ function App() {
             }
           >
             <Route index element={<StudentDashboard />} />
+            <Route path="/s/attendance" element={<StudentAttendance />} />
+            <Route path="/s/marks" element={<StudentMarks />} />
+            <Route path="/s/timetable" element={<StudentTimetable />} />
+            <Route path="/s/guardians" element={<StudentGuardians />} />
+            <Route path="/s/progress" element={<StudentProgress />} />
+            <Route path="/s/portfolio" element={<StudentPortfolio />} />
+            <Route path="/s/enrollment" element={<StudentEnrollment />} />
             <Route path="/notification-center" element={<NotificationCenter />} />
             <Route path="*" element={<NotFound />} />
           </Route>

@@ -1,3 +1,5 @@
+// This file renders the admin account creation screen, representing the first step in the onboarding flow before the school setup wizard.
+
 import { useState } from "react";
 import { Navigate } from "react-router";
 import { SignInButton } from "@thunderid/react";
@@ -6,19 +8,22 @@ import {
   TextInput,
   PasswordInput,
   InlineNotification,
-  ProgressIndicator,
-  ProgressStep,
   Stack,
 } from "@carbon/react";
 import { CheckmarkFilled } from "@carbon/icons-react";
 import { useSetupStatus, useRegisterAdmin } from "../queries/useSetup";
 import { getErrorMessage } from "../lib/errorMessage";
-import { silentProgressStatus } from "../lib/carbonA11y";
 import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "../lib/phone";
+import CustomStepper from "./admin/setup/components/CustomStepper";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Touched = Partial<Record<"givenName" | "familyName" | "email" | "username" | "phone" | "password" | "confirmPassword", boolean>>;
+
+const STEPS = [
+  { label: "Admin account", description: "Create the first admin" },
+  { label: "School setup", description: "Register your school" },
+];
 
 function Header() {
   return (
@@ -127,10 +132,7 @@ export default function Setup() {
       <div className="os-setup-card">
         <Header />
 
-        <ProgressIndicator currentIndex={0} spaceEqually style={{ marginBottom: "1.75rem" }}>
-          <ProgressStep label="Admin account" description="Create the first admin" translateWithId={silentProgressStatus} />
-          <ProgressStep label="School setup" description="Register your school" translateWithId={silentProgressStatus} />
-        </ProgressIndicator>
+        <CustomStepper currentIndex={0} steps={STEPS} />
 
         <p className="os-setup-card__intro">
           This looks like a new instance. Create the admin account to get

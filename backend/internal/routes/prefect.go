@@ -1,3 +1,5 @@
+// This file defines the RegisterPrefectRoutes function, mapping prefect assignments and student prefect appointments to their handlers.
+
 package routes
 
 import (
@@ -8,7 +10,7 @@ import (
 	"github.com/openschool-org/openschool/internal/services"
 )
 
-func RegisterPrefectRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
+func RegisterPrefectRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGroup, studentAccess *gin.RouterGroup, pool *pgxpool.Pool) {
 	repo := repositories.NewPrefectRepository(pool)
 	service := services.NewPrefectService(repo)
 	handler := handlers.NewPrefectHandler(service)
@@ -16,6 +18,6 @@ func RegisterPrefectRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterGro
 	admin.PUT("/prefects", handler.Assign)
 	teacherOrAdmin.GET("/prefects", handler.List)
 	teacherOrAdmin.GET("/prefects/years", handler.ListYears)
-	teacherOrAdmin.GET("/students/:id/prefect-appointments", handler.ListByStudent)
+	studentAccess.GET("/students/:id/prefect-appointments", handler.ListByStudent)
 	admin.DELETE("/prefects/:id", handler.Delete)
 }

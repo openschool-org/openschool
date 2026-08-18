@@ -1,3 +1,7 @@
+// This file renders the Curriculum tab content of the Subjects & Curriculum
+// page: the levels list with create/edit/duplicate/delete, and the curriculum
+// preset loader.
+
 import { useState } from "react";
 import { Add, Rocket } from "@carbon/icons-react";
 import { Button, InlineNotification } from "@carbon/react";
@@ -7,20 +11,20 @@ import {
   useUpdateLevel,
   useDuplicateLevel,
   useDeleteLevel,
-} from "../../../queries/useCurriculum";
-import { useRunCurriculumPreset } from "../../../queries/useCurriculumPreset";
-import { useGrades } from "../../../queries/useGrades";
-import type { Level } from "../../../services/curriculum";
-import { getErrorMessage } from "../../../lib/errorMessage";
-import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
-import LevelsList from "./components/LevelsList";
-import CreateLevelModal from "./components/CreateLevelModal";
-import EditLevelModal from "./components/EditLevelModal";
-import DuplicateLevelModal from "./components/DuplicateLevelModal";
-import PresetConfirmModal from "./components/PresetConfirmModal";
-import { EMPTY_LEVEL_FORM } from "./constants";
+} from "../../../../queries/useCurriculum";
+import { useRunCurriculumPreset } from "../../../../queries/useCurriculumPreset";
+import { useGrades } from "../../../../queries/useGrades";
+import type { Level } from "../../../../services/curriculum";
+import { getErrorMessage } from "../../../../lib/errorMessage";
+import ConfirmDeleteModal from "../../../../components/common/ConfirmDeleteModal";
+import LevelsList from "./LevelsList";
+import CreateLevelModal from "./CreateLevelModal";
+import EditLevelModal from "./EditLevelModal";
+import DuplicateLevelModal from "./DuplicateLevelModal";
+import PresetConfirmModal from "./PresetConfirmModal";
+import { EMPTY_LEVEL_FORM } from "../constants";
 
-export default function Curriculum() {
+export default function CurriculumPanel() {
   const { data: levels, isLoading, isError, refetch } = useLevels();
   const { data: grades } = useGrades();
   const createLevel = useCreateLevel();
@@ -121,22 +125,22 @@ export default function Curriculum() {
   };
 
   return (
-    <div className="os-page">
+    <div>
       <div
-        className="os-page__header"
         style={{
           display: "flex",
-          alignItems: "flex-start",
+          alignItems: "center",
           justifyContent: "space-between",
+          gap: "1rem",
+          flexWrap: "wrap",
+          margin: "1rem 0",
         }}
       >
-        <div>
-          <h1 className="os-page__title">Curriculum</h1>
-          <p className="os-page__subtitle">
-            A level is any container you name - a grade, a stream, an exam stage.
-            Each level holds selection groups that decide what students pick.
-          </p>
-        </div>
+        <p style={{ margin: 0, fontSize: "0.8125rem", color: "#525252" }}>
+          A level is any container you name - a grade, a stream, an exam
+          stage. Each level holds selection groups that decide what students
+          pick from the Subjects tab.
+        </p>
         <div style={{ display: "flex", gap: "0.5rem" }}>
           <Button
             renderIcon={Rocket}

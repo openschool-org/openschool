@@ -56,6 +56,7 @@ type DashboardAcademicAnalytics struct {
 	ExaminationEntries   int64            `json:"examination_entries"`
 	StudentsWithMarks    int64            `json:"students_with_marks"`
 	GradeWisePerformance []PerformanceRow `json:"grade_wise_performance"`
+	ClassWisePerformance []PerformanceRow `json:"class_wise_performance"`
 	AttendancePercentage float64          `json:"attendance_percentage"`
 }
 

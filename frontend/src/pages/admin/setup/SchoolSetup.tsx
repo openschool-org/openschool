@@ -1,8 +1,9 @@
+// This file renders the wizard interface for the initial school setup, allowing administrators to configure basic school details, houses, grades, mediums, and classes.
+
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router";
-import { Button, ProgressIndicator, ProgressStep, InlineNotification } from "@carbon/react";
+import { Button, InlineNotification } from "@carbon/react";
 import { useSchool } from "../../../queries/useSchool";
-import { silentProgressStatus } from "../../../lib/carbonA11y";
 import { isValidSriLankanPhone } from "../../../lib/phone";
 import SchoolStep from "./components/SchoolStep";
 import HousesStep, { type HouseRow } from "./components/HousesStep";
@@ -10,6 +11,7 @@ import GradesStep from "./components/GradesStep";
 import MediumsStep from "./components/MediumsStep";
 import ClassesStep from "./components/ClassesStep";
 import DoneStep from "./components/DoneStep";
+import CustomStepper from "./components/CustomStepper";
 import { useSchoolSetupSubmit } from "./hooks/useSchoolSetupSubmit";
 import {
   AL_GRADE_NUMBERS,
@@ -24,10 +26,6 @@ import {
   type AlStreamsState,
 } from "./constants";
 
-// STEPS is [School, Houses, Grades, Mediums, Classes, Done] — Done is
-// always the last entry, and Classes (the final data-entry step) the one
-// before it. Derived here so every step === <literal> comparison below
-// stays in sync if STEPS' length ever changes, instead of drifting.
 const DONE_STEP = STEPS.length - 1;
 const LAST_INPUT_STEP = DONE_STEP - 1;
 
@@ -36,16 +34,8 @@ export default function SchoolSetup() {
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  // RootLayout redirects an admin *into* /school-setup when no school
-  // exists yet, but nothing redirected them back *out* once it does — an
-  // admin revisiting this URL after onboarding got stuck on a wizard whose
-  // final "Finish Setup" fails forever (school already exists) with no way
-  // out but the browser back button (audit.md M-14). `submitted`/`submitting`
-  // excludes this wizard's own just-completed run, whose success response
-  // populates the school query before this component unmounts.
   const { data: existingSchool, isLoading: schoolCheckLoading } = useSchool();
 
-  // ── Step 0: School ──────────────────────────────────────────────────────
   const [school, setSchool] = useState({
     name: "",
     address: "",
@@ -70,26 +60,14 @@ export default function SchoolSetup() {
     school.address.trim().length > 0 &&
     !gradeRangeInvalid;
 
-  // ── Step 1: Houses ───────────────────────────────────────────────────────
   const [houses, setHouses] = useState<HouseRow[]>([{ name: "", code: "", color: HOUSE_COLOR_PALETTE[0] }]);
   const [housesSkipped, setHousesSkipped] = useState(false);
 
-  // ── Step 2: Grades ───────────────────────────────────────────────────────
-  // The range picked in Step 0 is what the Grades step both pre-selects AND
-  // displays, so they can never show/select grades outside it. Falls back
-  // to the full 1-13 range only if the school step was somehow left blank.
   const gradeRangeStart = school.grade_from === "" ? GRADE_MIN : Number(school.grade_from);
   const gradeRangeEnd = school.grade_to === "" ? GRADE_MAX : Number(school.grade_to);
 
   const [selectedGrades, setSelectedGrades] = useState<Set<number>>(new Set());
 
-  // Re-syncs whenever the chosen range actually changes — e.g. the user
-  // goes Back to Step 0 and edits the range after already visiting this
-  // step. Without this, a stale selection from the first render (or a
-  // previous range) could silently include grades outside the new range,
-  // which then leak into the grades and classes actually created. Adjusted
-  // during render (React's supported pattern for this) rather than in an
-  // effect, so it takes effect in the same render instead of one tick late.
   const [syncedRange, setSyncedRange] = useState<[number, number] | null>(null);
   if (
     school.grade_from !== "" &&
@@ -106,7 +84,6 @@ export default function SchoolSetup() {
   const regularGradeNumbers = orderedSelectedGrades.filter((n) => !AL_GRADE_NUMBERS.has(n));
   const alGradeNumbers = orderedSelectedGrades.filter((n) => AL_GRADE_NUMBERS.has(n));
 
-  // ── Step 3: Mediums ──────────────────────────────────────────────────────
   const [mediumChecks, setMediumChecks] = useState<Record<string, boolean>>({
     Sinhala: true,
     Tamil: false,
@@ -115,18 +92,13 @@ export default function SchoolSetup() {
   const [customMediums, setCustomMediums] = useState<string[]>([]);
   const [mediumsSkipped, setMediumsSkipped] = useState(false);
 
-  // what the Classes step offers per section — empty when mediums were skipped,
-  // which hides the pickers entirely rather than showing an empty dropdown
   const selectedMediumNames = mediumsSkipped
     ? []
     : [...SUGGESTED_MEDIUMS.filter((m) => mediumChecks[m]), ...customMediums.filter((m) => m.trim())];
 
-  // ── Step 4: Classes ──────────────────────────────────────────────────────
   const [yearLabel, setYearLabel] = useState(String(new Date().getFullYear()));
   const [sectionsPerGrade, setSectionsPerGrade] = useState<Record<number, number>>({});
   const [classesSkipped, setClassesSkipped] = useState(false);
-  // language of instruction per generated section, keyed "<grade>-<index>".
-  // Holds the medium *name* because ids don't exist until submit.
   const [sectionMediums, setSectionMediums] = useState<Record<string, string>>({});
 
   const [alStreams, setAlStreams] = useState<AlStreamsState>(
@@ -136,10 +108,6 @@ export default function SchoolSetup() {
       ) as Record<ALStreamKey, { enabled: boolean; code: string; sections: number }>,
   );
 
-  // ── Final submission (Step 5) ───────────────────────────────────────────
-  // Nothing above this point has touched the database — Steps 0-4 are pure
-  // local-state navigation, freely back-and-forward-able. Everything is
-  // written once, in dependency order, by useSchoolSetupSubmit.
   const { submitting, submitError, submitted, submitAll } = useSchoolSetupSubmit({
     school,
     houses,
@@ -184,8 +152,6 @@ export default function SchoolSetup() {
     goNext();
   };
 
-  // Classes is now the last input step, so this is where everything gets
-  // written.
   const handleClassesNext = (skip: boolean) => {
     setError(null);
     if (!skip && !yearLabel.trim()) {
@@ -202,8 +168,8 @@ export default function SchoolSetup() {
   }
 
   return (
-    <div className="os-signin-wrapper" style={{ alignItems: "flex-start", paddingTop: "3rem" }}>
-      <div className="os-setup-card" style={{ maxWidth: "42rem" }}>
+    <div className="os-signin-wrapper" style={{ alignItems: "flex-start", paddingTop: "0.5rem" }}>
+      <div className="os-setup-card" style={{ maxWidth: "42rem", marginTop: "0.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.75rem" }}>
           <img src="/favicon.webp" alt="" width={44} height={44} style={{ display: "block", flexShrink: 0 }} />
           <div>
@@ -216,14 +182,7 @@ export default function SchoolSetup() {
           </div>
         </div>
 
-        <ProgressIndicator currentIndex={step} spaceEqually style={{ marginBottom: "0.5rem" }}>
-          {STEPS.map((label) => (
-            <ProgressStep key={label} label={label} translateWithId={silentProgressStatus} />
-          ))}
-        </ProgressIndicator>
-        <p style={{ margin: "0 0 1.75rem", fontSize: "0.75rem", color: "#8d8d8d", textAlign: "right" }}>
-          Step {step + 1} of {STEPS.length}
-        </p>
+        <CustomStepper currentIndex={step} steps={STEPS} />
 
         {error && (
           <InlineNotification

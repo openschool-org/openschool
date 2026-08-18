@@ -85,6 +85,7 @@ type Querier interface {
 	CreateTimetableStatusHistory(ctx context.Context, arg CreateTimetableStatusHistoryParams) (TimetableStatusHistory, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DashboardAttendancePercentage(ctx context.Context) (DashboardAttendancePercentageRow, error)
+	DashboardClassWisePerformance(ctx context.Context) ([]DashboardClassWisePerformanceRow, error)
 	DashboardExaminationSummary(ctx context.Context) (DashboardExaminationSummaryRow, error)
 	DashboardGradeWisePerformance(ctx context.Context) ([]DashboardGradeWisePerformanceRow, error)
 	DashboardNotificationsSentCount(ctx context.Context) (int64, error)

@@ -394,6 +394,7 @@ type Subject struct {
 	Code      string             `json:"code"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	Type      pgtype.Text        `json:"type"`
+	MaxMarks  pgtype.Numeric     `json:"max_marks"`
 }
 
 type SubjectPeriodRequirement struct {

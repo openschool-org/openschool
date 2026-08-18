@@ -1,3 +1,5 @@
+// This file defines the frontend API service endpoints for interacting with classroom and enrollment resources.
+
 import api from "../lib/api";
 
 export interface ClassWithDetails {
@@ -84,6 +86,9 @@ export const classApi = {
 
   listSubjectTeachers: (id: string) =>
     api.get<SubjectTeacher[]>(`/classes/${id}/subject-teachers`).then((r) => r.data),
+
+  assignSubjectTeacher: (id: string, data: { subject_id: string; teacher_id: string }) =>
+    api.post(`/classes/${id}/subject-teachers`, data).then((r) => r.data),
 
   enrollStudent: (id: string, studentId: string) =>
     api.post(`/classes/${id}/students/${studentId}/enroll`).then((r) => r.data),

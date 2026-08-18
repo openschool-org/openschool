@@ -3,7 +3,6 @@ import { Add } from "@carbon/icons-react";
 import { Button, InlineNotification, SkeletonText } from "@carbon/react";
 import { useCurrentAcademicYear } from "../../../queries/useAcademicYears";
 import { useGrades } from "../../../queries/useGrades";
-import { useTeachers } from "../../../queries/useTeachers";
 import {
   useGradeSections,
   useCreateGradeSection,
@@ -21,12 +20,11 @@ import PeriodsEditor from "./components/PeriodsEditor";
 import SectionRow from "./components/SectionRow";
 import SectionFormModal from "./components/SectionFormModal";
 
-export default function GradeSections() {
+export default function GradeSections({ inline = false }: { inline?: boolean }) {
   const { data: currentYear } = useCurrentAcademicYear();
   const yearId = currentYear?.id ?? "";
   const { data: sections, isLoading, isError, refetch } = useGradeSections(yearId);
   const { data: grades } = useGrades();
-  const { data: teachers } = useTeachers();
   const createSection = useCreateGradeSection();
   const updateSection = useUpdateGradeSection(yearId);
   const deleteSection = useDeleteGradeSection(yearId);
@@ -80,20 +78,6 @@ export default function GradeSections() {
     }
   };
 
-  const handleAssignHead = (sectionId: string, teacherId: string) => {
-    const section = sections?.find((s) => s.id === sectionId);
-    if (!section) return;
-    updateSection.mutate({
-      id: sectionId,
-      data: {
-        name: section.name,
-        interval_start_time: section.interval_start_time,
-        interval_end_time: section.interval_end_time,
-        sort_order: section.sort_order,
-        section_head_teacher_id: teacherId || null,
-      },
-    });
-  };
 
   const handleDelete = () => {
     if (!toDelete) return;
@@ -105,12 +89,14 @@ export default function GradeSections() {
 
   if (!currentYear) {
     return (
-      <div className="os-page">
-        <div className="os-page__header">
-          <div className="os-page__header-left">
-            <h1 className="os-page__title">Grade Sections</h1>
+      <div className={inline ? "" : "os-page"}>
+        {!inline && (
+          <div className="os-page__header">
+            <div className="os-page__header-left">
+              <h1 className="os-page__title">Grade Sections</h1>
+            </div>
           </div>
-        </div>
+        )}
         <div className="os-section">
           <EmptyState
             title="No current academic year"
@@ -122,19 +108,32 @@ export default function GradeSections() {
   }
 
   return (
-    <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Grade Sections</h1>
-          <p className="os-page__subtitle">
-            Group grades (Primary, Junior Secondary, Senior Secondary, A/L…) with their own interval time, period
-            grid, and section head for {currentYear.label}.
-          </p>
+    <div className={inline ? "" : "os-page"}>
+      {!inline && (
+        <div className="os-page__header">
+          <div className="os-page__header-left">
+            <h1 className="os-page__title">Grade Sections</h1>
+            <p className="os-page__subtitle">
+              Group grades (Primary, Junior Secondary, Senior Secondary, A/L…) with their own interval time, period
+              grid, and section head for {currentYear.label}.
+            </p>
+          </div>
+          <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>
+            New Section
+          </Button>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>
-          New Section
-        </Button>
-      </div>
+      )}
+
+      {inline && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "1rem" }}>
+          <p style={{ margin: 0, fontSize: "0.875rem", color: "#525252" }}>
+            Set up different interval times for different grades by grouping them into sections.
+          </p>
+          <Button renderIcon={Add} kind="primary" size="sm" onClick={openCreate}>
+            New Section
+          </Button>
+        </div>
+      )}
 
       <div className="os-section">
         {isLoading && (
@@ -173,13 +172,12 @@ export default function GradeSections() {
                 key={s.id}
                 section={s}
                 isLast={i === sections.length - 1}
-                teachers={teachers}
                 gradeName={gradeName}
                 onPeriods={() => setPeriodsFor(s)}
                 onEdit={() => openEdit(s)}
                 onDelete={() => setToDelete(s)}
-                onAssignHead={(teacherId) => handleAssignHead(s.id, teacherId)}
               />
+
             ))}
           </div>
         )}

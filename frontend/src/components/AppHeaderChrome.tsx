@@ -1,10 +1,13 @@
+// This file renders the header brand and actions toolbar components (AppHeaderBrand and AppHeaderActions) used in the application's global layout.
+
 import { useState } from "react";
 import { Link } from "react-router";
-import { HeaderName, HeaderGlobalBar, HeaderGlobalAction } from "@carbon/react";
-import { Password } from "@carbon/icons-react";
-import { UserDropdown, useThunderID } from "@thunderid/react";
+import { HeaderName, HeaderGlobalBar, HeaderGlobalAction, OverflowMenu, OverflowMenuItem } from "@carbon/react";
+import { Password, User, Search } from "@carbon/icons-react";
+import { UserDropdown } from "@thunderid/react";
 import NotificationsBell from "./common/NotificationsBell";
 import ChangePasswordModal from "./common/ChangePasswordModal";
+import GlobalSearch from "./common/GlobalSearch";
 
 export function AppHeaderBrand() {
   return (
@@ -20,29 +23,45 @@ export function AppHeaderBrand() {
 }
 
 export function AppHeaderActions() {
-  const { getAccessToken } = useThunderID();
   const [changingPassword, setChangingPassword] = useState(false);
-
-  const copyToken = async () => {
-    const token = await getAccessToken();
-    if (token) navigator.clipboard.writeText(token);
-  };
+  const [searchExpanded, setSearchExpanded] = useState(false);
 
   return (
-    <HeaderGlobalBar>
-      {import.meta.env.DEV && (
+    <HeaderGlobalBar style={{ display: "flex", alignItems: "center" }}>
+      {searchExpanded ? (
+        <GlobalSearch autoFocus onClose={() => setSearchExpanded(false)} />
+      ) : (
         <HeaderGlobalAction
-          aria-label="Copy access token (dev)"
-          onClick={copyToken}
+          aria-label="Search"
+          onClick={() => setSearchExpanded(true)}
         >
-          <span className="os-header-copy-token">Copy Token</span>
+          <Search size={20} className="os-header-icon" />
         </HeaderGlobalAction>
       )}
       <HeaderGlobalAction aria-label="Change password" onClick={() => setChangingPassword(true)}>
         <Password size={20} className="os-header-icon" />
       </HeaderGlobalAction>
       <NotificationsBell />
-      <UserDropdown />
+      <UserDropdown>
+        {({ openProfile, signOut }) => (
+          <OverflowMenu
+            renderIcon={User}
+            aria-label="User profile menu"
+            flipped
+            className="os-header-user-menu"
+          >
+            <OverflowMenuItem
+              itemText="Manage Profile"
+              onClick={openProfile}
+            />
+            <OverflowMenuItem
+              itemText="Sign Out"
+              onClick={signOut}
+              isDelete
+            />
+          </OverflowMenu>
+        )}
+      </UserDropdown>
       {changingPassword && (
         <ChangePasswordModal onClose={() => setChangingPassword(false)} />
       )}

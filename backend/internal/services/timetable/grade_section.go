@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 
 	"github.com/google/uuid"
@@ -11,6 +12,7 @@ import (
 	db "github.com/openschool-org/openschool/db/sqlc"
 	models "github.com/openschool-org/openschool/internal/models/timetable"
 	repositories "github.com/openschool-org/openschool/internal/repositories/timetable"
+
 )
 
 var ErrGradeSectionNotFound = errors.New("grade section not found, or still has grades assigned")
@@ -246,14 +248,7 @@ func (s *GradeSectionService) SavePeriods(ctx context.Context, sectionID uuid.UU
 }
 
 // generatePeriodsFromSettings builds a default period grid for a newly created grade_section from the academic year's timetable_settings template, inserting the section's interval at its configured interval_start_time.
-func (s *GradeSectionService) generatePeriodsFromSettings(ctx context.Context, section db.GradeSection) error {
-	settings, err := s.settingsRepo.GetByYear(ctx, section.AcademicYearID)
-	if err != nil {
-		// no settings configured yet for this year — leave the grid empty;
-		// admin can configure settings and regenerate, or build it by hand.
-		return nil
-	}
-
+func (s *GradeSectionService) generatePeriodsSequential(ctx context.Context, section db.GradeSection, settings db.TimetableSetting) error {
 	cursor := settings.SchoolStartTime.Microseconds
 	periodDurationMicros := int64(settings.PeriodDurationMinutes) * 60 * 1_000_000
 	intervalInserted := false
@@ -293,11 +288,98 @@ func (s *GradeSectionService) generatePeriodsFromSettings(ctx context.Context, s
 		})
 	}
 
-	// An interval_start_time that falls outside the generated school day
-	// (inconsistent admin input, not validated up front) would otherwise
-	// leave the interval wherever the loop above happened to place it —
-	// sorting by actual start time before assigning sort_order/period_number
-	// guarantees the grid always displays chronologically regardless.
+	sort.SliceStable(slots, func(i, j int) bool {
+		return slots[i].StartTime.Microseconds < slots[j].StartTime.Microseconds
+	})
+
+	periodNum := int32(1)
+	for i := range slots {
+		slots[i].SortOrder = int32(i)
+		if slots[i].SlotType == "period" {
+			slots[i].PeriodNumber = pgtype.Int4{Int32: periodNum, Valid: true}
+			periodNum++
+		}
+	}
+
+	for _, params := range slots {
+		if _, err := s.repo.CreatePeriod(ctx, params); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *GradeSectionService) generatePeriodsFromSettings(ctx context.Context, section db.GradeSection) error {
+	settings, err := s.settingsRepo.GetByYear(ctx, section.AcademicYearID)
+	if err != nil {
+		return nil
+	}
+
+	schoolStart := settings.SchoolStartTime.Microseconds
+	schoolEnd := settings.SchoolEndTime.Microseconds
+	intervalStart := section.IntervalStartTime.Microseconds
+	intervalEnd := section.IntervalEndTime.Microseconds
+
+	if schoolStart >= schoolEnd || intervalStart >= intervalEnd || intervalStart < schoolStart || intervalEnd > schoolEnd {
+		return s.generatePeriodsSequential(ctx, section, settings)
+	}
+
+	totalPeriods := int64(settings.NumberOfPeriods)
+	periodTemplateDuration := int64(settings.PeriodDurationMinutes) * 60 * 1_000_000
+
+	beforeDuration := intervalStart - schoolStart
+	periodsBefore := int64(math.Round(float64(beforeDuration) / float64(periodTemplateDuration)))
+	if periodsBefore < 1 {
+		periodsBefore = 1
+	}
+	if periodsBefore >= totalPeriods {
+		periodsBefore = totalPeriods - 1
+	}
+	periodsAfter := totalPeriods - periodsBefore
+
+	slots := make([]db.CreateTimetablePeriodParams, 0, settings.NumberOfPeriods+1)
+
+	cursor := schoolStart
+	durationBefore := beforeDuration / periodsBefore
+	for i := int64(0); i < periodsBefore; i++ {
+		next := cursor + durationBefore
+		if i == periodsBefore-1 {
+			next = intervalStart
+		}
+		slots = append(slots, db.CreateTimetablePeriodParams{
+			GradeSectionID: section.ID,
+			StartTime:      pgtype.Time{Microseconds: cursor, Valid: true},
+			EndTime:        pgtype.Time{Microseconds: next, Valid: true},
+			SlotType:       "period",
+		})
+		cursor = next
+	}
+
+	slots = append(slots, db.CreateTimetablePeriodParams{
+		GradeSectionID: section.ID,
+		StartTime:      section.IntervalStartTime,
+		EndTime:        section.IntervalEndTime,
+		SlotType:       "interval",
+	})
+
+	cursor = intervalEnd
+	afterDuration := schoolEnd - intervalEnd
+	durationAfter := afterDuration / periodsAfter
+	for i := int64(0); i < periodsAfter; i++ {
+		next := cursor + durationAfter
+		if i == periodsAfter-1 {
+			next = schoolEnd
+		}
+		slots = append(slots, db.CreateTimetablePeriodParams{
+			GradeSectionID: section.ID,
+			StartTime:      pgtype.Time{Microseconds: cursor, Valid: true},
+			EndTime:        pgtype.Time{Microseconds: next, Valid: true},
+			SlotType:       "period",
+		})
+		cursor = next
+	}
+
 	sort.SliceStable(slots, func(i, j int) bool {
 		return slots[i].StartTime.Microseconds < slots[j].StartTime.Microseconds
 	})

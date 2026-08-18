@@ -5,8 +5,6 @@ import { CheckmarkFilled } from "@carbon/icons-react";
 import { useResetPassword } from "../queries/useAuth";
 import { getErrorMessage } from "../lib/errorMessage";
 
-// Landing page for the link emailed by ForgotPassword.tsx — the token lives
-// in the URL query string, never in a value the app itself displays back.
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") ?? "";

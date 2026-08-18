@@ -1,9 +1,11 @@
-import { Tag, TextInput, Select, SelectItem, RadioButtonGroup, RadioButton, InlineNotification } from "@carbon/react";
+import { useState } from "react";
+import { Tag, TextInput, Select, SelectItem, RadioButtonGroup, RadioButton, InlineNotification, Button } from "@carbon/react";
 import { Book } from "@carbon/icons-react";
 import type { Teacher, TeacherTitle, TeacherEmploymentStatus, TeacherSubject } from "../../../../services/teacher";
 import type { House } from "../../../../services/house";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { TITLES, EMPLOYMENT_STATUSES } from "../constants";
+import { useSubjects } from "../../../../queries/useSubjects";
 
 export type TeacherProfileForm = {
   given_name: string;
@@ -26,6 +28,8 @@ export default function TeacherProfileSections({
   updateError,
   updateHouse,
   updateStatus,
+  assignSubject,
+  removeSubject,
 }: {
   teacher: Teacher;
   subjects: TeacherSubject[] | undefined;
@@ -38,8 +42,23 @@ export default function TeacherProfileSections({
   updateError: string | null;
   updateHouse: UseMutationResult<unknown, unknown, { id: string; houseId: string }>;
   updateStatus: UseMutationResult<unknown, unknown, { id: string; status: TeacherEmploymentStatus }>;
+  assignSubject: UseMutationResult<unknown, unknown, string>;
+  removeSubject: UseMutationResult<unknown, unknown, string>;
 }) {
   const currentHouse = houses?.find((h) => h.id === teacher.house_id);
+  const { data: allSubjects } = useSubjects();
+  const [selectedSubjectId, setSelectedSubjectId] = useState("");
+
+  const assignedIds = new Set(subjects?.map((s) => s.id) ?? []);
+  const availableSubjects = allSubjects?.filter((s) => !assignedIds.has(s.id)) ?? [];
+
+  const handleAssign = () => {
+    if (selectedSubjectId) {
+      assignSubject.mutate(selectedSubjectId, {
+        onSuccess: () => setSelectedSubjectId(""),
+      });
+    }
+  };
 
   return (
     <>
@@ -128,32 +147,75 @@ export default function TeacherProfileSections({
           <h2 className="os-section__title">Subjects</h2>
           <span style={{ fontSize: "0.75rem", color: "#8d8d8d" }}>{subjects?.length ?? 0} assigned</span>
         </div>
-        <div className="os-section__body" style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          {subjects && subjects.length > 0 ? (
-            subjects.map((s) => (
-              <div
-                key={s.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  padding: "0.5rem 0.875rem",
-                  border: "1px solid #e0e0e0",
-                  background: "#f4f4f4",
-                }}
-              >
-                <Book size={14} style={{ fill: "#406AAF" }} />
-                <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>{s.name}</span>
-                <Tag type="blue" size="sm">
-                  {s.code}
-                </Tag>
+        <div className="os-section__body">
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: editing ? "1rem" : 0 }}>
+            {subjects && subjects.length > 0 ? (
+              subjects.map((s) =>
+                editing ? (
+                  <Tag
+                    key={s.id}
+                    type="blue"
+                    size="md"
+                    filter
+                    title="Unassign subject"
+                    onClose={() => removeSubject.mutate(s.id)}
+                    disabled={removeSubject.isPending}
+                  >
+                    {s.name} ({s.code})
+                  </Tag>
+                ) : (
+                  <div
+                    key={s.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      padding: "0.5rem 0.875rem",
+                      border: "1px solid #e0e0e0",
+                      background: "#f4f4f4",
+                    }}
+                  >
+                    <Book size={14} style={{ fill: "#406AAF" }} />
+                    <span style={{ fontSize: "0.875rem", fontWeight: 500 }}>{s.name}</span>
+                    <Tag type="blue" size="sm">
+                      {s.code}
+                    </Tag>
+                  </div>
+                )
+              )
+            ) : (
+              <span style={{ fontSize: "0.875rem", color: "#8d8d8d" }}>No subjects assigned.</span>
+            )}
+          </div>
+          {editing && (
+            <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-end", maxWidth: "28rem", borderTop: "1px solid #e0e0e0", paddingTop: "1rem" }}>
+              <div style={{ flex: 1 }}>
+                <Select
+                  id="assign-subject-select"
+                  labelText="Assign new subject"
+                  value={selectedSubjectId}
+                  onChange={(e) => setSelectedSubjectId(e.target.value)}
+                  disabled={assignSubject.isPending}
+                >
+                  <SelectItem value="" text="Choose a subject..." />
+                  {availableSubjects.map((s) => (
+                    <SelectItem key={s.id} value={s.id} text={`${s.name} (${s.code})`} />
+                  ))}
+                </Select>
               </div>
-            ))
-          ) : (
-            <span style={{ fontSize: "0.875rem", color: "#8d8d8d" }}>No subjects assigned.</span>
+              <Button
+                kind="primary"
+                size="md"
+                disabled={!selectedSubjectId || assignSubject.isPending}
+                onClick={handleAssign}
+              >
+                {assignSubject.isPending ? "Assigning…" : "Assign"}
+              </Button>
+            </div>
           )}
         </div>
       </div>
+
 
       <div className="os-section">
         <div className="os-section__header">

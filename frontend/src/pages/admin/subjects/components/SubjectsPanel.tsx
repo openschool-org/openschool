@@ -1,3 +1,7 @@
+// This file renders the Subjects tab content of the Subjects & Curriculum
+// page: a searchable, paginated subject list with edit/delete, backed by
+// FormModal and ConfirmDeleteModal.
+
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Search, Add, Edit, TrashCan } from "@carbon/icons-react";
@@ -6,6 +10,7 @@ import {
   IconButton,
   Tag,
   TextInput,
+  NumberInput,
   InlineNotification,
   ComposedModal,
   ModalHeader,
@@ -17,25 +22,25 @@ import {
   useSubjects,
   useUpdateSubject,
   useDeleteSubject,
-} from "../../../queries/useSubjects";
-import type { Subject } from "../../../services/subject";
-import { usePagination } from "../../../hooks/usePagination";
-import { getErrorMessage } from "../../../lib/errorMessage";
-import TableSkeleton from "../../../components/common/TableSkeleton";
-import ErrorMessage from "../../../components/common/ErrorMessage";
-import EmptyState from "../../../components/common/EmptyState";
-import ConfirmDeleteModal from "../../../components/common/ConfirmDeleteModal";
+} from "../../../../queries/useSubjects";
+import type { Subject } from "../../../../services/subject";
+import { usePagination } from "../../../../hooks/usePagination";
+import { getErrorMessage } from "../../../../lib/errorMessage";
+import TableSkeleton from "../../../../components/common/TableSkeleton";
+import ErrorMessage from "../../../../components/common/ErrorMessage";
+import EmptyState from "../../../../components/common/EmptyState";
+import ConfirmDeleteModal from "../../../../components/common/ConfirmDeleteModal";
 
 const SUBJECT_TABLE_HEADERS = ["Code", "Subject", "Type", "Actions"];
 
-export default function Subjects() {
+export default function SubjectsPanel() {
   const { data: subjects, isLoading, isError, refetch } = useSubjects();
   const updateSubject = useUpdateSubject();
   const deleteSubject = useDeleteSubject();
 
   const [query, setQuery] = useState("");
   const [editing, setEditing] = useState<Subject | null>(null);
-  const [form, setForm] = useState({ name: "", code: "", type: "" });
+  const [form, setForm] = useState({ name: "", code: "", type: "", max_marks: 100 });
   const [touched, setTouched] = useState<{ name?: boolean; code?: boolean }>({});
   const [toDelete, setToDelete] = useState<Subject | null>(null);
 
@@ -53,7 +58,7 @@ export default function Subjects() {
 
   const openEdit = (s: Subject) => {
     updateSubject.reset();
-    setForm({ name: s.name, code: s.code, type: s.type ?? "" });
+    setForm({ name: s.name, code: s.code, type: s.type ?? "", max_marks: s.max_marks });
     setTouched({});
     setEditing(s);
   };
@@ -68,6 +73,7 @@ export default function Subjects() {
           name: form.name.trim(),
           code: form.code.trim(),
           type: form.type.trim(),
+          max_marks: form.max_marks,
         },
       },
       { onSuccess: () => setEditing(null) },
@@ -83,22 +89,22 @@ export default function Subjects() {
   const searching = query.trim().length > 0;
 
   return (
-    <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Subjects</h1>
-          <p className="os-page__subtitle">
-            The school's subject catalogue. Offer a subject to students by adding
-            it to a selection group under Curriculum.
-          </p>
-        </div>
-        <Button
-          renderIcon={Add}
-          kind="primary"
-          size="md"
-          as={Link}
-          to="/subjects/new"
-        >
+    <div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "1rem",
+          flexWrap: "wrap",
+          margin: "1rem 0",
+        }}
+      >
+        <p style={{ margin: 0, fontSize: "0.8125rem", color: "#525252" }}>
+          The school&apos;s subject catalogue. Offer a subject to students by
+          adding it to a selection group under the Curriculum tab.
+        </p>
+        <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/subjects/new">
           Add Subject
         </Button>
       </div>
@@ -144,12 +150,7 @@ export default function Subjects() {
             }
             action={
               searching ? undefined : (
-                <Button
-                  renderIcon={Add}
-                  kind="primary"
-                  as={Link}
-                  to="/subjects/new"
-                >
+                <Button renderIcon={Add} kind="primary" as={Link} to="/subjects/new">
                   Add Subject
                 </Button>
               )
@@ -170,6 +171,7 @@ export default function Subjects() {
                   <th>Code</th>
                   <th>Subject</th>
                   <th>Type</th>
+                  <th>Max Marks</th>
                   <th style={{ width: "6rem", textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
@@ -189,6 +191,7 @@ export default function Subjects() {
                         <span className="os-table__muted">-</span>
                       )}
                     </td>
+                    <td>{s.max_marks}</td>
                     <td>
                       <div
                         style={{
@@ -230,7 +233,6 @@ export default function Subjects() {
         )}
       </div>
 
-      {/* Edit modal */}
       <ComposedModal open={!!editing} size="sm" onClose={() => setEditing(null)}>
         <ModalHeader title="Edit subject" />
         <ModalBody>
@@ -269,6 +271,15 @@ export default function Subjects() {
               helperText="A descriptive label only, e.g. core, language, aesthetic"
               value={form.type}
               onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
+            />
+            <NumberInput
+              id="edit-subject-max-marks"
+              label="Max Marks"
+              min={1}
+              max={1000}
+              value={form.max_marks}
+              onChange={(_e, { value }) => setForm((f) => ({ ...f, max_marks: Number(value ?? 100) }))}
+              helperText="The maximum marks a student can get for this subject."
             />
           </div>
         </ModalBody>

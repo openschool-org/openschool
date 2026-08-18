@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	db "github.com/openschool-org/openschool/db/sqlc"
 	"github.com/openschool-org/openschool/internal/models"
 	"github.com/openschool-org/openschool/internal/services"
@@ -19,6 +20,14 @@ func NewSubjectHandler(service *services.SubjectService) *SubjectHandler {
 	return &SubjectHandler{service: service}
 }
 
+func numericToFloat64(n pgtype.Numeric) float64 {
+	f, err := n.Float64Value()
+	if err != nil || !f.Valid {
+		return 0
+	}
+	return f.Float64
+}
+
 func toSubjectResponse(s db.Subject) models.SubjectResponse {
 	var subjectType *string
 	if s.Type.Valid {
@@ -30,6 +39,7 @@ func toSubjectResponse(s db.Subject) models.SubjectResponse {
 		Name:      s.Name,
 		Code:      s.Code,
 		Type:      subjectType,
+		MaxMarks:  numericToFloat64(s.MaxMarks),
 		CreatedAt: s.CreatedAt.Time.String(),
 	}
 }
