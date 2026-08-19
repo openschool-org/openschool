@@ -33,6 +33,7 @@ import {
   DocumentPdf,
   Idea,
   Bot,
+  Rocket,
 } from "@carbon/icons-react";
 import { isNotFoundError } from "../lib/errorMessage";
 import { useSchool } from "../queries/useSchool";
@@ -81,7 +82,8 @@ const NAV_GROUPS: {
     items: [
       { path: "/academic-years", label: "Academic Years", Icon: Calendar },
       { path: "/timetables", label: "Timetables", Icon: Table },
-      { path: "/classrooms", label: "Classrooms", Icon: Location },
+      { path: "/timetables/generate", label: "Generate Timetable", Icon: Rocket },
+      { path: "/classrooms", label: "Classrooms & Facilities", Icon: Location },
       { path: "/subject-requirements", label: "Subject Requirements", Icon: Rule },
       { path: "/timetable-settings", label: "Timetable Settings", Icon: SettingsAdjust },
     ],

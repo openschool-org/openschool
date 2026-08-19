@@ -173,11 +173,13 @@ func (q *Queries) GetStudentByUserID(ctx context.Context, userID pgtype.UUID) (S
 const getStudentWithClass = `-- name: GetStudentWithClass :one
 SELECT
     sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status,
+    u.email       AS email,
     c.name        AS class_name,
     g.name        AS grade_name,
     h.name        AS house_name,
     ay.label      AS academic_year
 FROM student_profiles sp
+LEFT JOIN users u            ON u.id = sp.user_id
 LEFT JOIN class_students cs ON cs.student_id = sp.id
 LEFT JOIN classes c         ON c.id = cs.class_id
 LEFT JOIN grades g          ON g.id = c.grade_id
@@ -200,6 +202,7 @@ type GetStudentWithClassRow struct {
 	Gender           pgtype.Text        `json:"gender"`
 	HouseID          pgtype.UUID        `json:"house_id"`
 	EnrollmentStatus string             `json:"enrollment_status"`
+	Email            pgtype.Text        `json:"email"`
 	ClassName        pgtype.Text        `json:"class_name"`
 	GradeName        pgtype.Text        `json:"grade_name"`
 	HouseName        pgtype.Text        `json:"house_name"`
@@ -223,6 +226,7 @@ func (q *Queries) GetStudentWithClass(ctx context.Context, id uuid.UUID) (GetStu
 		&i.Gender,
 		&i.HouseID,
 		&i.EnrollmentStatus,
+		&i.Email,
 		&i.ClassName,
 		&i.GradeName,
 		&i.HouseName,

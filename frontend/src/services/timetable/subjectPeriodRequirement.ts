@@ -6,6 +6,12 @@ export interface SubjectPeriodRequirement {
   grade_id: string;
   subject_id: string;
   periods_per_week: number;
+  // how many of periods_per_week must be in a matching lab classroom.
+  lab_periods_per_week: number;
+  // how many back-to-back 2-period blocks to carve out of periods_per_week
+  // (e.g. AL subjects commonly run some periods as doubles) — not
+  // all-or-nothing: the rest of periods_per_week is still scheduled singly.
+  double_period_blocks: number;
   created_at: string | null;
   subject_name: string;
   subject_code: string;
@@ -16,6 +22,8 @@ export interface UpsertSubjectPeriodRequirementRequest {
   grade_id: string;
   subject_id: string;
   periods_per_week: number;
+  lab_periods_per_week?: number;
+  double_period_blocks?: number;
 }
 
 export const subjectPeriodRequirementApi = {

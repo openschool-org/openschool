@@ -67,11 +67,13 @@ RETURNING *;
 -- name: GetStudentWithClass :one
 SELECT
     sp.*,
+    u.email       AS email,
     c.name        AS class_name,
     g.name        AS grade_name,
     h.name        AS house_name,
     ay.label      AS academic_year
 FROM student_profiles sp
+LEFT JOIN users u            ON u.id = sp.user_id
 LEFT JOIN class_students cs ON cs.student_id = sp.id
 LEFT JOIN classes c         ON c.id = cs.class_id
 LEFT JOIN grades g          ON g.id = c.grade_id

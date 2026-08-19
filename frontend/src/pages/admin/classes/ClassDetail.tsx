@@ -20,6 +20,8 @@ import {
 } from "../../../queries/useAttendance";
 import { useGrades } from "../../../queries/useGrades";
 import { useStreams, useStreamGroups } from "../../../queries/useClasses";
+import { useMediums } from "../../../queries/useCurriculum";
+import { useClassrooms } from "../../../queries/timetable/useClassrooms";
 import { useTeachers } from "../../../queries/useTeachers";
 import { useAcademicYears } from "../../../queries/useAcademicYears";
 import { useStudents } from "../../../queries/useStudents";
@@ -56,6 +58,8 @@ export default function ClassDetail() {
   const { data: grades } = useGrades();
   const { data: streams } = useStreams();
   const { data: streamGroups } = useStreamGroups(cls?.stream_id ?? "");
+  const { data: mediums } = useMediums();
+  const { data: classrooms } = useClassrooms();
   const { data: teachers } = useTeachers();
   const { data: years } = useAcademicYears();
   const { data: allStudents } = useStudents();
@@ -70,6 +74,8 @@ export default function ClassDetail() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [nameEdit, setNameEdit] = useState("");
+  const [mediumEdit, setMediumEdit] = useState("");
+  const [homeClassroomEdit, setHomeClassroomEdit] = useState("");
   const [teacherModalOpen, setTeacherModalOpen] = useState(false);
   const [teacherChoice, setTeacherChoice] = useState("");
   const [monitorsModalOpen, setMonitorsModalOpen] = useState(false);
@@ -85,6 +91,8 @@ export default function ClassDetail() {
   const gradeName = grades?.find((g) => g.id === cls?.grade_id)?.name;
   const streamName = streams?.find((s) => s.id === cls?.stream_id)?.name;
   const streamGroupName = streamGroups?.find((g) => g.id === cls?.stream_group_id)?.name;
+  const mediumName = mediums?.find((m) => m.id === cls?.medium_id)?.name;
+  const homeClassroomName = classrooms?.find((c) => c.id === cls?.home_classroom_id)?.name;
   const formTeacher = teachers?.find((t) => t.id === cls?.form_teacher_id);
   const academicYearLabel = years?.find((y) => y.id === cls?.academic_year_id)?.label;
   const girlMonitor = students?.find((s) => s.id === cls?.girl_monitor_id);
@@ -101,9 +109,19 @@ export default function ClassDetail() {
     [allStudents, enrolledIds],
   );
 
+  // Sri Lankan schools usually name a class's homeroom the same as the
+  // class itself (e.g. class "13-M1" sits in room "13-M1") — suggest that
+  // match automatically while editing, but let the admin override it.
+  const suggestedHomeClassroom = nameEdit.trim()
+    ? classrooms?.find((c) => c.room_type === "regular" && c.name.trim().toLowerCase() === nameEdit.trim().toLowerCase())
+    : undefined;
+  const effectiveHomeClassroomEdit = homeClassroomEdit || suggestedHomeClassroom?.id || "";
+
   const openEdit = () => {
     updateClass.reset();
     setNameEdit(cls?.name ?? "");
+    setMediumEdit(cls?.medium_id ?? "");
+    setHomeClassroomEdit(cls?.home_classroom_id ?? "");
     setEditOpen(true);
   };
 
@@ -111,7 +129,12 @@ export default function ClassDetail() {
     const name = nameEdit.trim();
     if (!name) return;
     updateClass.mutate(
-      { name, form_teacher_id: cls?.form_teacher_id ?? null },
+      {
+        name,
+        form_teacher_id: cls?.form_teacher_id ?? null,
+        medium_id: mediumEdit || null,
+        home_classroom_id: effectiveHomeClassroomEdit || null,
+      },
       { onSuccess: () => setEditOpen(false) },
     );
   };
@@ -212,6 +235,16 @@ export default function ClassDetail() {
               {streamName}
             </Tag>
           )}
+          {mediumName && (
+            <Tag type="purple" size="sm">
+              {mediumName}
+            </Tag>
+          )}
+          {homeClassroomName && (
+            <Tag type="teal" size="sm">
+              {homeClassroomName}
+            </Tag>
+          )}
           <Button renderIcon={Edit} kind="ghost" size="sm" onClick={openEdit}>
             Edit
           </Button>
@@ -284,6 +317,8 @@ export default function ClassDetail() {
                     gradeName={gradeName}
                     streamName={streamName}
                     streamGroupName={streamGroupName}
+                    mediumName={mediumName}
+                    homeClassroomName={homeClassroomName}
                     academicYearLabel={academicYearLabel}
                     girlMonitor={girlMonitor}
                     boyMonitor={boyMonitor}
@@ -303,6 +338,8 @@ export default function ClassDetail() {
                 {[
                   ["Grade", gradeName ?? "—"],
                   ["Stream", streamName ?? "None"],
+                  ["Medium", mediumName ?? "Not designated"],
+                  ["Home Classroom", homeClassroomName ?? "Not assigned"],
                   ["Enrolled", `${students?.length ?? 0}`],
                   ["Academic Year", academicYearLabel ?? "—"],
                 ].map(([label, value]) => (
@@ -362,6 +399,12 @@ export default function ClassDetail() {
         open={editOpen}
         nameEdit={nameEdit}
         onNameEditChange={setNameEdit}
+        mediumEdit={mediumEdit}
+        onMediumEditChange={setMediumEdit}
+        mediums={mediums}
+        homeClassroomEdit={effectiveHomeClassroomEdit}
+        onHomeClassroomEditChange={setHomeClassroomEdit}
+        classrooms={classrooms}
         updateClass={updateClass}
         onClose={() => setEditOpen(false)}
         onSave={handleEditSave}

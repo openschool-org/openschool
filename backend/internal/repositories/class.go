@@ -33,6 +33,17 @@ func (r *ClassRepository) ListCurrent(ctx context.Context) ([]db.ListCurrentClas
 	return r.queries.ListCurrentClasses(ctx)
 }
 
+// ListByGradeSection returns every class belonging to any grade in a
+// grade_section, for a given academic year — the auto-generator's unit of
+// work, since teachers/labs shared across these classes must be scheduled
+// together to avoid conflicts.
+func (r *ClassRepository) ListByGradeSection(ctx context.Context, gradeSectionID, academicYearID uuid.UUID) ([]db.Class, error) {
+	return r.queries.ListClassesByGradeSection(ctx, db.ListClassesByGradeSectionParams{
+		GradeSectionID: gradeSectionID,
+		AcademicYearID: academicYearID,
+	})
+}
+
 func (r *ClassRepository) Update(ctx context.Context, params db.UpdateClassParams) (db.Class, error) {
 	return r.queries.UpdateClass(ctx, params)
 }

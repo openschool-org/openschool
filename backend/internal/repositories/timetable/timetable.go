@@ -109,6 +109,13 @@ func (r *TimetableRepository) ListEntriesForYearExcluding(ctx context.Context, a
 	return r.queries.ListEntriesForYearExcludingTimetable(ctx, db.ListEntriesForYearExcludingTimetableParams{AcademicYearID: academicYearID, ID: timetableID})
 }
 
+// ListAllEntriesForYear is ListEntriesForYearExcluding without the
+// exclusion — the auto-generator's whole-year busy-set preload, taken
+// before any of this run's placements exist.
+func (r *TimetableRepository) ListAllEntriesForYear(ctx context.Context, academicYearID uuid.UUID) ([]db.ListAllTimetableEntriesForYearRow, error) {
+	return r.queries.ListAllTimetableEntriesForYear(ctx, academicYearID)
+}
+
 func (r *TimetableRepository) CountEntriesBySubject(ctx context.Context, timetableID uuid.UUID) ([]db.CountEntriesBySubjectForTimetableRow, error) {
 	return r.queries.CountEntriesBySubjectForTimetable(ctx, timetableID)
 }

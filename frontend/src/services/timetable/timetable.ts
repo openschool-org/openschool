@@ -109,6 +109,11 @@ export const timetableApi = {
       .get<TimetableWithClass[]>("/timetables/by-year", { params: { academic_year_id: academicYearId } })
       .then((r) => r.data),
 
+  // Same listing for the current academic year, via the signed-in
+  // Principal/Vice Principal's own scoped endpoint (403 for any other rank).
+  listForLeadership: () =>
+    api.get<TimetableWithClass[]>("/me/teacher/timetables").then((r) => r.data),
+
   remove: (id: string) => api.delete(`/timetables/${id}`).then((r) => r.data),
 
   archive: (id: string) => api.post<Timetable>(`/timetables/${id}/archive`).then((r) => r.data),

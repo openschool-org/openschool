@@ -117,6 +117,7 @@ export default function TeacherProfileSections({
               onChange={(e) => onChange("family_name", e.target.value)}
             />
             <TextInput id="employee-number" labelText="Employee Number" value={teacher.employee_number} readOnly />
+            <TextInput id="email" labelText="Email" value={teacher.email ?? "-"} readOnly />
             <TextInput
               id="phone"
               labelText="Phone"

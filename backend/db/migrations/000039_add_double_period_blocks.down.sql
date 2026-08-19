@@ -1,0 +1,1 @@
+ALTER TABLE subject_period_requirements DROP COLUMN double_period_blocks;

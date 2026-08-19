@@ -37,7 +37,14 @@ export const GRADE_MAX = 13;
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Mediums precede Classes so the Classes step can tag each section with a
-// language of instruction as it is generated.
-export const STEPS = ["School", "Houses", "Grades", "Mediums", "Classes", "Done"] as const;
+// language of instruction as it is generated. Rooms comes last (before
+// Done) since it's independent of grades/classes/mediums.
+export const STEPS = ["School", "Houses", "Grades", "Mediums", "Classes", "Rooms", "Done"] as const;
 export const HOUSE_COLOR_PALETTE = ["#0f62fe", "#da1e28", "#24a148", "#f1c21b", "#8a3ffc", "#ff832b"];
 export const SUGGESTED_MEDIUMS = ["Sinhala", "Tamil", "English"];
+
+// Common special-purpose rooms beyond regular homerooms. Created as "eca"
+// classrooms during setup (no subject exists yet to tag a proper Lab to) —
+// an admin can re-type any of these as a subject-tagged Lab later under
+// Timetable > Classrooms.
+export const SUGGESTED_ROOMS = ["Library", "Music Room", "IT Room", "Science Lab", "Auditorium"];

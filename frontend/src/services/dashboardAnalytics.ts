@@ -73,4 +73,9 @@ export interface DashboardAnalytics {
 
 export const dashboardAnalyticsApi = {
   get: () => api.get<DashboardAnalytics>("/dashboard/analytics").then((r) => r.data),
+
+  // Same shape, scoped to the signed-in Principal/Vice Principal — see
+  // TeacherSelfHandler.Analytics on the backend.
+  getForLeadership: () =>
+    api.get<DashboardAnalytics>("/me/teacher/analytics").then((r) => r.data),
 };

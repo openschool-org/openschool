@@ -58,6 +58,7 @@ const TimetableSettings = lazy(() => import("./pages/admin/timetable/TimetableSe
 const SubjectRequirements = lazy(() => import("./pages/admin/timetable/SubjectRequirements"));
 const Timetables = lazy(() => import("./pages/admin/timetable/Timetables"));
 const TimetableEditor = lazy(() => import("./pages/admin/timetable/TimetableEditor"));
+const GenerateTimetable = lazy(() => import("./pages/admin/timetable/GenerateTimetable"));
 
 const TeacherDashboard = lazy(() => import("./pages/teacher/dashboard/TeacherDashboard"));
 const TeacherClasses = lazy(() => import("./pages/teacher/TeacherClasses"));
@@ -67,6 +68,8 @@ const TeacherTimetable = lazy(() => import("./pages/teacher/TeacherTimetable"));
 const TimetableReview = lazy(() => import("./pages/teacher/TimetableReview"));
 const MySociety = lazy(() => import("./pages/teacher/MySociety"));
 const TeacherMarks = lazy(() => import("./pages/teacher/TeacherMarks"));
+const TeacherAnalytics = lazy(() => import("./pages/teacher/TeacherAnalytics"));
+const TeacherTimetables = lazy(() => import("./pages/teacher/TeacherTimetables"));
 
 const ParentDashboard = lazy(() => import("./pages/parent/ParentDashboard"));
 const ChildDetail = lazy(() => import("./pages/parent/ChildDetail"));
@@ -142,6 +145,8 @@ function App() {
             <Route path="/notification-center" element={<NotificationCenter />} />
             <Route path="/t/profile" element={<TeacherProfile />} />
             <Route path="/t/marks" element={<TeacherMarks />} />
+            <Route path="/t/analytics" element={<TeacherAnalytics />} />
+            <Route path="/t/all-timetables" element={<TeacherTimetables />} />
             <Route
               path="/attendance/sessions/:id/mark"
               element={<AttendanceMark />}
@@ -207,6 +212,7 @@ function App() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/automation" element={<Automation />} />
               <Route path="/timetables" element={<Timetables />} />
+              <Route path="/timetables/generate" element={<GenerateTimetable />} />
               <Route path="/timetables/:id" element={<TimetableEditor />} />
               <Route path="/grade-sections" element={<GradeSections />} />
               <Route path="/classrooms" element={<Classrooms />} />

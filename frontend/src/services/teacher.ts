@@ -3,11 +3,14 @@ import api from "../lib/api";
 export type TeacherTitle = "Mr" | "Miss" | "Mrs" | "Ms" | "Dr" | "Von" | "Prof";
 export type TeacherEmploymentStatus = "active" | "resigned" | "transferred";
 
-// Matches db.TeacherProfile JSON shape returned by the backend
+// Matches db.TeacherProfile JSON shape returned by the backend. `email` is
+// only populated by GET /teachers/:id (db.GetTeacherByIDRow joins users) —
+// list/create/update responses don't join users, so it's optional here.
 export interface Teacher {
   id: string;
   user_id: string;
   full_name: string;
+  email?: string;
   employee_number: string;
   nic_number: string;
   joined_date: string | null;

@@ -17,7 +17,7 @@ UPDATE classes
 SET girl_monitor_id = $2,
     boy_monitor_id  = $3
 WHERE id = $1
-RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id
+RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id
 `
 
 type AssignClassMonitorsParams struct {
@@ -41,6 +41,7 @@ func (q *Queries) AssignClassMonitors(ctx context.Context, arg AssignClassMonito
 		&i.GirlMonitorID,
 		&i.BoyMonitorID,
 		&i.MediumID,
+		&i.HomeClassroomID,
 	)
 	return i, err
 }
@@ -49,7 +50,7 @@ const assignFormTeacher = `-- name: AssignFormTeacher :one
 UPDATE classes
 SET form_teacher_id = $2
 WHERE id = $1
-RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id
+RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id
 `
 
 type AssignFormTeacherParams struct {
@@ -72,6 +73,7 @@ func (q *Queries) AssignFormTeacher(ctx context.Context, arg AssignFormTeacherPa
 		&i.GirlMonitorID,
 		&i.BoyMonitorID,
 		&i.MediumID,
+		&i.HomeClassroomID,
 	)
 	return i, err
 }
@@ -102,21 +104,23 @@ INSERT INTO classes (
     stream_id,
     stream_group_id,
     name,
-    medium_id
+    medium_id,
+    home_classroom_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
-RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id
+RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id
 `
 
 type CreateClassParams struct {
-	GradeID        uuid.UUID   `json:"grade_id"`
-	AcademicYearID uuid.UUID   `json:"academic_year_id"`
-	FormTeacherID  pgtype.UUID `json:"form_teacher_id"`
-	StreamID       pgtype.UUID `json:"stream_id"`
-	StreamGroupID  pgtype.UUID `json:"stream_group_id"`
-	Name           string      `json:"name"`
-	MediumID       pgtype.UUID `json:"medium_id"`
+	GradeID         uuid.UUID   `json:"grade_id"`
+	AcademicYearID  uuid.UUID   `json:"academic_year_id"`
+	FormTeacherID   pgtype.UUID `json:"form_teacher_id"`
+	StreamID        pgtype.UUID `json:"stream_id"`
+	StreamGroupID   pgtype.UUID `json:"stream_group_id"`
+	Name            string      `json:"name"`
+	MediumID        pgtype.UUID `json:"medium_id"`
+	HomeClassroomID pgtype.UUID `json:"home_classroom_id"`
 }
 
 func (q *Queries) CreateClass(ctx context.Context, arg CreateClassParams) (Class, error) {
@@ -128,6 +132,7 @@ func (q *Queries) CreateClass(ctx context.Context, arg CreateClassParams) (Class
 		arg.StreamGroupID,
 		arg.Name,
 		arg.MediumID,
+		arg.HomeClassroomID,
 	)
 	var i Class
 	err := row.Scan(
@@ -142,6 +147,7 @@ func (q *Queries) CreateClass(ctx context.Context, arg CreateClassParams) (Class
 		&i.GirlMonitorID,
 		&i.BoyMonitorID,
 		&i.MediumID,
+		&i.HomeClassroomID,
 	)
 	return i, err
 }
@@ -285,7 +291,7 @@ func (q *Queries) EnrollStudentInClass(ctx context.Context, arg EnrollStudentInC
 }
 
 const getClassByID = `-- name: GetClassByID :one
-SELECT id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id FROM classes
+SELECT id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id FROM classes
 WHERE id = $1
 `
 
@@ -304,6 +310,7 @@ func (q *Queries) GetClassByID(ctx context.Context, id uuid.UUID) (Class, error)
 		&i.GirlMonitorID,
 		&i.BoyMonitorID,
 		&i.MediumID,
+		&i.HomeClassroomID,
 	)
 	return i, err
 }
@@ -488,14 +495,16 @@ func (q *Queries) IsTeacherAssignedToClass(ctx context.Context, arg IsTeacherAss
 
 const listClassesByAcademicYear = `-- name: ListClassesByAcademicYear :many
 SELECT
-    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id,
+    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id,
     g.name  AS grade_name,
     ay.label AS academic_year_label,
-    m.name  AS medium_name
+    m.name  AS medium_name,
+    hc.name AS home_classroom_name
 FROM classes c
 INNER JOIN grades g          ON g.id = c.grade_id
 INNER JOIN academic_years ay ON ay.id = c.academic_year_id
 LEFT JOIN  mediums m         ON m.id = c.medium_id
+LEFT JOIN  classrooms hc     ON hc.id = c.home_classroom_id
 WHERE c.academic_year_id = $1
 ORDER BY g.sort_order ASC, c.name ASC
 `
@@ -512,9 +521,11 @@ type ListClassesByAcademicYearRow struct {
 	GirlMonitorID     pgtype.UUID        `json:"girl_monitor_id"`
 	BoyMonitorID      pgtype.UUID        `json:"boy_monitor_id"`
 	MediumID          pgtype.UUID        `json:"medium_id"`
+	HomeClassroomID   pgtype.UUID        `json:"home_classroom_id"`
 	GradeName         string             `json:"grade_name"`
 	AcademicYearLabel string             `json:"academic_year_label"`
 	MediumName        pgtype.Text        `json:"medium_name"`
+	HomeClassroomName pgtype.Text        `json:"home_classroom_name"`
 }
 
 func (q *Queries) ListClassesByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]ListClassesByAcademicYearRow, error) {
@@ -538,9 +549,61 @@ func (q *Queries) ListClassesByAcademicYear(ctx context.Context, academicYearID 
 			&i.GirlMonitorID,
 			&i.BoyMonitorID,
 			&i.MediumID,
+			&i.HomeClassroomID,
 			&i.GradeName,
 			&i.AcademicYearLabel,
 			&i.MediumName,
+			&i.HomeClassroomName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listClassesByGradeSection = `-- name: ListClassesByGradeSection :many
+SELECT c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id
+FROM classes c
+INNER JOIN grade_section_grades gsg
+    ON gsg.grade_id = c.grade_id AND gsg.academic_year_id = c.academic_year_id
+WHERE gsg.grade_section_id = $1 AND c.academic_year_id = $2
+ORDER BY c.name ASC
+`
+
+type ListClassesByGradeSectionParams struct {
+	GradeSectionID uuid.UUID `json:"grade_section_id"`
+	AcademicYearID uuid.UUID `json:"academic_year_id"`
+}
+
+// every class belonging to any grade in a grade_section, for a given
+// academic year — the auto-generator's unit of work (teachers/labs shared
+// across these classes must be scheduled together to avoid conflicts)
+func (q *Queries) ListClassesByGradeSection(ctx context.Context, arg ListClassesByGradeSectionParams) ([]Class, error) {
+	rows, err := q.db.Query(ctx, listClassesByGradeSection, arg.GradeSectionID, arg.AcademicYearID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Class{}
+	for rows.Next() {
+		var i Class
+		if err := rows.Scan(
+			&i.ID,
+			&i.GradeID,
+			&i.AcademicYearID,
+			&i.FormTeacherID,
+			&i.StreamID,
+			&i.StreamGroupID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.GirlMonitorID,
+			&i.BoyMonitorID,
+			&i.MediumID,
+			&i.HomeClassroomID,
 		); err != nil {
 			return nil, err
 		}
@@ -554,14 +617,16 @@ func (q *Queries) ListClassesByAcademicYear(ctx context.Context, academicYearID 
 
 const listCurrentClasses = `-- name: ListCurrentClasses :many
 SELECT
-    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id,
+    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id,
     g.name   AS grade_name,
     ay.label AS academic_year_label,
-    m.name   AS medium_name
+    m.name   AS medium_name,
+    hc.name  AS home_classroom_name
 FROM classes c
 INNER JOIN grades g          ON g.id = c.grade_id
 INNER JOIN academic_years ay ON ay.id = c.academic_year_id
 LEFT JOIN  mediums m         ON m.id = c.medium_id
+LEFT JOIN  classrooms hc     ON hc.id = c.home_classroom_id
 WHERE ay.is_current = TRUE
 ORDER BY g.sort_order ASC, c.name ASC
 `
@@ -578,9 +643,11 @@ type ListCurrentClassesRow struct {
 	GirlMonitorID     pgtype.UUID        `json:"girl_monitor_id"`
 	BoyMonitorID      pgtype.UUID        `json:"boy_monitor_id"`
 	MediumID          pgtype.UUID        `json:"medium_id"`
+	HomeClassroomID   pgtype.UUID        `json:"home_classroom_id"`
 	GradeName         string             `json:"grade_name"`
 	AcademicYearLabel string             `json:"academic_year_label"`
 	MediumName        pgtype.Text        `json:"medium_name"`
+	HomeClassroomName pgtype.Text        `json:"home_classroom_name"`
 }
 
 func (q *Queries) ListCurrentClasses(ctx context.Context) ([]ListCurrentClassesRow, error) {
@@ -604,9 +671,11 @@ func (q *Queries) ListCurrentClasses(ctx context.Context) ([]ListCurrentClassesR
 			&i.GirlMonitorID,
 			&i.BoyMonitorID,
 			&i.MediumID,
+			&i.HomeClassroomID,
 			&i.GradeName,
 			&i.AcademicYearLabel,
 			&i.MediumName,
+			&i.HomeClassroomName,
 		); err != nil {
 			return nil, err
 		}
@@ -809,18 +878,20 @@ func (q *Queries) UnenrollStudentFromClass(ctx context.Context, arg UnenrollStud
 const updateClass = `-- name: UpdateClass :one
 UPDATE classes
 SET
-    name            = $2,
-    form_teacher_id = $3,
-    medium_id       = $4
+    name               = $2,
+    form_teacher_id    = $3,
+    medium_id          = $4,
+    home_classroom_id  = $5
 WHERE id = $1
-RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id
+RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id
 `
 
 type UpdateClassParams struct {
-	ID            uuid.UUID   `json:"id"`
-	Name          string      `json:"name"`
-	FormTeacherID pgtype.UUID `json:"form_teacher_id"`
-	MediumID      pgtype.UUID `json:"medium_id"`
+	ID              uuid.UUID   `json:"id"`
+	Name            string      `json:"name"`
+	FormTeacherID   pgtype.UUID `json:"form_teacher_id"`
+	MediumID        pgtype.UUID `json:"medium_id"`
+	HomeClassroomID pgtype.UUID `json:"home_classroom_id"`
 }
 
 func (q *Queries) UpdateClass(ctx context.Context, arg UpdateClassParams) (Class, error) {
@@ -829,6 +900,7 @@ func (q *Queries) UpdateClass(ctx context.Context, arg UpdateClassParams) (Class
 		arg.Name,
 		arg.FormTeacherID,
 		arg.MediumID,
+		arg.HomeClassroomID,
 	)
 	var i Class
 	err := row.Scan(
@@ -843,6 +915,7 @@ func (q *Queries) UpdateClass(ctx context.Context, arg UpdateClassParams) (Class
 		&i.GirlMonitorID,
 		&i.BoyMonitorID,
 		&i.MediumID,
+		&i.HomeClassroomID,
 	)
 	return i, err
 }

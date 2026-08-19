@@ -35,9 +35,23 @@ export default function SubjectRequirements() {
   const periodsFor = (subjectId: string) =>
     requirementFor(subjectId)?.periods_per_week ?? 0;
 
-  const handleChange = (subjectId: string, value: number) => {
+  const labPeriodsFor = (subjectId: string) =>
+    requirementFor(subjectId)?.lab_periods_per_week ?? 0;
+
+  const doubleBlocksFor = (subjectId: string) =>
+    requirementFor(subjectId)?.double_period_blocks ?? 0;
+
+  const handleChange = (subjectId: string, periodsPerWeek: number, labPeriodsPerWeek: number, doublePeriodBlocks: number) => {
     if (!yearId || !gradeId) return;
-    upsert.mutate({ academic_year_id: yearId, grade_id: gradeId, subject_id: subjectId, periods_per_week: value });
+    const maxBlocks = Math.floor(periodsPerWeek / 2);
+    upsert.mutate({
+      academic_year_id: yearId,
+      grade_id: gradeId,
+      subject_id: subjectId,
+      periods_per_week: periodsPerWeek,
+      lab_periods_per_week: Math.min(labPeriodsPerWeek, periodsPerWeek),
+      double_period_blocks: Math.min(doublePeriodBlocks, maxBlocks),
+    });
   };
 
   return (
@@ -47,7 +61,10 @@ export default function SubjectRequirements() {
           <h1 className="os-page__title">Subject Period Requirements</h1>
           <p className="os-page__subtitle">
             Weekly periods required per subject, per grade. The timetable validator checks each class's timetable
-            against these before it can be submitted for review.
+            against these before it can be submitted for review. Set "Double blocks / week" for subjects that run
+            some periods as one back-to-back pair (common for AL Grade 12/13 subjects) — e.g. 2 blocks out of 6
+            periods/week pairs up 4 of them and leaves the other 2 as regular singles. The auto-generator places
+            exactly that many double blocks, not all of the subject's periods.
           </p>
         </div>
       </div>
@@ -100,12 +117,17 @@ export default function SubjectRequirements() {
                 <tr>
                   <th>Subject</th>
                   <th style={{ width: "10rem" }}>Periods / week</th>
+                  <th style={{ width: "10rem" }}>Lab periods / week</th>
+                  <th style={{ width: "10rem" }}>Double blocks / week</th>
                   <th style={{ width: "4rem" }}>{null}</th>
                 </tr>
               </thead>
               <tbody>
                 {subjects.map((s) => {
                   const requirement = requirementFor(s.id);
+                  const periods = periodsFor(s.id);
+                  const doubleBlocks = doubleBlocksFor(s.id);
+                  const maxBlocks = Math.floor(periods / 2);
                   return (
                     <tr key={s.id}>
                       <td>{s.name}</td>
@@ -116,8 +138,33 @@ export default function SubjectRequirements() {
                           size="sm"
                           min={0}
                           max={20}
-                          value={periodsFor(s.id)}
-                          onChange={(_e, { value }) => handleChange(s.id, Number(value ?? 0))}
+                          value={periods}
+                          onChange={(_e, { value }) => handleChange(s.id, Number(value ?? 0), labPeriodsFor(s.id), doubleBlocks)}
+                        />
+                      </td>
+                      <td>
+                        <NumberInput
+                          id={`lab-periods-${s.id}`}
+                          label=""
+                          size="sm"
+                          min={0}
+                          max={periods}
+                          value={labPeriodsFor(s.id)}
+                          disabled={periods === 0}
+                          onChange={(_e, { value }) => handleChange(s.id, periods, Number(value ?? 0), doubleBlocks)}
+                        />
+                      </td>
+                      <td>
+                        <NumberInput
+                          id={`double-blocks-${s.id}`}
+                          label=""
+                          size="sm"
+                          min={0}
+                          max={maxBlocks}
+                          value={doubleBlocks}
+                          disabled={maxBlocks === 0}
+                          helperText={maxBlocks > 0 ? `up to ${maxBlocks}` : undefined}
+                          onChange={(_e, { value }) => handleChange(s.id, periods, labPeriodsFor(s.id), Number(value ?? 0))}
                         />
                       </td>
                       <td>

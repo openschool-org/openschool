@@ -1,7 +1,7 @@
 // This file renders the TeacherSubjects page, allowing administrators to manage global teacher-subject assignments.
 
 import { useState } from "react";
-import { Search, Tag, SkeletonText, InlineNotification } from "@carbon/react";
+import { Search, Tag, SkeletonText } from "@carbon/react";
 import { useTeachers, useTeacherSubjects, useAssignTeacherSubject, useRemoveTeacherSubject } from "../../../queries/useTeachers";
 import { useSubjects } from "../../../queries/useSubjects";
 import EntityCombobox from "../../../components/common/EntityCombobox";
@@ -10,7 +10,7 @@ import LoadingSpinner from "../../../components/common/LoadingSpinner";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 
 function TeacherSubjectRow({ teacher, allSubjects }: { teacher: Teacher; allSubjects: any[] }) {
-  const { data: assignedSubjects, isLoading, isError, refetch } = useTeacherSubjects(teacher.id);
+  const { data: assignedSubjects, isLoading, isError } = useTeacherSubjects(teacher.id);
   const assignMutation = useAssignTeacherSubject(teacher.id);
   const removeMutation = useRemoveTeacherSubject(teacher.id);
 

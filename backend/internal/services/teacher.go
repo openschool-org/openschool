@@ -122,7 +122,7 @@ func (s *TeacherService) CreateTeacher(ctx context.Context, req models.CreateTea
 	return profile, nil
 }
 
-func (s *TeacherService) GetTeacher(ctx context.Context, id uuid.UUID) (db.TeacherProfile, error) {
+func (s *TeacherService) GetTeacher(ctx context.Context, id uuid.UUID) (db.GetTeacherByIDRow, error) {
 	return s.repo.GetByID(ctx, id)
 }
 

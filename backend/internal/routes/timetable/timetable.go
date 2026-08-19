@@ -33,6 +33,7 @@ func RegisterTimetableRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterG
 		rootrepositories.NewSectionHeadRepository(pool),
 		repositories.NewSubjectPeriodRequirementRepository(pool),
 		repositories.NewTeacherAvailabilityRepository(pool),
+		repositories.NewClassroomRepository(pool),
 		rootrepositories.NewTeacherRepository(pool),
 		rootrepositories.NewStudentRepository(pool),
 		rootrepositories.NewGuardianRepository(pool),
@@ -46,6 +47,7 @@ func RegisterTimetableRoutes(admin *gin.RouterGroup, teacherOrAdmin *gin.RouterG
 	teacherOrAdmin.GET("/timetables/:id", handler.GetByID)
 	teacherOrAdmin.GET("/timetables", handler.ListByClass)
 	admin.GET("/timetables/by-year", handler.ListByAcademicYear)
+	admin.POST("/timetables/generate", handler.Generate)
 	admin.DELETE("/timetables/:id", handler.Delete)
 	admin.POST("/timetables/:id/archive", handler.Archive)
 

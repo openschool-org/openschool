@@ -1,8 +1,10 @@
 -- name: UpsertSubjectPeriodRequirement :one
-INSERT INTO subject_period_requirements (academic_year_id, grade_id, subject_id, periods_per_week)
-VALUES ($1, $2, $3, $4)
+INSERT INTO subject_period_requirements (academic_year_id, grade_id, subject_id, periods_per_week, lab_periods_per_week, double_period_blocks)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (academic_year_id, grade_id, subject_id) DO UPDATE
-SET periods_per_week = EXCLUDED.periods_per_week
+SET periods_per_week = EXCLUDED.periods_per_week,
+    lab_periods_per_week = EXCLUDED.lab_periods_per_week,
+    double_period_blocks = EXCLUDED.double_period_blocks
 RETURNING *;
 
 -- name: ListSubjectPeriodRequirementsByGrade :many

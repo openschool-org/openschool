@@ -3,7 +3,7 @@
 // the shared StatTile/BarList/Sparkline/TrendSummary/DonutChart primitives.
 
 import { SkeletonText, Tabs, TabList, Tab, TabPanels, TabPanel } from "@carbon/react";
-import { useDashboardAnalytics } from "../../../queries/useDashboardAnalytics";
+import { useDashboardAnalytics, useLeadershipAnalytics } from "../../../queries/useDashboardAnalytics";
 import ErrorMessage from "../../../components/common/ErrorMessage";
 import {
   Section,
@@ -19,8 +19,14 @@ import type { CountRow, AttendanceTrendPoint } from "../../../services/dashboard
 const HOUSE_FALLBACK_COLORS = ["#406AAF", "#8a3ffc", "#24a148", "#f1c21b", "#da1e28", "#0f62fe"];
 const GENDER_COLORS: Record<string, string> = { Male: "#406AAF", Female: "#d02670", Unspecified: "#8d8d8d" };
 
-export default function Analytics() {
-  const { data, isLoading, isError, refetch } = useDashboardAnalytics();
+// `scope` picks the data source: "admin" hits /dashboard/analytics,
+// "leadership" hits the Principal/Vice Principal's own scoped
+// /me/teacher/analytics — same response shape, reused as-is per ADR 0002
+// (Principal/VP are whole-school monitors, not grade-scoped).
+export default function Analytics({ scope = "admin" }: { scope?: "admin" | "leadership" }) {
+  const adminQuery = useDashboardAnalytics(scope === "admin");
+  const leadershipQuery = useLeadershipAnalytics(scope === "leadership");
+  const { data, isLoading, isError, refetch } = scope === "leadership" ? leadershipQuery : adminQuery;
 
   return (
     <div className="os-page">

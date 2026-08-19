@@ -76,6 +76,7 @@ export default function StudentProfileTab({
               onChange={(e) => onChange("family_name", e.target.value)}
             />
             <TextInput id="index-number" labelText="Index Number" value={student.index_number} readOnly />
+            <TextInput id="email" labelText="Email" value={student.email ?? "-"} readOnly />
             <TextInput
               id="phone"
               labelText="Phone"

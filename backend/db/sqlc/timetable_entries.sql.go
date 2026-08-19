@@ -95,6 +95,57 @@ func (q *Queries) IsTeacherAssignedToSubject(ctx context.Context, arg IsTeacherA
 	return assigned, err
 }
 
+const listAllTimetableEntriesForYear = `-- name: ListAllTimetableEntriesForYear :many
+SELECT te.day_of_week, te.period_number, te.teacher_id, te.classroom_id, t.id AS timetable_id, t.class_id, c.name AS class_name
+FROM timetable_entries te
+INNER JOIN timetables t ON t.id = te.timetable_id
+INNER JOIN classes c    ON c.id = t.class_id
+WHERE t.academic_year_id = $1
+  AND t.status IN ('draft', 'under_review', 'approved', 'published')
+  AND (te.teacher_id IS NOT NULL OR te.classroom_id IS NOT NULL)
+`
+
+type ListAllTimetableEntriesForYearRow struct {
+	DayOfWeek    int16       `json:"day_of_week"`
+	PeriodNumber int16       `json:"period_number"`
+	TeacherID    pgtype.UUID `json:"teacher_id"`
+	ClassroomID  pgtype.UUID `json:"classroom_id"`
+	TimetableID  uuid.UUID   `json:"timetable_id"`
+	ClassID      uuid.UUID   `json:"class_id"`
+	ClassName    string      `json:"class_name"`
+}
+
+// every booked (teacher or classroom) cell across every timetable in the
+// academic year — the auto-generator's whole-year busy-set preload, before
+// any of this run's placements exist yet
+func (q *Queries) ListAllTimetableEntriesForYear(ctx context.Context, academicYearID uuid.UUID) ([]ListAllTimetableEntriesForYearRow, error) {
+	rows, err := q.db.Query(ctx, listAllTimetableEntriesForYear, academicYearID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAllTimetableEntriesForYearRow{}
+	for rows.Next() {
+		var i ListAllTimetableEntriesForYearRow
+		if err := rows.Scan(
+			&i.DayOfWeek,
+			&i.PeriodNumber,
+			&i.TeacherID,
+			&i.ClassroomID,
+			&i.TimetableID,
+			&i.ClassID,
+			&i.ClassName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEntriesForYearExcludingTimetable = `-- name: ListEntriesForYearExcludingTimetable :many
 SELECT te.day_of_week, te.period_number, te.teacher_id, te.classroom_id, t.id AS timetable_id, t.class_id, c.name AS class_name
 FROM timetable_entries te

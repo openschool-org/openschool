@@ -22,6 +22,7 @@ export interface Student {
 }
 
 export interface StudentWithClass extends Student {
+  email: string | null;
   class_name: string | null;
   grade_name: string | null;
   academic_year: string | null;

@@ -10,6 +10,7 @@ import HousesStep, { type HouseRow } from "./components/HousesStep";
 import GradesStep from "./components/GradesStep";
 import MediumsStep from "./components/MediumsStep";
 import ClassesStep from "./components/ClassesStep";
+import RoomsStep from "./components/RoomsStep";
 import DoneStep from "./components/DoneStep";
 import CustomStepper from "./components/CustomStepper";
 import { useSchoolSetupSubmit } from "./hooks/useSchoolSetupSubmit";
@@ -27,7 +28,8 @@ import {
 } from "./constants";
 
 const DONE_STEP = STEPS.length - 1;
-const LAST_INPUT_STEP = DONE_STEP - 1;
+const CLASSES_STEP = STEPS.indexOf("Classes");
+const LAST_INPUT_STEP = DONE_STEP - 1; // Rooms — the step that triggers submitAll
 
 export default function SchoolSetup() {
   const navigate = useNavigate();
@@ -108,6 +110,10 @@ export default function SchoolSetup() {
       ) as Record<ALStreamKey, { enabled: boolean; code: string; sections: number }>,
   );
 
+  const [roomChecks, setRoomChecks] = useState<Record<string, boolean>>({});
+  const [customRooms, setCustomRooms] = useState<string[]>([]);
+  const [roomsSkipped, setRoomsSkipped] = useState(false);
+
   const { submitting, submitError, submitted, submitAll } = useSchoolSetupSubmit({
     school,
     houses,
@@ -121,6 +127,9 @@ export default function SchoolSetup() {
     sectionMediums,
     alStreams,
     classesSkipped,
+    roomsSkipped,
+    roomChecks,
+    customRooms,
   });
 
   const goNext = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
@@ -159,6 +168,11 @@ export default function SchoolSetup() {
       return;
     }
     setClassesSkipped(skip);
+    goNext();
+  };
+
+  const handleRoomsNext = (skip: boolean) => {
+    setRoomsSkipped(skip);
     goNext();
     submitAll(skip);
   };
@@ -224,7 +238,7 @@ export default function SchoolSetup() {
           />
         )}
 
-        {step === LAST_INPUT_STEP && (
+        {step === CLASSES_STEP && (
           <ClassesStep
             yearLabel={yearLabel}
             setYearLabel={setYearLabel}
@@ -238,6 +252,15 @@ export default function SchoolSetup() {
             setSectionMediums={setSectionMediums}
             alStreams={alStreams}
             setAlStreams={setAlStreams}
+          />
+        )}
+
+        {step === LAST_INPUT_STEP && (
+          <RoomsStep
+            roomChecks={roomChecks}
+            setRoomChecks={setRoomChecks}
+            customRooms={customRooms}
+            setCustomRooms={setCustomRooms}
           />
         )}
 
@@ -257,13 +280,14 @@ export default function SchoolSetup() {
               Back
             </Button>
             <div style={{ display: "flex", gap: "0.5rem" }}>
-              {(step === 1 || step === 3 || step === LAST_INPUT_STEP) && (
+              {(step === 1 || step === 3 || step === CLASSES_STEP || step === LAST_INPUT_STEP) && (
                 <Button
                   kind="secondary"
                   onClick={() => {
                     if (step === 1) handleHousesNext(true);
                     else if (step === 3) handleMediumsNext(true);
-                    else handleClassesNext(true);
+                    else if (step === CLASSES_STEP) handleClassesNext(true);
+                    else handleRoomsNext(true);
                   }}
                 >
                   Skip
@@ -276,7 +300,8 @@ export default function SchoolSetup() {
                   else if (step === 1) handleHousesNext(false);
                   else if (step === 2) handleGradesNext();
                   else if (step === 3) handleMediumsNext(false);
-                  else handleClassesNext(false);
+                  else if (step === CLASSES_STEP) handleClassesNext(false);
+                  else handleRoomsNext(false);
                 }}
               >
                 {step === LAST_INPUT_STEP ? "Finish Setup" : "Continue"}

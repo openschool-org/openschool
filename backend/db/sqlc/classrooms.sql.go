@@ -13,19 +13,27 @@ import (
 )
 
 const createClassroom = `-- name: CreateClassroom :one
-INSERT INTO classrooms (name, code, capacity)
-VALUES ($1, $2, $3)
-RETURNING id, name, code, capacity, created_at
+INSERT INTO classrooms (name, code, capacity, room_type, subject_id)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, name, code, capacity, created_at, room_type, subject_id
 `
 
 type CreateClassroomParams struct {
-	Name     string      `json:"name"`
-	Code     pgtype.Text `json:"code"`
-	Capacity pgtype.Int4 `json:"capacity"`
+	Name      string      `json:"name"`
+	Code      pgtype.Text `json:"code"`
+	Capacity  pgtype.Int4 `json:"capacity"`
+	RoomType  string      `json:"room_type"`
+	SubjectID pgtype.UUID `json:"subject_id"`
 }
 
 func (q *Queries) CreateClassroom(ctx context.Context, arg CreateClassroomParams) (Classroom, error) {
-	row := q.db.QueryRow(ctx, createClassroom, arg.Name, arg.Code, arg.Capacity)
+	row := q.db.QueryRow(ctx, createClassroom,
+		arg.Name,
+		arg.Code,
+		arg.Capacity,
+		arg.RoomType,
+		arg.SubjectID,
+	)
 	var i Classroom
 	err := row.Scan(
 		&i.ID,
@@ -33,6 +41,8 @@ func (q *Queries) CreateClassroom(ctx context.Context, arg CreateClassroomParams
 		&i.Code,
 		&i.Capacity,
 		&i.CreatedAt,
+		&i.RoomType,
+		&i.SubjectID,
 	)
 	return i, err
 }
@@ -54,7 +64,7 @@ func (q *Queries) DeleteClassroom(ctx context.Context, id uuid.UUID) (int64, err
 }
 
 const getClassroomByID = `-- name: GetClassroomByID :one
-SELECT id, name, code, capacity, created_at FROM classrooms
+SELECT id, name, code, capacity, created_at, room_type, subject_id FROM classrooms
 WHERE id = $1
 `
 
@@ -67,17 +77,71 @@ func (q *Queries) GetClassroomByID(ctx context.Context, id uuid.UUID) (Classroom
 		&i.Code,
 		&i.Capacity,
 		&i.CreatedAt,
+		&i.RoomType,
+		&i.SubjectID,
 	)
 	return i, err
 }
 
 const listClassrooms = `-- name: ListClassrooms :many
-SELECT id, name, code, capacity, created_at FROM classrooms
+SELECT
+    cr.id, cr.name, cr.code, cr.capacity, cr.created_at, cr.room_type, cr.subject_id,
+    s.name AS subject_name
+FROM classrooms cr
+LEFT JOIN subjects s ON s.id = cr.subject_id
+ORDER BY cr.name ASC
+`
+
+type ListClassroomsRow struct {
+	ID          uuid.UUID          `json:"id"`
+	Name        string             `json:"name"`
+	Code        pgtype.Text        `json:"code"`
+	Capacity    pgtype.Int4        `json:"capacity"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	RoomType    string             `json:"room_type"`
+	SubjectID   pgtype.UUID        `json:"subject_id"`
+	SubjectName pgtype.Text        `json:"subject_name"`
+}
+
+func (q *Queries) ListClassrooms(ctx context.Context) ([]ListClassroomsRow, error) {
+	rows, err := q.db.Query(ctx, listClassrooms)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListClassroomsRow{}
+	for rows.Next() {
+		var i ListClassroomsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Code,
+			&i.Capacity,
+			&i.CreatedAt,
+			&i.RoomType,
+			&i.SubjectID,
+			&i.SubjectName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listClassroomsBySubject = `-- name: ListClassroomsBySubject :many
+SELECT id, name, code, capacity, created_at, room_type, subject_id FROM classrooms
+WHERE room_type = 'lab' AND subject_id = $1
 ORDER BY name ASC
 `
 
-func (q *Queries) ListClassrooms(ctx context.Context) ([]Classroom, error) {
-	rows, err := q.db.Query(ctx, listClassrooms)
+// free-standing lab rooms tagged to a subject — the auto-generator's pool
+// of candidate rooms for that subject's lab periods
+func (q *Queries) ListClassroomsBySubject(ctx context.Context, subjectID pgtype.UUID) ([]Classroom, error) {
+	rows, err := q.db.Query(ctx, listClassroomsBySubject, subjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +155,8 @@ func (q *Queries) ListClassrooms(ctx context.Context) ([]Classroom, error) {
 			&i.Code,
 			&i.Capacity,
 			&i.CreatedAt,
+			&i.RoomType,
+			&i.SubjectID,
 		); err != nil {
 			return nil, err
 		}
@@ -104,16 +170,18 @@ func (q *Queries) ListClassrooms(ctx context.Context) ([]Classroom, error) {
 
 const updateClassroom = `-- name: UpdateClassroom :one
 UPDATE classrooms
-SET name = $2, code = $3, capacity = $4
+SET name = $2, code = $3, capacity = $4, room_type = $5, subject_id = $6
 WHERE id = $1
-RETURNING id, name, code, capacity, created_at
+RETURNING id, name, code, capacity, created_at, room_type, subject_id
 `
 
 type UpdateClassroomParams struct {
-	ID       uuid.UUID   `json:"id"`
-	Name     string      `json:"name"`
-	Code     pgtype.Text `json:"code"`
-	Capacity pgtype.Int4 `json:"capacity"`
+	ID        uuid.UUID   `json:"id"`
+	Name      string      `json:"name"`
+	Code      pgtype.Text `json:"code"`
+	Capacity  pgtype.Int4 `json:"capacity"`
+	RoomType  string      `json:"room_type"`
+	SubjectID pgtype.UUID `json:"subject_id"`
 }
 
 func (q *Queries) UpdateClassroom(ctx context.Context, arg UpdateClassroomParams) (Classroom, error) {
@@ -122,6 +190,8 @@ func (q *Queries) UpdateClassroom(ctx context.Context, arg UpdateClassroomParams
 		arg.Name,
 		arg.Code,
 		arg.Capacity,
+		arg.RoomType,
+		arg.SubjectID,
 	)
 	var i Classroom
 	err := row.Scan(
@@ -130,6 +200,8 @@ func (q *Queries) UpdateClassroom(ctx context.Context, arg UpdateClassroomParams
 		&i.Code,
 		&i.Capacity,
 		&i.CreatedAt,
+		&i.RoomType,
+		&i.SubjectID,
 	)
 	return i, err
 }

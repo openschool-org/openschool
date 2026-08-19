@@ -200,6 +200,8 @@ function GradeGroup({
               <th>Class</th>
               <th>Form Teacher</th>
               <th>Stream</th>
+              <th>Medium</th>
+              <th>Home Classroom</th>
               <th style={{ width: "12rem" }} />
             </tr>
           </thead>
@@ -217,6 +219,14 @@ function GradeGroup({
                     </Tag>
                   )}
                 </td>
+                <td>
+                  {c.medium_name && (
+                    <Tag type="purple" size="sm">
+                      {c.medium_name}
+                    </Tag>
+                  )}
+                </td>
+                <td className="os-table__muted">{c.home_classroom_name ?? "—"}</td>
                 <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                   <Button
                     kind="ghost"

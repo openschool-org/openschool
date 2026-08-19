@@ -47,17 +47,18 @@ type AuditLog struct {
 }
 
 type Class struct {
-	ID             uuid.UUID          `json:"id"`
-	GradeID        uuid.UUID          `json:"grade_id"`
-	AcademicYearID uuid.UUID          `json:"academic_year_id"`
-	FormTeacherID  pgtype.UUID        `json:"form_teacher_id"`
-	StreamID       pgtype.UUID        `json:"stream_id"`
-	StreamGroupID  pgtype.UUID        `json:"stream_group_id"`
-	Name           string             `json:"name"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	GirlMonitorID  pgtype.UUID        `json:"girl_monitor_id"`
-	BoyMonitorID   pgtype.UUID        `json:"boy_monitor_id"`
-	MediumID       pgtype.UUID        `json:"medium_id"`
+	ID              uuid.UUID          `json:"id"`
+	GradeID         uuid.UUID          `json:"grade_id"`
+	AcademicYearID  uuid.UUID          `json:"academic_year_id"`
+	FormTeacherID   pgtype.UUID        `json:"form_teacher_id"`
+	StreamID        pgtype.UUID        `json:"stream_id"`
+	StreamGroupID   pgtype.UUID        `json:"stream_group_id"`
+	Name            string             `json:"name"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	GirlMonitorID   pgtype.UUID        `json:"girl_monitor_id"`
+	BoyMonitorID    pgtype.UUID        `json:"boy_monitor_id"`
+	MediumID        pgtype.UUID        `json:"medium_id"`
+	HomeClassroomID pgtype.UUID        `json:"home_classroom_id"`
 }
 
 type ClassStudent struct {
@@ -79,6 +80,8 @@ type Classroom struct {
 	Code      pgtype.Text        `json:"code"`
 	Capacity  pgtype.Int4        `json:"capacity"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	RoomType  string             `json:"room_type"`
+	SubjectID pgtype.UUID        `json:"subject_id"`
 }
 
 type Grade struct {
@@ -398,12 +401,14 @@ type Subject struct {
 }
 
 type SubjectPeriodRequirement struct {
-	ID             uuid.UUID          `json:"id"`
-	AcademicYearID uuid.UUID          `json:"academic_year_id"`
-	GradeID        uuid.UUID          `json:"grade_id"`
-	SubjectID      uuid.UUID          `json:"subject_id"`
-	PeriodsPerWeek int32              `json:"periods_per_week"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	ID                 uuid.UUID          `json:"id"`
+	AcademicYearID     uuid.UUID          `json:"academic_year_id"`
+	GradeID            uuid.UUID          `json:"grade_id"`
+	SubjectID          uuid.UUID          `json:"subject_id"`
+	PeriodsPerWeek     int32              `json:"periods_per_week"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	LabPeriodsPerWeek  int32              `json:"lab_periods_per_week"`
+	DoublePeriodBlocks int32              `json:"double_period_blocks"`
 }
 
 type TeacherAvailability struct {

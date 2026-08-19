@@ -243,7 +243,7 @@ type Querier interface {
 	GetSubjectByCode(ctx context.Context, code string) (Subject, error)
 	GetSubjectByID(ctx context.Context, id uuid.UUID) (Subject, error)
 	GetTeacherByEmployeeNumber(ctx context.Context, employeeNumber string) (TeacherProfile, error)
-	GetTeacherByID(ctx context.Context, id uuid.UUID) (TeacherProfile, error)
+	GetTeacherByID(ctx context.Context, id uuid.UUID) (GetTeacherByIDRow, error)
 	GetTeacherByUserID(ctx context.Context, userID uuid.UUID) (TeacherProfile, error)
 	// Identity check for the unauthenticated forgot-password flow (Phase 8.4) —
 	// confirms the caller knows this teacher's NIC before a reset token is
@@ -316,6 +316,10 @@ type Querier interface {
 	// system-triggered notifications' created_by (NOT NULL FK to users).
 	ListAdminUserIDs(ctx context.Context) ([]uuid.UUID, error)
 	ListAllSentNotifications(ctx context.Context) ([]ListAllSentNotificationsRow, error)
+	// every booked (teacher or classroom) cell across every timetable in the
+	// academic year — the auto-generator's whole-year busy-set preload, before
+	// any of this run's placements exist yet
+	ListAllTimetableEntriesForYear(ctx context.Context, academicYearID uuid.UUID) ([]ListAllTimetableEntriesForYearRow, error)
 	// Recipient-resolution queries for the notification composer. Each rule
 	// type in a notification's recipient_rules resolves through one or more
 	// of these into a set of users.id, unioned together in Go (see
@@ -354,7 +358,14 @@ type Querier interface {
 	// grid, which needs to show blanks for students not yet marked.
 	ListClassMarksForTermSubject(ctx context.Context, arg ListClassMarksForTermSubjectParams) ([]ListClassMarksForTermSubjectRow, error)
 	ListClassesByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]ListClassesByAcademicYearRow, error)
-	ListClassrooms(ctx context.Context) ([]Classroom, error)
+	// every class belonging to any grade in a grade_section, for a given
+	// academic year — the auto-generator's unit of work (teachers/labs shared
+	// across these classes must be scheduled together to avoid conflicts)
+	ListClassesByGradeSection(ctx context.Context, arg ListClassesByGradeSectionParams) ([]Class, error)
+	ListClassrooms(ctx context.Context) ([]ListClassroomsRow, error)
+	// free-standing lab rooms tagged to a subject — the auto-generator's pool
+	// of candidate rooms for that subject's lab periods
+	ListClassroomsBySubject(ctx context.Context, subjectID pgtype.UUID) ([]Classroom, error)
 	// ── Current-academic-year invariant checker ─────────────────────────────────
 	// should always return exactly 1 row
 	// (docs/adr/0003-single-current-academic-year.md); 0 or 2+ means the

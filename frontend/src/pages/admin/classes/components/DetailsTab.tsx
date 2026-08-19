@@ -9,6 +9,8 @@ interface Props {
   gradeName: string | undefined;
   streamName: string | undefined;
   streamGroupName: string | undefined;
+  mediumName: string | undefined;
+  homeClassroomName: string | undefined;
   academicYearLabel: string | undefined;
   girlMonitor: Student | undefined;
   boyMonitor: Student | undefined;
@@ -20,6 +22,8 @@ export default function DetailsTab({
   gradeName,
   streamName,
   streamGroupName,
+  mediumName,
+  homeClassroomName,
   academicYearLabel,
   girlMonitor,
   boyMonitor,
@@ -37,6 +41,8 @@ export default function DetailsTab({
             ["Grade", gradeName ?? "—"],
             ["Stream", streamName ?? "None"],
             ["Sub-stream", streamGroupName ?? "None"],
+            ["Medium", mediumName ?? "Not designated"],
+            ["Home Classroom", homeClassroomName ?? "Not assigned"],
             ["Academic Year", academicYearLabel ?? "—"],
             ["Girl Monitor", girlMonitor?.full_name ?? "Unassigned"],
             ["Boy Monitor", boyMonitor?.full_name ?? "Unassigned"],

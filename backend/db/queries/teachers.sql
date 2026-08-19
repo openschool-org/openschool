@@ -22,8 +22,10 @@ INSERT INTO teacher_profiles (
 RETURNING *;
 
 -- name: GetTeacherByID :one
-SELECT * FROM teacher_profiles
-WHERE id = $1;
+SELECT tp.*, u.email AS email
+FROM teacher_profiles tp
+INNER JOIN users u ON u.id = tp.user_id
+WHERE tp.id = $1;
 
 -- name: ListTeachersByIDs :many
 -- batched form of GetTeacherByID for resolving several teacher_profile IDs

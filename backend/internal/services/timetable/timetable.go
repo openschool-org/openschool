@@ -30,6 +30,7 @@ type TimetableService struct {
 	sectionHeadRepo  *rootrepositories.SectionHeadRepository
 	requirementRepo  *repositories.SubjectPeriodRequirementRepository
 	availabilityRepo *repositories.TeacherAvailabilityRepository
+	classroomRepo    *repositories.ClassroomRepository
 	teacherRepo      *rootrepositories.TeacherRepository
 	studentRepo      *rootrepositories.StudentRepository
 	guardianRepo     *rootrepositories.GuardianRepository
@@ -43,6 +44,7 @@ func NewTimetableService(
 	sectionHeadRepo *rootrepositories.SectionHeadRepository,
 	requirementRepo *repositories.SubjectPeriodRequirementRepository,
 	availabilityRepo *repositories.TeacherAvailabilityRepository,
+	classroomRepo *repositories.ClassroomRepository,
 	teacherRepo *rootrepositories.TeacherRepository,
 	studentRepo *rootrepositories.StudentRepository,
 	guardianRepo *rootrepositories.GuardianRepository,
@@ -50,8 +52,8 @@ func NewTimetableService(
 ) *TimetableService {
 	return &TimetableService{
 		repo: repo, classRepo: classRepo, gradeSectionRepo: gradeSectionRepo, sectionHeadRepo: sectionHeadRepo,
-		requirementRepo: requirementRepo, availabilityRepo: availabilityRepo, teacherRepo: teacherRepo,
-		studentRepo: studentRepo, guardianRepo: guardianRepo, notifications: notifications,
+		requirementRepo: requirementRepo, availabilityRepo: availabilityRepo, classroomRepo: classroomRepo,
+		teacherRepo: teacherRepo, studentRepo: studentRepo, guardianRepo: guardianRepo, notifications: notifications,
 	}
 }
 

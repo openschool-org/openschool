@@ -43,6 +43,18 @@ WHERE t.academic_year_id = $1
   AND t.status IN ('draft', 'under_review', 'approved', 'published')
   AND (te.teacher_id IS NOT NULL OR te.classroom_id IS NOT NULL);
 
+-- name: ListAllTimetableEntriesForYear :many
+-- every booked (teacher or classroom) cell across every timetable in the
+-- academic year — the auto-generator's whole-year busy-set preload, before
+-- any of this run's placements exist yet
+SELECT te.day_of_week, te.period_number, te.teacher_id, te.classroom_id, t.id AS timetable_id, t.class_id, c.name AS class_name
+FROM timetable_entries te
+INNER JOIN timetables t ON t.id = te.timetable_id
+INNER JOIN classes c    ON c.id = t.class_id
+WHERE t.academic_year_id = $1
+  AND t.status IN ('draft', 'under_review', 'approved', 'published')
+  AND (te.teacher_id IS NOT NULL OR te.classroom_id IS NOT NULL);
+
 -- name: CountEntriesBySubjectForTimetable :many
 SELECT subject_id, COUNT(*)::int AS entry_count
 FROM timetable_entries

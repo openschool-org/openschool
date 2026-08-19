@@ -19,6 +19,7 @@ import {
 } from "../../../queries/useClasses";
 import { useGrades } from "../../../queries/useGrades";
 import { useMediums } from "../../../queries/useCurriculum";
+import { useClassrooms, useCreateClassroom } from "../../../queries/timetable/useClassrooms";
 import { useTeachers } from "../../../queries/useTeachers";
 import { useAcademicYears } from "../../../queries/useAcademicYears";
 import { getErrorMessage } from "../../../lib/errorMessage";
@@ -34,6 +35,7 @@ const EMPTY_FORM = {
   stream_group_id: "",
   form_teacher_id: "",
   medium_id: "",
+  home_classroom_id: "",
 };
 
 export default function AddClass() {
@@ -45,13 +47,25 @@ export default function AddClass() {
   const { data: years } = useAcademicYears();
   const { data: streams } = useStreams();
   const { data: mediums } = useMediums();
+  const { data: classrooms } = useClassrooms();
   const { data: teachers } = useTeachers();
+  const regularClassrooms = classrooms?.filter((c) => c.room_type === "regular");
   const createClass = useCreateClass();
+  const createClassroom = useCreateClassroom();
 
   const [form, setForm] = useState({ ...EMPTY_FORM, grade_id: preselectedGradeId });
   const [touched, setTouched] = useState<Touched>({});
+  const [roomError, setRoomError] = useState<string | null>(null);
 
   const markTouched = (field: keyof Touched) => setTouched((t) => ({ ...t, [field]: true }));
+
+  // Sri Lankan schools usually name a class's homeroom the same as the
+  // class itself (e.g. class "13-M1" sits in room "13-M1") — suggest that
+  // match automatically, but let the admin override it.
+  const suggestedHomeClassroom = form.name.trim()
+    ? regularClassrooms?.find((c) => c.name.trim().toLowerCase() === form.name.trim().toLowerCase())
+    : undefined;
+  const effectiveHomeClassroomId = form.home_classroom_id || suggestedHomeClassroom?.id || "";
 
   const { data: streamGroups } = useStreamGroups(form.stream_id);
 
@@ -70,9 +84,25 @@ export default function AddClass() {
 
   const isValid = form.grade_id && academicYearId && form.name.trim();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setTouched({ grade: true, name: true, year: true });
     if (!isValid) return;
+    setRoomError(null);
+
+    // No room picked and no name match found — automatically create one
+    // named after the class itself (the common Sri Lankan case: a class's
+    // homeroom is just called the same thing as the class, e.g. "13-M1").
+    let homeClassroomId = effectiveHomeClassroomId;
+    if (!homeClassroomId) {
+      try {
+        const created = await createClassroom.mutateAsync({ name: form.name.trim(), room_type: "regular" });
+        homeClassroomId = created.id;
+      } catch (e) {
+        setRoomError(getErrorMessage(e, "Failed to create this class's home classroom"));
+        return;
+      }
+    }
+
     createClass.mutate(
       {
         grade_id: form.grade_id,
@@ -82,14 +112,15 @@ export default function AddClass() {
         stream_group_id: form.stream_group_id || null,
         form_teacher_id: form.form_teacher_id || null,
         medium_id: form.medium_id || null,
+        home_classroom_id: homeClassroomId || null,
       },
       { onSuccess: () => navigate("/classes") },
     );
   };
 
-  const error = createClass.isError
-    ? getErrorMessage(createClass.error, "Failed to create class")
-    : null;
+  const error =
+    roomError ?? (createClass.isError ? getErrorMessage(createClass.error, "Failed to create class") : null);
+  const isSaving = createClassroom.isPending || createClass.isPending;
 
   return (
     <div className="os-page">
@@ -193,6 +224,25 @@ export default function AddClass() {
               ))}
             </Select>
 
+            <Select
+              id="home-classroom"
+              labelText="Home Classroom (optional)"
+              helperText={
+                !form.home_classroom_id && suggestedHomeClassroom
+                  ? "Auto-suggested from the class name — pick a different room to override."
+                  : !form.home_classroom_id && form.name.trim()
+                    ? `Left as-is, a new room named "${form.name.trim()}" will be created automatically as this class's homeroom.`
+                    : "Students stay in this room all day; teachers rotate in."
+              }
+              value={effectiveHomeClassroomId}
+              onChange={(e) => set("home_classroom_id", e.target.value)}
+            >
+              <SelectItem value="" text="Auto-create to match the class name" />
+              {regularClassrooms?.map((c) => (
+                <SelectItem key={c.id} value={c.id} text={c.name} />
+              ))}
+            </Select>
+
             <EntityCombobox
               id="class-teacher"
               labelText="Form Teacher (optional)"
@@ -237,7 +287,10 @@ export default function AddClass() {
             title="Could not create class"
             subtitle={error}
             lowContrast
-            onClose={() => createClass.reset()}
+            onClose={() => {
+              setRoomError(null);
+              createClass.reset();
+            }}
             style={{ maxWidth: "100%" }}
           />
         )}
@@ -246,10 +299,10 @@ export default function AddClass() {
           <Button
             renderIcon={Save}
             kind="primary"
-            disabled={!isValid || createClass.isPending}
+            disabled={!isValid || isSaving}
             onClick={handleSave}
           >
-            {createClass.isPending ? "Creating…" : "Create Class"}
+            {isSaving ? "Creating…" : "Create Class"}
           </Button>
           <Button kind="secondary" as={Link} to="/classes">
             Cancel

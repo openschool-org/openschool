@@ -428,3 +428,32 @@ func (h *TimetableHandler) PublishedForClass(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"timetable": tt, "entries": entries})
 }
+
+// Generate godoc
+// @Summary      Auto-generate draft timetables for a grade section
+// @Description  Best-effort fills every class in the grade section at once (teachers/labs are shared across them); unsatisfiable periods are reported as gaps, not errors
+// @Tags         timetables
+// @Accept       json
+// @Produce      json
+// @Param        request body models.GenerateTimetablesRequest true "Grade section + academic year"
+// @Success      200 {object} models.GenerationResult
+// @Failure      400 {object} map[string]string
+// @Security     BearerAuth
+// @Router       /timetables/generate [post]
+func (h *TimetableHandler) Generate(c *gin.Context) {
+	callerID, ok := h.callerID(c)
+	if !ok {
+		return
+	}
+	var req models.GenerateTimetablesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	result, err := h.service.GenerateForGradeSection(c.Request.Context(), req.GradeSectionID, req.AcademicYearID, callerID)
+	if err != nil {
+		h.writeServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}

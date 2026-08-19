@@ -122,7 +122,7 @@ func (q *Queries) DeleteTeacher(ctx context.Context, id uuid.UUID) (int64, error
 
 const getFormTeacherClass = `-- name: GetFormTeacherClass :one
 SELECT
-    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id
+    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id
 FROM classes c
 WHERE c.form_teacher_id = $1
   AND c.academic_year_id = (
@@ -145,6 +145,7 @@ func (q *Queries) GetFormTeacherClass(ctx context.Context, formTeacherID pgtype.
 		&i.GirlMonitorID,
 		&i.BoyMonitorID,
 		&i.MediumID,
+		&i.HomeClassroomID,
 	)
 	return i, err
 }
@@ -177,13 +178,33 @@ func (q *Queries) GetTeacherByEmployeeNumber(ctx context.Context, employeeNumber
 }
 
 const getTeacherByID = `-- name: GetTeacherByID :one
-SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
-WHERE id = $1
+SELECT tp.id, tp.user_id, tp.full_name, tp.employee_number, tp.joined_date, tp.phone, tp.created_at, tp.updated_at, tp.title, tp.gender, tp.is_active, tp.house_id, tp.employment_status, tp.nic_number, u.email AS email
+FROM teacher_profiles tp
+INNER JOIN users u ON u.id = tp.user_id
+WHERE tp.id = $1
 `
 
-func (q *Queries) GetTeacherByID(ctx context.Context, id uuid.UUID) (TeacherProfile, error) {
+type GetTeacherByIDRow struct {
+	ID               uuid.UUID          `json:"id"`
+	UserID           uuid.UUID          `json:"user_id"`
+	FullName         string             `json:"full_name"`
+	EmployeeNumber   string             `json:"employee_number"`
+	JoinedDate       pgtype.Date        `json:"joined_date"`
+	Phone            pgtype.Text        `json:"phone"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	Title            pgtype.Text        `json:"title"`
+	Gender           pgtype.Text        `json:"gender"`
+	IsActive         bool               `json:"is_active"`
+	HouseID          pgtype.UUID        `json:"house_id"`
+	EmploymentStatus string             `json:"employment_status"`
+	NicNumber        string             `json:"nic_number"`
+	Email            string             `json:"email"`
+}
+
+func (q *Queries) GetTeacherByID(ctx context.Context, id uuid.UUID) (GetTeacherByIDRow, error) {
 	row := q.db.QueryRow(ctx, getTeacherByID, id)
-	var i TeacherProfile
+	var i GetTeacherByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -199,6 +220,7 @@ func (q *Queries) GetTeacherByID(ctx context.Context, id uuid.UUID) (TeacherProf
 		&i.HouseID,
 		&i.EmploymentStatus,
 		&i.NicNumber,
+		&i.Email,
 	)
 	return i, err
 }

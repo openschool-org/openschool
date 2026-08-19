@@ -96,7 +96,6 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) *jobs.Scheduler {
 	RegisterTermRoutes(admin, protected, pool)
 	RegisterTermMarkRoutes(teacherOrAdmin, pool)
 	RegisterStudentSelfRoutes(student, pool)
-	RegisterTeacherSelfRoutes(teacher, pool)
 	RegisterAuditRoutes(admin, pool)
 	RegisterIdentityReconciliationRoutes(admin, pool)
 	RegisterDashboardRoutes(admin, pool)
@@ -111,6 +110,7 @@ func Setup(r *gin.Engine, pool *pgxpool.Pool) *jobs.Scheduler {
 	timetableService := timetableroutes.RegisterTimetableRoutes(admin, teacherOrAdmin, teacher, student, pool)
 
 	RegisterParentRoutes(parent, timetableService, pool)
+	RegisterTeacherSelfRoutes(teacher, pool, timetableService)
 
 	meHandler := handlers.NewMeHandler(services.NewMeService(repositories.NewUserRepository(pool)))
 	protected.GET("/me", meHandler.Get)

@@ -24,7 +24,7 @@ func (q *Queries) DeleteSubjectPeriodRequirement(ctx context.Context, id uuid.UU
 
 const listSubjectPeriodRequirementsByGrade = `-- name: ListSubjectPeriodRequirementsByGrade :many
 SELECT
-    spr.id, spr.academic_year_id, spr.grade_id, spr.subject_id, spr.periods_per_week, spr.created_at,
+    spr.id, spr.academic_year_id, spr.grade_id, spr.subject_id, spr.periods_per_week, spr.created_at, spr.lab_periods_per_week, spr.double_period_blocks,
     s.name AS subject_name,
     s.code AS subject_code
 FROM subject_period_requirements spr
@@ -39,14 +39,16 @@ type ListSubjectPeriodRequirementsByGradeParams struct {
 }
 
 type ListSubjectPeriodRequirementsByGradeRow struct {
-	ID             uuid.UUID          `json:"id"`
-	AcademicYearID uuid.UUID          `json:"academic_year_id"`
-	GradeID        uuid.UUID          `json:"grade_id"`
-	SubjectID      uuid.UUID          `json:"subject_id"`
-	PeriodsPerWeek int32              `json:"periods_per_week"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	SubjectName    string             `json:"subject_name"`
-	SubjectCode    string             `json:"subject_code"`
+	ID                 uuid.UUID          `json:"id"`
+	AcademicYearID     uuid.UUID          `json:"academic_year_id"`
+	GradeID            uuid.UUID          `json:"grade_id"`
+	SubjectID          uuid.UUID          `json:"subject_id"`
+	PeriodsPerWeek     int32              `json:"periods_per_week"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	LabPeriodsPerWeek  int32              `json:"lab_periods_per_week"`
+	DoublePeriodBlocks int32              `json:"double_period_blocks"`
+	SubjectName        string             `json:"subject_name"`
+	SubjectCode        string             `json:"subject_code"`
 }
 
 func (q *Queries) ListSubjectPeriodRequirementsByGrade(ctx context.Context, arg ListSubjectPeriodRequirementsByGradeParams) ([]ListSubjectPeriodRequirementsByGradeRow, error) {
@@ -65,6 +67,8 @@ func (q *Queries) ListSubjectPeriodRequirementsByGrade(ctx context.Context, arg 
 			&i.SubjectID,
 			&i.PeriodsPerWeek,
 			&i.CreatedAt,
+			&i.LabPeriodsPerWeek,
+			&i.DoublePeriodBlocks,
 			&i.SubjectName,
 			&i.SubjectCode,
 		); err != nil {
@@ -79,18 +83,22 @@ func (q *Queries) ListSubjectPeriodRequirementsByGrade(ctx context.Context, arg 
 }
 
 const upsertSubjectPeriodRequirement = `-- name: UpsertSubjectPeriodRequirement :one
-INSERT INTO subject_period_requirements (academic_year_id, grade_id, subject_id, periods_per_week)
-VALUES ($1, $2, $3, $4)
+INSERT INTO subject_period_requirements (academic_year_id, grade_id, subject_id, periods_per_week, lab_periods_per_week, double_period_blocks)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (academic_year_id, grade_id, subject_id) DO UPDATE
-SET periods_per_week = EXCLUDED.periods_per_week
-RETURNING id, academic_year_id, grade_id, subject_id, periods_per_week, created_at
+SET periods_per_week = EXCLUDED.periods_per_week,
+    lab_periods_per_week = EXCLUDED.lab_periods_per_week,
+    double_period_blocks = EXCLUDED.double_period_blocks
+RETURNING id, academic_year_id, grade_id, subject_id, periods_per_week, created_at, lab_periods_per_week, double_period_blocks
 `
 
 type UpsertSubjectPeriodRequirementParams struct {
-	AcademicYearID uuid.UUID `json:"academic_year_id"`
-	GradeID        uuid.UUID `json:"grade_id"`
-	SubjectID      uuid.UUID `json:"subject_id"`
-	PeriodsPerWeek int32     `json:"periods_per_week"`
+	AcademicYearID     uuid.UUID `json:"academic_year_id"`
+	GradeID            uuid.UUID `json:"grade_id"`
+	SubjectID          uuid.UUID `json:"subject_id"`
+	PeriodsPerWeek     int32     `json:"periods_per_week"`
+	LabPeriodsPerWeek  int32     `json:"lab_periods_per_week"`
+	DoublePeriodBlocks int32     `json:"double_period_blocks"`
 }
 
 func (q *Queries) UpsertSubjectPeriodRequirement(ctx context.Context, arg UpsertSubjectPeriodRequirementParams) (SubjectPeriodRequirement, error) {
@@ -99,6 +107,8 @@ func (q *Queries) UpsertSubjectPeriodRequirement(ctx context.Context, arg Upsert
 		arg.GradeID,
 		arg.SubjectID,
 		arg.PeriodsPerWeek,
+		arg.LabPeriodsPerWeek,
+		arg.DoublePeriodBlocks,
 	)
 	var i SubjectPeriodRequirement
 	err := row.Scan(
@@ -108,6 +118,8 @@ func (q *Queries) UpsertSubjectPeriodRequirement(ctx context.Context, arg Upsert
 		&i.SubjectID,
 		&i.PeriodsPerWeek,
 		&i.CreatedAt,
+		&i.LabPeriodsPerWeek,
+		&i.DoublePeriodBlocks,
 	)
 	return i, err
 }

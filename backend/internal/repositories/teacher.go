@@ -20,7 +20,7 @@ func (r *TeacherRepository) Create(ctx context.Context, params db.CreateTeacherP
 	return r.queries.CreateTeacherProfile(ctx, params)
 }
 
-func (r *TeacherRepository) GetByID(ctx context.Context, id uuid.UUID) (db.TeacherProfile, error) {
+func (r *TeacherRepository) GetByID(ctx context.Context, id uuid.UUID) (db.GetTeacherByIDRow, error) {
 	return r.queries.GetTeacherByID(ctx, id)
 }
 

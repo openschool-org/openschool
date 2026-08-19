@@ -5,9 +5,10 @@ import { useCreateGrade } from "../../../../queries/useGrades";
 import { useCreateAcademicYear } from "../../../../queries/useAcademicYears";
 import { useCreateClass, useCreateStream, useCreateStreamGroup } from "../../../../queries/useClasses";
 import { useCreateMedium } from "../../../../queries/useCurriculum";
+import { useCreateClassroom } from "../../../../queries/timetable/useClassrooms";
 import { getErrorMessage } from "../../../../lib/errorMessage";
 import type { Grade } from "../../../../services/grade";
-import { AL_STREAM_DEFS, AL_GRADE_NUMBERS, SUGGESTED_MEDIUMS, type ALStreamKey, type AlStreamsState, type SchoolFormState } from "../constants";
+import { AL_STREAM_DEFS, AL_GRADE_NUMBERS, SUGGESTED_MEDIUMS, SUGGESTED_ROOMS, type ALStreamKey, type AlStreamsState, type SchoolFormState } from "../constants";
 import type { HouseRow } from "../components/HousesStep";
 
 // Tracks which phases of the final submission have already succeeded, so
@@ -21,6 +22,7 @@ interface SubmitProgress {
   // reuses them instead of creating duplicates
   mediums: Map<string, string> | null;
   classes: boolean;
+  rooms: boolean;
 }
 
 interface Input {
@@ -36,6 +38,9 @@ interface Input {
   sectionMediums: Record<string, string>;
   alStreams: AlStreamsState;
   classesSkipped: boolean;
+  roomsSkipped: boolean;
+  roomChecks: Record<string, boolean>;
+  customRooms: string[];
 }
 
 export function useSchoolSetupSubmit(input: Input) {
@@ -47,6 +52,7 @@ export function useSchoolSetupSubmit(input: Input) {
   const createMedium = useCreateMedium();
   const createStream = useCreateStream();
   const createStreamGroup = useCreateStreamGroup();
+  const createClassroom = useCreateClassroom();
 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -57,13 +63,14 @@ export function useSchoolSetupSubmit(input: Input) {
     grades: null,
     mediums: null,
     classes: false,
+    rooms: false,
   });
 
-  // skipClassesOverride is passed by the Classes step, whose setState hasn't
-  // applied yet when it kicks off the submit — reading classesSkipped state
-  // here would see the previous value and create classes the admin chose to
+  // skipRoomsOverride is passed by the Rooms step, whose setState hasn't
+  // applied yet when it kicks off the submit — reading roomsSkipped state
+  // here would see the previous value and create rooms the admin chose to
   // skip.
-  const submitAll = async (skipClassesOverride?: boolean) => {
+  const submitAll = async (skipRoomsOverride?: boolean) => {
     const {
       school,
       houses,
@@ -77,9 +84,13 @@ export function useSchoolSetupSubmit(input: Input) {
       sectionMediums,
       alStreams,
       classesSkipped,
+      roomsSkipped,
+      roomChecks,
+      customRooms,
     } = input;
     const now = new Date();
-    const skipClasses = skipClassesOverride ?? classesSkipped;
+    const skipClasses = classesSkipped;
+    const skipRooms = skipRoomsOverride ?? roomsSkipped;
     setSubmitting(true);
     setSubmitError(null);
     const progress = progressRef.current;
@@ -219,6 +230,19 @@ export function useSchoolSetupSubmit(input: Input) {
           }
         }
         progress.classes = true;
+      }
+
+      if (!progress.rooms) {
+        if (!skipRooms) {
+          const names = [
+            ...SUGGESTED_ROOMS.filter((r) => roomChecks[r]),
+            ...customRooms.map((r) => r.trim()).filter(Boolean),
+          ];
+          for (const name of names) {
+            await createClassroom.mutateAsync({ name, room_type: "eca" });
+          }
+        }
+        progress.rooms = true;
       }
 
       setSubmitted(true);

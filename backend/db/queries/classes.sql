@@ -38,9 +38,10 @@ INSERT INTO classes (
     stream_id,
     stream_group_id,
     name,
-    medium_id
+    medium_id,
+    home_classroom_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
 RETURNING *;
 
@@ -53,11 +54,13 @@ SELECT
     c.*,
     g.name  AS grade_name,
     ay.label AS academic_year_label,
-    m.name  AS medium_name
+    m.name  AS medium_name,
+    hc.name AS home_classroom_name
 FROM classes c
 INNER JOIN grades g          ON g.id = c.grade_id
 INNER JOIN academic_years ay ON ay.id = c.academic_year_id
 LEFT JOIN  mediums m         ON m.id = c.medium_id
+LEFT JOIN  classrooms hc     ON hc.id = c.home_classroom_id
 WHERE c.academic_year_id = $1
 ORDER BY g.sort_order ASC, c.name ASC;
 
@@ -66,13 +69,26 @@ SELECT
     c.*,
     g.name   AS grade_name,
     ay.label AS academic_year_label,
-    m.name   AS medium_name
+    m.name   AS medium_name,
+    hc.name  AS home_classroom_name
 FROM classes c
 INNER JOIN grades g          ON g.id = c.grade_id
 INNER JOIN academic_years ay ON ay.id = c.academic_year_id
 LEFT JOIN  mediums m         ON m.id = c.medium_id
+LEFT JOIN  classrooms hc     ON hc.id = c.home_classroom_id
 WHERE ay.is_current = TRUE
 ORDER BY g.sort_order ASC, c.name ASC;
+
+-- name: ListClassesByGradeSection :many
+-- every class belonging to any grade in a grade_section, for a given
+-- academic year — the auto-generator's unit of work (teachers/labs shared
+-- across these classes must be scheduled together to avoid conflicts)
+SELECT c.*
+FROM classes c
+INNER JOIN grade_section_grades gsg
+    ON gsg.grade_id = c.grade_id AND gsg.academic_year_id = c.academic_year_id
+WHERE gsg.grade_section_id = $1 AND c.academic_year_id = $2
+ORDER BY c.name ASC;
 
 -- name: AssignFormTeacher :one
 UPDATE classes
@@ -234,9 +250,10 @@ AND sg.id NOT IN (
 -- name: UpdateClass :one
 UPDATE classes
 SET
-    name            = $2,
-    form_teacher_id = $3,
-    medium_id       = $4
+    name               = $2,
+    form_teacher_id    = $3,
+    medium_id          = $4,
+    home_classroom_id  = $5
 WHERE id = $1
 RETURNING *;
 

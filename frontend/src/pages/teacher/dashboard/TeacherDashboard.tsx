@@ -17,12 +17,19 @@ import TodaySummary from "./TodaySummary";
 import MyClassesPanel from "./MyClassesPanel";
 import LeadershipPanel from "./LeadershipPanel";
 import LeadershipOverviewPanel from "./LeadershipOverviewPanel";
+import TimetableReviewPanel from "./TimetableReviewPanel";
 import { todayISODate } from "../../../lib/date";
 
 // Section Head and above carry multi-grade/school-wide responsibility, so
 // they get the extra Leadership panel; a plain Class/Subject Teacher's
 // dashboard stays focused on their own classes.
 const LEADERSHIP_RANK_CUTOFF = 3; // RankSectionHead, matches backend's PositionRank ordinal
+
+// Timetable review authorization (section_heads/grade_sections tables) is
+// narrower than the leadership cutoff above — only an actual Section Head
+// can act on it, not Principal/Vice Principal (who monitor, not review) or
+// Class/Subject Teachers.
+const RANK_SECTION_HEAD = 3;
 
 export default function TeacherDashboard() {
   const { teacher: profile, classes: myClasses, isLoading: profileLoading, isError: profileError, refetch } = useMyClasses();
@@ -32,6 +39,7 @@ export default function TeacherDashboard() {
   const { data: positionSummary } = useMyPosition();
   const showLeadershipPanel = !!positionSummary && positionSummary.rank <= LEADERSHIP_RANK_CUTOFF;
   const { data: leadershipOverview } = useMyLeadershipOverview(showLeadershipPanel);
+  const isSectionHead = positionSummary?.rank === RANK_SECTION_HEAD;
 
   const classIds = myClasses.map((c) => c.class_id);
 
@@ -106,6 +114,7 @@ export default function TeacherDashboard() {
         <div>
           {showLeadershipPanel && leadershipOverview && <LeadershipOverviewPanel overview={leadershipOverview} />}
           {showLeadershipPanel && positionSummary && <LeadershipPanel summary={positionSummary} />}
+          {isSectionHead && currentYear && <TimetableReviewPanel academicYearId={currentYear.id} />}
           <QuickActions rankLabel={rankLabel} notifyWholeSchool={positionSummary?.notify_whole_school ?? false} />
           <TodaySummary
             markedCount={markedCount}

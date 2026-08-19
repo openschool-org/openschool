@@ -71,7 +71,7 @@ func (q *Queries) CountClassesInYearByIDs(ctx context.Context, arg CountClassesI
 }
 
 const findClassByGradeAndMedium = `-- name: FindClassByGradeAndMedium :one
-SELECT id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id FROM classes
+SELECT id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id FROM classes
 WHERE grade_id = $1 AND academic_year_id = $2 AND medium_id = $3
 ORDER BY name ASC
 LIMIT 1
@@ -102,12 +102,13 @@ func (q *Queries) FindClassByGradeAndMedium(ctx context.Context, arg FindClassBy
 		&i.GirlMonitorID,
 		&i.BoyMonitorID,
 		&i.MediumID,
+		&i.HomeClassroomID,
 	)
 	return i, err
 }
 
 const findClassByGradeAndName = `-- name: FindClassByGradeAndName :one
-SELECT id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id FROM classes
+SELECT id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id FROM classes
 WHERE grade_id = $1 AND academic_year_id = $2 AND name = $3
 `
 
@@ -134,6 +135,7 @@ func (q *Queries) FindClassByGradeAndName(ctx context.Context, arg FindClassByGr
 		&i.GirlMonitorID,
 		&i.BoyMonitorID,
 		&i.MediumID,
+		&i.HomeClassroomID,
 	)
 	return i, err
 }

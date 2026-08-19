@@ -28,6 +28,14 @@ export const useTimetablesByYear = (academicYearId: string) =>
     enabled: !!academicYearId,
   });
 
+// Every class's timetable for the current year, for the signed-in
+// Principal/Vice Principal.
+export const useTimetablesForLeadership = () =>
+  useQuery({
+    queryKey: ["me", "teacher", "timetables"],
+    queryFn: () => timetableApi.listForLeadership(),
+  });
+
 export const useTimetable = (id: string) =>
   useQuery({
     queryKey: timetableKey(id),
@@ -137,11 +145,11 @@ export const useRejectTimetable = (id: string) => {
   });
 };
 
-export const useReviewQueue = (academicYearId: string) =>
+export const useReviewQueue = (academicYearId: string, enabled = true) =>
   useQuery({
     queryKey: reviewQueueKey(academicYearId),
     queryFn: () => timetableApi.reviewQueue(academicYearId),
-    enabled: !!academicYearId,
+    enabled: !!academicYearId && enabled,
   });
 
 export const useMyTeacherSchedule = (academicYearId: string) =>

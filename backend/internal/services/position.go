@@ -118,6 +118,13 @@ const (
 	RankTeacher        // default — no leadership position held
 )
 
+// IsPrincipalOrVicePrincipal is true for the two permanent school-leadership
+// ranks — used to gate the whole-school "monitor" views (analytics, every
+// class's timetable) that Section Head and below don't get.
+func (r PositionRank) IsPrincipalOrVicePrincipal() bool {
+	return r == RankPrincipal || r == RankVicePrincipal
+}
+
 // RankLabel returns a human-readable name for display (dashboards, badges).
 func (r PositionRank) RankLabel() string {
 	switch r {
