@@ -232,7 +232,6 @@
 .cds--header__nav,
 .cds--header > nav {
   background-color: $os-accent-deeper !important;
-  background: $os-accent-deeper !important;
   --cds-background: #{$os-accent-deeper};
   --cds-layer-01: #{$os-accent-deeper};
 }
@@ -241,7 +240,6 @@
 .cds--header__nav ul,
 .cds--header > nav ul {
   background-color: $os-accent-deeper !important;
-  background: $os-accent-deeper !important;
 }
 
 .cds--header__menu-item {
