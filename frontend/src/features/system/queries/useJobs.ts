@@ -19,3 +19,6 @@ export const useRunJobNow = () => {
   const invalidate = useInvalidate();
   return useMutation({ mutationFn: (name: string) => jobsApi.runNow(name), onSuccess: () => invalidate(systemKeys.jobs()) });
 };
+
+export const useAgentFindings = (page: string) =>
+  useQuery({ queryKey: systemKeys.findings(page), queryFn: () => jobsApi.findings(page), staleTime: 60_000 });

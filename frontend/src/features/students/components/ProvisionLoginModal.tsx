@@ -53,7 +53,7 @@ export default function ProvisionLoginModal({
       onSubmit={handleSubmit}
       isPending={provision.isPending}
       submitDisabled={!isValid || !guardian.email}
-      submitLabel="Create Login"
+      submitLabel="Create login"
       pendingLabel="Creating…"
       isError={provision.isError}
       error={provision.error}
@@ -78,7 +78,7 @@ export default function ProvisionLoginModal({
       <div className="os-grid os-grid-cols-2 os-gap-4">
         <TextInput
           id="guardian-login-given-name"
-          labelText="First Name"
+          labelText="First name"
           value={form.given_name}
           onChange={(e) => setForm((f) => ({ ...f, given_name: e.target.value }))}
           onBlur={() => setTouched((t) => ({ ...t, given_name: true }))}
@@ -87,7 +87,7 @@ export default function ProvisionLoginModal({
         />
         <TextInput
           id="guardian-login-family-name"
-          labelText="Last Name"
+          labelText="Last name"
           value={form.family_name}
           onChange={(e) => setForm((f) => ({ ...f, family_name: e.target.value }))}
           onBlur={() => setTouched((t) => ({ ...t, family_name: true }))}

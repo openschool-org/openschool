@@ -34,6 +34,15 @@ func (f *fakeStaffStore) teacherSummary(context.Context, time.Time, time.Time) (
 func (f *fakeStaffStore) nonAcademicSummary(context.Context, time.Time, time.Time) ([]staffSummaryRow, error) {
 	return nil, nil
 }
+func (f *fakeStaffStore) roster(context.Context, time.Time, StaffRosterQuery) (StaffRosterPage, error) {
+	return StaffRosterPage{}, nil
+}
+func (f *fakeStaffStore) monthly(context.Context, time.Time, time.Time, StaffRosterQuery) (StaffMonthlyPage, error) {
+	return StaffMonthlyPage{}, nil
+}
+func (f *fakeStaffStore) markUnmarkedPresent(context.Context, time.Time, StaffKind, uuid.UUID) (int64, error) {
+	return 0, nil
+}
 func (f *fakeStaffStore) teacherHistory(context.Context, uuid.UUID, time.Time, time.Time) ([]StaffRecord, error) {
 	return nil, nil
 }

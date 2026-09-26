@@ -40,7 +40,7 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { path: "/attendance", label: "Student Attendance", Icon: EventSchedule },
       { path: "/staff-attendance", label: "Staff Attendance", Icon: Group },
-      { path: "/promotion", label: "Promotion", Icon: Renew },
+      { path: "/year-end", label: "Year-end", Icon: Renew },
       { path: "/notifications", label: "Notifications", Icon: Notification },
       { path: "/reports", label: "Reports", Icon: DocumentPdf },
       { path: "/analytics", label: "Analytics", Icon: ChartLine },
@@ -48,3 +48,14 @@ export const ADMIN_NAV: NavGroup[] = [
     ],
   },
 ];
+
+// Hub tabs and legacy routes that belong to a nav page.
+export const ADMIN_ALIASES: Record<string, string> = {
+  "/promotion": "/year-end",
+  "/timetables/generate": "/timetables",
+  "/classrooms": "/timetables",
+  "/subject-requirements": "/timetables",
+  "/timetable-settings": "/timetables",
+  "/grade-sections": "/timetables",
+  "/curriculum": "/subjects",
+};

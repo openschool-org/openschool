@@ -5,6 +5,7 @@ import type { ClassWithDetails } from "@/features/academics/api/class";
 import type { DailySession } from "@/features/attendance/api/attendance";
 import type { StaffAttendanceRow } from "@/features/attendance/api/staffAttendance";
 import EmptyState from "@/shared/ui/EmptyState";
+import ProgressBar from "@/shared/ui/ProgressBar";
 import SectionHeader from "@/shared/ui/SectionHeader";
 import { STATUS_COLORS } from "@/features/reports/components/chartColors";
 
@@ -24,9 +25,9 @@ function ClassAttendanceBox({ cls, session }: { cls: ClassWithDetails; session: 
         </div>
         {hasSession ? (
           isMarked ? (
-            <CheckmarkFilled size={18} className="os-fill-success os-shrink-0" />
+            <CheckmarkFilled size={18} className="os-fill-success os-shrink-0" aria-hidden="true" />
           ) : (
-            <WarningFilled size={18} className="os-fill-warning os-shrink-0" />
+            <WarningFilled size={18} className="os-fill-warning os-shrink-0" aria-hidden="true" />
           )
         ) : (
           <EventSchedule size={18} className="os-fill-disabled os-shrink-0" />
@@ -41,10 +42,7 @@ function ClassAttendanceBox({ cls, session }: { cls: ClassWithDetails; session: 
               {session.marked_count} / {session.enrolled_count}
             </span>
           </div>
-          <div className="os-h-px-5 os-bg-border-subtle os-rounded-md">
-            <div className={`os-h-full ${isMarked ? "os-bg-success" : "os-bg-warning"} os-rounded-md`} style={{ width: `${session.enrolled_count > 0 ? Math.round((session.marked_count / session.enrolled_count) * 100) : 0}%` }}
-            />
-          </div>
+          <ProgressBar size="sm" value={session.marked_count} max={session.enrolled_count} tone={isMarked ? "success" : "warning"} label={`${cls.name} students marked`} />
         </>
       ) : (
         <p className="os-m-0 os-text-xs os-c-tertiary">No session today</p>
@@ -62,14 +60,13 @@ function TeacherAttendanceSummary({ teachers }: { teachers: StaffAttendanceRow[]
   }
   const total = teachers.length;
   const marked = total - notMarked;
-  const markedPct = total > 0 ? Math.round((marked / total) * 100) : 0;
 
   const stats: { label: string; value: number; color: string }[] = [
     { label: "Present", value: counts.present, color: STATUS_COLORS.present },
     { label: "Late", value: counts.late, color: STATUS_COLORS.late },
     { label: "Absent", value: counts.absent, color: STATUS_COLORS.absent },
     { label: "Leave", value: counts.leave, color: STATUS_COLORS.leave },
-    { label: "Not Marked", value: notMarked, color: "var(--os-text-tertiary)" },
+    { label: "Not marked", value: notMarked, color: "var(--os-text-tertiary)" },
   ];
 
   return (
@@ -81,9 +78,7 @@ function TeacherAttendanceSummary({ teachers }: { teachers: StaffAttendanceRow[]
             {marked} / {total}
           </span>
         </div>
-        <div className="os-h-px-6 os-bg-border-subtle os-rounded-md">
-          <div className="os-progress__bar" style={{ width: `${markedPct}%` }} />
-        </div>
+        <ProgressBar value={marked} max={total} label="Teachers marked today" />
       </div>
       <div className="os-grid os-grid-auto-fit-100 os-gap-3">
         {stats.map((s) => (
@@ -127,7 +122,7 @@ export default function AttendanceByClassSection({
   return (
     <div className="os-section">
       <SectionHeader
-        title="Attendance by Class"
+        title="Attendance by class"
         meta={
           <Link to="/attendance" className="os-text-xs os-no-underline os-c-accent">
             Manage →

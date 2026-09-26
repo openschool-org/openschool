@@ -13,12 +13,14 @@ import { ArrowLeft, Save } from "@carbon/icons-react";
 import { useCreateStudent } from "@/features/students/queries/useStudents";
 import { getErrorMessage } from "@/shared/api/errors";
 import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "@/shared/lib/phone";
+import { usePageTitle } from "@/shared/hooks/usePageTitle";
 
 type Touched = Partial<
   Record<"givenName" | "familyName" | "email" | "phone" | "indexNumber" | "whatsapp", boolean>
 >;
 
 export default function AddStudent() {
+  usePageTitle("Enrol student");
   const navigate = useNavigate();
   const createStudent = useCreateStudent();
 
@@ -85,12 +87,7 @@ export default function AddStudent() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <div className="os-page__breadcrumb">
-            <Link to="/students">Students</Link>
-            <span>/</span>
-            <span>Enrol New Student</span>
-          </div>
-          <h1 className="os-page__title">Enrol New Student</h1>
+          <h1 className="os-page__title">Enrol new student</h1>
           <p className="os-page__subtitle">
             Create a student account and profile
           </p>
@@ -130,7 +127,7 @@ export default function AddStudent() {
           <div className="os-form__section-body">
             <TextInput
               id="given-name"
-              labelText="First Name"
+              labelText="First name"
               placeholder="e.g. Kavinda"
               value={givenName}
               onChange={(e) => setGivenName(e.target.value)}
@@ -140,7 +137,7 @@ export default function AddStudent() {
             />
             <TextInput
               id="family-name"
-              labelText="Last Name"
+              labelText="Last name"
               placeholder="e.g. Perera"
               value={familyName}
               onChange={(e) => setFamilyName(e.target.value)}
@@ -150,7 +147,7 @@ export default function AddStudent() {
             />
             <TextInput
               id="email"
-              labelText="Email Address"
+              labelText="Email address"
               placeholder="e.g. student@school.lk"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -172,11 +169,11 @@ export default function AddStudent() {
         </div>
 
         <div className="os-form__section">
-          <div className="os-form__section-header">Student Profile</div>
+          <div className="os-form__section-header">Student profile</div>
           <div className="os-form__section-body">
             <TextInput
               id="index-number"
-              labelText="Index Number"
+              labelText="Index number"
               placeholder="e.g. 2026/0145"
               value={indexNumber}
               onChange={(e) => setIndexNumber(e.target.value)}
@@ -219,7 +216,7 @@ export default function AddStudent() {
             <div className="os-form__full-col">
               <TextArea
                 id="special-remarks"
-                labelText="Special Remarks (optional)"
+                labelText="Special remarks (optional)"
                 placeholder="Any notes about the student"
                 rows={3}
                 value={specialRemarks}
@@ -236,7 +233,7 @@ export default function AddStudent() {
             onClick={handleSubmit}
             disabled={!isValid || createStudent.isPending}
           >
-            {createStudent.isPending ? "Saving…" : "Save & Enrol"}
+            {createStudent.isPending ? "Saving…" : "Save and enrol"}
           </Button>
           <Button kind="secondary" as={Link} to="/students">
             Cancel

@@ -11,7 +11,7 @@ export default function RecentSessions({ sessions }: { sessions: Row[] }) {
   return (
     <div className="os-section">
       <div className="os-section__header">
-        <h2 className="os-section__title">Recent Sessions</h2>
+        <h2 className="os-section__title">Recent sessions</h2>
         <Link to="/t/attendance" className="os-text-xs os-c-accent os-no-underline">View all →</Link>
       </div>
       {sessions.length === 0 ? (

@@ -135,3 +135,44 @@ $os-marks-context-bar-h: 5.5rem;
 }
 
 .os-section__notice { margin: 0 1.5rem 1rem; }
+
+// Phones: every DataGrid row becomes a card with each cell labelled by its column header.
+@media (max-width: 42rem) {
+  .os-table.os-table--stack {
+    thead { display: none; }
+    tbody, tr, td { display: block; width: 100%; }
+
+    tbody tr {
+      border: 1px solid var(--os-border-subtle);
+      margin: 0 0 0.75rem;
+      padding: 0.5rem 0.75rem;
+      background: var(--os-layer);
+    }
+
+    td {
+      border: none;
+      padding: 0.375rem 0;
+      text-align: left;
+    }
+
+    td[data-label] {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+
+      &::before {
+        content: attr(data-label);
+        flex-shrink: 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--os-text-secondary);
+      }
+    }
+
+    // The checkbox cell has no label; keep it compact at the top of the card.
+    td.cds--table-column-checkbox { padding: 0; }
+  }
+
+  .os-table-container { overflow-x: visible; }
+}

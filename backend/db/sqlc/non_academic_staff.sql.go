@@ -105,15 +105,27 @@ const listNonAcademicStaff = `-- name: ListNonAcademicStaff :many
 SELECT id, full_name, employee_number, designation, phone, joined_date, gender, house_id, employment_status, created_at, updated_at, COUNT(*) OVER () AS total FROM non_academic_staff
 WHERE ($1::text IS NULL OR full_name ILIKE '%' || $1::text || '%' OR employee_number ILIKE '%' || $1::text || '%')
   AND ($2::text IS NULL OR designation = $2::text)
-ORDER BY full_name ASC, id ASC
-LIMIT $3::int OFFSET $4::int
+ORDER BY
+    -- Whitelisted by httpx.ParseSort; an empty key keeps the default name order.
+    CASE WHEN $3::text = 'name' AND NOT $4::bool THEN full_name END ASC,
+    CASE WHEN $3::text = 'name' AND $4::bool THEN full_name END DESC,
+    CASE WHEN $3::text = 'employee' AND NOT $4::bool THEN employee_number END ASC,
+    CASE WHEN $3::text = 'employee' AND $4::bool THEN employee_number END DESC,
+    CASE WHEN $3::text = 'designation' AND NOT $4::bool THEN designation END ASC,
+    CASE WHEN $3::text = 'designation' AND $4::bool THEN designation END DESC,
+    CASE WHEN $3::text = 'joined' AND NOT $4::bool THEN joined_date END ASC,
+    CASE WHEN $3::text = 'joined' AND $4::bool THEN joined_date END DESC,
+    full_name ASC, id ASC
+LIMIT $6::int OFFSET $5::int
 `
 
 type ListNonAcademicStaffParams struct {
 	Search      pgtype.Text `json:"search"`
 	Designation pgtype.Text `json:"designation"`
-	PageLimit   int32       `json:"page_limit"`
+	SortKey     string      `json:"sort_key"`
+	SortDesc    bool        `json:"sort_desc"`
 	PageOffset  int32       `json:"page_offset"`
+	PageLimit   int32       `json:"page_limit"`
 }
 
 type ListNonAcademicStaffRow struct {
@@ -128,12 +140,21 @@ type ListNonAcademicStaffRow struct {
 	EmploymentStatus string             `json:"employment_status"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
-	// Hand-edited: excluded from JSON — read once for the page envelope's total.
-	Total int64 `json:"-"`
+	Total            int64              `json:"total"`
 }
 
+// Server-paginated (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 4).
+// The caller-supplied search term is escaped by the service layer
+// (httpx.EscapeLikeTerm) before it reaches here.
 func (q *Queries) ListNonAcademicStaff(ctx context.Context, arg ListNonAcademicStaffParams) ([]ListNonAcademicStaffRow, error) {
-	rows, err := q.db.Query(ctx, listNonAcademicStaff, arg.Search, arg.Designation, arg.PageLimit, arg.PageOffset)
+	rows, err := q.db.Query(ctx, listNonAcademicStaff,
+		arg.Search,
+		arg.Designation,
+		arg.SortKey,
+		arg.SortDesc,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

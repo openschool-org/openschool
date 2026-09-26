@@ -1,11 +1,10 @@
 import { NOTIFICATION_PRIORITY_TAG as PRIORITY_TAG } from "@/shared/lib/constants/tags";
-import { useMemo, useState } from "react";
-import { Tag, Dropdown, Button } from "@carbon/react";
+import { useState } from "react";
+import { Tag, Dropdown, Button, Pagination } from "@carbon/react";
 import { Archive, ArrowUpRight, Search } from "@carbon/icons-react";
 import { formatDateTime } from "@/shared/lib/date";
 import {
-  useMyNotifications,
-  useMyArchivedNotifications,
+  useInbox,
   useMarkNotificationRead,
   useArchiveNotification,
   useUnarchiveNotification,
@@ -14,12 +13,16 @@ import { CATEGORIES } from "@/features/notifications/api/notification";
 import type { MyNotification, NotificationCategory } from "@/features/notifications/api/notification";
 import EmptyState from "@/shared/ui/EmptyState";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
+import { usePageTitle } from "@/shared/hooks/usePageTitle";
+import { useDebounced } from "@/shared/hooks/useDebounced";
+import { useT } from "@/shared/i18n/useT";
+import { translateValue } from "@/shared/i18n/translateValue";
 
 type Tab = "unread" | "read" | "archived";
 
-const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES.map((c) => [c.value, c.label]));
 
 function NotificationRow({ n }: { n: MyNotification }) {
+  const { t } = useT();
   const markRead = useMarkNotificationRead();
   const archive = useArchiveNotification();
   const unarchive = useUnarchiveNotification();
@@ -33,14 +36,17 @@ function NotificationRow({ n }: { n: MyNotification }) {
           <span className="os-fw-600 os-text-md os-c-primary">{n.title}</span>
           {n.priority !== "normal" && (
             <Tag type={PRIORITY_TAG[n.priority]} size="sm">
-              {n.priority}
+              {translateValue(t, "priority", n.priority)}
             </Tag>
           )}
           <Tag type="blue" size="sm">
-            {CATEGORY_LABEL[n.category] ?? n.category}
+            {translateValue(t, "category", n.category)}
           </Tag>
           {!n.is_read && !n.is_archived && (
-            <span className="os-w-px-8 os-h-px-8 os-rounded-full os-bg-accent os-inline-block" />
+            <span className="os-w-px-8 os-h-px-8 os-rounded-full os-bg-accent os-inline-block" aria-hidden="true" />
+          )}
+          {!n.is_read && !n.is_archived && (
+            <span className="os-sr-only">{t("bell.unread")}</span>
           )}
         </div>
         <p className="os-mt-0 os-mx-0 os-mb-1h os-text-sm os-c-secondary os-lh-normal">{n.message}</p>
@@ -51,16 +57,16 @@ function NotificationRow({ n }: { n: MyNotification }) {
       <div className="os-flex os-col os-gap-1h os-items-end os-shrink-0">
         {!n.is_read && (
           <Button kind="ghost" size="sm" onClick={() => markRead.mutate(n.notification_id)}>
-            Mark read
+            {t("notif.markRead")}
           </Button>
         )}
         {n.is_archived ? (
           <Button kind="ghost" size="sm" renderIcon={ArrowUpRight} onClick={() => unarchive.mutate(n.notification_id)}>
-            Unarchive
+            {t("notif.unarchive")}
           </Button>
         ) : (
           <Button kind="ghost" size="sm" renderIcon={Archive} onClick={() => archive.mutate(n.notification_id)}>
-            Archive
+            {t("notif.archive")}
           </Button>
         )}
       </div>
@@ -69,47 +75,54 @@ function NotificationRow({ n }: { n: MyNotification }) {
 }
 
 export default function NotificationCenter() {
-  const { data: inbox, isLoading: inboxLoading } = useMyNotifications();
-  const { data: archived, isLoading: archivedLoading } = useMyArchivedNotifications();
+  const { t } = useT();
+  usePageTitle(t("nav.notifications"));
 
-  const [tab, setTab] = useState<Tab>("unread");
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<NotificationCategory | "">("");
+  const [tab, setTabState] = useState<Tab>("unread");
+  const [query, setQueryState] = useState("");
+  const [category, setCategoryState] = useState<NotificationCategory | "">("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const search = useDebounced(query, 250);
 
-  const isLoading = tab === "archived" ? archivedLoading : inboxLoading;
+  // Search, box and paging run on the server, so a long inbox never loads in one go.
+  const { data, isLoading } = useInbox({ box: tab, search, category, limit: pageSize, offset: (page - 1) * pageSize });
+  const filtered = data?.items ?? [];
+  const unreadCount = data?.counts.unread ?? 0;
+  const readCount = data?.counts.read ?? 0;
 
-  const filtered = useMemo(() => {
-    let list = tab === "archived" ? (archived ?? []) : (inbox ?? []);
-    if (tab === "unread") list = list.filter((n) => !n.is_read);
-    if (tab === "read") list = list.filter((n) => n.is_read);
-    if (category) list = list.filter((n) => n.category === category);
-    const q = query.trim().toLowerCase();
-    if (q) {
-      list = list.filter((n) => n.title.toLowerCase().includes(q) || n.message.toLowerCase().includes(q));
-    }
-    return [...list].sort((a, b) => b.sent_at.localeCompare(a.sent_at));
-  }, [inbox, archived, tab, category, query]);
-
-  const unreadCount = (inbox ?? []).filter((n) => !n.is_read).length;
-  const readCount = (inbox ?? []).filter((n) => n.is_read).length;
+  const setTab = (next: Tab) => {
+    setTabState(next);
+    setPage(1);
+  };
+  const setQuery = (next: string) => {
+    setQueryState(next);
+    setPage(1);
+  };
+  const setCategory = (next: NotificationCategory | "") => {
+    setCategoryState(next);
+    setPage(1);
+  };
 
   return (
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">Notification Centre</h1>
-          <p className="os-page__subtitle">Announcements and updates sent to you.</p>
+          <h1 className="os-page__title">{t("notif.title")}</h1>
+          <p className="os-page__subtitle">{t("notif.subtitle")}</p>
         </div>
       </div>
 
       <div className="os-section">
-        <div className="os-flex os-gap-2 os-pt-4 os-px-6 os-pb-0">
-          {(["unread", "read", "archived"] as Tab[]).map((t) => (
+        <div className="os-flex os-gap-2 os-pt-4 os-px-6 os-pb-0" role="group" aria-label={t("notif.filters")}>
+          {(["unread", "read", "archived"] as Tab[]).map((key) => (
             <button
-              key={t}
-              onClick={() => setTab(t)} className={`os-pill os-px-4${tab === t ? " is-active" : ""}`}
+              type="button"
+              key={key}
+              onClick={() => setTab(key)} className={`os-pill os-px-4${tab === key ? " is-active" : ""}`}
+              aria-pressed={tab === key}
             >
-              {t === "unread" ? `Unread (${unreadCount})` : t === "read" ? `Read (${readCount})` : "Archived"}
+              {key === "unread" ? t("notif.tabUnread", { count: unreadCount }) : key === "read" ? t("notif.tabRead", { count: readCount }) : t("notif.tabArchived")}
             </button>
           ))}
         </div>
@@ -119,7 +132,8 @@ export default function NotificationCenter() {
             <Search size={16} className="os-search__icon" />
             <input
               className="os-search__input"
-              placeholder="Search notifications…"
+              placeholder={t("notif.search")}
+              aria-label={t("notif.search")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -127,10 +141,11 @@ export default function NotificationCenter() {
           <div className="os-w-16">
             <Dropdown
               id="notification-category-filter"
-              titleText=""
-              label="All categories"
+              titleText={t("notif.category")}
+              hideLabel
+              label={t("notif.allCategories")}
               items={["", ...CATEGORIES.map((c) => c.value)]}
-              itemToString={(item) => (item ? CATEGORY_LABEL[item as string] : "All categories")}
+              itemToString={(item) => (item ? translateValue(t, "category", item as string) : t("notif.allCategories"))}
               selectedItem={category}
               onChange={({ selectedItem }) => setCategory((selectedItem as NotificationCategory | "") ?? "")}
             />
@@ -141,13 +156,9 @@ export default function NotificationCenter() {
           <LoadingSpinner />
         ) : filtered.length === 0 ? (
           <EmptyState
-            title={tab === "archived" ? "No archived notifications" : "You're all caught up"}
+            title={tab === "archived" ? t("notif.archivedEmpty") : t("notif.caughtUp")}
             description={
-              tab === "unread"
-                ? "New notifications will appear here."
-                : tab === "archived"
-                  ? "Notifications you archive will show up here."
-                  : "Notifications you've read will show up here."
+              tab === "unread" ? t("notif.unreadEmptyDesc") : tab === "archived" ? t("notif.archivedEmptyDesc") : t("notif.readEmptyDesc")
             }
           />
         ) : (
@@ -155,6 +166,18 @@ export default function NotificationCenter() {
             {filtered.map((n) => (
               <NotificationRow key={n.recipient_id} n={n} />
             ))}
+            {(data?.total ?? 0) > pageSize && (
+              <Pagination
+                totalItems={data?.total ?? 0}
+                page={page}
+                pageSize={pageSize}
+                pageSizes={[25, 50, 100]}
+                onChange={({ page: p, pageSize: ps }) => {
+                  setPage(ps === pageSize ? p : 1);
+                  setPageSize(ps);
+                }}
+              />
+            )}
           </div>
         )}
       </div>

@@ -12,6 +12,7 @@ import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import SectionHeader from "@/shared/ui/SectionHeader";
 import InfoRow from "@/shared/ui/InfoRow";
+import { usePageTitle } from "@/shared/hooks/usePageTitle";
 
 // "10A" reads as "Grade 10-A" in the banner.
 function formatClassLabel(name: string) {
@@ -25,6 +26,7 @@ export default function ClassDetail() {
   const initialTab = (location.state as { tab?: string } | null)?.tab === "attendance" ? 1 : 0;
   const detail = useClassDetail(id);
   const cls = detail.cls.data;
+  usePageTitle(cls ? `Class ${cls.name}` : null);
   const m = useClassDetailModals(id, cls, detail);
   const { names, formTeacher, girlMonitor, boyMonitor } = detail;
 
@@ -55,10 +57,10 @@ export default function ClassDetail() {
           {names.homeClassroom && <Tag type="teal" size="sm">{names.homeClassroom}</Tag>}
           <Button renderIcon={Edit} kind="ghost" size="sm" onClick={m.openEdit}>Edit</Button>
           <Button renderIcon={UserMultiple} kind="ghost" size="sm" onClick={m.openTeacher}>
-            {formTeacher ? "Change Teacher" : "Assign Teacher"}
+            {formTeacher ? "Change teacher" : "Assign teacher"}
           </Button>
           <Button renderIcon={UserFollow} kind="ghost" size="sm" onClick={m.openMonitors}>
-            {girlMonitor || boyMonitor ? "Change Monitors" : "Assign Monitors"}
+            {girlMonitor || boyMonitor ? "Change monitors" : "Assign monitors"}
           </Button>
           <Button renderIcon={ArrowLeft} kind="secondary" size="sm" as={Link} to="/classes">Back</Button>
         </div>
@@ -72,7 +74,7 @@ export default function ClassDetail() {
                 <Tab>Students</Tab>
                 <Tab>Attendance</Tab>
                 <Tab>Marks</Tab>
-                <Tab>Subjects & Teachers</Tab>
+                <Tab>Subjects & teachers</Tab>
                 <Tab>Details</Tab>
               </TabList>
               <TabPanels>
@@ -124,18 +126,18 @@ export default function ClassDetail() {
 
           <div>
             <div className="os-section">
-              <SectionHeader title="Quick Info" />
+              <SectionHeader title="Quick info" />
               <div className="os-section__body os-py-3 os-px-6">
                 <InfoRow label="Grade" value={names.grade ?? "-"} />
                 <InfoRow label="Stream" value={names.stream ?? "None"} />
                 <InfoRow label="Medium" value={names.medium ?? "Not designated"} />
-                <InfoRow label="Home Classroom" value={names.homeClassroom ?? "Not assigned"} />
+                <InfoRow label="Home classroom" value={names.homeClassroom ?? "Not assigned"} />
                 <InfoRow label="Enrolled" value={students?.length ?? 0} />
-                <InfoRow label="Academic Year" value={names.academicYear ?? "-"} divider={false} />
+                <InfoRow label="Academic year" value={names.academicYear ?? "-"} divider={false} />
               </div>
             </div>
             <div className="os-section">
-              <SectionHeader title="Attendance Summary" />
+              <SectionHeader title="Attendance summary" />
               <div className="os-section__body os-py-3 os-px-6">
                 <InfoRow label="Total sessions" value={sessions?.length ?? 0} bold divider={false} />
                 <div className="os-mt-2">

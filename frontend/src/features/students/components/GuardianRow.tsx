@@ -48,12 +48,12 @@ export default function GuardianRow({
       <div className="os-flex os-gap-2 os-shrink-0">
         {!g.is_primary_contact && (
           <Button kind="ghost" size="sm" onClick={onSetPrimary} disabled={isSettingPrimary}>
-            Set Primary
+            Set primary
           </Button>
         )}
         {!g.user_id && (
           <Button renderIcon={UserFollow} kind="ghost" size="sm" onClick={onSetUpLogin}>
-            Set Up Login
+            Set up login
           </Button>
         )}
         <Button kind="danger--ghost" size="sm" onClick={onRemove}>

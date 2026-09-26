@@ -14,13 +14,13 @@ import type { RecipientRule, RecipientRuleType } from "@/features/notifications/
 
 const RULE_TYPES: { value: RecipientRuleType; label: string }[] = [
   { value: "everyone", label: "Everyone" },
-  { value: "grade", label: "By Grade" },
-  { value: "class", label: "By Class" },
-  { value: "grade_section", label: "By Grade Section" },
-  { value: "subject", label: "By Subject" },
-  { value: "student", label: "Specific Student" },
-  { value: "guardian", label: "Specific Guardian" },
-  { value: "teacher", label: "Specific Teacher" },
+  { value: "grade", label: "By grade" },
+  { value: "class", label: "By class" },
+  { value: "grade_section", label: "By grade section" },
+  { value: "subject", label: "By subject" },
+  { value: "student", label: "Specific student" },
+  { value: "guardian", label: "Specific guardian" },
+  { value: "teacher", label: "Specific teacher" },
 ];
 
 export default function RecipientPicker({
@@ -68,7 +68,7 @@ export default function RecipientPicker({
       onAdd({ type: "class", class_id: selectedId, label: cls ? `${cls.grade_name} - ${cls.name}` : "Class" });
     } else if (ruleType === "grade_section") {
       const section = gradeSections?.find((s) => s.id === selectedId);
-      onAdd({ type: "grade_section", grade_section_id: selectedId, label: section?.name ?? "Grade Section" });
+      onAdd({ type: "grade_section", grade_section_id: selectedId, label: section?.name ?? "Grade section" });
     } else if (ruleType === "subject") {
       const subject = subjects?.find((s) => s.id === selectedId);
       onAdd({

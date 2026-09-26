@@ -34,9 +34,9 @@ export default function Positions() {
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">Principal and VPs</h1>
-          <p className="os-page__subtitle">Principal and Vice Principals: permanent appointments that control notification reach, held until resignation or promotion.</p>
+          <p className="os-page__subtitle">Principal and vice principals. They decide who can send school-wide notices.</p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" onClick={() => setVpOpen(true)}>Add Vice Principal</Button>
+        <Button renderIcon={Add} kind="primary" size="md" onClick={() => setVpOpen(true)}>Add vice principal</Button>
       </div>
 
       {isError && <div className="os-mb-6"><ErrorMessage message="Could not load positions." onRetry={refetch} /></div>}
@@ -48,9 +48,9 @@ export default function Positions() {
           skeleton
         ) : !principal ? (
           <>
-            <EmptyState title="No Principal assigned" description="Assign the school's Principal." />
+            <EmptyState title="No principal assigned" description="Assign the school's Principal." />
             <div className="os-px-6 os-pb-5">
-              <Button kind="tertiary" size="sm" onClick={() => setPrincipalOpen(true)}>Assign Principal</Button>
+              <Button kind="tertiary" size="sm" onClick={() => setPrincipalOpen(true)}>Assign principal</Button>
             </div>
           </>
         ) : (
@@ -65,11 +65,11 @@ export default function Positions() {
       </div>
 
       <div className="os-section">
-        <SectionHeader title={<Title text="Vice Principals" />} meta={<span className="os-section__meta">{vicePrincipals.length}</span>} />
+        <SectionHeader title={<Title text="Vice principals" />} meta={<span className="os-section__meta">{vicePrincipals.length}</span>} />
         {isLoading ? (
           skeleton
         ) : vicePrincipals.length === 0 ? (
-          <EmptyState title="No Vice Principals yet" description="Add a Vice Principal and set their notification reach." />
+          <EmptyState title="No vice principals yet" description="Add a Vice Principal and set their notification reach." />
         ) : (
           vicePrincipals.map((vp) => (
             <div key={vp.id} className="os-list-row os-py-3 os-px-6">
@@ -88,7 +88,7 @@ export default function Positions() {
 
       <ConfirmDeleteModal
         open={!!vpToRemove}
-        title="Remove Vice Principal"
+        title="Remove vice principal"
         description={<>Remove <strong>{vpToRemove?.teacher_name}</strong> as Vice Principal? They will stop receiving notifications for their assigned scope.</>}
         confirmLabel="Remove"
         pendingLabel="Removing…"

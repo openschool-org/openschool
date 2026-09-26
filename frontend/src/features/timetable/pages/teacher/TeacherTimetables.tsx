@@ -20,7 +20,7 @@ export default function TeacherTimetables() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">All Timetables</h1>
+          <h1 className="os-page__title">All timetables</h1>
           <p className="os-page__subtitle">Every class timetable for {currentYear?.label ?? "the current academic year"}.</p>
         </div>
       </div>

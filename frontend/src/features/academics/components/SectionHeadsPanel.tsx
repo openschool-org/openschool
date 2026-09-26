@@ -41,7 +41,7 @@ function useSectionHeadRows() {
 
 export default function SectionHeadsPanel() {
   const { data: currentYear } = useCurrentAcademicYear();
-  // One search box's worth of state shared by every row's combobox below —
+  // One search box's worth of state shared by every row's combobox below -
   // each row assigns a different grade/stream, but they all pick from the
   // same searched teacher list, so typing in one narrows all of them.
   const [teacherSearch, setTeacherSearch] = useState("");
@@ -58,7 +58,7 @@ export default function SectionHeadsPanel() {
   return (
     <div className="os-section">
       <div className="os-section__header">
-        <h2 className="os-section__title">Section Heads (Teachers in Charge)</h2>
+        <h2 className="os-section__title">Section heads (teachers in charge)</h2>
         {currentYear && <span className="os-text-xs os-c-tertiary">{currentYear.label}</span>}
       </div>
 
@@ -113,7 +113,7 @@ interface SectionHeadRowProps {
   removeDisabled: boolean;
 }
 
-// One row's own component so it can fetch its own current teacher by id —
+// One row's own component so it can fetch its own current teacher by id -
 // the shared search-page `teachers` list may not contain it (no search
 // typed yet, or a term that doesn't match), which would otherwise resolve
 // the combobox to no selection and show an empty field for an existing

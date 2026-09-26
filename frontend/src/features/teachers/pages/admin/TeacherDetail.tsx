@@ -24,6 +24,7 @@ import { splitFullName } from "@/shared/lib/name";
 import { EMPLOYMENT_STATUSES } from "@/features/teachers/constants";
 import TeacherProfileSections from "@/features/teachers/components/TeacherProfileSections";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import { usePageTitle } from "@/shared/hooks/usePageTitle";
 
 function teacherToForm(t: Teacher) {
   return {
@@ -40,6 +41,7 @@ export default function TeacherDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data: teacher, isLoading, isError, refetch } = useTeacher(id);
+  usePageTitle(teacher?.full_name);
   const { data: subjects } = useTeacherSubjects(id);
   const deleteTeacher = useDeleteTeacher();
   const updateTeacher = useUpdateTeacher();
@@ -141,7 +143,7 @@ export default function TeacherDetail() {
                 onClick={() => setConfirmEditOpen(true)}
                 disabled={!isValid || updateTeacher.isPending}
               >
-                {updateTeacher.isPending ? "Saving…" : "Save Changes"}
+                {updateTeacher.isPending ? "Saving…" : "Save changes"}
               </Button>
             </>
           ) : (

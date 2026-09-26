@@ -6,6 +6,7 @@ import { TITLES, EMPLOYMENT_STATUSES } from "@/features/teachers/constants";
 import TeacherSubjectsSection from "@/features/teachers/components/TeacherSubjectsSection";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import { formatDate } from "@/shared/lib/date";
+import InfoTip from "@/shared/ui/InfoTip";
 
 export type TeacherProfileForm = {
   given_name: string;
@@ -60,13 +61,13 @@ export default function TeacherProfileSections(p: Props) {
               <RadioButton id="edit-gender-male" labelText="Male" value="male" />
               <RadioButton id="edit-gender-female" labelText="Female" value="female" />
             </RadioButtonGroup>
-            <TextInput {...field("given-name", "First Name", "given_name")} />
-            <TextInput {...field("family-name", "Last Name", "family_name")} />
-            <TextInput id="employee-number" labelText="Employee Number" value={teacher.employee_number} readOnly />
+            <TextInput {...field("given-name", "First name", "given_name")} />
+            <TextInput {...field("family-name", "Last name", "family_name")} />
+            <TextInput id="employee-number" labelText="Employee number" value={teacher.employee_number} readOnly />
             <TextInput id="email" labelText="Email" value={teacher.email ?? "-"} readOnly />
             <TextInput {...field("phone", "Phone", "phone_number")} />
-            <TextInput {...field("nic-number", "NIC Number", "nic_number")} />
-            <TextInput id="joined-date" labelText="Joined Date" value={teacher.joined_date ?? "-"} readOnly />
+            <TextInput {...field("nic-number", "NIC number", "nic_number")} />
+            <TextInput id="joined-date" labelText="Joined date" value={teacher.joined_date ?? "-"} readOnly />
             <TextInput id="created-at" labelText="Created" value={formatDate(teacher.created_at)} readOnly />
           </div>
         </div>
@@ -87,8 +88,8 @@ export default function TeacherProfileSections(p: Props) {
           )}
           <Select
             id="teacher-house"
-            labelText="Assigned house"
-            helperText="Assigned automatically to keep houses balanced. Only a System Administrator can change it. Every change is recorded in the audit log."
+            labelText={<>Assigned house <InfoTip>Only a system administrator can change it. Every change is recorded in the audit log.</InfoTip></>}
+            helperText="Assigned automatically to balance houses."
             value={teacher.house_id ?? ""}
             disabled={p.updateHouse.isPending}
             onChange={(e) => p.updateHouse.mutate({ id: teacher.id, houseId: e.target.value })}
@@ -101,7 +102,7 @@ export default function TeacherProfileSections(p: Props) {
 
       <div className="os-section">
         <div className="os-section__header">
-          <h2 className="os-section__title">Employment Status</h2>
+          <h2 className="os-section__title">Employment status</h2>
         </div>
         <div className="os-section__body">
           <Select

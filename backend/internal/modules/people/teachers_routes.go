@@ -15,6 +15,7 @@ import (
 // shared limit/offset/search contract plus the filters this list supports.
 type TeacherListParams struct {
 	httpx.PageParams
+	Sort   httpx.SortParams
 	Status string
 }
 
@@ -169,7 +170,7 @@ func teacherActor(c *gin.Context) (uuid.UUID, bool) {
 
 func RegisterTeacherReadRoutes(teacherOrAdmin, admin *gin.RouterGroup, reader TeacherReader) {
 	teacherOrAdmin.GET("/teachers", func(c *gin.Context) {
-		params := TeacherListParams{PageParams: httpx.ParsePage(c), Status: c.Query("status")}
+		params := TeacherListParams{PageParams: httpx.ParsePage(c), Sort: httpx.ParseSort(c, "name", "employee", "joined", "status"), Status: c.Query("status")}
 		value, err := reader.ListPage(c, params)
 		readTeachers(c, value, err)
 	})

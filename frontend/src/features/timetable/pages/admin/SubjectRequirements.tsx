@@ -14,6 +14,7 @@ import RemoveIconButton from "@/shared/ui/RemoveIconButton";
 import type { Grade } from "@/features/academics/api/grade";
 import type { SubjectPeriodRequirement } from "@/features/timetable/api/subjectPeriodRequirement";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import InfoTip from "@/shared/ui/InfoTip";
 
 export default function SubjectRequirements({ inline = false }: { inline?: boolean }) {
   const { data: currentYear } = useCurrentAcademicYear();
@@ -59,14 +60,11 @@ export default function SubjectRequirements({ inline = false }: { inline?: boole
       {!inline && (
         <div className="os-page__header">
           <div className="os-page__header-left">
-            <h1 className="os-page__title">Subject Period Requirements</h1>
-            <p className="os-page__subtitle">
-              Weekly periods required per subject, per grade. The timetable validator checks each class's timetable
-              against these before it can be submitted for review. Set "Double blocks / week" for subjects that run
-              some periods as one back-to-back pair (common for AL Grade 12/13 subjects) — e.g. 2 blocks out of 6
-              periods/week pairs up 4 of them and leaves the other 2 as regular singles. The auto-generator places
-              exactly that many double blocks, not all of the subject's periods.
-            </p>
+            <h1 className="os-page__title">Subject period requirements</h1>
+            <div className="os-page__subtitle os-page__subtitle--tip">
+              Weekly periods each grade needs per subject.
+              <InfoTip>A class timetable must meet these before it can go for review. Double blocks are back-to-back pairs: 2 blocks out of 6 periods pairs up 4 and leaves 2 single. The generator places exactly that many.</InfoTip>
+            </div>
           </div>
         </div>
       )}

@@ -43,7 +43,13 @@ WHERE (
     sqlc.narg(orphans_only)::bool IS NOT TRUE
     OR NOT EXISTS (SELECT 1 FROM student_guardians sg WHERE sg.guardian_id = g.id)
   )
-ORDER BY g.full_name ASC, g.id ASC
+ORDER BY
+    -- Whitelisted by httpx.ParseSort; an empty key keeps the default name order.
+    CASE WHEN sqlc.arg(sort_key)::text = 'name' AND NOT sqlc.arg(sort_desc)::bool THEN g.full_name END ASC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'name' AND sqlc.arg(sort_desc)::bool THEN g.full_name END DESC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'relationship' AND NOT sqlc.arg(sort_desc)::bool THEN g.relationship END ASC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'relationship' AND sqlc.arg(sort_desc)::bool THEN g.relationship END DESC,
+    g.full_name ASC, g.id ASC
 LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int;
 
 -- name: FindGuardianDuplicateCandidates :many
@@ -164,3 +170,34 @@ SELECT EXISTS (
     WHERE g.user_id = $1
       AND sg.student_id = $2
 ) AS is_guardian;
+
+-- name: GetGuardianChildrenSummary :many
+-- One row per linked child so the parent dashboard costs one request however many children there are.
+SELECT
+    sg.student_id,
+    COALESCE(att.total, 0)::int AS sessions_this_month,
+    COALESCE(att.attended, 0)::int AS attended_this_month,
+    COALESCE(latest.term_name, '')::text AS latest_term_name,
+    COALESCE(latest.average_percent, 0)::float8 AS latest_average_percent,
+    (latest.term_name IS NOT NULL)::bool AS has_marks
+FROM guardians g
+JOIN student_guardians sg ON sg.guardian_id = g.id
+LEFT JOIN LATERAL (
+    SELECT COUNT(*) AS total,
+           COUNT(*) FILTER (WHERE ar.status IN ('present', 'late')) AS attended
+    FROM attendance_records ar
+    JOIN attendance_sessions s ON s.id = ar.session_id
+    WHERE ar.student_id = sg.student_id
+      AND s.date >= date_trunc('month', CURRENT_DATE)::date
+) att ON TRUE
+LEFT JOIN LATERAL (
+    SELECT t.name AS term_name,
+           ROUND((AVG(tm.marks / NULLIF(tm.max_marks, 0) * 100) FILTER (WHERE NOT tm.is_absent))::numeric, 1) AS average_percent
+    FROM term_marks tm
+    JOIN terms t ON t.id = tm.term_id
+    WHERE tm.student_id = sg.student_id
+    GROUP BY t.id, t.name, t.start_date
+    ORDER BY t.start_date DESC
+    LIMIT 1
+) latest ON TRUE
+WHERE g.user_id = $1;

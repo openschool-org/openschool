@@ -35,7 +35,7 @@ interface Props {
 }
 
 export default function TimetableCellModal({ cell, form, onFormChange, subjects, teachers, onTeacherSearch, classrooms, canClear, save, clear, onSave, onClear, onClose }: Props) {
-  const title = cell ? `${WEEKDAYS.find((d) => d.value === cell.day)?.label} — Period ${cell.period}` : "";
+  const title = cell ? `${WEEKDAYS.find((d) => d.value === cell.day)?.label} - Period ${cell.period}` : "";
   return (
     <ComposedModal open={!!cell} size="sm" onClose={onClose} aria-label={title}>
       <ModalHeader title={title} />
@@ -44,7 +44,7 @@ export default function TimetableCellModal({ cell, form, onFormChange, subjects,
         <MutationErrorNotification isError={clear.isError} error={clear.error} title="Could not clear" />
         <div className="os-grid os-gap-4">
           <EntityCombobox id="cell-subject" items={subjects} selectedId={form.subjectId} onSelect={(subjectId) => onFormChange({ ...form, subjectId })} getId={(s) => s.id} itemToString={(s) => s.name} labelText="Subject" placeholder="Search subjects…" />
-          <EntityCombobox id="cell-teacher" items={teachers} selectedId={form.teacherId} onSelect={(teacherId) => onFormChange({ ...form, teacherId })} onSearch={onTeacherSearch} getId={(t) => t.id} itemToString={(t) => `${t.full_name} — ${t.employee_number}`} labelText="Teacher" placeholder="Search teachers…" />
+          <EntityCombobox id="cell-teacher" items={teachers} selectedId={form.teacherId} onSelect={(teacherId) => onFormChange({ ...form, teacherId })} onSearch={onTeacherSearch} getId={(t) => t.id} itemToString={(t) => `${t.full_name} - ${t.employee_number}`} labelText="Teacher" placeholder="Search teachers…" />
           <EntityCombobox id="cell-classroom" items={classrooms} selectedId={form.classroomId} onSelect={(classroomId) => onFormChange({ ...form, classroomId })} getId={(c) => c.id} itemToString={(c) => c.name} labelText="Classroom (optional)" placeholder="Search classrooms…" />
         </div>
       </ModalBody>

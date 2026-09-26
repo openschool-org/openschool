@@ -264,3 +264,20 @@ func clamp01(v float64) float64 {
 	}
 	return v
 }
+
+// Title is the agent's name on the Automation panel.
+func (a *AcademicDeliveryAgent) Title() string { return "Academic delivery" }
+
+// CanDisable reports whether an admin may switch this agent off.
+func (a *AcademicDeliveryAgent) CanDisable() bool { return true }
+
+// Checks lists what this agent checks and where each finding is shown.
+func (a *AcademicDeliveryAgent) Checks() []CheckInfo {
+	return []CheckInfo{
+		{Key: "missing_attendance", Title: "Attendance taken today", Description: "Every class has an attendance session today.", FindingTitle: "Classes missing today's attendance session", Pages: []string{"/attendance"}},
+		{Key: "attendance_compliance", Title: "Attendance taken regularly", Description: "Classes take attendance on most school days.", FindingTitle: "Classes with inconsistent attendance-taking", Pages: []string{"/attendance"}},
+		{Key: "stale_attendance", Title: "Sessions are finished", Description: "Attendance sessions are not left half marked.", FindingTitle: "Incomplete attendance sessions", Pages: []string{"/attendance"}},
+		{Key: "marks_deadline", Title: "Marks before the term ends", Description: "Terms close to their end date have marks entered.", FindingTitle: "Terms nearing deadline with no marks entered", Pages: []string{"/classes"}},
+		{Key: "marks_pace", Title: "Marks entry on pace", Description: "Marks entry keeps up with how far the term has gone.", FindingTitle: "Terms falling behind on marks-entry pace", Pages: []string{"/classes"}},
+	}
+}

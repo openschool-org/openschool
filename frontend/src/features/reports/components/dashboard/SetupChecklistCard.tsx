@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { CheckmarkFilled, CircleOutline, ChevronRight } from "@carbon/icons-react";
+import ProgressBar from "@/shared/ui/ProgressBar";
 
 export interface SetupChecklistItem {
   label: string;
@@ -11,7 +12,6 @@ export default function SetupChecklistCard({ items }: { items: SetupChecklistIte
   const doneCount = items.filter((i) => i.done).length;
   if (doneCount === items.length) return null;
 
-  const pct = Math.round((doneCount / items.length) * 100);
 
   return (
     <div className="os-section os-mb-6">
@@ -20,8 +20,8 @@ export default function SetupChecklistCard({ items }: { items: SetupChecklistIte
         <span className="os-section__meta">{doneCount} of {items.length} done</span>
       </div>
       <div className="os-p-4">
-        <div className="os-h-px-6 os-bg-border-subtle os-rounded-md os-mb-4">
-          <div className="os-progress__bar" style={{ width: `${pct}%` }} />
+        <div className="os-mb-4">
+          <ProgressBar value={doneCount} max={items.length} label="Setup progress" />
         </div>
         <div>
           {items.map((item) => (

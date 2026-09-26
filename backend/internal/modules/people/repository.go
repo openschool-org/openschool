@@ -62,7 +62,7 @@ func (r *studentRepository) ListPage(c context.Context, p StudentListParams) (an
 	params := db.ListStudentsPageParams{
 		Search: nullableText(p.Search), Grade: nullableText(p.Grade), Class: nullableText(p.Class),
 		Gender: nullableText(p.Gender), House: nullableText(p.House),
-		PageLimit: p.Limit, PageOffset: p.Offset,
+		PageLimit: p.Limit, PageOffset: p.Offset, SortKey: p.Sort.Key, SortDesc: p.Sort.Desc,
 	}
 	rows, err := r.queries.ListStudentsPage(c, params)
 	if err != nil {
@@ -294,7 +294,7 @@ func (r *nonAcademicStaffRepository) staffRecord(c context.Context, id uuid.UUID
 func (r *nonAcademicStaffRepository) listStaffPage(c context.Context, p StaffListParams) (any, error) {
 	params := db.ListNonAcademicStaffParams{
 		Search: nullableText(p.Search), Designation: nullableText(p.Designation),
-		PageLimit: p.Limit, PageOffset: p.Offset,
+		PageLimit: p.Limit, PageOffset: p.Offset, SortKey: p.Sort.Key, SortDesc: p.Sort.Desc,
 	}
 	rows, err := r.queries.ListNonAcademicStaff(c, params)
 	if err != nil {
@@ -391,7 +391,7 @@ func (r *guardianReader) Get(c context.Context, id uuid.UUID) (any, error) {
 func (r *guardianReader) ListPage(c context.Context, p GuardianListParams) (any, error) {
 	params := db.ListGuardiansParams{
 		Search: nullableText(p.Search), OrphansOnly: pgtype.Bool{Bool: p.OrphansOnly, Valid: p.OrphansOnly},
-		PageLimit: p.Limit, PageOffset: p.Offset,
+		PageLimit: p.Limit, PageOffset: p.Offset, SortKey: p.Sort.Key, SortDesc: p.Sort.Desc,
 	}
 	rows, err := r.queries.ListGuardians(c, params)
 	if err != nil {
@@ -428,6 +428,9 @@ func NewGuardianAccess(pool *pgxpool.Pool) ports.GuardianAccess {
 }
 func (r *guardianAccess) ChildrenForUser(c context.Context, id uuid.UUID) (any, error) {
 	return r.queries.ListStudentsByGuardianUserID(c, pgtype.UUID{Bytes: id, Valid: true})
+}
+func (r *guardianAccess) ChildrenSummaryForUser(c context.Context, id uuid.UUID) (any, error) {
+	return r.queries.GetGuardianChildrenSummary(c, pgtype.UUID{Bytes: id, Valid: true})
 }
 func (r *guardianAccess) IsGuardianOfStudent(c context.Context, user, student uuid.UUID) (bool, error) {
 	return r.queries.IsGuardianOfStudent(c, db.IsGuardianOfStudentParams{UserID: pgtype.UUID{Bytes: user, Valid: true}, StudentID: student})
@@ -474,7 +477,7 @@ func (r *teacherReader) Get(c context.Context, id uuid.UUID) (any, error) {
 func (r *teacherReader) ListPage(c context.Context, p TeacherListParams) (any, error) {
 	params := db.ListTeachersPageParams{
 		Search: nullableText(p.Search), Status: nullableText(p.Status),
-		PageLimit: p.Limit, PageOffset: p.Offset,
+		PageLimit: p.Limit, PageOffset: p.Offset, SortKey: p.Sort.Key, SortDesc: p.Sort.Desc,
 	}
 	rows, err := r.queries.ListTeachersPage(c, params)
 	if err != nil {

@@ -21,6 +21,7 @@ import EntityCombobox from "@/shared/ui/EntityCombobox";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import type { TimetableWithClass } from "@/features/timetable/api/timetable";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import InfoTip from "@/shared/ui/InfoTip";
 
 const statusTag = (st: string) => TIMETABLE_STATUS_TAG[st as keyof typeof TIMETABLE_STATUS_TAG];
 
@@ -96,10 +97,10 @@ export default function Timetables({ inline = false }: { inline?: boolean }) {
         <div className="os-page__header">
           <div className="os-page__header-left">
             <h1 className="os-page__title">Timetables</h1>
-            <p className="os-page__subtitle">
-              Every class timetable for {currentYear?.label ?? "the current academic year"}. Only the published
-              version is visible to teachers, students and guardians.
-            </p>
+            <div className="os-page__subtitle os-page__subtitle--tip">
+              Class timetables for {currentYear?.label ?? "the current academic year"}.
+              <InfoTip>Only the published version is shown to teachers, students and guardians.</InfoTip>
+            </div>
           </div>
         </div>
       )}
@@ -119,7 +120,7 @@ export default function Timetables({ inline = false }: { inline?: boolean }) {
             />
           </div>
           <Button renderIcon={Add} kind="primary" onClick={handleCreate} disabled={!newClassId || createTimetable.isPending}>
-            {createTimetable.isPending ? "Creating…" : "New Draft"}
+            {createTimetable.isPending ? "Creating…" : "New draft"}
           </Button>
         </div>
 
@@ -169,7 +170,7 @@ export default function Timetables({ inline = false }: { inline?: boolean }) {
         errorFallback="Failed to copy timetable"
       >
         <p className="os-text-sm os-c-secondary os-mb-4">
-          Copies {copySource?.grade_name} — {copySource?.class_name}'s periods into a new draft for another class, for example carrying 6A's timetable over to 7A in a new year.
+          Copies {copySource?.grade_name} - {copySource?.class_name}'s periods into a new draft for another class, for example carrying 6A's timetable over to 7A in a new year.
         </p>
         <EntityCombobox id="copy-target-class" labelText="Target class" items={classes ?? []} selectedId={copyTargetClassId} onSelect={setCopyTargetClassId} getId={(c) => c.id} itemToString={(c) => `${c.grade_name} - ${c.name}`} placeholder="Search classes…" />
       </FormModal>
@@ -179,7 +180,7 @@ export default function Timetables({ inline = false }: { inline?: boolean }) {
         title="Delete timetable"
         description={
           <>
-            Delete the {deleteTarget?.grade_name} — {deleteTarget?.class_name} v{deleteTarget?.version} timetable?
+            Delete the {deleteTarget?.grade_name} - {deleteTarget?.class_name} v{deleteTarget?.version} timetable?
             This cannot be undone.
           </>
         }

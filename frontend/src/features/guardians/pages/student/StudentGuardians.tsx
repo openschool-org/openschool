@@ -5,8 +5,10 @@ import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import SectionCard from "@/shared/ui/SectionCard";
+import { useT } from "@/shared/i18n/useT";
 
 export default function StudentGuardians() {
+  const { t } = useT();
   const profile = useMyStudentProfile();
   const guardians = useGuardiansByStudent(profile.data?.id ?? "");
 
@@ -14,17 +16,17 @@ export default function StudentGuardians() {
   if (profile.isError || guardians.isError) {
     return (
       <div className="os-p-8">
-        <ErrorMessage message="Failed to load guardians" onRetry={() => { profile.refetch(); guardians.refetch(); }} />
+        <ErrorMessage message={t("guardians.loadFailed")} onRetry={() => { profile.refetch(); guardians.refetch(); }} />
       </div>
     );
   }
   return (
     <div className="os-p-8">
-      <SectionCard title="My Guardians" flush>
+      <SectionCard title={t("guardians.mine")} flush>
         {guardians.data?.length ? (
           <GuardiansTable rows={guardians.data} />
         ) : (
-          <EmptyState title="No guardians linked yet" description="Your linked guardians will appear here once configured by the administration." />
+          <EmptyState title={t("guardians.emptyTitle")} description={t("guardians.emptyStudent")} />
         )}
       </SectionCard>
     </div>

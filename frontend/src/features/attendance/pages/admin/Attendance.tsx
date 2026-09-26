@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { EventSchedule, CheckmarkFilled, WarningFilled, AddAlt } from "@carbon/icons-react";
-import { Button, Tag, DatePicker, DatePickerInput } from "@carbon/react";
+import { Button, Tag } from "@carbon/react";
 import { useDailySessions, useDeleteSession, useCreateSession } from "@/features/attendance/queries/useAttendance";
 import { useCurrentClasses } from "@/features/academics/queries/useClasses";
 import { useRole } from "@/shared/auth/useRole";
 import type { DailySession } from "@/features/attendance/api/attendance";
-import { toYmd, todayISODate, isLockedAfter24Hours, formatLongDate } from "@/shared/lib/date";
+import { todayISODate, isLockedAfter24Hours, formatLongDate } from "@/shared/lib/date";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 import StatCardSkeleton from "@/shared/ui/StatCardSkeleton";
@@ -17,6 +17,7 @@ import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import AgentFindingsBanner from "@/features/notifications/components/AgentFindingsBanner";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import { useToast } from "@/shared/ui/toast/useToast";
+import DateField from "@/shared/ui/DateField";
 
 const HEADERS = ["Class", "Grade", "Teacher", "Records", "Status", "Actions"];
 
@@ -106,26 +107,13 @@ export default function Attendance() {
           <p className="os-page__subtitle">{formatLongDate(date)}</p>
         </div>
         <div className="os-min-w-12">
-          <DatePicker
-            datePickerType="single"
-            dateFormat="Y-m-d"
-            value={date}
-            onChange={(dates) => {
-              if (dates[0]) setDate(toYmd(dates[0]));
-            }}
-          >
-            <DatePickerInput id="attendance-date" labelText="Attendance date" hideLabel placeholder="YYYY-MM-DD" size="lg" />
-          </DatePicker>
+          <DateField value={date} onChange={(ymd) => {
+              if (ymd) setDate(ymd);
+            }} id="attendance-date" labelText="Attendance date" hideLabel size="lg" />
         </div>
       </div>
 
-      <AgentFindingsBanner
-        titles={[
-          "Incomplete attendance sessions",
-          "Classes missing today's attendance session",
-          "Classes with inconsistent attendance-taking",
-        ]}
-      />
+      <AgentFindingsBanner />
 
       {!isToday && (
         <div className="os-mb-4">

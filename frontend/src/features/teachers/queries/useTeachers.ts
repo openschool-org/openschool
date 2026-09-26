@@ -5,8 +5,8 @@ import { teacherKeys } from "@/features/teachers/keys";
 import { useCurrentClasses } from "@/features/academics/queries/useClasses";
 import { useInvalidate } from "@/shared/api/useInvalidate";
 
-// Exposed as options so callers outside this feature — e.g. the sidebar's
-// prefetch-on-hover — can use it without importing this feature's api/
+// Exposed as options so callers outside this feature - e.g. the sidebar's
+// prefetch-on-hover - can use it without importing this feature's api/
 // module directly (the layer rule: never api/ across a feature boundary).
 export const teachersPageOptions = (params: TeacherListParams = {}) =>
   queryOptions({ queryKey: teacherKeys.list(params), queryFn: () => teacherApi.list(params) });
@@ -17,7 +17,7 @@ export const useTeachers = (params: TeacherListParams = {}) =>
   useQuery({ ...teachersPageOptions(params), placeholderData: keepPreviousData });
 
 // Exposed as options (like teachersPageOptions above) so a name-lookup-by-id
-// elsewhere — e.g. resolving a class's form_teacher_id — can use useQueries
+// elsewhere - e.g. resolving a class's form_teacher_id - can use useQueries
 // without importing this feature's api/ module directly (the layer rule:
 // never api/ across a feature boundary).
 export const teacherDetailOptions = (id: string) =>

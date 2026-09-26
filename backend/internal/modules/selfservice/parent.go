@@ -65,6 +65,22 @@ func (h *ParentHandler) ListChildren(c *gin.Context) {
 	c.JSON(http.StatusOK, children)
 }
 
+// ChildrenSummary returns this month's attendance and the latest term average for every linked child in one call.
+func (h *ParentHandler) ChildrenSummary(c *gin.Context) {
+	callerID, ok := h.callerID(c)
+	if !ok {
+		return
+	}
+
+	summary, err := h.guardians.ChildrenSummaryForUser(c.Request.Context(), callerID)
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, summary)
+}
+
 // ChildAttendance returns a linked child's attendance history.
 func (h *ParentHandler) ChildAttendance(c *gin.Context) {
 	callerID, ok := h.callerID(c)

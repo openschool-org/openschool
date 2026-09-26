@@ -67,10 +67,10 @@ export default function ClassMarks({
 
   return (
     <div>
-      <AgentFindingsBanner titles={["Terms nearing deadline with no marks entered", "Terms falling behind on marks-entry pace"]} />
+      <AgentFindingsBanner />
       <div className="os-section">
         <SectionHeader
-          title="Term Marks"
+          title="Term marks"
           className="os-wrap os-gap-3"
           meta={
             <div className="os-flex os-gap-3 os-wrap">
@@ -132,7 +132,7 @@ export default function ClassMarks({
             <table className="os-table os-table--no-hover">
               <thead>
                 <tr>
-                  <th>Index No.</th>
+                  <th>Index no.</th>
                   <th>Student</th>
                   <th className="os-w-8">Marks</th>
                   <th className="os-w-8">Out of</th>
@@ -216,7 +216,7 @@ export default function ClassMarks({
                 onClick={handleSave}
                 disabled={saveMarks.isPending}
               >
-                {saveMarks.isPending ? "Saving…" : "Save Marks"}
+                {saveMarks.isPending ? "Saving…" : "Save marks"}
               </Button>
             </div>
           </>

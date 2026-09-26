@@ -9,6 +9,8 @@ import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "@/shared/lib/phone";
 import { validateNewPassword } from "@/shared/auth/password";
 import CustomStepper from "@/features/school/components/setup/CustomStepper";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import ErrorSummary from "@/shared/ui/ErrorSummary";
+import { useErrorSummary } from "@/shared/hooks/useErrorSummary";
 
 const STEPS = [
   { label: "Admin account", description: "Create the first admin" },
@@ -25,6 +27,7 @@ export default function FirstRunSetup() {
   const [form, setForm] = useState(EMPTY);
   const [touched, setTouched] = useState<Partial<Record<Field, boolean>>>({});
   const [done, setDone] = useState(false);
+  const { ref: summaryRef, errors: summaryErrors, reveal, recheck } = useErrorSummary();
 
   if (statusLoading) return <div className="os-full-height" />;
   if (!done && status && !status.needs_setup) return <Navigate to="/signin" replace />;
@@ -41,7 +44,7 @@ export default function FirstRunSetup() {
   };
   // pw.passwordError/confirmError are both undefined while the fields are
   // still empty (validateNewPassword only flags a *wrong* value, not a
-  // missing one), so canSubmit must also require pw.valid — otherwise the
+  // missing one), so canSubmit must also require pw.valid - otherwise the
   // very first admin account could be created with a blank password.
   const canSubmit = pw.valid && Object.values(errors).every((e) => !e);
 
@@ -57,8 +60,8 @@ export default function FirstRunSetup() {
   });
 
   const submit = () => {
-    setTouched(Object.fromEntries(Object.keys(EMPTY).map((k) => [k, true])));
-    if (!canSubmit) return;
+    const clean = reveal(() => setTouched(Object.fromEntries(Object.keys(EMPTY).map((k) => [k, true]))));
+    if (!clean || !canSubmit) return;
     registerAdmin.mutate(
       {
         given_name: form.givenName.trim(),
@@ -81,7 +84,7 @@ export default function FirstRunSetup() {
           <p className="os-setup-card__subtitle">
             Sign in with the credentials you just set, then head to <strong>Settings</strong> to register your school's details.
           </p>
-          <Button href="/signin" className="os-full-width-btn">Go to Sign In</Button>
+          <Button href="/signin" className="os-full-width-btn">Go to sign in</Button>
         </div>
       </div>
     );
@@ -105,13 +108,15 @@ export default function FirstRunSetup() {
 
           <MutationErrorNotification isError={registerAdmin.isError} error={registerAdmin.error} title="Could not register admin" fallback="Something went wrong. Please try again." className="os-setup-card__error" />
 
-          <Stack gap={3} className="os-setup-form">
+          <ErrorSummary errors={summaryErrors} />
+
+          <Stack gap={3} className="os-setup-form" ref={summaryRef} onChange={recheck}>
             <div className="os-setup-form__section">
               <div className="os-setup-form__section-heading"><h3>Personal details</h3></div>
               <div className="os-setup-name-grid">
-                <TextInput {...input("givenName", "First Name")} />
-                <TextInput {...input("familyName", "Last Name")} />
-                <TextInput {...input("phone", "Phone Number (optional)")} />
+                <TextInput {...input("givenName", "First name")} />
+                <TextInput {...input("familyName", "Last name")} />
+                <TextInput {...input("phone", "Phone number (optional)")} />
                 <TextInput {...input("email", "Email", { type: "email" })} />
                 <TextInput {...input("username", "Username (sign-in name)")} />
               </div>
@@ -121,13 +126,13 @@ export default function FirstRunSetup() {
               <div className="os-setup-form__section-heading"><h3>Secure your account</h3></div>
               <div className="os-setup-security-grid">
                 <PasswordInput {...input("password", "Password", { helperText: "At least 10 characters." })} />
-                <PasswordInput {...input("confirmPassword", "Confirm Password")} />
+                <PasswordInput {...input("confirmPassword", "Confirm password")} />
               </div>
             </div>
 
             <div className="os-setup-form__footer">
               <Button onClick={submit} disabled={registerAdmin.isPending} className="os-full-width-btn">
-                {registerAdmin.isPending ? "Creating admin account…" : "Create Admin Account"}
+                {registerAdmin.isPending ? "Creating admin account…" : "Create admin account"}
               </Button>
               <div className="os-setup-signin-link">
                 Already set up an admin account?{" "}

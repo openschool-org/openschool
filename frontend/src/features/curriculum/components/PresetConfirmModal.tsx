@@ -16,7 +16,7 @@ export default function PresetConfirmModal({ open, runPreset, onClose, onLoad }:
       onClose={onClose}
       onSubmit={onLoad}
       isPending={runPreset.isPending}
-      submitLabel="Load Preset"
+      submitLabel="Load preset"
       pendingLabel="Loading…"
       isError={runPreset.isError}
       error={runPreset.error}

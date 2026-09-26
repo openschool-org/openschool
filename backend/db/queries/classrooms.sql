@@ -34,3 +34,9 @@ WHERE c.id = $1
 AND c.id NOT IN (
     SELECT DISTINCT classroom_id FROM timetable_entries WHERE classroom_id IS NOT NULL
 );
+
+-- name: FindClassroomByName :one
+-- Case-insensitive so "10-a" and "10-A" resolve to the same homeroom.
+SELECT * FROM classrooms
+WHERE lower(name) = lower(sqlc.arg(name)::text)
+LIMIT 1;

@@ -54,7 +54,7 @@ export default function TeacherClasses() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">My Classes</h1>
+          <h1 className="os-page__title">My classes</h1>
           <p className="os-page__subtitle">{myClasses.length} class{myClasses.length > 1 ? "es" : ""} this year</p>
         </div>
       </div>
@@ -65,7 +65,7 @@ export default function TeacherClasses() {
             key={c.class_id}
             onClick={() => { setActiveClassId(c.class_id); setQuery(""); }} className={`os-pill os-pill--solid os-py-2h os-px-5 os-text-md os-fw-500 os-c-primary${activeClass.class_id === c.class_id ? " is-active" : ""}`}
           >
-            {c.grade_name} — {c.class_name}
+            {c.grade_name} - {c.class_name}
           </button>
         ))}
       </div>
@@ -74,7 +74,7 @@ export default function TeacherClasses() {
         <div>
           <div className="os-section">
             <div className="os-section__header">
-              <h2 className="os-section__title">Student Roster — {activeClass.class_name}</h2>
+              <h2 className="os-section__title">Student roster - {activeClass.class_name}</h2>
               <span className="os-text-xs os-c-tertiary">{roster?.length ?? 0} students</span>
             </div>
             <div className="os-toolbar">
@@ -88,7 +88,7 @@ export default function TeacherClasses() {
                 />
               </div>
               <Button as={Link} to="/t/attendance" renderIcon={EventSchedule} kind="primary" size="md" className="os-ml-auto">
-                Mark Attendance
+                Mark attendance
               </Button>
             </div>
             {rosterLoading ? (
@@ -105,7 +105,7 @@ export default function TeacherClasses() {
                   columns={[
                     { key: "n", header: "#", render: (s) => <span className="os-table__muted">{filtered.indexOf(s) + 1}</span> },
                     { key: "name", header: "Name", render: (s) => s.full_name },
-                    { key: "index", header: "Index Number", render: (s) => <span className="os-table__mono">{s.index_number}</span> },
+                    { key: "index", header: "Index number", render: (s) => <span className="os-table__mono">{s.index_number}</span> },
                     { key: "gender", header: "Gender", render: (s) => <span className="os-table__muted">{capitalize(s.gender)}</span> },
                   ]}
                 />
@@ -116,12 +116,12 @@ export default function TeacherClasses() {
 
         <div>
           <div className="os-section">
-            <div className="os-section__header"><h2 className="os-section__title">Class Details</h2></div>
+            <div className="os-section__header"><h2 className="os-section__title">Class details</h2></div>
             <div className="os-section__body os-py-3 os-px-6">
               <InfoRow label="Grade" value={activeClass.grade_name} />
               <InfoRow label="Class" value={activeClass.class_name} />
-              <InfoRow label="Your role" value={activeClass.isFormTeacher ? "Form Teacher" : "Subject Teacher"} />
-              <InfoRow label="Subjects you teach" value={activeClass.subjects.length > 0 ? activeClass.subjects.join(", ") : "—"} />
+              <InfoRow label="Your role" value={activeClass.isFormTeacher ? "Form teacher" : "Subject teacher"} />
+              <InfoRow label="Subjects you teach" value={activeClass.subjects.length > 0 ? activeClass.subjects.join(", ") : "-"} />
               <InfoRow label="Students" value={roster?.length ?? 0} divider={false} />
             </div>
           </div>

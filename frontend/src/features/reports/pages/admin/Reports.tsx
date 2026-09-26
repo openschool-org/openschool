@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Select, SelectItem, Checkbox, DatePicker, DatePickerInput, InlineNotification, Tile } from "@carbon/react";
+import { Button, Select, SelectItem, Checkbox, InlineNotification, Tile } from "@carbon/react";
 import { DocumentPdf } from "@carbon/icons-react";
 import { useCurrentClasses } from "@/features/academics/queries/useClasses";
 import { useSubjects } from "@/features/curriculum/queries/useSubjects";
@@ -7,8 +7,9 @@ import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYea
 import { useTerms } from "@/features/school/queries/useTerms";
 import { reportExportApi, ATTENDANCE_REPORT_COLUMNS, MARKS_REPORT_COLUMNS } from "@/features/reports/api/reportExport";
 import { getErrorMessage } from "@/shared/api/errors";
-import { todayISODate, toYmd } from "@/shared/lib/date";
+import { todayISODate } from "@/shared/lib/date";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
+import DateField from "@/shared/ui/DateField";
 
 type Template = "attendance" | "marks";
 
@@ -83,7 +84,7 @@ export default function Reports() {
 
       <div className="os-section">
         <div className="os-section__header">
-          <h2 className="os-section__title">Report Template</h2>
+          <h2 className="os-section__title">Report template</h2>
         </div>
         <div className="os-section__body">
           <div className="os-flex os-gap-4 os-mb-6">
@@ -95,7 +96,7 @@ export default function Reports() {
                 <div className="os-flex os-items-center os-gap-2">
                   <DocumentPdf size={18} className="os-fill-accent-dark" />
                   <span className="os-fw-600 os-text-md">
-                    {t === "attendance" ? "Attendance Report" : "Marks Report"}
+                    {t === "attendance" ? "Attendance report" : "Marks report"}
                   </span>
                 </div>
               </Tile>
@@ -112,18 +113,12 @@ export default function Reports() {
 
             {template === "attendance" ? (
               <>
-                <DatePicker datePickerType="single" dateFormat="Y-m-d" value={from} onChange={(dates) => {
-                  const ymd = toYmd(dates[0]);
+                <DateField value={from} onChange={(ymd) => {
                   if (ymd) setFrom(ymd);
-                }}>
-                  <DatePickerInput id="report-from" labelText="From" placeholder="YYYY-MM-DD" />
-                </DatePicker>
-                <DatePicker datePickerType="single" dateFormat="Y-m-d" value={to} onChange={(dates) => {
-                  const ymd = toYmd(dates[0]);
+                }} id="report-from" labelText="From" />
+                <DateField value={to} onChange={(ymd) => {
                   if (ymd) setTo(ymd);
-                }}>
-                  <DatePickerInput id="report-to" labelText="To" placeholder="YYYY-MM-DD" />
-                </DatePicker>
+                }} id="report-to" labelText="To" />
               </>
             ) : (
               <>

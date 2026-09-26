@@ -93,7 +93,7 @@ export default function GradeSections({ inline = false }: { inline?: boolean }) 
         {!inline && (
           <div className="os-page__header">
             <div className="os-page__header-left">
-              <h1 className="os-page__title">Grade Sections</h1>
+              <h1 className="os-page__title">Grade sections</h1>
             </div>
           </div>
         )}
@@ -112,11 +112,8 @@ export default function GradeSections({ inline = false }: { inline?: boolean }) 
       {!inline && (
         <div className="os-page__header">
           <div className="os-page__header-left">
-            <h1 className="os-page__title">Grade Sections</h1>
-            <p className="os-page__subtitle">
-              Group grades (Primary, Junior Secondary, Senior Secondary, A/L…) with their own interval time, period
-              grid, and section head for {currentYear.label}.
-            </p>
+            <h1 className="os-page__title">Grade sections</h1>
+            <p className="os-page__subtitle">Grade groups, their period grid and section head for {currentYear.label}.</p>
           </div>
           <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>
             New Section

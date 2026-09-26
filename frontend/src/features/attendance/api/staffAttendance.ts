@@ -1,4 +1,5 @@
 import api from "@/shared/api/client";
+import type { Page } from "@/shared/api/page";
 
 export type StaffAttendanceStatus = "present" | "late" | "absent" | "leave";
 
@@ -23,6 +24,28 @@ export interface StaffAttendanceSummaryRow {
 export interface StaffAttendanceByGroup<T> {
   teachers: T[];
   non_academic_staff: T[];
+}
+
+export type StaffKind = "teacher" | "staff";
+
+export interface StaffRosterParams {
+  kind: StaffKind;
+  search?: string;
+  limit: number;
+  offset: number;
+}
+
+// Counts for the whole filtered roster that day, not just the current page.
+export interface StaffStatusTotals {
+  present: number;
+  late: number;
+  absent: number;
+  leave: number;
+  unmarked: number;
+}
+
+export interface StaffRosterPage extends Page<StaffAttendanceRow> {
+  totals: StaffStatusTotals;
 }
 
 export interface MarkStaffAttendanceRequest {
@@ -51,12 +74,17 @@ export const staffAttendanceApi = {
       .get<StaffAttendanceByGroup<StaffAttendanceRow>>("/staff-attendance", { params: { date } })
       .then((r) => r.data),
 
-  monthlySummary: (year: number, month: number) =>
+  roster: (date: string, params: StaffRosterParams) =>
+    api.get<StaffRosterPage>("/staff-attendance/roster", { params: { date, ...params, search: params.search || undefined } }).then((r) => r.data),
+
+  monthly: (year: number, month: number, params: StaffRosterParams) =>
     api
-      .get<StaffAttendanceByGroup<StaffAttendanceSummaryRow>>("/staff-attendance/monthly-summary", {
-        params: { year, month },
-      })
+      .get<Page<StaffAttendanceSummaryRow>>("/staff-attendance/monthly", { params: { year, month, ...params, search: params.search || undefined } })
       .then((r) => r.data),
+
+  // Marks everyone of the kind without a record that day as present; existing marks are kept.
+  markUnmarked: (date: string, kind: StaffKind) =>
+    api.post<{ marked: number }>("/staff-attendance/mark-unmarked", { date: new Date(date).toISOString(), kind }).then((r) => r.data),
 
   teacherHistory: (teacherId: string, year: number, month: number) =>
     api

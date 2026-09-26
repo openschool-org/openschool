@@ -23,7 +23,7 @@ import type { SocietyMember, SocietyRole } from "@/features/portfolio/api/societ
 
 const ROLES: { value: SocietyRole; label: string }[] = [
   { value: "leader", label: "Leaders" },
-  { value: "deputy_leader", label: "Deputy Leaders" },
+  { value: "deputy_leader", label: "Deputy leaders" },
   { value: "secretary", label: "Secretaries" },
   { value: "treasurer", label: "Treasurers" },
   { value: "member", label: "Members" },
@@ -80,7 +80,7 @@ export default function SocietyRoster({ societyId, readOnly }: Props) {
       <div className="os-flex os-justify-end os-mb-4">
         {!readOnly && (
           <Button renderIcon={Add} kind="primary" size="sm" onClick={openAssign}>
-            Add Member
+            Add member
           </Button>
         )}
       </div>
@@ -144,7 +144,7 @@ export default function SocietyRoster({ societyId, readOnly }: Props) {
               onSelect={setStudentChoice}
               onSearch={setStudentSearch}
               getId={(s) => s.id}
-              itemToString={(s) => `${s.full_name} — ${s.index_number}`}
+              itemToString={(s) => `${s.full_name} - ${s.index_number}`}
               placeholder="Search students by name or index number…"
             />
             <Select

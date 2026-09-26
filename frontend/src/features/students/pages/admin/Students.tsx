@@ -27,12 +27,6 @@ const FILTER_LABELS: Record<string, string> = {
   house: "House",
 };
 
-const FINDINGS = [
-  "Students with no guardian on file",
-  "Student gender / school-type mismatches",
-  "Students with no current-year class",
-  "Student accounts stuck in first-login setup",
-];
 
 export default function Students() {
   const navigate = useNavigate();
@@ -80,10 +74,10 @@ export default function Students() {
   };
 
   const columns: GridColumn<Student>[] = [
-    { key: "index_number", header: "Index No.", render: (s) => <span className="os-table__mono">{s.index_number}</span> },
+    { key: "index_number", header: "Index no.", render: (s) => <span className="os-table__mono">{s.index_number}</span> },
     {
       key: "full_name",
-      header: "Full Name",
+      header: "Full name",
       render: (s) => <Link to={`/students/${s.id}`} className="os-table__link">{s.full_name}</Link>,
     },
     { key: "class_name", header: "Class", render: (s) => <span className="os-table__muted">{s.class_name ?? "-"}</span> },
@@ -121,11 +115,11 @@ export default function Students() {
           <p className="os-page__subtitle">Manage student enrolment and profiles</p>
         </div>
         <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/students/new">
-          Enrol Student
+          Enrol student
         </Button>
       </div>
 
-      <AgentFindingsBanner titles={FINDINGS} />
+      <AgentFindingsBanner />
 
       <div className="os-section">
         <FilterBar

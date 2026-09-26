@@ -6,6 +6,8 @@ import { UserDropdown } from "@thunderid/react";
 import NotificationsBell from "@/features/notifications/components/NotificationsBell";
 import ChangePasswordModal from "@/features/auth/components/ChangePasswordModal";
 import GlobalSearch from "@/features/system/components/GlobalSearch";
+import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
+import { useT } from "@/shared/i18n/useT";
 
 export function AppHeaderBrand() {
   return (
@@ -20,7 +22,8 @@ export function AppHeaderBrand() {
   );
 }
 
-export function AppHeaderActions({ showSearch = false }: { showSearch?: boolean }) {
+export function AppHeaderActions({ showSearch = false, showLanguage = false }: { showSearch?: boolean; showLanguage?: boolean }) {
+  const { t } = useT();
   const [changingPassword, setChangingPassword] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
 
@@ -49,7 +52,8 @@ export function AppHeaderActions({ showSearch = false }: { showSearch?: boolean 
             <Search size={20} className="os-header-icon" />
           </HeaderGlobalAction>
         ))}
-      <HeaderGlobalAction aria-label="Change password" onClick={() => setChangingPassword(true)}>
+      {showLanguage && <LanguageSwitcher />}
+      <HeaderGlobalAction aria-label={t("shell.changePassword")} onClick={() => setChangingPassword(true)}>
         <Password size={20} className="os-header-icon" />
       </HeaderGlobalAction>
       <NotificationsBell />
@@ -57,16 +61,16 @@ export function AppHeaderActions({ showSearch = false }: { showSearch?: boolean 
         {({ openProfile, signOut }) => (
           <OverflowMenu
             renderIcon={User}
-            aria-label="User profile menu"
+            aria-label={t("shell.profileMenu")}
             flipped
             className="os-header-user-menu"
           >
             <OverflowMenuItem
-              itemText="Manage Profile"
+              itemText={t("shell.manageProfile")}
               onClick={openProfile}
             />
             <OverflowMenuItem
-              itemText="Sign Out"
+              itemText={t("shell.signOut")}
               onClick={signOut}
               isDelete
             />

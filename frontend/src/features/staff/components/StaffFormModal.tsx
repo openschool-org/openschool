@@ -10,14 +10,13 @@ import {
   ModalHeader,
   ModalBody,
   ModalFooter,
-  DatePicker,
-  DatePickerInput,
 } from "@carbon/react";
 import { useCreateNonAcademicStaff, useUpdateNonAcademicStaff } from "@/features/staff/queries/useNonAcademicStaff";
 import { NON_ACADEMIC_DESIGNATIONS } from "@/features/staff/api/nonAcademicStaff";
 import type { NonAcademicStaff as StaffRow, NonAcademicDesignation } from "@/features/staff/api/nonAcademicStaff";
-import { todayISODate, toYmd } from "@/shared/lib/date";
+import { todayISODate } from "@/shared/lib/date";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import DateField from "@/shared/ui/DateField";
 
 export default function StaffFormModal({ staff, onClose }: { staff: StaffRow | null; onClose: () => void }) {
   const isEdit = !!staff;
@@ -80,7 +79,7 @@ export default function StaffFormModal({ staff, onClose }: { staff: StaffRow | n
         <div className="os-grid os-gap-4">
           <TextInput
             id="staff-name"
-            labelText="Full Name"
+            labelText="Full name"
             value={form.full_name}
             onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
             onBlur={() => setTouched((t) => ({ ...t, full_name: true }))}
@@ -116,19 +115,11 @@ export default function StaffFormModal({ staff, onClose }: { staff: StaffRow | n
             onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
           />
           {!isEdit && (
-            <DatePicker
-              datePickerType="single"
-              dateFormat="Y-m-d"
-              value={form.joined_date}
-              onChange={(dates) => {
-                const ymd = toYmd(dates[0]);
+            <DateField value={form.joined_date} onChange={(ymd) => {
                 if (ymd) {
                   setForm((f) => ({ ...f, joined_date: ymd }));
                 }
-              }}
-            >
-              <DatePickerInput id="staff-joined-date" labelText="Joining Date" placeholder="YYYY-MM-DD" />
-            </DatePicker>
+              }} id="staff-joined-date" labelText="Joining date" />
           )}
         </div>
       </ModalBody>

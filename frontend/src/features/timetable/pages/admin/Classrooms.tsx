@@ -10,6 +10,8 @@ import ListState from "@/shared/ui/ListState";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import InfoTip from "@/shared/ui/InfoTip";
+import BackfillHomeroomsButton from "@/features/timetable/components/BackfillHomeroomsButton";
 
 const TYPE_LABEL: Record<ClassroomType, string> = { regular: "Regular", lab: "Lab", eca: "ECA" };
 const TYPE_TAG: Record<ClassroomType, "gray" | "purple" | "teal"> = { regular: "gray", lab: "purple", eca: "teal" };
@@ -58,7 +60,7 @@ export default function Classrooms({ inline = false }: { inline?: boolean }) {
     { key: "name", header: "Name", render: (c) => c.name },
     { key: "code", header: "Code", render: (c) => c.code || <span className="os-table__muted">-</span> },
     { key: "capacity", header: "Capacity", render: (c) => c.capacity ?? <span className="os-table__muted">-</span> },
-    { key: "type", header: "Type", render: (c) => <Tag type={TYPE_TAG[c.room_type]} size="sm">{TYPE_LABEL[c.room_type]}{c.room_type === "lab" && c.subject_name ? ` — ${c.subject_name}` : ""}</Tag> },
+    { key: "type", header: "Type", render: (c) => <Tag type={TYPE_TAG[c.room_type]} size="sm">{TYPE_LABEL[c.room_type]}{c.room_type === "lab" && c.subject_name ? ` - ${c.subject_name}` : ""}</Tag> },
     {
       key: "actions",
       header: "Actions",
@@ -77,16 +79,25 @@ export default function Classrooms({ inline = false }: { inline?: boolean }) {
       {!inline && (
         <div className="os-page__header">
           <div className="os-page__header-left">
-            <h1 className="os-page__title">Classrooms &amp; Facilities</h1>
-            <p className="os-page__subtitle">Every physical room the school has: regular homerooms, subject-tagged Labs, and ECA facilities like the Library or Auditorium. Booked into timetable periods to prevent clashes.</p>
+            <h1 className="os-page__title">Classrooms &amp; facilities</h1>
+            <div className="os-page__subtitle os-page__subtitle--tip">
+              Homerooms, labs and other rooms used in timetables.
+              <InfoTip>Rooms are booked into periods so two classes never clash.</InfoTip>
+            </div>
           </div>
-          <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>Add Classroom</Button>
+          <div className="os-flex os-gap-2">
+            <BackfillHomeroomsButton />
+            <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>Add classroom</Button>
+          </div>
         </div>
       )}
       {inline && (
         <div className="os-flex os-justify-between os-items-center os-mb-4 os-wrap os-gap-4">
-          <p className="os-m-0 os-text-md os-c-secondary">Regular homerooms, subject-tagged Labs, and ECA facilities.</p>
-          <Button renderIcon={Add} kind="primary" size="sm" onClick={openCreate}>Add Classroom</Button>
+          <p className="os-m-0 os-text-md os-c-secondary">Regular homerooms, subject-tagged labs, and ECA facilities.</p>
+          <div className="os-flex os-gap-2">
+            <BackfillHomeroomsButton size="sm" />
+            <Button renderIcon={Add} kind="primary" size="sm" onClick={openCreate}>Add classroom</Button>
+          </div>
         </div>
       )}
 
@@ -99,7 +110,7 @@ export default function Classrooms({ inline = false }: { inline?: boolean }) {
           errorMessage="Failed to load classrooms"
           onRetry={refetch}
           skeleton={<TableSkeleton headers={columns.map((c) => c.header)} />}
-          empty={{ title: "No classrooms yet", description: "Add rooms/labs so the timetable editor can assign them to periods.", action: <Button renderIcon={Add} kind="primary" onClick={openCreate}>Add Classroom</Button> }}
+          empty={{ title: "No classrooms yet", description: "Add rooms/labs so the timetable editor can assign them to periods.", action: <Button renderIcon={Add} kind="primary" onClick={openCreate}>Add classroom</Button> }}
         >
           <DataGrid rows={classrooms ?? []} columns={columns} getRowId={(c) => c.id} pageSize={20} countLabel={(shown, total) => `Showing ${shown} of ${total} rooms`} />
         </ListState>

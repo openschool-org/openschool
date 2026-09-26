@@ -41,7 +41,7 @@ export function BarList({
             <span className="os-c-secondary">{r.label}</span>
             <span className="os-fw-600 os-c-primary">{formatValue ? formatValue(r.value) : r.value}</span>
           </div>
-          <div className="os-h-px-6 os-bg-border-subtle os-rounded-md">
+          <div className="os-h-px-6 os-bg-border-subtle os-rounded-md" aria-hidden="true">
             <div className="os-h-full os-rounded-md" style={{ width: `${(r.value / max) * 100}%`, background: color }} />
           </div>
         </div>

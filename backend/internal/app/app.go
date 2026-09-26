@@ -21,6 +21,7 @@ func Setup(router *gin.Engine, pool *pgxpool.Pool) *automationmodule.Scheduler {
 	registerAttendanceAndReports(groups, pool, shared.notifications, shared.audit, shared.leadership, profiles.teacher)
 	registerSelfService(groups, pool, profiles, shared)
 	notificationmodule.RegisterRoutes(groups.TeacherOrAdmin, groups.Protected, shared.notifications)
+	registerWorkflows(groups, pool, shared)
 
 	return automationmodule.RegisterRoutes(groups.Admin, pool)
 }

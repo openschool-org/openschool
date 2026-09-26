@@ -132,9 +132,9 @@ export default function PromotionGroup({
           <tr>
             {!isGraduating && <th className="os-w-2h" />}
             <th>Student</th>
-            <th>Current Class</th>
+            <th>Current class</th>
             {rankByMarks && <th>Marks</th>}
-            {!isGraduating && <th>Target Class</th>}
+            {!isGraduating && <th>Target class</th>}
           </tr>
         </thead>
         <tbody>

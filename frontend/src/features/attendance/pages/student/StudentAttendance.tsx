@@ -3,17 +3,19 @@ import AttendanceHistoryTable from "@/features/attendance/components/AttendanceH
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
 import SectionCard from "@/shared/ui/SectionCard";
+import { useT } from "@/shared/i18n/useT";
 
 export default function StudentAttendance() {
+  const { t } = useT();
   const { data: records, isLoading } = useMyAttendance();
   if (isLoading) return <LoadingSpinner />;
   return (
     <div className="os-p-8">
-      <SectionCard title="Attendance History" flush>
+      <SectionCard title={t("attendance.history")} flush>
         {records?.length ? (
           <AttendanceHistoryTable rows={records} />
         ) : (
-          <EmptyState title="No attendance recorded yet" description="Records will show up here once a class session is marked." />
+          <EmptyState title={t("attendance.emptyTitle")} description={t("attendance.emptyDesc")} />
         )}
       </SectionCard>
     </div>

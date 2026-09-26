@@ -16,7 +16,7 @@ export default function RoomsStep({ roomChecks, setRoomChecks, customRooms, setC
   return (
     <StepShell
       icon={Building}
-      title="Rooms & Facilities"
+      title="Rooms & facilities"
       subtitle="Optional - special-purpose rooms beyond regular classrooms (a class's own homeroom is set later, per class). You can re-type any of these as a subject-tagged Lab afterward, once subjects are set up."
     >
       <div className="os-flex os-col os-gap-3 os-mb-4">

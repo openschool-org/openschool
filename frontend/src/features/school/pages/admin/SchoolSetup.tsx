@@ -13,6 +13,8 @@ import CustomStepper from "@/features/school/components/setup/CustomStepper";
 import { useSchoolSetupSubmit } from "@/features/school/hooks/useSchoolSetupSubmit";
 import { useSchoolSetupState } from "@/features/school/hooks/useSchoolSetupState";
 import { STEPS } from "@/features/school/setupConstants";
+import ErrorSummary from "@/shared/ui/ErrorSummary";
+import { useErrorSummary } from "@/shared/hooks/useErrorSummary";
 
 const DONE_STEP = STEPS.length - 1;
 const CLASSES_STEP = STEPS.indexOf("Classes");
@@ -26,17 +28,23 @@ export default function SchoolSetup() {
   const { data: existingSchool, isLoading: schoolCheckLoading } = useSchool();
   const s = useSchoolSetupState();
   const { submitting, submitError, submitted, submitAll } = useSchoolSetupSubmit(s);
+  const { ref: summaryRef, errors: summaryErrors, reveal, recheck, reset: resetSummary } = useErrorSummary();
 
-  const goNext = () => setStep((n) => Math.min(n + 1, DONE_STEP));
-  const goBack = () => setStep((n) => Math.max(n - 1, 0));
+  const goNext = () => {
+    resetSummary();
+    setStep((n) => Math.min(n + 1, DONE_STEP));
+  };
+  const goBack = () => {
+    resetSummary();
+    setStep((n) => Math.max(n - 1, 0));
+  };
 
   // Each step validates itself before moving on; skip bypasses that step's input.
   const advance = (skip: boolean) => {
     setError(null);
     switch (step) {
       case 0:
-        s.setSchoolTouched(true);
-        if (!s.schoolValid) return;
+        if (!reveal(() => s.setSchoolTouched(true)) || !s.schoolValid) return;
         break;
       case 1:
         s.setHousesSkipped(skip);
@@ -71,6 +79,9 @@ export default function SchoolSetup() {
 
         {error && <InlineNotification kind="error" title="Could not continue" subtitle={error} hideCloseButton lowContrast className="os-school-setup-error" />}
 
+        <ErrorSummary errors={summaryErrors} />
+
+        <div ref={summaryRef} onChange={recheck}>
         {step === 0 && <SchoolStep school={s.school} setSchool={s.setSchool} schoolTouched={s.schoolTouched} gradeRangeInvalid={s.gradeRangeInvalid} />}
         {step === 1 && <HousesStep houses={s.houses} setHouses={s.setHouses} />}
         {step === 2 && <GradesStep gradeRangeStart={s.gradeRangeStart} gradeRangeEnd={s.gradeRangeEnd} selectedGrades={s.selectedGrades} setSelectedGrades={s.setSelectedGrades} />}
@@ -92,6 +103,7 @@ export default function SchoolSetup() {
           />
         )}
         {step === ROOMS_STEP && <RoomsStep roomChecks={s.roomChecks} setRoomChecks={s.setRoomChecks} customRooms={s.customRooms} setCustomRooms={s.setCustomRooms} />}
+        </div>
         {step === DONE_STEP && <DoneStep submitting={submitting} submitError={submitError} submitted={submitted} onRetry={() => submitAll()} onGoToDashboard={() => navigate("/")} />}
 
         {step < DONE_STEP && (
@@ -99,7 +111,7 @@ export default function SchoolSetup() {
             <Button kind="ghost" onClick={goBack} disabled={step === 0}>Back</Button>
             <div className="os-school-setup-actions__right">
               {SKIPPABLE.has(step) && <Button kind="secondary" onClick={() => advance(true)}>Skip</Button>}
-              <Button kind="primary" onClick={() => advance(false)}>{step === ROOMS_STEP ? "Finish Setup" : "Continue"}</Button>
+              <Button kind="primary" onClick={() => advance(false)}>{step === ROOMS_STEP ? "Finish setup" : "Continue"}</Button>
             </div>
           </div>
         )}

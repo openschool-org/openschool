@@ -81,7 +81,7 @@ export default function AssignClassSubjectTeacherModal({
           />
           <p className="os-mt-1h os-mx-0 os-mb-0 os-text-xs os-c-tertiary">
             Only teachers qualified for this subject on the{" "}
-            <Link to="/teacher-subjects">Teacher Subjects</Link> page are shown.
+            <Link to="/teacher-subjects">Teacher subjects</Link> page are shown.
           </p>
         </div>
 

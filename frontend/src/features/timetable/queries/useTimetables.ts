@@ -3,6 +3,8 @@ import { timetableApi } from "@/features/timetable/api/timetable";
 import type { TimetableEntryInput } from "@/features/timetable/api/timetable";
 import { timetableKeys } from "@/features/timetable/keys";
 import { useInvalidate } from "@/shared/api/useInvalidate";
+import { useProvisionUser } from "@/shared/auth/useProvisionUser";
+import { readOffline, writeOffline } from "@/shared/lib/offlineCache";
 
 export const useTimetablesByYear = (academicYearId: string) =>
   useQuery({ queryKey: timetableKeys.byYear(academicYearId), queryFn: () => timetableApi.listByYear(academicYearId), enabled: !!academicYearId });
@@ -42,10 +44,32 @@ export const useReviewQueue = (academicYearId: string, enabled = true) =>
 export const useMyTeacherSchedule = (academicYearId: string) =>
   useQuery({ queryKey: timetableKeys.myTeacherSchedule(academicYearId), queryFn: () => timetableApi.myTeacherSchedule(academicYearId), enabled: !!academicYearId });
 
-export const useMyClassTimetable = () => useQuery({ queryKey: timetableKeys.myClass(), queryFn: timetableApi.myClassTimetable, retry: false });
+// Seeds the query from the last good copy so a student or parent on a train still sees the timetable;
+// the offline banner then says how old it is.
+function useOfflineSeed<T>(cacheKey: string | null, fetcher: () => Promise<T>) {
+  const saved = cacheKey ? readOffline<T>(cacheKey) : undefined;
+  return {
+    queryFn: async () => {
+      const data = await fetcher();
+      if (cacheKey) writeOffline(cacheKey, data);
+      return data;
+    },
+    initialData: saved?.data,
+    initialDataUpdatedAt: saved?.savedAt,
+  };
+}
 
-export const useChildTimetable = (studentId: string) =>
-  useQuery({ queryKey: timetableKeys.child(studentId), queryFn: () => timetableApi.childTimetable(studentId), enabled: !!studentId, retry: false });
+export const useMyClassTimetable = () => {
+  const { data: me } = useProvisionUser();
+  const seed = useOfflineSeed(me ? `timetable:${me.user_id}` : null, timetableApi.myClassTimetable);
+  return useQuery({ queryKey: timetableKeys.myClass(), retry: false, ...seed });
+};
+
+export const useChildTimetable = (studentId: string) => {
+  const { data: me } = useProvisionUser();
+  const seed = useOfflineSeed(me && studentId ? `timetable:${me.user_id}:${studentId}` : null, () => timetableApi.childTimetable(studentId));
+  return useQuery({ queryKey: timetableKeys.child(studentId), enabled: !!studentId, retry: false, ...seed });
+};
 
 // Every write touches lists, review queues and the detail views, so invalidate the whole feature.
 const useTimetableMutation = <TVariables = void, TResult = unknown>(mutationFn: (variables: TVariables) => Promise<TResult>) => {

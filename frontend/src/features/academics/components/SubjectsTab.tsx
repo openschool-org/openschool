@@ -28,10 +28,10 @@ export default function SubjectsTab({ classId, academicYearId }: { classId: stri
     <div className="os-mt-4">
       <div className="os-section">
         <SectionHeader
-          title="Subjects & Teachers"
+          title="Subjects & teachers"
           meta={
             <Button renderIcon={UserFollow} size="sm" onClick={() => setModalOpen(true)}>
-              Assign Subject Teacher
+              Assign subject teacher
             </Button>
           }
         />
@@ -51,8 +51,8 @@ export default function SubjectsTab({ classId, academicYearId }: { classId: stri
               pagination={false}
               columns={[
                 { key: "subject", header: "Subject", render: (a) => <span className="os-fw-500">{a.subject_name}</span> },
-                { key: "code", header: "Subject Code", render: (a) => <span className="os-table__mono">{a.subject_code}</span> },
-                { key: "teacher", header: "Assigned Teacher", render: (a) => a.teacher_name },
+                { key: "code", header: "Subject code", render: (a) => <span className="os-table__mono">{a.subject_code}</span> },
+                { key: "teacher", header: "Assigned teacher", render: (a) => a.teacher_name },
                 { key: "timetable", header: "Timetable", render: (a) => (scheduledSubjectIds.has(a.subject_id) ? <Tag type="green" size="sm">Scheduled</Tag> : <Tag type="gray" size="sm">Not scheduled</Tag>) },
               ]}
             />

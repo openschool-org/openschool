@@ -8,6 +8,8 @@ import { useMediums } from "@/features/curriculum/queries/useCurriculum";
 import { useTeachers } from "@/features/teachers/queries/useTeachers";
 import { useCreateClassForm } from "@/features/academics/hooks/useCreateClassForm";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
+import { usePageTitle } from "@/shared/hooks/usePageTitle";
+import InfoTip from "@/shared/ui/InfoTip";
 
 // Supports preselecting the grade via `?grade_id=`.
 export default function AddClass() {
@@ -19,25 +21,21 @@ export default function AddClass() {
   const { data: teacherPage } = useTeachers({ limit: 25, search: teacherSearch });
   const teachers = teacherPage?.items;
   const f = useCreateClassForm(searchParams.get("grade_id") ?? "");
+  usePageTitle("Add class");
   const { form, set, touched } = f;
   const regularClassrooms = f.classrooms?.filter((c) => c.room_type === "regular");
 
   const roomHelp = !form.home_classroom_id && f.suggestedHomeClassroom
-    ? "Auto-suggested from the class name. Pick a different room to override."
+    ? "Suggested from the class name."
     : !form.home_classroom_id && form.name.trim()
-      ? `Left as-is, a new room named "${form.name.trim()}" is created automatically as this class's homeroom.`
-      : "Students stay in this room all day; teachers rotate in.";
+      ? `A new room "${form.name.trim()}" will be created.`
+      : "Students stay here all day; teachers move.";
 
   return (
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <div className="os-page__breadcrumb">
-            <Link to="/classes">Classes</Link>
-            <span>/</span>
-            <span>Add Class</span>
-          </div>
-          <h1 className="os-page__title">Add New Class</h1>
+          <h1 className="os-page__title">Add new class</h1>
           <p className="os-page__subtitle">Create a class for an academic year</p>
         </div>
         <Button renderIcon={ArrowLeft} kind="ghost" size="md" as={Link} to="/classes">Back</Button>
@@ -45,13 +43,13 @@ export default function AddClass() {
 
       <div className="os-form">
         <div className="os-form__section">
-          <div className="os-form__section-header">Class Details</div>
+          <div className="os-form__section-header">Class details</div>
           <div className="os-form__section-body">
             <Select id="grade" labelText="Grade" value={form.grade_id} onChange={(e) => set("grade_id", e.target.value)} onBlur={() => f.markTouched("grade")} invalid={!!touched.grade && !form.grade_id} invalidText="A grade is required.">
               <SelectItem value="" text={gradesLoading ? "Loading grades…" : "Select grade…"} />
               {grades?.map((g) => <SelectItem key={g.id} value={g.id} text={g.name} />)}
             </Select>
-            <TextInput id="class-name" labelText="Class Name" placeholder="e.g. 10-A" maxLength={20} value={form.name} onChange={(e) => set("name", e.target.value)} onBlur={() => f.markTouched("name")} invalid={!!touched.name && !form.name.trim()} invalidText="A class name is required." />
+            <TextInput id="class-name" labelText="Class name" placeholder="e.g. 10-A" maxLength={20} value={form.name} onChange={(e) => set("name", e.target.value)} onBlur={() => f.markTouched("name")} invalid={!!touched.name && !form.name.trim()} invalidText="A class name is required." />
             <Select id="stream" labelText="Stream (optional)" value={form.stream_id} onChange={(e) => set("stream_id", e.target.value)}>
               <SelectItem value="" text="No stream" />
               {streams?.map((s) => <SelectItem key={s.id} value={s.id} text={s.name} />)}
@@ -60,17 +58,17 @@ export default function AddClass() {
               <SelectItem value="" text="No sub-stream" />
               {f.streamGroups?.map((g) => <SelectItem key={g.id} value={g.id} text={g.name} />)}
             </Select>
-            <Select id="medium" labelText="Medium (optional)" helperText="Set this only if the section is reserved for one language of instruction. Medium-designated classes carry students straight over at promotion." value={form.medium_id} onChange={(e) => set("medium_id", e.target.value)}>
+            <Select id="medium" labelText={<>Medium (optional) <InfoTip>Classes tied to one medium keep their students together at promotion instead of being reshuffled.</InfoTip></>} helperText="Only for single-language classes." value={form.medium_id} onChange={(e) => set("medium_id", e.target.value)}>
               <SelectItem value="" text="No medium" />
               {mediums?.map((m) => <SelectItem key={m.id} value={m.id} text={m.name} />)}
             </Select>
-            <Select id="home-classroom" labelText="Home Classroom (optional)" helperText={roomHelp} value={f.effectiveHomeClassroomId} onChange={(e) => set("home_classroom_id", e.target.value)}>
+            <Select id="home-classroom" labelText="Home classroom (optional)" helperText={roomHelp} value={f.effectiveHomeClassroomId} onChange={(e) => set("home_classroom_id", e.target.value)}>
               <SelectItem value="" text="Auto-create to match the class name" />
               {regularClassrooms?.map((c) => <SelectItem key={c.id} value={c.id} text={c.name} />)}
             </Select>
             <EntityCombobox
               id="class-teacher"
-              labelText="Form Teacher (optional)"
+              labelText="Form teacher (optional)"
               items={teachers ?? []}
               selectedId={form.form_teacher_id}
               onSelect={(id) => set("form_teacher_id", id)}
@@ -83,9 +81,9 @@ export default function AddClass() {
         </div>
 
         <div className="os-form__section">
-          <div className="os-form__section-header">Academic Year</div>
+          <div className="os-form__section-header">Academic year</div>
           <div className="os-form__section-body">
-            <Select id="academic-year" labelText="Academic Year" value={f.academicYearId} onChange={(e) => set("academic_year_id", e.target.value)} onBlur={() => f.markTouched("year")} invalid={!!touched.year && !f.academicYearId} invalidText="An academic year is required.">
+            <Select id="academic-year" labelText="Academic year" value={f.academicYearId} onChange={(e) => set("academic_year_id", e.target.value)} onBlur={() => f.markTouched("year")} invalid={!!touched.year && !f.academicYearId} invalidText="An academic year is required.">
               <SelectItem value="" text="Select academic year…" />
               {f.years?.map((y) => <SelectItem key={y.id} value={y.id} text={y.is_current ? `${y.label} (Current)` : y.label} />)}
             </Select>
@@ -97,7 +95,7 @@ export default function AddClass() {
 
         <div className="os-form__actions">
           <Button renderIcon={Save} kind="primary" disabled={!f.isValid || f.isSaving} onClick={f.save}>
-            {f.isSaving ? "Creating…" : "Create Class"}
+            {f.isSaving ? "Creating…" : "Create class"}
           </Button>
           <Button kind="secondary" as={Link} to="/classes">Cancel</Button>
         </div>

@@ -41,7 +41,7 @@ export default function ClassesStep({
     >
       <TextInput
         id="ss-year-label"
-        labelText="Academic Year Label"
+        labelText="Academic year label"
         value={yearLabel}
         onChange={(e) => setYearLabel(e.target.value)} className="os-mb-5"
       />

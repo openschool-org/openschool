@@ -7,8 +7,10 @@ import TermMarksTable from "@/features/marks/components/TermMarksTable";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
 import SectionCard from "@/shared/ui/SectionCard";
+import { useT } from "@/shared/i18n/useT";
 
 export default function StudentMarks() {
+  const { t } = useT();
   const { data: currentYear } = useCurrentAcademicYear();
   const { data: terms } = useTerms(currentYear?.id);
   const [termId, setTermId] = useState("");
@@ -16,19 +18,19 @@ export default function StudentMarks() {
 
   return (
     <div className="os-p-8">
-      <SectionCard title="Term Marks">
-        <Select id="my-marks-term" labelText="Term" value={termId} onChange={(e) => setTermId(e.target.value)} className="os-max-w-20 os-mb-5">
-          <SelectItem value="" text="Choose a term…" />
-          {terms?.map((t) => <SelectItem key={t.id} value={t.id} text={t.name} />)}
+      <SectionCard title={t("marks.termMarks")}>
+        <Select id="my-marks-term" labelText={t("marks.term")} value={termId} onChange={(e) => setTermId(e.target.value)} className="os-max-w-20 os-mb-5">
+          <SelectItem value="" text={t("marks.chooseTerm")} />
+          {terms?.map((term) => <SelectItem key={term.id} value={term.id} text={term.name} />)}
         </Select>
         {!termId ? (
-          <EmptyState title="Pick a term" description="Choose a term to see your marks for it." />
+          <EmptyState title={t("marks.pickTitle")} description={t("marks.pickDesc")} />
         ) : isLoading ? (
           <LoadingSpinner />
         ) : marks?.length ? (
           <TermMarksTable rows={marks} />
         ) : (
-          <EmptyState title="No marks yet" description="Marks for this term haven't been recorded yet." />
+          <EmptyState title={t("marks.emptyTitle")} description={t("marks.emptyDesc")} />
         )}
       </SectionCard>
     </div>

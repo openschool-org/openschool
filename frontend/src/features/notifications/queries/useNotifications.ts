@@ -1,6 +1,6 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import { notificationApi } from "@/features/notifications/api/notification";
-import type { CreateNotificationRequest } from "@/features/notifications/api/notification";
+import type { CreateNotificationRequest, InboxParams, NotificationHistoryParams } from "@/features/notifications/api/notification";
 import { notificationKeys as keys } from "@/features/notifications/keys";
 import { useInvalidate } from "@/shared/api/useInvalidate";
 
@@ -16,11 +16,11 @@ export const useMyNotifications = (options: { enabled?: boolean } = {}) =>
     enabled: options.enabled ?? true,
   });
 
-export const useMyArchivedNotifications = () =>
-  useQuery({
-    queryKey: keys.archived(),
-    queryFn: notificationApi.listMyArchived,
-  });
+export const useInbox = (params: InboxParams) =>
+  useQuery({ queryKey: keys.inbox(params), queryFn: () => notificationApi.inbox(params), placeholderData: keepPreviousData });
+
+export const useNotificationHistory = (params: NotificationHistoryParams) =>
+  useQuery({ queryKey: keys.history(params), queryFn: () => notificationApi.history(params), placeholderData: keepPreviousData });
 
 export const useUnreadNotificationCount = () =>
   useQuery({
@@ -43,6 +43,11 @@ export const useMarkNotificationRead = () => {
   });
 };
 
+export const useMarkAllNotificationsRead = () => {
+  const invalidate = useInvalidateMine();
+  return useMutation({ mutationFn: notificationApi.markAllRead, onSuccess: invalidate });
+};
+
 export const useArchiveNotification = () => {
   const invalidate = useInvalidateMine();
   return useMutation({
@@ -61,9 +66,6 @@ export const useUnarchiveNotification = () => {
 
 // Sender side
 
-export const useSentNotifications = () =>
-  useQuery({ queryKey: keys.sent(), queryFn: notificationApi.listSent });
-
 export const useDraftNotifications = () =>
   useQuery({ queryKey: keys.drafts(), queryFn: notificationApi.listDrafts });
 
@@ -76,7 +78,7 @@ export const useNotificationStats = (id: string) =>
 
 const useInvalidateSent = () => {
   const invalidate = useInvalidate();
-  return () => invalidate(keys.sent(), keys.drafts());
+  return () => invalidate(keys.sent(), keys.drafts(), ["notifications", "history"]);
 };
 
 export const useCreateNotification = () => {

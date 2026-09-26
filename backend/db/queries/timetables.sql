@@ -42,7 +42,11 @@ WHERE class_id = $1 AND academic_year_id = $2 AND status = 'published';
 SELECT DISTINCT t.*
 FROM timetables t
 INNER JOIN timetable_entries te ON te.timetable_id = t.id
-WHERE t.academic_year_id = $1 AND t.status = 'published' AND te.teacher_id = $2;
+WHERE t.academic_year_id = $1 AND t.status = 'published'
+  AND (te.teacher_id = $2 OR EXISTS (
+      SELECT 1 FROM timetable_option_block_subjects bs
+      INNER JOIN class_subject_teachers cst ON cst.subject_id = bs.subject_id AND cst.class_id = t.class_id
+      WHERE bs.block_id = te.option_block_id AND cst.teacher_id = $2));
 
 -- name: ListUnderReviewTimetablesForGrades :many
 SELECT

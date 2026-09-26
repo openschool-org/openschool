@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -160,6 +161,60 @@ func TestStaffAttendanceWorkflowAPIWithPostgres(t *testing.T) {
 	summary := performAttendanceRequest(t, router, http.MethodGet, "/staff-attendance/monthly-summary?year=2026&month=9", nil)
 	if summary.Code != http.StatusOK || !bytes.Contains(summary.Body.Bytes(), []byte(`"late_count":1`)) || !bytes.Contains(summary.Body.Bytes(), []byte(`"leave_count":1`)) {
 		t.Fatalf("staff attendance summary: code=%d body=%s", summary.Code, summary.Body.String())
+	}
+}
+
+func TestStaffAttendanceRosterPagingWithPostgres(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	pool := testdb.Open(t)
+	fixture := seedAttendanceFixture(t, pool)
+	router := gin.New()
+	admin := router.Group("")
+	admin.Use(attendanceActor(fixture.adminUserID, authz.RoleAdmin))
+	RegisterStaffRoutes(admin, router.Group("/teacher"), NewStaffService(NewRepository(pool)), nil)
+	ctx := context.Background()
+
+	// The fixture has two teachers; two more make a page of 2 leave two over.
+	for i, name := range []string{"Aruni Perera", "Zahra Nizam"} {
+		var userID uuid.UUID
+		if err := pool.QueryRow(ctx, "INSERT INTO users (id, email, full_name, role) VALUES (gen_random_uuid(), $1, $2, 'teacher') RETURNING id", fmt.Sprintf("roster%d@example.test", i), name).Scan(&userID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(ctx, "INSERT INTO teacher_profiles (user_id, full_name, employee_number, joined_date, nic_number) VALUES ($1, $2, $3, '2020-01-01', $4)", userID, name, fmt.Sprintf("ROS-%d", i), fmt.Sprintf("99999999%dV", i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	page := performAttendanceRequest(t, router, http.MethodGet, "/staff-attendance/roster?date=2026-09-16&kind=teacher&limit=2", nil)
+	if page.Code != http.StatusOK || !bytes.Contains(page.Body.Bytes(), []byte(`"total":4`)) || !bytes.Contains(page.Body.Bytes(), []byte(`"unmarked":4`)) {
+		t.Fatalf("roster page: code=%d body=%s", page.Code, page.Body.String())
+	}
+	search := performAttendanceRequest(t, router, http.MethodGet, "/staff-attendance/roster?date=2026-09-16&kind=teacher&search=zahra", nil)
+	if search.Code != http.StatusOK || !bytes.Contains(search.Body.Bytes(), []byte(`"total":1`)) {
+		t.Fatalf("roster search: code=%d body=%s", search.Code, search.Body.String())
+	}
+
+	// One teacher is marked absent first; the bulk action must not overwrite that.
+	absent := MarkStaffAttendanceRequest{TeacherID: fixture.teacherID.String(), Date: time.Date(2026, time.September, 16, 0, 0, 0, 0, time.UTC), Status: "absent"}
+	if res := performAttendanceRequest(t, router, http.MethodPost, "/staff-attendance", absent); res.Code != http.StatusOK {
+		t.Fatalf("mark absent: code=%d body=%s", res.Code, res.Body.String())
+	}
+	bulk := performAttendanceRequest(t, router, http.MethodPost, "/staff-attendance/mark-unmarked", MarkUnmarkedRequest{Date: absent.Date, Kind: StaffKindTeacher})
+	if bulk.Code != http.StatusOK || !bytes.Contains(bulk.Body.Bytes(), []byte(`"marked":3`)) {
+		t.Fatalf("mark unmarked: code=%d body=%s", bulk.Code, bulk.Body.String())
+	}
+	after := performAttendanceRequest(t, router, http.MethodGet, "/staff-attendance/roster?date=2026-09-16&kind=teacher", nil)
+	if !bytes.Contains(after.Body.Bytes(), []byte(`"present":3`)) || !bytes.Contains(after.Body.Bytes(), []byte(`"absent":1`)) || !bytes.Contains(after.Body.Bytes(), []byte(`"unmarked":0`)) {
+		t.Fatalf("roster after bulk: body=%s", after.Body.String())
+	}
+
+	monthly := performAttendanceRequest(t, router, http.MethodGet, "/staff-attendance/monthly?year=2026&month=9&kind=teacher&limit=10", nil)
+	if monthly.Code != http.StatusOK || !bytes.Contains(monthly.Body.Bytes(), []byte(`"total":4`)) {
+		t.Fatalf("monthly page: code=%d body=%s", monthly.Code, monthly.Body.String())
+	}
+	bad := performAttendanceRequest(t, router, http.MethodGet, "/staff-attendance/roster?date=2026-09-16&kind=students", nil)
+	if bad.Code != http.StatusBadRequest {
+		t.Fatalf("bad kind: code=%d", bad.Code)
 	}
 }
 

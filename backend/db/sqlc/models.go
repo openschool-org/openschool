@@ -59,6 +59,7 @@ type Class struct {
 	BoyMonitorID    pgtype.UUID        `json:"boy_monitor_id"`
 	MediumID        pgtype.UUID        `json:"medium_id"`
 	HomeClassroomID pgtype.UUID        `json:"home_classroom_id"`
+	Capacity        int32              `json:"capacity"`
 }
 
 type ClassStudent struct {
@@ -153,11 +154,13 @@ type JobSetting struct {
 }
 
 type Level struct {
-	ID        uuid.UUID          `json:"id"`
-	Label     string             `json:"label"`
-	GradeID   pgtype.UUID        `json:"grade_id"`
-	SortOrder int32              `json:"sort_order"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID            uuid.UUID          `json:"id"`
+	Label         string             `json:"label"`
+	GradeID       pgtype.UUID        `json:"grade_id"`
+	SortOrder     int32              `json:"sort_order"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	StreamID      pgtype.UUID        `json:"stream_id"`
+	StreamGroupID pgtype.UUID        `json:"stream_group_id"`
 }
 
 type Medium struct {
@@ -230,6 +233,13 @@ type Prefect struct {
 	StudentID      uuid.UUID          `json:"student_id"`
 	Rank           string             `json:"rank"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type PromotionPolicy struct {
+	FromGradeID   uuid.UUID          `json:"from_grade_id"`
+	Policy        string             `json:"policy"`
+	SpreadByMarks bool               `json:"spread_by_marks"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
 type School struct {
@@ -351,6 +361,14 @@ type StudentGuardian struct {
 	StudentID        uuid.UUID `json:"student_id"`
 	GuardianID       uuid.UUID `json:"guardian_id"`
 	IsPrimaryContact bool      `json:"is_primary_contact"`
+}
+
+type StudentIntake struct {
+	StudentID      uuid.UUID          `json:"student_id"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	GradeID        uuid.UUID          `json:"grade_id"`
+	MediumID       pgtype.UUID        `json:"medium_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
 type StudentLeadershipRole struct {
@@ -508,15 +526,35 @@ type Timetable struct {
 }
 
 type TimetableEntry struct {
-	ID           uuid.UUID          `json:"id"`
-	TimetableID  uuid.UUID          `json:"timetable_id"`
-	DayOfWeek    int16              `json:"day_of_week"`
-	PeriodNumber int16              `json:"period_number"`
-	SubjectID    pgtype.UUID        `json:"subject_id"`
-	TeacherID    pgtype.UUID        `json:"teacher_id"`
-	ClassroomID  pgtype.UUID        `json:"classroom_id"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	ID            uuid.UUID          `json:"id"`
+	TimetableID   uuid.UUID          `json:"timetable_id"`
+	DayOfWeek     int16              `json:"day_of_week"`
+	PeriodNumber  int16              `json:"period_number"`
+	SubjectID     pgtype.UUID        `json:"subject_id"`
+	TeacherID     pgtype.UUID        `json:"teacher_id"`
+	ClassroomID   pgtype.UUID        `json:"classroom_id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	OptionBlockID pgtype.UUID        `json:"option_block_id"`
+}
+
+type TimetableOptionBlock struct {
+	ID             uuid.UUID          `json:"id"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	GradeID        uuid.UUID          `json:"grade_id"`
+	Name           string             `json:"name"`
+	PeriodsPerWeek int32              `json:"periods_per_week"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type TimetableOptionBlockClass struct {
+	BlockID uuid.UUID `json:"block_id"`
+	ClassID uuid.UUID `json:"class_id"`
+}
+
+type TimetableOptionBlockSubject struct {
+	BlockID   uuid.UUID `json:"block_id"`
+	SubjectID uuid.UUID `json:"subject_id"`
 }
 
 type TimetablePeriod struct {
@@ -562,9 +600,29 @@ type User struct {
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	MustChangePassword  bool               `json:"must_change_password"`
 	KeptDefaultPassword bool               `json:"kept_default_password"`
+	PreferredLanguage   string             `json:"preferred_language"`
 }
 
 type VicePrincipalGradeScope struct {
 	PositionID uuid.UUID `json:"position_id"`
 	GradeID    uuid.UUID `json:"grade_id"`
+}
+
+type WorkflowRun struct {
+	ID          uuid.UUID          `json:"id"`
+	WorkflowKey string             `json:"workflow_key"`
+	ScopeKey    string             `json:"scope_key"`
+	State       string             `json:"state"`
+	Inputs      []byte             `json:"inputs"`
+	Proposal    []byte             `json:"proposal"`
+	Trace       []byte             `json:"trace"`
+	Snapshot    []byte             `json:"snapshot"`
+	Summary     pgtype.Text        `json:"summary"`
+	Error       pgtype.Text        `json:"error"`
+	CreatedBy   pgtype.UUID        `json:"created_by"`
+	AppliedBy   pgtype.UUID        `json:"applied_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	AppliedAt   pgtype.Timestamptz `json:"applied_at"`
+	RevertedAt  pgtype.Timestamptz `json:"reverted_at"`
 }

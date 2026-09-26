@@ -45,6 +45,9 @@ type staffStore interface {
 	nonAcademicSummary(context.Context, time.Time, time.Time) ([]staffSummaryRow, error)
 	teacherHistory(context.Context, uuid.UUID, time.Time, time.Time) ([]StaffRecord, error)
 	nonAcademicHistory(context.Context, uuid.UUID, time.Time, time.Time) ([]StaffRecord, error)
+	roster(context.Context, time.Time, StaffRosterQuery) (StaffRosterPage, error)
+	monthly(context.Context, time.Time, time.Time, StaffRosterQuery) (StaffMonthlyPage, error)
+	markUnmarkedPresent(context.Context, time.Time, StaffKind, uuid.UUID) (int64, error)
 }
 
 type StaffHistoryReader interface {
@@ -90,10 +93,7 @@ func (s *StaffService) ListByDate(ctx context.Context, date time.Time) ([]StaffA
 func mapDirectoryRows(rows []staffDirectoryRow) []StaffAttendanceRow {
 	out := make([]StaffAttendanceRow, len(rows))
 	for i, row := range rows {
-		out[i] = StaffAttendanceRow{StaffID: row.ID.String(), FullName: row.FullName, EmployeeNumber: row.EmployeeNumber, Status: row.Status, Note: row.Note}
-		if row.RecordID != uuid.Nil {
-			out[i].RecordID = row.RecordID.String()
-		}
+		out[i] = row.toRow()
 	}
 	return out
 }
@@ -124,4 +124,27 @@ func (s *StaffService) TeacherHistory(ctx context.Context, id uuid.UUID, from, t
 
 func (s *StaffService) NonAcademicHistory(ctx context.Context, id uuid.UUID, from, to time.Time) ([]StaffRecord, error) {
 	return s.store.nonAcademicHistory(ctx, id, from, to)
+}
+
+// Roster returns one page of the day's roster for teachers or non-academic staff.
+func (s *StaffService) Roster(ctx context.Context, date time.Time, q StaffRosterQuery) (StaffRosterPage, error) {
+	return s.store.roster(ctx, date, q)
+}
+
+// Monthly returns one page of per-person status counts for the range.
+func (s *StaffService) Monthly(ctx context.Context, from, to time.Time, q StaffRosterQuery) (StaffMonthlyPage, error) {
+	return s.store.monthly(ctx, from, to, q)
+}
+
+// MarkUnmarkedPresent marks everyone of the kind with no record that day as present, so the clerk only fixes exceptions.
+func (s *StaffService) MarkUnmarkedPresent(ctx context.Context, req MarkUnmarkedRequest, markedBy uuid.UUID) (int64, error) {
+	return s.store.markUnmarkedPresent(ctx, req.Date, req.Kind, markedBy)
+}
+
+func (r staffDirectoryRow) toRow() StaffAttendanceRow {
+	row := StaffAttendanceRow{StaffID: r.ID.String(), FullName: r.FullName, EmployeeNumber: r.EmployeeNumber, Status: r.Status, Note: r.Note}
+	if r.RecordID != uuid.Nil {
+		row.RecordID = r.RecordID.String()
+	}
+	return row
 }

@@ -137,3 +137,19 @@ func (a *PeopleComplianceAgent) checkOnboarding(ctx context.Context, role, label
 	}
 	return checkOutcome{findings: len(stale), label: fmt.Sprintf("%d %s account(s) stuck onboarding", len(stale), label)}
 }
+
+// Title is the agent's name on the Automation panel.
+func (a *PeopleComplianceAgent) Title() string { return "People compliance" }
+
+// CanDisable reports whether an admin may switch this agent off.
+func (a *PeopleComplianceAgent) CanDisable() bool { return true }
+
+// Checks lists what this agent checks and where each finding is shown.
+func (a *PeopleComplianceAgent) Checks() []CheckInfo {
+	return []CheckInfo{
+		{Key: "inactive_teachers", Title: "No inactive teachers on classes", Description: "Teachers who left or are on leave are not still form or subject teachers.", FindingTitle: "Inactive teachers still assigned to classes", Pages: []string{"/teachers", "/classes"}},
+		{Key: "zero_guardians", Title: "Students have a guardian", Description: "Every active student has at least one guardian on file.", FindingTitle: "Students with no guardian on file", Pages: []string{"/students"}},
+		{Key: "teacher_onboarding", Title: "Teachers finished first sign-in", Description: "Teacher accounts are not stuck in first-login setup.", FindingTitle: "Teacher accounts stuck in first-login setup", Pages: []string{"/teachers"}},
+		{Key: "student_onboarding", Title: "Students finished first sign-in", Description: "Student accounts are not stuck in first-login setup.", FindingTitle: "Student accounts stuck in first-login setup", Pages: []string{"/students"}},
+	}
+}

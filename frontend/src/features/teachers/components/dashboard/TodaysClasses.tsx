@@ -19,8 +19,8 @@ export default function TodaysClasses({
   return (
     <div className="os-section">
       <div className="os-section__header">
-        <h2 className="os-section__title">Today's Classes</h2>
-        <span className="os-text-2xs os-c-tertiary">
+        <h2 className="os-section__title">Today's classes</h2>
+        <span className="os-text-xs os-c-tertiary">
           {formatLongDate(new Date())}
         </span>
       </div>
@@ -40,7 +40,7 @@ export default function TodaysClasses({
                 </div>
                 <div className="os-flex-1 os-min-w-0">
                   <p className="os-mt-0 os-mx-0 os-mb-h os-fw-600 os-text-md os-c-primary">
-                    {cls.grade_name} — {cls.class_name}
+                    {cls.grade_name} - {cls.class_name}
                   </p>
                   <p className="os-m-0 os-text-xs os-c-secondary">
                     {cls.subjects.join(", ")} · {studentCountByClass.get(cls.class_id) ?? 0} students

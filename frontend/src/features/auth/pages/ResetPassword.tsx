@@ -8,7 +8,7 @@ import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import PasswordFields from "@/shared/ui/PasswordFields";
 
 // The reset token travels in the URL fragment (#token=...), not a query
-// string — a fragment is never sent to a server, so it can't land in the
+// string - a fragment is never sent to a server, so it can't land in the
 // SPA host's or a proxy's access log the way a query string would (S5).
 function tokenFromHash(): string {
   const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
@@ -36,7 +36,7 @@ export default function ResetPassword() {
           </div>
           <h1 className="os-auth-card__title">Password updated</h1>
           <p className="os-auth-card__subtitle">You can now sign in with your new password.</p>
-          <Button href="/signin" className="os-full-width-btn">Go to Sign In</Button>
+          <Button href="/signin" className="os-full-width-btn">Go to sign in</Button>
         </div>
       </div>
     );

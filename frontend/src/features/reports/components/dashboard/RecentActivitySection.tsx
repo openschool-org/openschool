@@ -24,7 +24,7 @@ export default function RecentActivitySection({
   return (
     <div className="os-section">
       <SectionHeader
-        title="Recent Activity"
+        title="Recent activity"
         meta={
           <Link to="/students" className="os-text-xs os-no-underline os-c-accent">
             View all →
@@ -70,7 +70,7 @@ export default function RecentActivitySection({
                 <Tag type={item.kind === "teacher" ? "purple" : "blue"} size="sm">
                   {item.kind === "teacher" ? "Teacher" : "Student"}
                 </Tag>
-                <span className="os-text-2xs os-c-tertiary">
+                <span className="os-text-xs os-c-tertiary">
                   {formatShortDayMonth(item.time)}
                 </span>
               </div>

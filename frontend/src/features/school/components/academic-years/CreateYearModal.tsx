@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
-import { TextInput, DatePicker, DatePickerInput, Checkbox } from "@carbon/react";
+import { TextInput, Checkbox } from "@carbon/react";
 import type { useCreateAcademicYear } from "@/features/school/queries/useAcademicYears";
 import FormModal from "@/shared/ui/FormModal";
-import { toYmd } from "@/shared/lib/date";
+import DateField from "@/shared/ui/DateField";
 
 export interface YearForm {
   label: string;
@@ -67,36 +67,16 @@ export default function CreateYearModal({
           invalid={!!touched.label && !form.label.trim()}
           invalidText="A label is required."
         />
-        <DatePicker
-          datePickerType="single"
-          dateFormat="Y-m-d"
-          value={form.start_date}
-          onChange={(dates) => setForm((f) => ({ ...f, start_date: toYmd(dates[0]) }))}
-        >
-          <DatePickerInput
-            id="ay-start"
-            labelText="Start Date"
-            placeholder="YYYY-MM-DD"
+        <DateField value={form.start_date} onChange={(ymd) => setForm((f) => ({ ...f, start_date: ymd }))} id="ay-start"
+            labelText="Start date"
             onBlur={() => setTouched((t) => ({ ...t, start_date: true }))}
             invalid={!!touched.start_date && !form.start_date}
-            invalidText="A start date is required."
-          />
-        </DatePicker>
-        <DatePicker
-          datePickerType="single"
-          dateFormat="Y-m-d"
-          value={form.end_date}
-          onChange={(dates) => setForm((f) => ({ ...f, end_date: toYmd(dates[0]) }))}
-        >
-          <DatePickerInput
-            id="ay-end"
-            labelText="End Date"
-            placeholder="YYYY-MM-DD"
+            invalidText="A start date is required." />
+        <DateField value={form.end_date} onChange={(ymd) => setForm((f) => ({ ...f, end_date: ymd }))} id="ay-end"
+            labelText="End date"
             onBlur={() => setTouched((t) => ({ ...t, end_date: true }))}
             invalid={!!touched.end_date && (!form.end_date || dateRangeInvalid)}
-            invalidText={dateRangeInvalid ? "End date must be after the start date." : "An end date is required."}
-          />
-        </DatePicker>
+            invalidText={dateRangeInvalid ? "End date must be after the start date." : "An end date is required."} />
         <Checkbox
           id="ay-current"
           labelText="Set as current academic year"

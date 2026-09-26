@@ -70,11 +70,11 @@ export default function GeneralSettingsTab() {
       <div className="os-flex os-gap-2 os-items-center os-justify-end os-my-4">
         {pending && <span className="os-text-sm os-c-secondary">Saving…</span>}
         {noSchoolYet ? (
-          <Button renderIcon={Save} kind="primary" size="md" onClick={save} disabled={pending || rangeInvalid || !form.name.trim()}>Create School</Button>
+          <Button renderIcon={Save} kind="primary" size="md" onClick={save} disabled={pending || rangeInvalid || !form.name.trim()}>Create school</Button>
         ) : editing ? (
           <>
             <Button kind="secondary" size="md" onClick={() => { if (school) setForm(schoolToForm(school)); setEditing(false); }} disabled={pending}>Cancel</Button>
-            <Button renderIcon={Save} kind="primary" size="md" onClick={save} disabled={pending || rangeInvalid}>Save Changes</Button>
+            <Button renderIcon={Save} kind="primary" size="md" onClick={save} disabled={pending || rangeInvalid}>Save changes</Button>
           </>
         ) : (
           <Button renderIcon={Edit} kind="secondary" size="md" onClick={() => setEditing(true)}>Edit</Button>

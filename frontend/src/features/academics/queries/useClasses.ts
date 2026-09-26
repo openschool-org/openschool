@@ -5,6 +5,7 @@ import type { CreateClassRequest, UpdateClassRequest } from "@/features/academic
 import { classKeys, streamKeys } from "@/features/academics/keys";
 import { studentKeys } from "@/features/students/keys";
 import { useInvalidate } from "@/shared/api/useInvalidate";
+import { timetableKeys } from "@/features/timetable/keys";
 
 export const useCurrentClasses = () => useQuery({ queryKey: classKeys.current(), queryFn: classApi.listCurrent });
 
@@ -27,7 +28,8 @@ export const useClassSubjectTeachers = (classId: string) =>
 
 export const useCreateClass = () => {
   const invalidate = useInvalidate();
-  return useMutation({ mutationFn: (data: CreateClassRequest) => classApi.create(data), onSuccess: () => invalidate(classKeys.all) });
+  // The backend may create a homeroom too, so the classroom list is refreshed as well.
+  return useMutation({ mutationFn: (data: CreateClassRequest) => classApi.create(data), onSuccess: () => invalidate(classKeys.all, timetableKeys.classrooms()) });
 };
 
 export const useDeleteClass = () => {

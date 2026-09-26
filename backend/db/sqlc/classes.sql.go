@@ -17,7 +17,7 @@ UPDATE classes
 SET girl_monitor_id = $2,
     boy_monitor_id  = $3
 WHERE id = $1
-RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id
+RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id, capacity
 `
 
 type AssignClassMonitorsParams struct {
@@ -42,6 +42,7 @@ func (q *Queries) AssignClassMonitors(ctx context.Context, arg AssignClassMonito
 		&i.BoyMonitorID,
 		&i.MediumID,
 		&i.HomeClassroomID,
+		&i.Capacity,
 	)
 	return i, err
 }
@@ -50,7 +51,7 @@ const assignFormTeacher = `-- name: AssignFormTeacher :one
 UPDATE classes
 SET form_teacher_id = $2
 WHERE id = $1
-RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id
+RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id, capacity
 `
 
 type AssignFormTeacherParams struct {
@@ -74,6 +75,7 @@ func (q *Queries) AssignFormTeacher(ctx context.Context, arg AssignFormTeacherPa
 		&i.BoyMonitorID,
 		&i.MediumID,
 		&i.HomeClassroomID,
+		&i.Capacity,
 	)
 	return i, err
 }
@@ -109,7 +111,7 @@ INSERT INTO classes (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8
 )
-RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id
+RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id, capacity
 `
 
 type CreateClassParams struct {
@@ -148,6 +150,7 @@ func (q *Queries) CreateClass(ctx context.Context, arg CreateClassParams) (Class
 		&i.BoyMonitorID,
 		&i.MediumID,
 		&i.HomeClassroomID,
+		&i.Capacity,
 	)
 	return i, err
 }
@@ -291,7 +294,7 @@ func (q *Queries) EnrollStudentInClass(ctx context.Context, arg EnrollStudentInC
 }
 
 const getClassByID = `-- name: GetClassByID :one
-SELECT id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id FROM classes
+SELECT id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id, capacity FROM classes
 WHERE id = $1
 `
 
@@ -311,6 +314,7 @@ func (q *Queries) GetClassByID(ctx context.Context, id uuid.UUID) (Class, error)
 		&i.BoyMonitorID,
 		&i.MediumID,
 		&i.HomeClassroomID,
+		&i.Capacity,
 	)
 	return i, err
 }
@@ -495,7 +499,7 @@ func (q *Queries) IsTeacherAssignedToClass(ctx context.Context, arg IsTeacherAss
 
 const listClassesByAcademicYear = `-- name: ListClassesByAcademicYear :many
 SELECT
-    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id,
+    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id, c.capacity,
     g.name  AS grade_name,
     ay.label AS academic_year_label,
     m.name  AS medium_name,
@@ -522,6 +526,7 @@ type ListClassesByAcademicYearRow struct {
 	BoyMonitorID      pgtype.UUID        `json:"boy_monitor_id"`
 	MediumID          pgtype.UUID        `json:"medium_id"`
 	HomeClassroomID   pgtype.UUID        `json:"home_classroom_id"`
+	Capacity          int32              `json:"capacity"`
 	GradeName         string             `json:"grade_name"`
 	AcademicYearLabel string             `json:"academic_year_label"`
 	MediumName        pgtype.Text        `json:"medium_name"`
@@ -550,6 +555,7 @@ func (q *Queries) ListClassesByAcademicYear(ctx context.Context, academicYearID 
 			&i.BoyMonitorID,
 			&i.MediumID,
 			&i.HomeClassroomID,
+			&i.Capacity,
 			&i.GradeName,
 			&i.AcademicYearLabel,
 			&i.MediumName,
@@ -566,7 +572,7 @@ func (q *Queries) ListClassesByAcademicYear(ctx context.Context, academicYearID 
 }
 
 const listClassesByGradeSection = `-- name: ListClassesByGradeSection :many
-SELECT c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id
+SELECT c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id, c.capacity
 FROM classes c
 INNER JOIN grade_section_grades gsg
     ON gsg.grade_id = c.grade_id AND gsg.academic_year_id = c.academic_year_id
@@ -604,7 +610,40 @@ func (q *Queries) ListClassesByGradeSection(ctx context.Context, arg ListClasses
 			&i.BoyMonitorID,
 			&i.MediumID,
 			&i.HomeClassroomID,
+			&i.Capacity,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listClassesWithoutHomeroom = `-- name: ListClassesWithoutHomeroom :many
+SELECT id, name FROM classes
+WHERE academic_year_id = $1 AND home_classroom_id IS NULL
+ORDER BY name ASC
+`
+
+type ListClassesWithoutHomeroomRow struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+// Classes in the given year that were created before homerooms were automatic.
+func (q *Queries) ListClassesWithoutHomeroom(ctx context.Context, academicYearID uuid.UUID) ([]ListClassesWithoutHomeroomRow, error) {
+	rows, err := q.db.Query(ctx, listClassesWithoutHomeroom, academicYearID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListClassesWithoutHomeroomRow{}
+	for rows.Next() {
+		var i ListClassesWithoutHomeroomRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -617,7 +656,7 @@ func (q *Queries) ListClassesByGradeSection(ctx context.Context, arg ListClasses
 
 const listCurrentClasses = `-- name: ListCurrentClasses :many
 SELECT
-    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id,
+    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id, c.capacity,
     g.name   AS grade_name,
     ay.label AS academic_year_label,
     m.name   AS medium_name,
@@ -644,6 +683,7 @@ type ListCurrentClassesRow struct {
 	BoyMonitorID      pgtype.UUID        `json:"boy_monitor_id"`
 	MediumID          pgtype.UUID        `json:"medium_id"`
 	HomeClassroomID   pgtype.UUID        `json:"home_classroom_id"`
+	Capacity          int32              `json:"capacity"`
 	GradeName         string             `json:"grade_name"`
 	AcademicYearLabel string             `json:"academic_year_label"`
 	MediumName        pgtype.Text        `json:"medium_name"`
@@ -672,6 +712,7 @@ func (q *Queries) ListCurrentClasses(ctx context.Context) ([]ListCurrentClassesR
 			&i.BoyMonitorID,
 			&i.MediumID,
 			&i.HomeClassroomID,
+			&i.Capacity,
 			&i.GradeName,
 			&i.AcademicYearLabel,
 			&i.MediumName,
@@ -860,6 +901,20 @@ func (q *Queries) ListSubjectTeachersByClass(ctx context.Context, classID uuid.U
 	return items, nil
 }
 
+const setClassHomeClassroom = `-- name: SetClassHomeClassroom :exec
+UPDATE classes SET home_classroom_id = $2 WHERE id = $1
+`
+
+type SetClassHomeClassroomParams struct {
+	ID              uuid.UUID   `json:"id"`
+	HomeClassroomID pgtype.UUID `json:"home_classroom_id"`
+}
+
+func (q *Queries) SetClassHomeClassroom(ctx context.Context, arg SetClassHomeClassroomParams) error {
+	_, err := q.db.Exec(ctx, setClassHomeClassroom, arg.ID, arg.HomeClassroomID)
+	return err
+}
+
 const unenrollStudentFromClass = `-- name: UnenrollStudentFromClass :exec
 DELETE FROM class_students
 WHERE class_id = $1 AND student_id = $2
@@ -883,7 +938,7 @@ SET
     medium_id          = $4,
     home_classroom_id  = $5
 WHERE id = $1
-RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id
+RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id, capacity
 `
 
 type UpdateClassParams struct {
@@ -916,6 +971,7 @@ func (q *Queries) UpdateClass(ctx context.Context, arg UpdateClassParams) (Class
 		&i.BoyMonitorID,
 		&i.MediumID,
 		&i.HomeClassroomID,
+		&i.Capacity,
 	)
 	return i, err
 }

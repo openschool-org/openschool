@@ -54,6 +54,9 @@ type recipientNotification struct {
 type recipientStats struct{ Total, Read int32 }
 
 type store interface {
+	SearchSent(context.Context, HistoryFilter) (HistoryPage, error)
+	SearchMine(context.Context, uuid.UUID, InboxFilter) ([]MyNotificationResponse, int64, error)
+	CountBoxes(context.Context, uuid.UUID) (InboxCounts, error)
 	Create(context.Context, notificationCommand) (notification, error)
 	UpdateDraft(context.Context, notificationCommand) (notification, error)
 	MarkSent(context.Context, uuid.UUID) (notification, error)
@@ -68,6 +71,7 @@ type store interface {
 	ListMyArchived(context.Context, uuid.UUID) ([]recipientNotification, error)
 	CountMyUnread(context.Context, uuid.UUID) (int64, error)
 	MarkRead(context.Context, uuid.UUID, uuid.UUID) error
+	MarkAllRead(context.Context, uuid.UUID) error
 	SetArchived(context.Context, uuid.UUID, uuid.UUID, bool) error
 	ListAllUserIDs(context.Context) ([]uuid.UUID, error)
 	ListStudentUserIDsByClass(context.Context, uuid.UUID) ([]pgtype.UUID, error)
@@ -669,6 +673,36 @@ func (s *NotificationService) MarkRead(ctx context.Context, notificationID, user
 	return s.repo.MarkRead(ctx, notificationID, userID)
 }
 
+func (s *NotificationService) MarkAllRead(ctx context.Context, userID uuid.UUID) error {
+	return s.repo.MarkAllRead(ctx, userID)
+}
+
 func (s *NotificationService) SetArchived(ctx context.Context, notificationID, userID uuid.UUID, archived bool) error {
 	return s.repo.SetArchived(ctx, notificationID, userID, archived)
+}
+
+var ErrInvalidBox = errors.New("box must be unread, read or archived")
+
+// History pages sent notifications; a teacher only ever sees their own, an admin sees the whole school.
+func (s *NotificationService) History(ctx context.Context, callerUserID uuid.UUID, callerRole string, filter HistoryFilter) (HistoryPage, error) {
+	if callerRole != authz.RoleAdmin {
+		filter.SenderID = &callerUserID
+	}
+	return s.repo.SearchSent(ctx, filter)
+}
+
+// Inbox pages one box of the caller's notifications, with counts for every box.
+func (s *NotificationService) Inbox(ctx context.Context, userID uuid.UUID, filter InboxFilter) (InboxPage, error) {
+	if !validBoxes[filter.Box] {
+		return InboxPage{}, ErrInvalidBox
+	}
+	items, total, err := s.repo.SearchMine(ctx, userID, filter)
+	if err != nil {
+		return InboxPage{}, err
+	}
+	counts, err := s.repo.CountBoxes(ctx, userID)
+	if err != nil {
+		return InboxPage{}, err
+	}
+	return InboxPage{Items: items, Total: total, Limit: filter.Limit, Offset: filter.Offset, Counts: counts}, nil
 }

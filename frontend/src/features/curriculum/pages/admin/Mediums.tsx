@@ -21,6 +21,7 @@ import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import SectionHeader from "@/shared/ui/SectionHeader";
 import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
+import InfoTip from "@/shared/ui/InfoTip";
 
 export default function Mediums() {
   const { data: mediums, isLoading, isError, refetch } = useMediums();
@@ -74,13 +75,13 @@ export default function Mediums() {
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">Mediums</h1>
-          <p className="os-page__subtitle">
-            Languages of instruction. Used to restrict a subject within a
-            selection group to a single medium.
-          </p>
+          <div className="os-page__subtitle os-page__subtitle--tip">
+            Languages subjects are taught in.
+            <InfoTip>Use these to limit a subject in a selection group to one language.</InfoTip>
+          </div>
         </div>
         <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>
-          New Medium
+          New medium
         </Button>
       </div>
 
@@ -115,7 +116,7 @@ export default function Mediums() {
             description="Add the languages your school teaches in, for example Sinhala, Tamil or English."
             action={
               <Button renderIcon={Add} kind="primary" onClick={openCreate}>
-                New Medium
+                New medium
               </Button>
             }
           />

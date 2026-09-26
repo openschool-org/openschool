@@ -82,6 +82,7 @@ $sizes: (2: 2rem, 2h: 2.5rem, 3: 3rem, 4: 4rem, 5: 5rem, 6: 6rem, 8: 8rem, 10: 1
 .os-min-h-content { min-height: calc(100vh - 3rem); }
 
 // Typography
+// 11 px is for uppercase labels only; body text never goes below os-text-xs.
 .os-text-2xs { font-size: 0.6875rem; }
 .os-text-xs { font-size: 0.75rem; }
 .os-text-sm { font-size: 0.8125rem; }
@@ -233,6 +234,9 @@ $small: ("0h": 0.625rem, "3q": 0.75rem, "1r": 1rem, "1t": 1.75rem, "2q": 2.25rem
 .os-stat-card__value { margin: 0; font-size: 2.25rem; font-weight: 300; color: var(--os-text-primary); line-height: 1; }
 .os-progress { height: 6px; background: var(--os-border-subtle); border-radius: 3px; overflow: hidden; }
 .os-progress__bar { height: 100%; background: var(--os-accent); border-radius: 3px; }
+.os-progress--sm { height: 5px; }
+.os-progress__bar--success { background: var(--os-success); }
+.os-progress__bar--warning { background: var(--os-warning); }
 .os-pill { padding: 0.5rem 0.875rem; border: 1.5px solid var(--os-border-subtle); background: var(--os-layer); color: var(--os-text-secondary); font-weight: 400; font-size: 0.8125rem; cursor: pointer; font-family: inherit; }
 .os-pill.is-active { border-color: var(--os-accent); background: var(--os-accent-light); color: var(--os-accent); font-weight: 600; }
 .os-select-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1.25rem; border-radius: 0; border-bottom: 1px solid var(--os-border-subtle); background: var(--os-layer); width: 100%; border-left: none; border-right: none; border-top: none; text-align: left; cursor: pointer; font-family: inherit; }
@@ -262,4 +266,17 @@ $small: ("0h": 0.625rem, "3q": 0.75rem, "1r": 1rem, "1t": 1.75rem, "2q": 2.25rem
 .os-focus-ring:focus-visible {
   outline: 2px solid var(--os-accent);
   outline-offset: 2px;
+}
+
+// Visible to screen readers only.
+.os-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

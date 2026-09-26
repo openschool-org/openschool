@@ -10,6 +10,7 @@ export const attendanceKeys = {
 export const staffAttendanceKeys = {
   all: ["staff-attendance"] as const,
   byDate: (date: string) => ["staff-attendance", "by-date", date] as const,
-  monthlySummary: (year: number, month: number) => ["staff-attendance", "monthly-summary", year, month] as const,
+  roster: (date: string, params: object) => ["staff-attendance", "roster", date, params] as const,
+  monthly: (year: number, month: number, params: object) => ["staff-attendance", "monthly", year, month, params] as const,
   myHistory: (year: number, month: number) => ["staff-attendance", "me", year, month] as const,
 };

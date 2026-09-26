@@ -2,6 +2,7 @@ import { TextInput, TextArea, Select, SelectItem, RadioButtonGroup, RadioButton,
 import type { StudentWithClass, StudentEnrollmentStatus } from "@/features/students/api/student";
 import type { House } from "@/features/school/api/house";
 import type { UseMutationResult } from "@tanstack/react-query";
+import InfoTip from "@/shared/ui/InfoTip";
 
 type Gender = "" | "male" | "female";
 
@@ -62,19 +63,19 @@ export default function StudentProfileTab({
           <div className="os-grid os-grid-cols-2 os-gap-5">
             <TextInput
               id="given-name"
-              labelText="First Name"
+              labelText="First name"
               value={form.given_name}
               readOnly={!editing}
               onChange={(e) => onChange("given_name", e.target.value)}
             />
             <TextInput
               id="family-name"
-              labelText="Last Name"
+              labelText="Last name"
               value={form.family_name}
               readOnly={!editing}
               onChange={(e) => onChange("family_name", e.target.value)}
             />
-            <TextInput id="index-number" labelText="Index Number" value={student.index_number} readOnly />
+            <TextInput id="index-number" labelText="Index number" value={student.index_number} readOnly />
             <TextInput id="email" labelText="Email" value={student.email ?? "-"} readOnly />
             <TextInput
               id="phone"
@@ -118,7 +119,7 @@ export default function StudentProfileTab({
             <div className="os-col-span-full">
               <TextArea
                 id="special-remarks"
-                labelText="Special Remarks"
+                labelText="Special remarks"
                 rows={3}
                 value={form.special_remarks}
                 readOnly={!editing}
@@ -131,7 +132,7 @@ export default function StudentProfileTab({
 
       <div className="os-section">
         <div className="os-section__header">
-          <h2 className="os-section__title">Current Class</h2>
+          <h2 className="os-section__title">Current class</h2>
         </div>
         <div className="os-section__body">
           {student.class_name ? (
@@ -170,8 +171,8 @@ export default function StudentProfileTab({
           )}
           <Select
             id="student-house"
-            labelText="Assigned house"
-            helperText="Assigned automatically to keep houses balanced. Only a System Administrator can change it - every change is recorded in the audit log."
+            labelText={<>Assigned house <InfoTip>Only a system administrator can change it. Every change is recorded in the audit log.</InfoTip></>}
+            helperText="Assigned automatically to balance houses."
             value={student.house_id ?? ""}
             disabled={updateHouse.isPending}
             onChange={(e) => updateHouse.mutate({ id: student.id, houseId: e.target.value })}
@@ -186,7 +187,7 @@ export default function StudentProfileTab({
 
       <div className="os-section">
         <div className="os-section__header">
-          <h2 className="os-section__title">Enrolment Status</h2>
+          <h2 className="os-section__title">Enrolment status</h2>
         </div>
         <div className="os-section__body">
           <Select

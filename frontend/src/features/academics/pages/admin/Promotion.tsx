@@ -11,6 +11,7 @@ import ErrorMessage from "@/shared/ui/ErrorMessage";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import type { PromotionPreviewRow } from "@/features/academics/api/promotion";
 import PromotionGroup from "@/features/academics/components/PromotionGroup";
+import InfoTip from "@/shared/ui/InfoTip";
 
 export default function Promotion() {
   const { data: years, isLoading: yearsLoading } = useAcademicYears();
@@ -97,11 +98,11 @@ export default function Promotion() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">Academic Year Promotion</h1>
-          <p className="os-page__subtitle">
-            Promote students to their next grade and assign them to classes in a new academic year - nothing is
-            visible to the rest of the app until that year is set as current.
-          </p>
+          <h1 className="os-page__title">Academic year promotion</h1>
+          <div className="os-page__subtitle os-page__subtitle--tip">
+            Move students to their next grade and class for a new academic year.
+            <InfoTip>Nothing changes for the rest of the school until you set that year as current.</InfoTip>
+          </div>
         </div>
       </div>
 
@@ -237,7 +238,7 @@ export default function Promotion() {
             onClick={handleCommit}
             disabled={!readyToCommit || commit.isPending}
           >
-            {commit.isPending ? "Saving…" : "Save Assignments"}
+            {commit.isPending ? "Saving…" : "Save assignments"}
           </Button>
         </div>
       )}

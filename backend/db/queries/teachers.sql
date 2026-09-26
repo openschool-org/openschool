@@ -69,7 +69,17 @@ SELECT *, COUNT(*) OVER () AS total
 FROM teacher_profiles
 WHERE (sqlc.narg(search)::text IS NULL OR full_name ILIKE '%' || sqlc.narg(search)::text || '%' OR employee_number ILIKE '%' || sqlc.narg(search)::text || '%')
   AND (sqlc.narg(status)::text IS NULL OR employment_status = sqlc.narg(status)::text)
-ORDER BY full_name ASC, id ASC
+ORDER BY
+    -- Whitelisted by httpx.ParseSort; an empty key keeps the default name order.
+    CASE WHEN sqlc.arg(sort_key)::text = 'name' AND NOT sqlc.arg(sort_desc)::bool THEN full_name END ASC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'name' AND sqlc.arg(sort_desc)::bool THEN full_name END DESC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'employee' AND NOT sqlc.arg(sort_desc)::bool THEN employee_number END ASC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'employee' AND sqlc.arg(sort_desc)::bool THEN employee_number END DESC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'joined' AND NOT sqlc.arg(sort_desc)::bool THEN joined_date END ASC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'joined' AND sqlc.arg(sort_desc)::bool THEN joined_date END DESC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'status' AND NOT sqlc.arg(sort_desc)::bool THEN employment_status END ASC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'status' AND sqlc.arg(sort_desc)::bool THEN employment_status END DESC,
+    full_name ASC, id ASC
 LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int;
 
 -- name: UpdateTeacherProfile :one

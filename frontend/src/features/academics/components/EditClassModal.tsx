@@ -3,6 +3,7 @@ import type { useUpdateClass } from "@/features/academics/queries/useClasses";
 import type { Medium } from "@/features/curriculum/api/curriculum";
 import type { Classroom } from "@/features/timetable/api/classroom";
 import FormModal from "@/shared/ui/FormModal";
+import InfoTip from "@/shared/ui/InfoTip";
 
 interface Props {
   open: boolean;
@@ -48,7 +49,7 @@ export default function EditClassModal({
     >
       <TextInput
         id="class-name-edit"
-        labelText="Class Name"
+        labelText="Class name"
         value={nameEdit}
         maxLength={20}
         onChange={(e) => onNameEditChange(e.target.value)}
@@ -56,8 +57,8 @@ export default function EditClassModal({
 
       <Select
         id="class-medium-edit"
-        labelText="Medium (optional)"
-        helperText="Set this only if the section is reserved for one language of instruction - medium-designated classes carry students straight over at promotion instead of being reshuffled."
+        labelText={<>Medium (optional) <InfoTip>Classes tied to one medium keep their students together at promotion instead of being reshuffled.</InfoTip></>}
+        helperText="Only for single-language classes."
         value={mediumEdit}
         onChange={(e) => onMediumEditChange(e.target.value)}
       >
@@ -69,7 +70,7 @@ export default function EditClassModal({
 
       <Select
         id="class-home-classroom-edit"
-        labelText="Home Classroom (optional)"
+        labelText="Home classroom (optional)"
         helperText="Students stay in this room all day; teachers rotate in."
         value={homeClassroomEdit}
         onChange={(e) => onHomeClassroomEditChange(e.target.value)}

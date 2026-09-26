@@ -254,3 +254,111 @@
   &__title { margin: 0 0 0.5rem; font-size: 1.125rem; font-weight: 600; color: var(--os-text-primary); }
   &__text { margin: 0 0 1.5rem; font-size: 0.875rem; color: var(--os-text-secondary); }
 }
+
+// Subtitle with a trailing InfoTip.
+.os-page__subtitle--tip { display: flex; align-items: center; gap: 0.25rem; }
+.os-infotip { vertical-align: middle; .cds--toggletip-button svg { fill: var(--os-text-tertiary); } }
+.os-infotip .cds--toggletip-content p { max-width: 20rem; }
+
+// Parent dashboard child card with its summary numbers.
+.os-child-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+
+  &__stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin: 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--os-border-subtle);
+
+    dt { display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--os-text-secondary); margin-bottom: 0.25rem; }
+    dd { margin: 0; font-size: 1.25rem; font-weight: 600; color: var(--os-text-primary); }
+  }
+
+  &__meta { display: block; font-size: 0.75rem; font-weight: 400; color: var(--os-text-tertiary); }
+}
+
+// Automation panel: the list of checks under each agent.
+.os-agent-checks {
+  ul { margin: 0.5rem 0 0; padding-left: 1.25rem; list-style: disc; }
+  li { font-size: 0.8125rem; color: var(--os-text-secondary); margin-bottom: 0.25rem; }
+}
+
+// Year-end workflows.
+.os-pipeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  &__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--os-layer);
+    border: 1px solid var(--os-border-subtle);
+  }
+  &__number {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    background: var(--os-accent-light);
+    color: var(--os-accent-dark);
+  }
+  &__title { margin: 0; font-size: 1rem; font-weight: 600; color: var(--os-text-primary); }
+}
+
+.os-workflow-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
+.os-workflow-inputs__check { align-self: end; }
+.os-workflow-inputs__wide { grid-column: 1 / -1; }
+
+.os-checks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  &__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--os-border-subtle);
+    font-size: 0.875rem;
+    svg { margin-top: 0.125rem; flex-shrink: 0; }
+    &.is-ok svg { fill: var(--os-success); }
+    &.is-warning svg { fill: var(--os-warning); }
+    &.is-blocking svg { fill: var(--os-danger); }
+  }
+}
+
+.os-steps {
+  margin: 0;
+  padding: 1rem 1.5rem 1rem 2.5rem;
+  li { margin-bottom: 0.75rem; }
+  li > span { margin-right: 0.5rem; }
+  code { font-size: 0.75rem; color: var(--os-accent-dark); }
+}
+
+.os-trace {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  li { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline; margin-bottom: 0.5rem; font-size: 0.875rem; }
+  li.is-failed { color: var(--os-danger); }
+  &__tool { font-size: 0.75rem; color: var(--os-accent-dark); }
+}
+
+.os-table-scroll { overflow-x: auto; }
+.os-proposal__group td { background: var(--os-layer-hover); font-weight: 600; font-size: 0.8125rem; color: var(--os-text-secondary); }
+.os-table tr.is-warning td { background: var(--os-status-late-bg); }
+.os-c-warning { color: var(--os-warning-text); }

@@ -19,6 +19,7 @@ import ErrorMessage from "@/shared/ui/ErrorMessage";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
 import UnsavedChangesModal from "@/shared/ui/UnsavedChangesModal";
 import { useToast } from "@/shared/ui/toast/useToast";
+import { usePageTitle } from "@/shared/hooks/usePageTitle";
 
 const HEADERS = ["#", "Student", "Index No.", "Attendance", "Note"];
 
@@ -31,9 +32,10 @@ export default function AttendanceMark() {
   const { data: session, isLoading: sessionLoading, isError: sessionError } = useSession(id);
   const { data: records, isLoading: recordsLoading } = useSessionRecords(id);
   const { data: cls } = useClass(session?.class_id ?? "");
+  usePageTitle(cls ? `Mark attendance ${cls.name}` : null);
   const { data: students, isLoading: studentsLoading } = useStudentsByClass(session?.class_id ?? "");
   const { data: grades } = useGrades();
-  // Who took this session — a single-record lookup by id, not a picker, so
+  // Who took this session - a single-record lookup by id, not a picker, so
   // a capped /teachers page can't be used as a directory.
   const { data: takenByTeacher } = useTeacher(session?.taken_by ?? "");
   const markAttendance = useMarkAttendance(id);
@@ -124,7 +126,7 @@ export default function AttendanceMark() {
                   <tr>
                     <th className="os-w-2h">#</th>
                     <th>Student</th>
-                    <th>Index No.</th>
+                    <th>Index no.</th>
                     <th>Attendance</th>
                     <th>Note</th>
                   </tr>
@@ -170,7 +172,7 @@ export default function AttendanceMark() {
               <div className="os-flex-1" />
               <Button kind="secondary" size="md" onClick={() => unsavedGuard.guard(() => navigate(backPath))}>Cancel</Button>
               <Button renderIcon={Save} kind="primary" size="md" onClick={save} disabled={markAttendance.isPending}>
-                {markAttendance.isPending ? "Saving…" : "Save Attendance"}
+                {markAttendance.isPending ? "Saving…" : "Save attendance"}
               </Button>
             </div>
           </div>

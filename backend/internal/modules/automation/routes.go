@@ -13,6 +13,7 @@ func RegisterRoutes(admin *gin.RouterGroup, pool *pgxpool.Pool) *Scheduler {
 	handler := NewJobsHandler(NewService(scheduler, settingsRepo))
 
 	admin.GET("/jobs", handler.List)
+	admin.GET("/jobs/findings", handler.Findings)
 	admin.PUT("/jobs/:name/enabled", handler.SetEnabled)
 	admin.POST("/jobs/:name/run", handler.RunNow)
 

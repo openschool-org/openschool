@@ -149,7 +149,7 @@ export default function AddGuardianModal({
             <div className="os-grid os-gap-4">
               <TextInput
                 id="guardian-name"
-                labelText="Full Name"
+                labelText="Full name"
                 value={form.full_name}
                 onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
                 onBlur={() => setTouched((t) => ({ ...t, full_name: true }))}
@@ -186,7 +186,7 @@ export default function AddGuardianModal({
               />
               <TextInput
                 id="guardian-nic"
-                labelText="NIC Number"
+                labelText="NIC number"
                 value={form.nic_number}
                 onChange={(e) => setForm((f) => ({ ...f, nic_number: e.target.value }))}
                 onBlur={() => setTouched((t) => ({ ...t, nic_number: true }))}
@@ -209,7 +209,7 @@ export default function AddGuardianModal({
               Cancel
             </Button>
             <Button kind="tertiary" onClick={() => setStep("create")}>
-              None of these — create new
+              None of these - create new
             </Button>
           </>
         ) : (
@@ -218,7 +218,7 @@ export default function AddGuardianModal({
               Back to search
             </Button>
             <Button kind="primary" onClick={handleAdd} disabled={!isValid || addGuardian.isPending}>
-              {addGuardian.isPending ? "Adding…" : "Add Guardian"}
+              {addGuardian.isPending ? "Adding…" : "Add guardian"}
             </Button>
           </>
         )}

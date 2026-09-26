@@ -38,7 +38,7 @@ export default function EditLevelModal({
       onSubmit={onSave}
       isPending={updateLevel.isPending}
       submitDisabled={!editForm.label.trim()}
-      submitLabel="Save Changes"
+      submitLabel="Save changes"
       isError={updateLevel.isError}
       error={updateLevel.error}
       errorFallback="Failed to update level"

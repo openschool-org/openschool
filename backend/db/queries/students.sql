@@ -81,7 +81,19 @@ WHERE (sqlc.narg(search)::text IS NULL OR sp.full_name ILIKE '%' || sqlc.narg(se
   AND (sqlc.narg(class)::text IS NULL OR c.name = sqlc.narg(class)::text)
   AND (sqlc.narg(gender)::text IS NULL OR sp.gender = sqlc.narg(gender)::text)
   AND (sqlc.narg(house)::text IS NULL OR h.name = sqlc.narg(house)::text)
-ORDER BY sp.full_name ASC, sp.id ASC
+ORDER BY
+    -- Whitelisted by httpx.ParseSort; an empty key keeps the default name order.
+    CASE WHEN sqlc.arg(sort_key)::text = 'name' AND NOT sqlc.arg(sort_desc)::bool THEN sp.full_name END ASC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'name' AND sqlc.arg(sort_desc)::bool THEN sp.full_name END DESC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'index' AND NOT sqlc.arg(sort_desc)::bool THEN sp.index_number END ASC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'index' AND sqlc.arg(sort_desc)::bool THEN sp.index_number END DESC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'grade' AND NOT sqlc.arg(sort_desc)::bool THEN g.sort_order END ASC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'grade' AND sqlc.arg(sort_desc)::bool THEN g.sort_order END DESC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'class' AND NOT sqlc.arg(sort_desc)::bool THEN c.name END ASC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'class' AND sqlc.arg(sort_desc)::bool THEN c.name END DESC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'house' AND NOT sqlc.arg(sort_desc)::bool THEN h.name END ASC,
+    CASE WHEN sqlc.arg(sort_key)::text = 'house' AND sqlc.arg(sort_desc)::bool THEN h.name END DESC,
+    sp.full_name ASC, sp.id ASC
 LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int;
 
 -- name: UpdateStudentProfile :one

@@ -6,8 +6,10 @@ import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import SectionCard from "@/shared/ui/SectionCard";
+import { useT } from "@/shared/i18n/useT";
 
 export default function StudentEnrollment() {
+  const { t } = useT();
   const profile = useMyStudentProfile();
   const year = useCurrentAcademicYear();
   const enrollments = useStudentEnrollments(profile.data?.id ?? "", year.data?.id ?? "");
@@ -16,17 +18,17 @@ export default function StudentEnrollment() {
   if (profile.isError || year.isError || enrollments.isError) {
     return (
       <div className="os-p-8">
-        <ErrorMessage message="Failed to load subject enrollments" onRetry={() => { profile.refetch(); enrollments.refetch(); }} />
+        <ErrorMessage message={t("enrol.loadFailed")} onRetry={() => { profile.refetch(); enrollments.refetch(); }} />
       </div>
     );
   }
   return (
     <div className="os-p-8">
-      <SectionCard title="Enrolled Subjects" flush>
+      <SectionCard title={t("enrol.title")} flush>
         {enrollments.data?.length ? (
           <EnrollmentsTable rows={enrollments.data} />
         ) : (
-          <EmptyState title="No enrolled subjects" description="Your enrolled subjects will show up here once configured for the current academic year." />
+          <EmptyState title={t("enrol.emptyTitle")} description={t("enrol.emptyStudent")} />
         )}
       </SectionCard>
     </div>

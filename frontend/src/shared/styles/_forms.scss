@@ -50,3 +50,26 @@
     width: 100%;
   }
 }
+
+// Error summary shown at the top of a form after a failed submit.
+.os-error-summary {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid var(--os-danger);
+  background: var(--os-status-absent-bg);
+
+  &__title { margin: 0 0 0.25rem; font-weight: 600; color: var(--os-status-absent-text); }
+  ul { margin: 0; padding-left: 1rem; list-style: disc; }
+  button {
+    padding: 0.125rem 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 0.875rem;
+    color: var(--os-status-absent-text);
+    text-decoration: underline;
+    cursor: pointer;
+    text-align: left;
+    &:focus-visible { outline: 2px solid var(--os-accent); }
+  }
+}

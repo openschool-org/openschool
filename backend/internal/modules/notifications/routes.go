@@ -3,12 +3,14 @@ package notifications
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/openschool-org/openschool/internal/apierror"
 	"github.com/openschool-org/openschool/internal/authz"
 	"github.com/openschool-org/openschool/internal/middleware"
+	"github.com/openschool-org/openschool/internal/platform/httpx"
 )
 
 type NotificationHandler struct {
@@ -27,11 +29,14 @@ func RegisterRoutes(teacherOrAdmin, protected *gin.RouterGroup, service *Notific
 	teacherOrAdmin.POST("/notifications/:id/send", h.Send)
 	teacherOrAdmin.DELETE("/notifications/:id", h.Delete)
 	teacherOrAdmin.GET("/notifications/sent", h.ListSent)
+	teacherOrAdmin.GET("/notifications/history", h.History)
 	teacherOrAdmin.GET("/notifications/drafts", h.ListDrafts)
 	teacherOrAdmin.GET("/notifications/:id/stats", h.Stats)
 	protected.GET("/me/notifications", h.ListMine)
 	protected.GET("/me/notifications/archived", h.ListMyArchived)
+	protected.GET("/me/notifications/inbox", h.Inbox)
 	protected.GET("/me/notifications/unread-count", h.UnreadCount)
+	protected.POST("/me/notifications/read-all", h.MarkAllRead)
 	protected.POST("/me/notifications/:id/read", h.MarkRead)
 	protected.POST("/me/notifications/:id/archive", h.Archive)
 	protected.POST("/me/notifications/:id/unarchive", h.Unarchive)
@@ -163,6 +168,52 @@ func (h *NotificationHandler) ListSent(c *gin.Context) {
 	c.JSON(http.StatusOK, list)
 }
 
+// History is the searchable, paged list of sent notifications (admin: everyone's, teacher: own).
+func (h *NotificationHandler) History(c *gin.Context) {
+	callerID, role, ok := h.caller(c)
+	if !ok {
+		return
+	}
+	page := httpx.ParsePage(c)
+	filter := HistoryFilter{Search: page.Search, Category: c.Query("category"), Priority: c.Query("priority"), Limit: page.Limit, Offset: page.Offset}
+	for key, target := range map[string]**time.Time{"from": &filter.From, "to": &filter.To} {
+		if raw := c.Query(key); raw != "" {
+			parsed, err := time.Parse("2006-01-02", raw)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid " + key + " (expected YYYY-MM-DD)"})
+				return
+			}
+			*target = &parsed
+		}
+	}
+	result, err := h.service.History(c.Request.Context(), callerID, role, filter)
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+// Inbox is the caller's own notifications, one box and one page at a time.
+func (h *NotificationHandler) Inbox(c *gin.Context) {
+	callerID, _, ok := h.caller(c)
+	if !ok {
+		return
+	}
+	page := httpx.ParsePage(c)
+	box := c.DefaultQuery("box", "unread")
+	result, err := h.service.Inbox(c.Request.Context(), callerID, InboxFilter{Box: box, Search: page.Search, Category: c.Query("category"), Limit: page.Limit, Offset: page.Offset})
+	if errors.Is(err, ErrInvalidBox) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
 func (h *NotificationHandler) ListDrafts(c *gin.Context) {
 	callerID, _, ok := h.caller(c)
 	if !ok {
@@ -250,6 +301,18 @@ func (h *NotificationHandler) MarkRead(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "marked as read"})
+}
+
+func (h *NotificationHandler) MarkAllRead(c *gin.Context) {
+	callerID, _, ok := h.caller(c)
+	if !ok {
+		return
+	}
+	if err := h.service.MarkAllRead(c.Request.Context(), callerID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not mark notifications as read"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "marked all as read"})
 }
 
 func (h *NotificationHandler) Archive(c *gin.Context) {

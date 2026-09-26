@@ -57,7 +57,7 @@ export function useIdleLogout(timeoutMs: number = IDLE_TIMEOUT_MS) {
     [handleIdleTimeout, timeoutMs],
   );
 
-  // Activity only resets the timer while no warning is showing — once the
+  // Activity only resets the timer while no warning is showing - once the
   // warning appears, only "Stay signed in" (staySignedIn, force=true) should
   // dismiss it, not an incidental mouse move over the modal.
   const handleActivity = useCallback(() => {

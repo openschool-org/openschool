@@ -11,7 +11,7 @@ export default function ComingSoon({ feature }: ComingSoonProps) {
   return (
     <StatusView
       icon={Rocket}
-      badge="Under Construction"
+      badge="Under construction"
       title={`${feature} is coming soon`}
       subtitle="We're actively building this module to bring you new capabilities. Check back in an upcoming release."
       actions={

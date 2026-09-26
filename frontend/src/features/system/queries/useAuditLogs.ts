@@ -9,3 +9,5 @@ export const useAuditLogs = (filters?: AuditLogFilters) =>
     queryFn: () => auditApi.list(filters),
     placeholderData: keepPreviousData,
   });
+
+export const useAuditEntityTypes = () => useQuery({ queryKey: systemKeys.auditEntityTypes(), queryFn: auditApi.entityTypes });

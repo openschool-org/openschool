@@ -38,18 +38,18 @@ export default function Prefects() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">School Prefects</h1>
+          <h1 className="os-page__title">School prefects</h1>
           <p className="os-page__subtitle">
             {isArchive
-              ? `Read-only archive: past board for ${yearById.get(viewingYearId)?.label ?? "this year"}.`
-              : `Junior, Senior, Deputy Head, Head Prefects and House Captains for ${currentYear?.label ?? "the current year"}.`}
+              ? `Read only. Past board for ${yearById.get(viewingYearId)?.label ?? "this year"}.`
+              : `Prefects and house captains for ${currentYear?.label ?? "the current year"}.`}
           </p>
         </div>
         <div className="os-flex os-items-end os-gap-3">
           <Select id="prefect-year-selector" labelText="Year" value={viewingYearId} onChange={(e) => setSelectedYearId(e.target.value || null)} className="os-min-w-12">
             {selectableYears.map((y) => <SelectItem key={y.id} value={y.id} text={y.id === currentYear?.id ? `${y.label} (current)` : y.label} />)}
           </Select>
-          <Button renderIcon={Add} kind="primary" size="md" onClick={() => setAssignOpen(true)} disabled={!currentYear || isArchive}>Appoint Prefect</Button>
+          <Button renderIcon={Add} kind="primary" size="md" onClick={() => setAssignOpen(true)} disabled={!currentYear || isArchive}>Appoint prefect</Button>
         </div>
       </div>
 

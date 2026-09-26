@@ -2,8 +2,8 @@ package audit
 
 import (
 	"context"
+	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	db "github.com/openschool-org/openschool/db/sqlc"
@@ -18,10 +18,29 @@ func (r *Repository) create(ctx context.Context, command createCommand) error {
 	return err
 }
 
-func (r *Repository) list(ctx context.Context, entityType string, entityID *uuid.UUID, limit, offset int32) ([]row, int64, error) {
-	params := db.ListAuditLogsParams{EntityType: pgtype.Text{String: entityType, Valid: entityType != ""}, PageLimit: limit, PageOffset: offset}
-	if entityID != nil {
-		params.EntityID = pgtype.UUID{Bytes: *entityID, Valid: true}
+func (r *Repository) entityTypes(ctx context.Context) ([]string, error) {
+	return r.queries.ListAuditEntityTypes(ctx)
+}
+
+func auditDate(t *time.Time) pgtype.Date {
+	if t == nil {
+		return pgtype.Date{}
+	}
+	return pgtype.Date{Time: *t, Valid: true}
+}
+
+func (r *Repository) list(ctx context.Context, f ListFilter) ([]row, int64, error) {
+	limit, offset := f.Limit, f.Offset
+	params := db.ListAuditLogsParams{
+		EntityType: pgtype.Text{String: f.EntityType, Valid: f.EntityType != ""},
+		Search:     pgtype.Text{String: f.Search, Valid: f.Search != ""},
+		FromDate:   auditDate(f.From),
+		ToDate:     auditDate(f.To),
+		PageLimit:  limit,
+		PageOffset: offset,
+	}
+	if f.EntityID != nil {
+		params.EntityID = pgtype.UUID{Bytes: *f.EntityID, Valid: true}
 	}
 	rows, err := r.queries.ListAuditLogs(ctx, params)
 	if err != nil {

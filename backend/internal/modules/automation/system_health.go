@@ -414,3 +414,18 @@ func medianInt64(vals []int64) int64 {
 	}
 	return (sorted[n/2-1] + sorted[n/2]) / 2
 }
+
+// Title is the agent's name on the Automation panel.
+func (a *SystemHealthAgent) Title() string { return "System health" }
+
+// CanDisable reports whether an admin may switch this agent off.
+func (a *SystemHealthAgent) CanDisable() bool { return false }
+
+// Checks lists what this agent checks and where each finding is shown.
+func (a *SystemHealthAgent) Checks() []CheckInfo {
+	return []CheckInfo{
+		{Key: "backup", Title: "Nightly backup", Description: "Takes the nightly database backup and keeps the most recent copies."},
+		{Key: "migration_drift", Title: "Schema matches the code", Description: "Checks the database schema version matches what this build expects."},
+		{Key: "backup_size", Title: "Backup size", Description: "Flags a backup much smaller or larger than recent ones, a sign of lost or corrupted data.", FindingTitle: "Nightly backup size anomaly detected", Pages: []string{"/settings"}},
+	}
+}

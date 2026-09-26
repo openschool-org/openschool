@@ -47,15 +47,15 @@ export default function TeacherProfile() {
           {/* Main */}
           <div>
             <div className="os-section">
-              <div className="os-section__header"><h2 className="os-section__title">Personal Details</h2></div>
+              <div className="os-section__header"><h2 className="os-section__title">Personal details</h2></div>
               <div className="os-kv-grid">
                 {[
-                  ["Full Name", profile.full_name],
-                  ["Title", profile.title ?? "—"],
-                  ["Gender", profile.gender ? profile.gender[0].toUpperCase() + profile.gender.slice(1) : "—"],
-                  ["Phone", profile.phone ?? "—"],
-                  ["Employee Number", profile.employee_number],
-                  ["Joined Date", profile.joined_date ?? "—"],
+                  ["Full name", profile.full_name],
+                  ["Title", profile.title ?? "-"],
+                  ["Gender", profile.gender ? profile.gender[0].toUpperCase() + profile.gender.slice(1) : "-"],
+                  ["Phone", profile.phone ?? "-"],
+                  ["Employee number", profile.employee_number],
+                  ["Joined date", profile.joined_date ?? "-"],
                 ].map(([label, value]) => (
                   <div key={label} className="os-kv-item">
                     <p className="os-kv-item__label">{label}</p>
@@ -85,21 +85,21 @@ export default function TeacherProfile() {
           {/* Sidebar */}
           <div>
             <div className="os-section">
-              <div className="os-section__header"><h2 className="os-section__title">Quick Info</h2></div>
+              <div className="os-section__header"><h2 className="os-section__title">Quick info</h2></div>
               <div className="os-section__body os-py-3 os-px-6">
                 <InfoRow label="Employee ID" value={profile.employee_number} />
                 <InfoRow label="Status" value={profile.is_active ? "Active" : "Inactive"} />
                 <InfoRow label="Subjects" value={subjects?.length ?? 0} />
                 <InfoRow label="Classes" value={myClasses.length} />
-                <InfoRow label="Joined" value={profile.joined_date ?? "—"} divider={false} />
+                <InfoRow label="Joined" value={profile.joined_date ?? "-"} divider={false} />
               </div>
             </div>
 
             <div className="os-section">
-              <div className="os-section__header"><h2 className="os-section__title">This Year</h2></div>
+              <div className="os-section__header"><h2 className="os-section__title">This year</h2></div>
               <div className="os-section__body os-py-3 os-px-6">
-                <InfoRow label="Sessions Taken" value={sessionsTaken} bold accent />
-                <InfoRow label="Students Taught" value={studentsTaught} bold accent divider={false} />
+                <InfoRow label="Sessions taken" value={sessionsTaken} bold accent />
+                <InfoRow label="Students taught" value={studentsTaught} bold accent divider={false} />
               </div>
             </div>
           </div>

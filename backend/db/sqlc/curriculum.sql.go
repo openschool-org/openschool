@@ -69,7 +69,7 @@ const createLevel = `-- name: CreateLevel :one
 
 INSERT INTO levels (label, grade_id, sort_order)
 VALUES ($1, $2, $3)
-RETURNING id, label, grade_id, sort_order, created_at
+RETURNING id, label, grade_id, sort_order, created_at, stream_id, stream_group_id
 `
 
 type CreateLevelParams struct {
@@ -88,6 +88,8 @@ func (q *Queries) CreateLevel(ctx context.Context, arg CreateLevelParams) (Level
 		&i.GradeID,
 		&i.SortOrder,
 		&i.CreatedAt,
+		&i.StreamID,
+		&i.StreamGroupID,
 	)
 	return i, err
 }
@@ -279,7 +281,7 @@ func (q *Queries) GetCurriculumTreeByLevel(ctx context.Context, levelID uuid.UUI
 }
 
 const getLevelByID = `-- name: GetLevelByID :one
-SELECT id, label, grade_id, sort_order, created_at FROM levels
+SELECT id, label, grade_id, sort_order, created_at, stream_id, stream_group_id FROM levels
 WHERE id = $1
 `
 
@@ -292,6 +294,8 @@ func (q *Queries) GetLevelByID(ctx context.Context, id uuid.UUID) (Level, error)
 		&i.GradeID,
 		&i.SortOrder,
 		&i.CreatedAt,
+		&i.StreamID,
+		&i.StreamGroupID,
 	)
 	return i, err
 }
@@ -389,7 +393,7 @@ func (q *Queries) ListGroupSubjects(ctx context.Context, groupID uuid.UUID) ([]L
 }
 
 const listLevels = `-- name: ListLevels :many
-SELECT id, label, grade_id, sort_order, created_at FROM levels
+SELECT id, label, grade_id, sort_order, created_at, stream_id, stream_group_id FROM levels
 ORDER BY sort_order ASC, label ASC
 `
 
@@ -408,6 +412,8 @@ func (q *Queries) ListLevels(ctx context.Context) ([]Level, error) {
 			&i.GradeID,
 			&i.SortOrder,
 			&i.CreatedAt,
+			&i.StreamID,
+			&i.StreamGroupID,
 		); err != nil {
 			return nil, err
 		}
@@ -420,7 +426,7 @@ func (q *Queries) ListLevels(ctx context.Context) ([]Level, error) {
 }
 
 const listLevelsByGrade = `-- name: ListLevelsByGrade :many
-SELECT id, label, grade_id, sort_order, created_at FROM levels
+SELECT id, label, grade_id, sort_order, created_at, stream_id, stream_group_id FROM levels
 WHERE grade_id = $1
 ORDER BY sort_order ASC, label ASC
 `
@@ -440,6 +446,8 @@ func (q *Queries) ListLevelsByGrade(ctx context.Context, gradeID pgtype.UUID) ([
 			&i.GradeID,
 			&i.SortOrder,
 			&i.CreatedAt,
+			&i.StreamID,
+			&i.StreamGroupID,
 		); err != nil {
 			return nil, err
 		}
@@ -587,7 +595,7 @@ SET
     grade_id   = $3,
     sort_order = $4
 WHERE id = $1
-RETURNING id, label, grade_id, sort_order, created_at
+RETURNING id, label, grade_id, sort_order, created_at, stream_id, stream_group_id
 `
 
 type UpdateLevelParams struct {
@@ -611,6 +619,8 @@ func (q *Queries) UpdateLevel(ctx context.Context, arg UpdateLevelParams) (Level
 		&i.GradeID,
 		&i.SortOrder,
 		&i.CreatedAt,
+		&i.StreamID,
+		&i.StreamGroupID,
 	)
 	return i, err
 }

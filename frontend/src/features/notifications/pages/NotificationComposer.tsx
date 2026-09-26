@@ -1,8 +1,7 @@
-import { useMemo, useState } from "react";
-import { Button, TextInput, TextArea, Dropdown, Tag, InlineNotification, SkeletonText } from "@carbon/react";
+import { useState } from "react";
+import { Button, TextInput, TextArea, Dropdown, Tag, InlineNotification } from "@carbon/react";
 import { Send, Save } from "@carbon/icons-react";
 import {
-  useSentNotifications,
   useDraftNotifications,
   useCreateNotification,
 } from "@/features/notifications/queries/useNotifications";
@@ -13,12 +12,11 @@ import type {
   NotificationPriority,
 } from "@/features/notifications/api/notification";
 import { getErrorMessage } from "@/shared/api/errors";
-import EmptyState from "@/shared/ui/EmptyState";
 import { useRole } from "@/shared/auth/useRole";
 import { useMyPosition } from "@/features/positions/queries/usePositions";
 import { ruleKey } from "@/features/notifications/constants";
 import RecipientPicker from "@/features/notifications/components/RecipientPicker";
-import SentHistoryRow from "@/features/notifications/components/SentHistoryRow";
+import NotificationHistory from "@/features/notifications/components/NotificationHistory";
 import DraftRow from "@/features/notifications/components/DraftRow";
 
 export default function NotificationComposer() {
@@ -35,7 +33,6 @@ export default function NotificationComposer() {
   const canBroadcastEveryone = role === "admin" || !!myPosition?.notify_whole_school;
 
   const create = useCreateNotification();
-  const { data: sent, isLoading: sentLoading } = useSentNotifications();
   const { data: drafts } = useDraftNotifications();
 
   const isReady = title.trim().length > 0 && message.trim().length > 0 && rules.length > 0;
@@ -64,17 +61,15 @@ export default function NotificationComposer() {
 
   const removeRule = (index: number) => setRules((r) => r.filter((_, i) => i !== index));
 
-  const sentList = useMemo(() => sent ?? [], [sent]);
-
   return (
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">Notifications</h1>
           <p className="os-page__subtitle">
-            Send in-app announcements to any combination of grades, classes, subjects, or individuals.
+            Send announcements to grades, classes, subjects or people.
             {role === "teacher" && myPosition && myPosition.rank_label !== "Teacher" && (
-              <> Sending as <strong>{myPosition.rank_label}</strong>{canBroadcastEveryone ? " - whole-school reach." : "."}</>
+              <> Sending as <strong>{myPosition.rank_label}</strong>{canBroadcastEveryone ? ", whole school." : "."}</>
             )}
           </p>
         </div>
@@ -155,10 +150,10 @@ export default function NotificationComposer() {
 
             <div className="os-flex os-gap-3">
               <Button renderIcon={Send} kind="primary" onClick={() => handleSubmit(false)} disabled={!isReady || create.isPending}>
-                {create.isPending ? "Sending…" : "Send Now"}
+                {create.isPending ? "Sending…" : "Send now"}
               </Button>
               <Button renderIcon={Save} kind="secondary" onClick={() => handleSubmit(true)} disabled={!isReady || create.isPending}>
-                Save as Draft
+                Save as draft
               </Button>
             </div>
           </div>
@@ -177,21 +172,11 @@ export default function NotificationComposer() {
             </div>
           )}
 
-          <div className="os-section">
-            <div className="os-section__header">
-              <h2 className="os-section__title">Recently Sent</h2>
-            </div>
-            {sentLoading ? (
-              <div className="os-py-5 os-px-6">
-                <SkeletonText width="40%" />
-              </div>
-            ) : sentList.length === 0 ? (
-              <EmptyState title="Nothing sent yet" description="Notifications you send will appear here." />
-            ) : (
-              sentList.map((n) => <SentHistoryRow key={n.id} notification={n} />)
-            )}
-          </div>
         </div>
+      </div>
+
+      <div className="os-mt-6">
+        <NotificationHistory />
       </div>
     </div>
   );

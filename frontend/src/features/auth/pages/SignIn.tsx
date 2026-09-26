@@ -24,7 +24,7 @@ export default function SignIn() {
           />
           <span className="os-auth-card__brand-name">OpenSchool</span>
         </div>
-        <h1 className="os-auth-card__title">Sign In</h1>
+        <h1 className="os-auth-card__title">Sign in</h1>
         <p className="os-auth-card__subtitle">
           Sign in to continue to your dashboard.
         </p>
@@ -36,7 +36,7 @@ export default function SignIn() {
                 disabled={isLoading}
                 className="os-full-width-btn"
               >
-                {isLoading ? "Signing in…" : "Sign In"}
+                {isLoading ? "Signing in…" : "Sign in"}
               </Button>
             )}
           </SignInButton>

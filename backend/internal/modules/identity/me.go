@@ -2,6 +2,7 @@ package identity
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -14,7 +15,11 @@ import (
 
 type userProvisioner interface {
 	ensureExists(ctx context.Context, command ensureUserCommand) (provisionedUser, error)
+	setLanguage(ctx context.Context, id uuid.UUID, language string) error
 }
+
+// supportedLanguages mirrors the users.preferred_language CHECK constraint.
+var supportedLanguages = map[string]bool{"en": true, "si": true, "ta": true}
 
 type ensureUserCommand struct {
 	ID       uuid.UUID
@@ -27,6 +32,7 @@ type provisionedUser struct {
 	MustChangePassword  bool
 	KeptDefaultPassword bool
 	CreatedAt           time.Time
+	PreferredLanguage   string
 }
 
 // defaultPasswordExpired reports whether a "keep this password" choice has
@@ -48,6 +54,15 @@ func (s *meService) ensureProvisioned(ctx context.Context, command ensureUserCom
 	return s.users.ensureExists(ctx, command)
 }
 
+func (s *meService) setLanguage(ctx context.Context, id uuid.UUID, language string) error {
+	if !supportedLanguages[language] {
+		return errUnsupportedLanguage
+	}
+	return s.users.setLanguage(ctx, id, language)
+}
+
+var errUnsupportedLanguage = errors.New("language must be one of en, si, ta")
+
 type meHandler struct{ service *meService }
 
 func newMeHandler(service *meService) *meHandler { return &meHandler{service: service} }
@@ -62,6 +77,7 @@ func (h *meHandler) get(c *gin.Context) {
 
 	mustChangePassword := false
 	defaultPasswordExpired := false
+	preferredLanguage := "en"
 	if parsedID, err := uuid.Parse(userID); err == nil {
 		user, provisionErr := h.service.ensureProvisioned(c.Request.Context(), ensureUserCommand{
 			ID: parsedID, Email: email, FullName: givenName + " " + familyName, Role: authz.ResolveAppRole(roleList),
@@ -74,6 +90,9 @@ func (h *meHandler) get(c *gin.Context) {
 			// already cleared at the time of that choice (S1).
 			defaultPasswordExpired = user.defaultPasswordExpired(time.Now())
 			mustChangePassword = user.MustChangePassword || defaultPasswordExpired
+			if user.PreferredLanguage != "" {
+				preferredLanguage = user.PreferredLanguage
+			}
 		}
 	}
 
@@ -83,5 +102,33 @@ func (h *meHandler) get(c *gin.Context) {
 		"phone_number": c.GetString("phone_number"), "roles": tokenRoles,
 		"must_change_password":     mustChangePassword,
 		"default_password_expired": defaultPasswordExpired,
+		"preferred_language":       preferredLanguage,
 	})
+}
+
+type setLanguageRequest struct {
+	Language string `json:"language" binding:"required"`
+}
+
+func (h *meHandler) setLanguage(c *gin.Context) {
+	id, err := uuid.Parse(c.GetString("userID"))
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
+		return
+	}
+	var req setLanguageRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "language is required"})
+		return
+	}
+	if err := h.service.setLanguage(c.Request.Context(), id, req.Language); err != nil {
+		if errors.Is(err, errUnsupportedLanguage) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		log.Printf("/me/language: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not save language"})
+		return
+	}
+	c.Status(http.StatusNoContent)
 }

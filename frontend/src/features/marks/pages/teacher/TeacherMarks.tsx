@@ -88,7 +88,7 @@ export default function TeacherMarks() {
           <Button kind="ghost" size="sm" renderIcon={ArrowLeft} onClick={() => unsavedGuard.guard(() => { setMode("overview"); setClassId(""); setSubjectId(""); })} className="os-mb-2 os-pl-0">
             Back to overview
           </Button>
-          <h1 className="os-page__title">Record Marks</h1>
+          <h1 className="os-page__title">Record marks</h1>
           <p className="os-page__subtitle">Record term marks for classes and subjects you teach</p>
         </div>
       </div>
@@ -98,7 +98,7 @@ export default function TeacherMarks() {
           <div className="os-flex os-gap-3 os-wrap os-w-full">
             <Select id="record-class" labelText="Class" size="sm" value={classId} onChange={(e) => { setClassId(e.target.value); setSubjectId(""); }} className="os-min-w-12">
               <SelectItem value="" text="Choose a class…" />
-              {uniqueClasses.map((c) => <SelectItem key={c.id} value={c.id} text={`${c.grade_name} — ${c.name}`} />)}
+              {uniqueClasses.map((c) => <SelectItem key={c.id} value={c.id} text={`${c.grade_name} - ${c.name}`} />)}
             </Select>
             <Select id="record-subject" labelText="Subject" size="sm" value={subjectId} disabled={!classId} onChange={(e) => setSubjectId(e.target.value)} className="os-min-w-12">
               <SelectItem value="" text="Choose a subject…" />
@@ -109,7 +109,7 @@ export default function TeacherMarks() {
               <div className="os-flex os-items-center os-gap-4 os-ml-auto os-self-end">
                 <span className="os-text-sm os-c-secondary">Max Marks: <strong>{maxMarks}</strong></span>
                 <Button renderIcon={Save} size="sm" onClick={handleSave} disabled={saveMarks.isPending || !students?.length || !draft.hasUnsaved}>
-                  {saveMarks.isPending ? "Saving…" : "Save Marks"}
+                  {saveMarks.isPending ? "Saving…" : "Save marks"}
                 </Button>
               </div>
             )}

@@ -1,7 +1,7 @@
 import { SEVERITY_TAG } from "@/shared/lib/constants/tags";
 import type { DisciplinarySeverity } from "@/features/portfolio/api/studentPortfolio";
 import { useState } from "react";
-import { Button, Select, SelectItem, TextArea, DatePicker, DatePickerInput, Tag } from "@carbon/react";
+import { Button, Select, SelectItem, TextArea, Tag } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import {
@@ -10,11 +10,12 @@ import {
   useDeleteDisciplinaryRecord,
 } from "@/features/portfolio/queries/useStudentPortfolio";
 import { DISCIPLINARY_SEVERITIES } from "@/features/portfolio/api/studentPortfolio";
-import { todayISODate, toYmd } from "@/shared/lib/date";
+import { todayISODate } from "@/shared/lib/date";
 import EmptyState from "@/shared/ui/EmptyState";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import RemoveIconButton from "@/shared/ui/RemoveIconButton";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import DateField from "@/shared/ui/DateField";
 
 export default function StudentDisciplinary({ studentId }: { studentId: string }) {
   const { data: currentYear } = useCurrentAcademicYear();
@@ -45,7 +46,7 @@ export default function StudentDisciplinary({ studentId }: { studentId: string }
   return (
     <div className="os-section os-mt-4">
       <div className="os-section__header">
-        <h2 className="os-section__title">Disciplinary Records</h2>
+        <h2 className="os-section__title">Disciplinary records</h2>
       </div>
       <div className="os-section__body">
         <MutationErrorNotification
@@ -55,12 +56,9 @@ export default function StudentDisciplinary({ studentId }: { studentId: string }
         />
 
         <div className="os-grid os-grid-form-10-10-1-1-auto os-gap-3 os-items-grid-end os-mb-6">
-          <DatePicker datePickerType="single" dateFormat="Y-m-d" value={date} onChange={(dates) => {
-            const ymd = toYmd(dates[0]);
+          <DateField value={date} onChange={(ymd) => {
             if (ymd) setDate(ymd);
-          }}>
-            <DatePickerInput id="disciplinary-date" labelText="Date" placeholder="YYYY-MM-DD" />
-          </DatePicker>
+          }} id="disciplinary-date" labelText="Date" />
           <Select id="disciplinary-severity" labelText="Severity" value={severity} onChange={(e) => setSeverity(e.target.value as DisciplinarySeverity)}>
             <SelectItem value="" text="Select…" />
             {DISCIPLINARY_SEVERITIES.map((s) => (

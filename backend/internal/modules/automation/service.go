@@ -3,6 +3,9 @@ package automation
 import (
 	"context"
 	"errors"
+	"strings"
+
+	"github.com/google/uuid"
 )
 
 var (
@@ -46,7 +49,10 @@ func (s *Service) List(ctx context.Context) ([]JobStatus, error) {
 		if !ok {
 			enabled = true
 		}
-		status := JobStatus{Name: job.Name(), Description: job.Description(), Schedule: job.Schedule(), Enabled: enabled}
+		status := JobStatus{Name: job.Name(), Title: job.Name(), Description: job.Description(), Schedule: job.Schedule(), ScheduleLabel: scheduleLabel(job.Schedule()), Enabled: enabled, CanDisable: true}
+		if d, ok := job.(Describer); ok {
+			status.Title, status.CanDisable, status.Checks = d.Title(), d.CanDisable(), d.Checks()
+		}
 		if lastRun, ok := lastRunByName[job.Name()]; ok {
 			status.LastRun = &lastRun
 		}
@@ -59,7 +65,7 @@ func (s *Service) SetEnabled(ctx context.Context, name string, enabled bool) err
 	if !s.isKnown(name) {
 		return ErrUnknownJob
 	}
-	if !enabled && name == SystemHealthAgentName {
+	if d, ok := s.scheduler.jobs[name].(Describer); ok && !enabled && !d.CanDisable() {
 		return ErrSystemHealthCannotStop
 	}
 	return s.settings.SetEnabled(ctx, name, enabled)
@@ -79,4 +85,48 @@ func (s *Service) isKnown(name string) bool {
 		}
 	}
 	return false
+}
+
+// pageMatches is a prefix match so /classes also covers /classes/123.
+func pageMatches(pages []string, path string) bool {
+	for _, p := range pages {
+		if path == p || strings.HasPrefix(path, p+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+// Findings returns this admin's latest unread agent notice for every check shown on the page.
+func (s *Service) Findings(ctx context.Context, userID uuid.UUID, page string) ([]Finding, error) {
+	type origin struct{ agent, check string }
+	byTitle := map[string]origin{}
+	for _, job := range s.scheduler.Jobs() {
+		d, ok := job.(Describer)
+		if !ok {
+			continue
+		}
+		for _, c := range d.Checks() {
+			if c.FindingTitle != "" && pageMatches(c.Pages, page) {
+				byTitle[c.FindingTitle] = origin{agent: d.Title(), check: c.Title}
+			}
+		}
+	}
+	if len(byTitle) == 0 {
+		return []Finding{}, nil
+	}
+	titles := make([]string, 0, len(byTitle))
+	for t := range byTitle {
+		titles = append(titles, t)
+	}
+	rows, err := s.settings.ListUnreadFindingsByTitle(ctx, userID, titles)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Finding, len(rows))
+	for i, r := range rows {
+		o := byTitle[r.Title]
+		out[i] = Finding{NotificationID: r.NotificationID.String(), Agent: o.agent, Check: o.check, Title: r.Title, Message: r.Message, SentAt: r.SentAt.Time.Format("2006-01-02T15:04:05Z07:00")}
+	}
+	return out, nil
 }

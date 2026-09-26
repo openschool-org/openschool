@@ -31,3 +31,5 @@ export const STAFF_ATTENDANCE_STYLES: Record<StaffAttendanceStatusKey, StatusSty
   late: tone("late", "Late"),
   leave: tone("excused", "Leave"),
 };
+
+export const STAFF_STATUSES = ["present", "late", "absent", "leave"] as const;

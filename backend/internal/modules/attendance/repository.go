@@ -283,3 +283,61 @@ func mapStaffDirectory(id uuid.UUID, name, employee string, recordID pgtype.UUID
 	}
 	return row
 }
+
+func (r *Repository) roster(ctx context.Context, date time.Time, q StaffRosterQuery) (StaffRosterPage, error) {
+	params := db.ListStaffAttendanceRosterParams{Date: dateValue(date), Kind: string(q.Kind), Search: textValue(q.Search), PageLimit: q.Limit, PageOffset: q.Offset}
+	rows, err := r.queries.ListStaffAttendanceRoster(ctx, params)
+	if err != nil {
+		return StaffRosterPage{}, err
+	}
+	// Window totals only ride on returned rows; past the last page, re-read them from the first row.
+	head := rows
+	if len(rows) == 0 && q.Offset > 0 {
+		params.PageLimit, params.PageOffset = 1, 0
+		if head, err = r.queries.ListStaffAttendanceRoster(ctx, params); err != nil {
+			return StaffRosterPage{}, err
+		}
+	}
+	page := StaffRosterPage{Items: make([]StaffAttendanceRow, len(rows)), Limit: q.Limit, Offset: q.Offset}
+	for i, row := range rows {
+		page.Items[i] = mapStaffDirectory(row.StaffID, row.FullName, row.EmployeeNumber, row.RecordID, row.Status, row.Note).toRow()
+	}
+	if len(head) > 0 {
+		h := head[0]
+		marked := h.PresentTotal + h.LateTotal + h.AbsentTotal + h.LeaveTotal
+		page.Total = h.Total
+		page.Totals = StaffStatusTotals{Present: h.PresentTotal, Late: h.LateTotal, Absent: h.AbsentTotal, Leave: h.LeaveTotal, Unmarked: h.Total - marked}
+	}
+	return page, nil
+}
+
+func (r *Repository) monthly(ctx context.Context, from, to time.Time, q StaffRosterQuery) (StaffMonthlyPage, error) {
+	params := db.ListStaffAttendanceMonthlyParams{FromDate: dateValue(from), ToDate: dateValue(to), Kind: string(q.Kind), Search: textValue(q.Search), PageLimit: q.Limit, PageOffset: q.Offset}
+	rows, err := r.queries.ListStaffAttendanceMonthly(ctx, params)
+	if err != nil {
+		return StaffMonthlyPage{}, err
+	}
+	page := StaffMonthlyPage{Items: make([]StaffAttendanceSummaryRow, len(rows)), Limit: q.Limit, Offset: q.Offset}
+	for i, row := range rows {
+		page.Items[i] = StaffAttendanceSummaryRow{StaffID: row.StaffID.String(), FullName: row.FullName, PresentCount: row.PresentCount, LateCount: row.LateCount, AbsentCount: row.AbsentCount, LeaveCount: row.LeaveCount}
+		page.Total = row.Total
+	}
+	if len(rows) == 0 && q.Offset > 0 {
+		params.PageLimit, params.PageOffset = 1, 0
+		probe, err := r.queries.ListStaffAttendanceMonthly(ctx, params)
+		if err != nil {
+			return StaffMonthlyPage{}, err
+		}
+		if len(probe) > 0 {
+			page.Total = probe[0].Total
+		}
+	}
+	return page, nil
+}
+
+func (r *Repository) markUnmarkedPresent(ctx context.Context, date time.Time, kind StaffKind, markedBy uuid.UUID) (int64, error) {
+	if kind == StaffKindTeacher {
+		return r.queries.MarkUnmarkedTeachersPresent(ctx, db.MarkUnmarkedTeachersPresentParams{Date: dateValue(date), MarkedBy: markedBy})
+	}
+	return r.queries.MarkUnmarkedNonAcademicStaffPresent(ctx, db.MarkUnmarkedNonAcademicStaffPresentParams{Date: dateValue(date), MarkedBy: markedBy})
+}

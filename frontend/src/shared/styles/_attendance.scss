@@ -159,7 +159,7 @@
   }
 
   .os-step-description {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     color: var(--os-text-tertiary);
     margin-top: 0.125rem;
     white-space: nowrap;
@@ -234,7 +234,7 @@
 @media (max-width: 480px) {
   .os-custom-stepper {
     .os-step-label {
-      font-size: 0.6875rem;
+      font-size: 0.75rem;
       white-space: normal;
       max-width: 4rem;
       line-height: 1.1;
@@ -343,4 +343,10 @@
     border-radius: 0px !important;
     font-family: 'IBM Plex Sans', sans-serif !important;
   }
+}
+
+// Staff attendance status buttons: 44px targets on phones.
+.os-staff-status { min-height: 2rem; }
+@media (max-width: 42rem) {
+  .os-staff-status { min-height: 2.75rem; flex: 1 1 40%; }
 }

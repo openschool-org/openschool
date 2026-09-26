@@ -63,6 +63,28 @@ func (q *Queries) DeleteClassroom(ctx context.Context, id uuid.UUID) (int64, err
 	return result.RowsAffected(), nil
 }
 
+const findClassroomByName = `-- name: FindClassroomByName :one
+SELECT id, name, code, capacity, created_at, room_type, subject_id FROM classrooms
+WHERE lower(name) = lower($1::text)
+LIMIT 1
+`
+
+// Case-insensitive so "10-a" and "10-A" resolve to the same homeroom.
+func (q *Queries) FindClassroomByName(ctx context.Context, name string) (Classroom, error) {
+	row := q.db.QueryRow(ctx, findClassroomByName, name)
+	var i Classroom
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Code,
+		&i.Capacity,
+		&i.CreatedAt,
+		&i.RoomType,
+		&i.SubjectID,
+	)
+	return i, err
+}
+
 const getClassroomByID = `-- name: GetClassroomByID :one
 SELECT id, name, code, capacity, created_at, room_type, subject_id FROM classrooms
 WHERE id = $1

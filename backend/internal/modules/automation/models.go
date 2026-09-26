@@ -20,10 +20,15 @@ type JobLastRun struct {
 // current on/off state and last run, if any.
 type JobStatus struct {
 	Name        string      `json:"name"`
+	Title       string      `json:"title"`
 	Description string      `json:"description"`
+	CanDisable  bool        `json:"can_disable"`
+	Checks      []CheckInfo `json:"checks"`
 	Schedule    string      `json:"schedule"`
-	Enabled     bool        `json:"enabled"`
-	LastRun     *JobLastRun `json:"last_run,omitempty"`
+	// ScheduleLabel is the schedule in words, so the panel never parses cron itself.
+	ScheduleLabel string      `json:"schedule_label"`
+	Enabled       bool        `json:"enabled"`
+	LastRun       *JobLastRun `json:"last_run,omitempty"`
 }
 
 type SetJobEnabledRequest struct {
@@ -122,4 +127,14 @@ type jobRun struct {
 	Status     string
 	Summary    string
 	Findings   int32
+}
+
+// Finding is an agent notice shown as a banner on the page it applies to.
+type Finding struct {
+	NotificationID string `json:"notification_id"`
+	Agent          string `json:"agent"`
+	Check          string `json:"check"`
+	Title          string `json:"title"`
+	Message        string `json:"message"`
+	SentAt         string `json:"sent_at"`
 }

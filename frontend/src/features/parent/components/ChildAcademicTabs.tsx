@@ -7,7 +7,7 @@ import { useChildTimetable } from "@/features/timetable/queries/useTimetables";
 import { useStudentEnrollments } from "@/features/students/queries/useEnrollments";
 import { useProgressReports } from "@/features/portfolio/queries/useStudentPortfolio";
 import { useGuardiansByStudent } from "@/features/guardians/queries/useGuardians";
-import DataGrid from "@/shared/ui/DataGrid";
+import TimetableByDay from "@/features/timetable/components/TimetableByDay";
 import AttendanceHistoryTable from "@/features/attendance/components/AttendanceHistoryTable";
 import TermMarksTable from "@/features/marks/components/TermMarksTable";
 import EnrollmentsTable from "@/features/students/components/EnrollmentsTable";
@@ -15,49 +15,34 @@ import ProgressReportsTable from "@/features/portfolio/components/ProgressReport
 import GuardiansTable from "@/features/guardians/components/GuardiansTable";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
-import { WEEKDAYS } from "@/shared/lib/timetable";
+import { useT } from "@/shared/i18n/useT";
 
 type Props = { studentId: string };
 
 export function ChildTimetableTab({ studentId }: Props) {
+  const { t } = useT();
   const { data, isLoading, isError } = useChildTimetable(studentId);
   if (isLoading) return <LoadingSpinner />;
-  if (isError || !data) return <EmptyState title="No published timetable yet" description="This child's class timetable will appear here once it's published." />;
+  if (!data) return <EmptyState title={t("timetable.emptyTitle")} description={t("timetable.emptyChild")} />;
 
   return (
     <div className="os-grid os-gap-4">
-      {WEEKDAYS.map((day) => {
-        const entries = data.entries.filter((e) => e.day_of_week === day.value).sort((a, b) => a.period_number - b.period_number);
-        if (entries.length === 0) return null;
-        return (
-          <div key={day.value}>
-            <h3 className="os-text-md os-fw-600 os-mt-0 os-mx-0 os-mb-2">{day.label}</h3>
-            <DataGrid
-              rows={entries}
-              getRowId={(e) => e.id}
-              pagination={false}
-              noHover
-              columns={[
-                { key: "period", header: "Period", render: (e) => `P${e.period_number}` },
-                { key: "subject", header: "Subject", render: (e) => e.subject_name ?? "-" },
-                { key: "teacher", header: "Teacher", render: (e) => e.teacher_name ?? "-" },
-              ]}
-            />
-          </div>
-        );
-      })}
+      {isError && <p className="os-m-0 os-text-sm os-c-secondary">{t("timetable.savedCopy")}</p>}
+      <TimetableByDay entries={data.entries} getRowId={(e) => e.id} middle={{ key: "teacher", header: t("table.teacher"), render: (e) => e.teacher_name ?? "-" }} />
     </div>
   );
 }
 
 export function ChildAttendanceTab({ studentId }: Props) {
+  const { t } = useT();
   const { data: records, isLoading } = useChildAttendance(studentId);
   if (isLoading) return <LoadingSpinner />;
-  if (!records?.length) return <EmptyState title="No attendance recorded yet" description="Records will show up here once a class session is marked." />;
+  if (!records?.length) return <EmptyState title={t("attendance.emptyTitle")} description={t("attendance.emptyDesc")} />;
   return <AttendanceHistoryTable rows={records} />;
 }
 
 export function ChildMarksTab({ studentId }: Props) {
+  const { t } = useT();
   const { data: currentYear } = useCurrentAcademicYear();
   const { data: terms } = useTerms(currentYear?.id);
   const [termId, setTermId] = useState("");
@@ -65,41 +50,44 @@ export function ChildMarksTab({ studentId }: Props) {
 
   return (
     <div>
-      <Select id="child-marks-term" labelText="Term" value={termId} onChange={(e) => setTermId(e.target.value)} className="os-max-w-20 os-mb-5">
-        <SelectItem value="" text="Choose a term…" />
-        {terms?.map((t) => <SelectItem key={t.id} value={t.id} text={t.name} />)}
+      <Select id="child-marks-term" labelText={t("marks.term")} value={termId} onChange={(e) => setTermId(e.target.value)} className="os-max-w-20 os-mb-5">
+        <SelectItem value="" text={t("marks.chooseTerm")} />
+        {terms?.map((term) => <SelectItem key={term.id} value={term.id} text={term.name} />)}
       </Select>
       {!termId ? (
-        <EmptyState title="Pick a term" description="Choose a term to see marks recorded for it." />
+        <EmptyState title={t("marks.pickTitle")} description={t("marks.pickDesc")} />
       ) : isLoading ? (
         <LoadingSpinner />
       ) : marks?.length ? (
         <TermMarksTable rows={marks} />
       ) : (
-        <EmptyState title="No marks yet" description="Marks for this term haven't been recorded yet." />
+        <EmptyState title={t("marks.emptyTitle")} description={t("marks.emptyDesc")} />
       )}
     </div>
   );
 }
 
 export function ChildEnrollmentsTab({ studentId }: Props) {
+  const { t } = useT();
   const { data: currentYear } = useCurrentAcademicYear();
   const { data: enrollments, isLoading } = useStudentEnrollments(studentId, currentYear?.id ?? "");
   if (isLoading) return <LoadingSpinner />;
-  if (!enrollments?.length) return <EmptyState title="No enrolled subjects" description="This child is not enrolled in any subjects for the current year." />;
+  if (!enrollments?.length) return <EmptyState title={t("enrol.emptyTitle")} description={t("enrol.emptyChild")} />;
   return <EnrollmentsTable rows={enrollments} />;
 }
 
 export function ChildProgressReportsTab({ studentId }: Props) {
+  const { t } = useT();
   const { data: reports, isLoading } = useProgressReports(studentId);
   if (isLoading) return <LoadingSpinner />;
-  if (!reports?.length) return <EmptyState title="No progress reports yet" description="Narrative progress reports will show up here once posted by teachers." />;
+  if (!reports?.length) return <EmptyState title={t("progress.emptyTitle")} description={t("progress.emptyChild")} />;
   return <ProgressReportsTable rows={reports} />;
 }
 
 export function ChildGuardiansTab({ studentId }: Props) {
+  const { t } = useT();
   const { data: guardians, isLoading } = useGuardiansByStudent(studentId);
   if (isLoading) return <LoadingSpinner />;
-  if (!guardians?.length) return <EmptyState title="No guardians linked" description="No linked guardians found for this child." />;
+  if (!guardians?.length) return <EmptyState title={t("guardians.emptyChildTitle")} description={t("guardians.emptyChild")} />;
   return <GuardiansTable rows={guardians} />;
 }

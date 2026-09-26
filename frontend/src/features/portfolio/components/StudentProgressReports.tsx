@@ -35,7 +35,7 @@ export default function StudentProgressReports({ studentId }: { studentId: strin
   return (
     <div className="os-section os-mt-4">
       <div className="os-section__header">
-        <h2 className="os-section__title">Progress Reports</h2>
+        <h2 className="os-section__title">Progress reports</h2>
       </div>
       <div className="os-section__body">
         <MutationErrorNotification

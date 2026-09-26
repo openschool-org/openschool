@@ -67,7 +67,7 @@ export default function LevelsList({
           description="Create a level for each place a distinct set of subject rules applies - for example one per grade, or one per stream."
           action={
             <Button renderIcon={Add} kind="primary" onClick={onOpenCreate}>
-              New Level
+              New level
             </Button>
           }
         />

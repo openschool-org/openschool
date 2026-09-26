@@ -15,7 +15,7 @@ export function useGradesPage() {
   const { data: school } = useSchool();
 
   // teacherName below is a name-lookup by id (each class's form_teacher_id),
-  // not a picker — a capped /teachers page can't be used as a directory
+  // not a picker - a capped /teachers page can't be used as a directory
   // (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 4), so every distinct
   // referenced id is resolved individually instead.
   const formTeacherIds = useMemo(

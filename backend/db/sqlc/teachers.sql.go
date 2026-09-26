@@ -122,7 +122,7 @@ func (q *Queries) DeleteTeacher(ctx context.Context, id uuid.UUID) (int64, error
 
 const getFormTeacherClass = `-- name: GetFormTeacherClass :one
 SELECT
-    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id
+    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id, c.capacity
 FROM classes c
 WHERE c.form_teacher_id = $1
   AND c.academic_year_id = (
@@ -146,6 +146,7 @@ func (q *Queries) GetFormTeacherClass(ctx context.Context, formTeacherID pgtype.
 		&i.BoyMonitorID,
 		&i.MediumID,
 		&i.HomeClassroomID,
+		&i.Capacity,
 	)
 	return i, err
 }
@@ -423,77 +424,6 @@ func (q *Queries) ListTeachers(ctx context.Context) ([]TeacherProfile, error) {
 	return items, nil
 }
 
-const listTeachersPage = `-- name: ListTeachersPage :many
-SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number, COUNT(*) OVER () AS total
-FROM teacher_profiles
-WHERE ($1::text IS NULL OR full_name ILIKE '%' || $1::text || '%' OR employee_number ILIKE '%' || $1::text || '%')
-  AND ($2::text IS NULL OR employment_status = $2::text)
-ORDER BY full_name ASC, id ASC
-LIMIT $3::int OFFSET $4::int
-`
-
-type ListTeachersPageParams struct {
-	Search     pgtype.Text `json:"search"`
-	Status     pgtype.Text `json:"status"`
-	PageLimit  int32       `json:"page_limit"`
-	PageOffset int32       `json:"page_offset"`
-}
-
-type ListTeachersPageRow struct {
-	ID               uuid.UUID          `json:"id"`
-	UserID           uuid.UUID          `json:"user_id"`
-	FullName         string             `json:"full_name"`
-	EmployeeNumber   string             `json:"employee_number"`
-	JoinedDate       pgtype.Date        `json:"joined_date"`
-	Phone            pgtype.Text        `json:"phone"`
-	CreatedAt        pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
-	Title            pgtype.Text        `json:"title"`
-	Gender           pgtype.Text        `json:"gender"`
-	IsActive         bool               `json:"is_active"`
-	HouseID          pgtype.UUID        `json:"house_id"`
-	EmploymentStatus string             `json:"employment_status"`
-	NicNumber        string             `json:"nic_number"`
-	// Hand-edited: excluded from JSON — read once for the page envelope's total.
-	Total int64 `json:"-"`
-}
-
-func (q *Queries) ListTeachersPage(ctx context.Context, arg ListTeachersPageParams) ([]ListTeachersPageRow, error) {
-	rows, err := q.db.Query(ctx, listTeachersPage, arg.Search, arg.Status, arg.PageLimit, arg.PageOffset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListTeachersPageRow{}
-	for rows.Next() {
-		var i ListTeachersPageRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.FullName,
-			&i.EmployeeNumber,
-			&i.JoinedDate,
-			&i.Phone,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Title,
-			&i.Gender,
-			&i.IsActive,
-			&i.HouseID,
-			&i.EmploymentStatus,
-			&i.NicNumber,
-			&i.Total,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listTeachersByIDs = `-- name: ListTeachersByIDs :many
 SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
 WHERE id = ANY($1::uuid[])
@@ -570,6 +500,98 @@ func (q *Queries) ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID
 			&i.HouseID,
 			&i.EmploymentStatus,
 			&i.NicNumber,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTeachersPage = `-- name: ListTeachersPage :many
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number, COUNT(*) OVER () AS total
+FROM teacher_profiles
+WHERE ($1::text IS NULL OR full_name ILIKE '%' || $1::text || '%' OR employee_number ILIKE '%' || $1::text || '%')
+  AND ($2::text IS NULL OR employment_status = $2::text)
+ORDER BY
+    -- Whitelisted by httpx.ParseSort; an empty key keeps the default name order.
+    CASE WHEN $3::text = 'name' AND NOT $4::bool THEN full_name END ASC,
+    CASE WHEN $3::text = 'name' AND $4::bool THEN full_name END DESC,
+    CASE WHEN $3::text = 'employee' AND NOT $4::bool THEN employee_number END ASC,
+    CASE WHEN $3::text = 'employee' AND $4::bool THEN employee_number END DESC,
+    CASE WHEN $3::text = 'joined' AND NOT $4::bool THEN joined_date END ASC,
+    CASE WHEN $3::text = 'joined' AND $4::bool THEN joined_date END DESC,
+    CASE WHEN $3::text = 'status' AND NOT $4::bool THEN employment_status END ASC,
+    CASE WHEN $3::text = 'status' AND $4::bool THEN employment_status END DESC,
+    full_name ASC, id ASC
+LIMIT $6::int OFFSET $5::int
+`
+
+type ListTeachersPageParams struct {
+	Search     pgtype.Text `json:"search"`
+	Status     pgtype.Text `json:"status"`
+	SortKey    string      `json:"sort_key"`
+	SortDesc   bool        `json:"sort_desc"`
+	PageOffset int32       `json:"page_offset"`
+	PageLimit  int32       `json:"page_limit"`
+}
+
+type ListTeachersPageRow struct {
+	ID               uuid.UUID          `json:"id"`
+	UserID           uuid.UUID          `json:"user_id"`
+	FullName         string             `json:"full_name"`
+	EmployeeNumber   string             `json:"employee_number"`
+	JoinedDate       pgtype.Date        `json:"joined_date"`
+	Phone            pgtype.Text        `json:"phone"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	Title            pgtype.Text        `json:"title"`
+	Gender           pgtype.Text        `json:"gender"`
+	IsActive         bool               `json:"is_active"`
+	HouseID          pgtype.UUID        `json:"house_id"`
+	EmploymentStatus string             `json:"employment_status"`
+	NicNumber        string             `json:"nic_number"`
+	Total            int64              `json:"total"`
+}
+
+// Server-paginated replacement for ListTeachers (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md
+// section 4). The caller-supplied search term is escaped by the service
+// layer (httpx.EscapeLikeTerm) before it reaches here.
+func (q *Queries) ListTeachersPage(ctx context.Context, arg ListTeachersPageParams) ([]ListTeachersPageRow, error) {
+	rows, err := q.db.Query(ctx, listTeachersPage,
+		arg.Search,
+		arg.Status,
+		arg.SortKey,
+		arg.SortDesc,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTeachersPageRow{}
+	for rows.Next() {
+		var i ListTeachersPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FullName,
+			&i.EmployeeNumber,
+			&i.JoinedDate,
+			&i.Phone,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Title,
+			&i.Gender,
+			&i.IsActive,
+			&i.HouseID,
+			&i.EmploymentStatus,
+			&i.NicNumber,
+			&i.Total,
 		); err != nil {
 			return nil, err
 		}

@@ -11,11 +11,8 @@ export default function SubjectsCurriculum() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">Subjects &amp; Curriculum</h1>
-          <p className="os-page__subtitle">
-            The subject catalogue, and how those subjects are organised into
-            curriculum levels and selection groups students pick from.
-          </p>
+          <h1 className="os-page__title">Subjects &amp; curriculum</h1>
+          <p className="os-page__subtitle">The subject catalogue and the groups students choose from.</p>
         </div>
       </div>
 

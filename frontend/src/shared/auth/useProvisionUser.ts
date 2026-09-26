@@ -13,9 +13,10 @@ export interface Me {
   roles: string[];
   must_change_password: boolean;
   // True once a "keep this password" choice has stood unchanged for too
-  // long (S1) — the interstitial should stop offering "keep it" and force
+  // long (S1) - the interstitial should stop offering "keep it" and force
   // an actual new password instead.
   default_password_expired: boolean;
+  preferred_language?: string;
 }
 
 // GET /me provisions the local user row on first sign-in and reports the must-change-password flag.

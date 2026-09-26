@@ -2,7 +2,7 @@
 // section 5 and S7): removes the fonts.googleapis.com/fonts.gstatic.com
 // request on every load and lets the CSP drop those two hosts entirely
 // (see deploy/nginx.conf.example). Both files are variable fonts covering
-// weights 300-700 in one file each — Google Fonts serves the same file
+// weights 300-700 in one file each - Google Fonts serves the same file
 // across several discrete font-weight declarations, which is how it
 // ships these on fonts.googleapis.com too, not an artifact of this export.
 @font-face {
@@ -23,4 +23,43 @@
   src: url("/fonts/ibm-plex-sans/ibm-plex-sans-latin-ext-variable.woff2") format("woff2");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
     U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+// Noto Sans Sinhala and Tamil (SIL OFL 1.1), subset to their script blocks. Declared under the
+// Plex family name so every existing font stack, Carbon's included, picks them up for those
+// characters only; unicode-range means English-only pages never download them.
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 300 500;
+  font-display: swap;
+  src: url("/fonts/noto-sans-sinhala/noto-sans-sinhala-regular.woff2") format("woff2");
+  unicode-range: U+0D80-0DFF, U+200C-200D, U+25CC;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url("/fonts/noto-sans-sinhala/noto-sans-sinhala-bold.woff2") format("woff2");
+  unicode-range: U+0D80-0DFF, U+200C-200D, U+25CC;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 300 500;
+  font-display: swap;
+  src: url("/fonts/noto-sans-tamil/noto-sans-tamil-regular.woff2") format("woff2");
+  unicode-range: U+0B80-0BFF, U+200C-200D, U+25CC;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url("/fonts/noto-sans-tamil/noto-sans-tamil-bold.woff2") format("woff2");
+  unicode-range: U+0B80-0BFF, U+200C-200D, U+25CC;
 }

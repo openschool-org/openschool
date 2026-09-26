@@ -7,8 +7,8 @@ import { useInvalidate } from "@/shared/api/useInvalidate";
 export const useGuardiansByStudent = (studentId: string) =>
   useQuery({ queryKey: guardianKeys.byStudent(studentId), queryFn: () => guardianApi.listByStudent(studentId), enabled: !!studentId });
 
-// Exposed as options so callers outside this feature — e.g. the sidebar's
-// prefetch-on-hover — can use it without importing this feature's api/
+// Exposed as options so callers outside this feature - e.g. the sidebar's
+// prefetch-on-hover - can use it without importing this feature's api/
 // module directly (the layer rule: never api/ across a feature boundary).
 export const guardiansPageOptions = (params: GuardianListParams = {}) =>
   queryOptions({ queryKey: guardianKeys.list(params), queryFn: () => guardianApi.list(params) });

@@ -53,21 +53,57 @@ func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) 
 	return i, err
 }
 
+const listAuditEntityTypes = `-- name: ListAuditEntityTypes :many
+SELECT DISTINCT entity_type FROM audit_logs ORDER BY entity_type
+`
+
+// Feeds the entity filter so the frontend never hard-codes the list.
+func (q *Queries) ListAuditEntityTypes(ctx context.Context) ([]string, error) {
+	rows, err := q.db.Query(ctx, listAuditEntityTypes)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var entity_type string
+		if err := rows.Scan(&entity_type); err != nil {
+			return nil, err
+		}
+		items = append(items, entity_type)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAuditLogs = `-- name: ListAuditLogs :many
 SELECT al.id, al.entity_type, al.entity_id, al.action, al.actor_id, al.before, al.after, al.reason, al.created_at, u.full_name AS actor_name, COUNT(*) OVER () AS total
 FROM audit_logs al
 LEFT JOIN users u ON u.id = al.actor_id
 WHERE ($1::text IS NULL OR al.entity_type = $1)
   AND ($2::uuid IS NULL OR al.entity_id = $2)
+  -- search is escaped by httpx.ParsePage; it matches who, what and why.
+  AND ($3::text IS NULL
+       OR u.full_name     ILIKE '%' || $3::text || '%'
+       OR al.action       ILIKE '%' || $3::text || '%'
+       OR al.entity_type  ILIKE '%' || $3::text || '%'
+       OR al.reason       ILIKE '%' || $3::text || '%')
+  AND ($4::date IS NULL OR al.created_at >= $4::date)
+  AND ($5::date IS NULL OR al.created_at < $5::date + 1)
 ORDER BY al.created_at DESC, al.id DESC
-LIMIT $3::int OFFSET $4::int
+LIMIT $7::int OFFSET $6::int
 `
 
 type ListAuditLogsParams struct {
 	EntityType pgtype.Text `json:"entity_type"`
 	EntityID   pgtype.UUID `json:"entity_id"`
-	PageLimit  int32       `json:"page_limit"`
+	Search     pgtype.Text `json:"search"`
+	FromDate   pgtype.Date `json:"from_date"`
+	ToDate     pgtype.Date `json:"to_date"`
 	PageOffset int32       `json:"page_offset"`
+	PageLimit  int32       `json:"page_limit"`
 }
 
 type ListAuditLogsRow struct {
@@ -81,15 +117,25 @@ type ListAuditLogsRow struct {
 	Reason     pgtype.Text        `json:"reason"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	ActorName  pgtype.Text        `json:"actor_name"`
-	// Hand-edited: excluded from JSON — read once for the page envelope's total.
-	Total int64 `json:"-"`
+	Total      int64              `json:"total"`
 }
 
-// entity_type/entity_id are optional filters (pass a zero UUID / empty
-// string to skip that filter — checked in the repository layer, since
-// sqlc.narg with a nullable uuid comparison reads awkwardly here).
+// Server-paginated (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 4) —
+// an append-only log grows without bound, so a fixed LIMIT eventually hides
+// older entries silently rather than paging to them. entity_type/entity_id
+// are optional filters (pass a zero UUID / empty string to skip that
+// filter — checked in the repository layer, since sqlc.narg with a
+// nullable uuid comparison reads awkwardly here).
 func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]ListAuditLogsRow, error) {
-	rows, err := q.db.Query(ctx, listAuditLogs, arg.EntityType, arg.EntityID, arg.PageLimit, arg.PageOffset)
+	rows, err := q.db.Query(ctx, listAuditLogs,
+		arg.EntityType,
+		arg.EntityID,
+		arg.Search,
+		arg.FromDate,
+		arg.ToDate,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -180,3 +180,18 @@ func (a *SecurityAuditAgent) checkPasswordResetTokenSweep(ctx context.Context) c
 	}
 	return checkOutcome{label: fmt.Sprintf("swept %d expired reset token(s)", deleted)}
 }
+
+// Title is the agent's name on the Automation panel.
+func (a *SecurityAuditAgent) Title() string { return "Security audit" }
+
+// CanDisable reports whether an admin may switch this agent off.
+func (a *SecurityAuditAgent) CanDisable() bool { return true }
+
+// Checks lists what this agent checks and where each finding is shown.
+func (a *SecurityAuditAgent) Checks() []CheckInfo {
+	return []CheckInfo{
+		{Key: "audit_anomaly", Title: "Unusual admin activity", Description: "Flags a spike in audit-log entries compared with the usual level.", FindingTitle: "Unusual audit-log activity", Pages: []string{"/settings"}},
+		{Key: "off_hours", Title: "Off-hours activity", Description: "Flags account activity at unusual hours.", FindingTitle: "Unusual off-hours account activity", Pages: []string{"/settings"}},
+		{Key: "reset_token_sweep", Title: "Expired reset links", Description: "Deletes expired password-reset links."},
+	}
+}

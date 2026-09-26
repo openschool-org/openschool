@@ -24,14 +24,14 @@ export default function QuickActions({
   notifyWholeSchool: boolean;
 }) {
   const actions = [
-    { label: "Mark Attendance", desc: "Record today's session", path: "/t/attendance", Icon: EventSchedule },
-    { label: "My Classes", desc: "View class rosters", path: "/t/classes", Icon: UserMultiple },
-    { label: "Send Notification", desc: notifyDescription(rankLabel, notifyWholeSchool), path: "/t/notifications", Icon: Notification },
+    { label: "Mark attendance", desc: "Record today's session", path: "/t/attendance", Icon: EventSchedule },
+    { label: "My classes", desc: "View class rosters", path: "/t/classes", Icon: UserMultiple },
+    { label: "Send notification", desc: notifyDescription(rankLabel, notifyWholeSchool), path: "/t/notifications", Icon: Notification },
   ];
 
   return (
     <div className="os-section">
-      <div className="os-section__header"><h2 className="os-section__title">Quick Actions</h2></div>
+      <div className="os-section__header"><h2 className="os-section__title">Quick actions</h2></div>
       <div className="os-p-3">
         {actions.map(({ label, desc, path, Icon }) => (
           <Link key={label} to={path} className="os-no-underline">

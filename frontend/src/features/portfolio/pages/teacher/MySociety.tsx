@@ -15,7 +15,7 @@ export default function MySociety() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">My Society</h1>
+          <h1 className="os-page__title">My society</h1>
           <p className="os-page__subtitle">Manage your society's roster and member roles.</p>
         </div>
       </div>
@@ -26,7 +26,7 @@ export default function MySociety() {
 
       {notTic && (
         <EmptyState
-          title="Not a Teacher-in-Charge"
+          title="Not a teacher in charge"
           description="You aren't the Teacher-in-Charge of any society this academic year."
         />
       )}

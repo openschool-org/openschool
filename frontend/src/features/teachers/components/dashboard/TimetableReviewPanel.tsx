@@ -16,7 +16,7 @@ export default function TimetableReviewPanel({ academicYearId }: { academicYearI
     <div className="os-section">
       <div className="os-section__header">
         <h2 className="os-section__title os-flex os-items-center os-gap-2">
-          <Renew size={16} className="os-fill-accent" /> Timetable Review
+          <Renew size={16} className="os-fill-accent" /> Timetable review
         </h2>
       </div>
 

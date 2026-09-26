@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, TextInput, DatePicker, DatePickerInput } from "@carbon/react";
+import { Button, TextInput } from "@carbon/react";
 import { Add } from "@carbon/icons-react";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import {
@@ -10,11 +10,12 @@ import {
   useCreateStudentAward,
   useDeleteStudentAward,
 } from "@/features/portfolio/queries/useStudentPortfolio";
-import { todayISODate, toYmd } from "@/shared/lib/date";
+import { todayISODate } from "@/shared/lib/date";
 import EmptyState from "@/shared/ui/EmptyState";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import RemoveIconButton from "@/shared/ui/RemoveIconButton";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import DateField from "@/shared/ui/DateField";
 
 export default function StudentLeadershipAwards({ studentId }: { studentId: string }) {
   const { data: currentYear } = useCurrentAcademicYear();
@@ -53,7 +54,7 @@ export default function StudentLeadershipAwards({ studentId }: { studentId: stri
     <>
       <div className="os-section os-mt-4">
         <div className="os-section__header">
-          <h2 className="os-section__title">Leadership Roles</h2>
+          <h2 className="os-section__title">Leadership roles</h2>
         </div>
         <div className="os-section__body">
           <MutationErrorNotification
@@ -93,7 +94,7 @@ export default function StudentLeadershipAwards({ studentId }: { studentId: stri
 
       <div className="os-section">
         <div className="os-section__header">
-          <h2 className="os-section__title">Awards &amp; Achievements</h2>
+          <h2 className="os-section__title">Awards &amp; achievements</h2>
         </div>
         <div className="os-section__body">
           <MutationErrorNotification
@@ -103,12 +104,9 @@ export default function StudentLeadershipAwards({ studentId }: { studentId: stri
           />
           <div className="os-grid os-grid-form-1-12-auto os-gap-3 os-items-grid-end os-mb-6">
             <TextInput id="award-title" labelText="Title" value={awardTitle} onChange={(e) => setAwardTitle(e.target.value)} />
-            <DatePicker datePickerType="single" dateFormat="Y-m-d" value={awardDate} onChange={(dates) => {
-              const ymd = toYmd(dates[0]);
+            <DateField value={awardDate} onChange={(ymd) => {
               if (ymd) setAwardDate(ymd);
-            }}>
-              <DatePickerInput id="award-date" labelText="Date" placeholder="YYYY-MM-DD" />
-            </DatePicker>
+            }} id="award-date" labelText="Date" />
             <Button renderIcon={Add} kind="primary" size="md" onClick={addAward} disabled={!awardTitle.trim() || createAward.isPending}>Add</Button>
           </div>
           {!awardsLoading && (awards?.length ?? 0) === 0 && <EmptyState title="No awards yet" description="Add awards and achievements for this student." />}

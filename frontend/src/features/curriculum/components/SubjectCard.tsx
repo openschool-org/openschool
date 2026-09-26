@@ -28,7 +28,7 @@ export default function SubjectCard({
           >
             {subject.subject_name}
           </div>
-          <div className="os-text-2xs os-mono os-c-tertiary"
+          <div className="os-text-xs os-mono os-c-tertiary"
           >
             {subject.subject_code}
           </div>
@@ -46,7 +46,7 @@ export default function SubjectCard({
             </div>
           )}
           {subject.prerequisite_note && (
-            <p className="os-m-0 os-text-2xs os-c-secondary os-flex os-gap-1"
+            <p className="os-m-0 os-text-xs os-c-secondary os-flex os-gap-1"
             >
               <Warning size={12} className="os-fill-tertiary os-shrink-0" />
               {subject.prerequisite_note}

@@ -12,7 +12,7 @@ export default function SubjectEnrollment({ studentId }: { studentId: string }) 
   return (
     <div className="os-section">
       <div className="os-section__header">
-        <h2 className="os-section__title">Subject Enrolment</h2>
+        <h2 className="os-section__title">Subject enrolment</h2>
       </div>
       <div className="os-section__body">
         {!p.academicYearId ? (
@@ -20,7 +20,7 @@ export default function SubjectEnrollment({ studentId }: { studentId: string }) 
         ) : (
           <>
             <div className="os-mb-4"><Tag type="cool-gray" size="sm">{p.currentYear?.label}</Tag></div>
-            <Select id="enrollment-level" labelText="Curriculum Level" value={p.selectedLevel} onChange={(e) => p.changeLevel(e.target.value)}>
+            <Select id="enrollment-level" labelText="Curriculum level" value={p.selectedLevel} onChange={(e) => p.changeLevel(e.target.value)}>
               <SelectItem value="" text="Select level…" />
               {p.levels?.map((l) => <SelectItem key={l.id} value={l.id} text={l.label} />)}
             </Select>
@@ -64,7 +64,7 @@ export default function SubjectEnrollment({ studentId }: { studentId: string }) 
                 {p.submit.data?.valid && <InlineNotification kind="success" title="Saved" subtitle="Subject enrolment updated." lowContrast hideCloseButton className="os-mb-4 os-max-w-full" />}
 
                 <Button renderIcon={Save} kind="primary" size="sm" onClick={p.save} disabled={p.submit.isPending}>
-                  {p.submit.isPending ? "Saving…" : "Save Enrolment"}
+                  {p.submit.isPending ? "Saving…" : "Save enrolment"}
                 </Button>
               </div>
             )}

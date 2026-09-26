@@ -10,13 +10,13 @@ export default function NotFound() {
     <StatusView
       icon={Compass}
       code="404"
-      badge="Page Not Found"
+      badge="Page not found"
       title="Lost in space?"
       subtitle="The page you are looking for doesn't exist, has been removed, or is temporarily unavailable."
       actions={
         <>
           <Button kind="secondary" renderIcon={ArrowLeft} onClick={() => navigate(-1)}>
-            Go Back
+            Go back
           </Button>
           <Button as={Link} to="/" renderIcon={Home} kind="primary">
             Back to Dashboard

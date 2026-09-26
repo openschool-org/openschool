@@ -14,7 +14,6 @@ import SectionHeader from "@/shared/ui/SectionHeader";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import AgentFindingsBanner from "@/features/notifications/components/AgentFindingsBanner";
 
-const FINDINGS = ["Grades with no current-year classes", "Inactive teachers still assigned to classes", "Students with no current-year class"];
 
 export default function Classes() {
   const page = useGradesPage();
@@ -42,16 +41,16 @@ export default function Classes() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">Grades &amp; Classes</h1>
-          <p className="os-page__subtitle">The grades this school runs, and their classes for the current academic year. Reorder grades with the arrows.</p>
+          <h1 className="os-page__title">Grades &amp; classes</h1>
+          <p className="os-page__subtitle">Grades and their classes for the current academic year.</p>
         </div>
         <div className="os-flex os-gap-3">
-          <Button renderIcon={Add} kind="secondary" size="md" onClick={page.openCreateGrade}>Add Grade</Button>
-          <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/classes/new">Add Class</Button>
+          <Button renderIcon={Add} kind="secondary" size="md" onClick={page.openCreateGrade}>Add grade</Button>
+          <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/classes/new">Add class</Button>
         </div>
       </div>
 
-      <AgentFindingsBanner titles={FINDINGS} />
+      <AgentFindingsBanner />
 
       <div className="os-section">
         <SectionHeader
@@ -99,7 +98,7 @@ export default function Classes() {
           <EmptyState
             title="No grades yet"
             description="Add the grades this school runs, then create classes under each one."
-            action={<Button renderIcon={Add} kind="primary" onClick={page.openCreateGrade}>Add Grade</Button>}
+            action={<Button renderIcon={Add} kind="primary" onClick={page.openCreateGrade}>Add grade</Button>}
           />
         )}
 

@@ -8,23 +8,23 @@ import {
   SelectItem,
   RadioButtonGroup,
   RadioButton,
-  DatePicker,
-  DatePickerInput,
   InlineNotification,
 } from "@carbon/react";
 import { ArrowLeft, Save } from "@carbon/icons-react";
 import { useCreateTeacher } from "@/features/teachers/queries/useTeachers";
 import { getErrorMessage } from "@/shared/api/errors";
-import { toYmd } from "@/shared/lib/date";
 import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "@/shared/lib/phone";
 import type { TeacherTitle } from "@/features/teachers/api/teacher";
 import { TITLES } from "@/features/teachers/constants";
+import { usePageTitle } from "@/shared/hooks/usePageTitle";
+import DateField from "@/shared/ui/DateField";
 
 type Touched = Partial<
   Record<"givenName" | "familyName" | "email" | "phone" | "nicNumber" | "joinedDate", boolean>
 >;
 
 export default function AddTeacher() {
+  usePageTitle("Add teacher");
   const navigate = useNavigate();
   const createTeacher = useCreateTeacher();
 
@@ -88,12 +88,7 @@ export default function AddTeacher() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <div className="os-page__breadcrumb">
-            <Link to="/teachers">Teachers</Link>
-            <span>/</span>
-            <span>Add Teacher</span>
-          </div>
-          <h1 className="os-page__title">Add New Teacher</h1>
+          <h1 className="os-page__title">Add new teacher</h1>
           <p className="os-page__subtitle">Create a teacher account and profile</p>
         </div>
         <Button renderIcon={ArrowLeft} kind="ghost" size="md" as={Link} to="/teachers">
@@ -137,7 +132,7 @@ export default function AddTeacher() {
             </RadioButtonGroup>
             <TextInput
               id="given-name"
-              labelText="First Name"
+              labelText="First name"
               placeholder="e.g. Priya"
               value={givenName}
               onChange={(e) => setGivenName(e.target.value)}
@@ -147,7 +142,7 @@ export default function AddTeacher() {
             />
             <TextInput
               id="family-name"
-              labelText="Last Name"
+              labelText="Last name"
               placeholder="e.g. Rathnayake"
               value={familyName}
               onChange={(e) => setFamilyName(e.target.value)}
@@ -157,7 +152,7 @@ export default function AddTeacher() {
             />
             <TextInput
               id="email"
-              labelText="Email Address"
+              labelText="Email address"
               placeholder="e.g. teacher@school.lk"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -177,7 +172,7 @@ export default function AddTeacher() {
             />
             <TextInput
               id="nic-number"
-              labelText="NIC Number"
+              labelText="NIC number"
               placeholder="e.g. 199012345678 or 901234567V"
               value={nicNumber}
               onChange={(e) => setNicNumber(e.target.value)}
@@ -190,23 +185,13 @@ export default function AddTeacher() {
         </div>
 
         <div className="os-form__section">
-          <div className="os-form__section-header">Employment Details</div>
+          <div className="os-form__section-header">Employment details</div>
           <div className="os-form__section-body">
-            <DatePicker
-              datePickerType="single"
-              dateFormat="Y-m-d"
-              value={joinedDate}
-              onChange={(dates) => setJoinedDate(toYmd(dates[0]))}
-            >
-              <DatePickerInput
-                id="joined-date"
-                labelText="Joining Date"
-                placeholder="YYYY-MM-DD"
+            <DateField value={joinedDate} onChange={(ymd) => setJoinedDate(ymd)} id="joined-date"
+                labelText="Joining date"
                 onBlur={() => markTouched("joinedDate")}
                 invalid={joinedDateInvalid}
-                invalidText="Joining date is required."
-              />
-            </DatePicker>
+                invalidText="Joining date is required." />
           </div>
         </div>
 
@@ -217,7 +202,7 @@ export default function AddTeacher() {
             onClick={handleSubmit}
             disabled={!isValid || createTeacher.isPending}
           >
-            {createTeacher.isPending ? "Saving…" : "Save Teacher"}
+            {createTeacher.isPending ? "Saving…" : "Save teacher"}
           </Button>
           <Button kind="secondary" as={Link} to="/teachers">
             Cancel
