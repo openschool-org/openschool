@@ -808,6 +808,8 @@ type Querier interface {
 	UpsertTimetableSettings(ctx context.Context, arg UpsertTimetableSettingsParams) (TimetableSetting, error)
 	UpsertVicePrincipal(ctx context.Context, arg UpsertVicePrincipalParams) (TeacherPosition, error)
 	WfAcademicYearLabelExists(ctx context.Context, lower string) (bool, error)
+	// Attendance or marks already recorded in these classes; a placement can no longer be reverted.
+	WfClassesHaveRecords(ctx context.Context, arg WfClassesHaveRecordsParams) (bool, error)
 	WfCopyGradeSectionGrades(ctx context.Context, arg WfCopyGradeSectionGradesParams) error
 	WfCopySectionHeads(ctx context.Context, arg WfCopySectionHeadsParams) (int64, error)
 	WfCopySubjectPeriodRequirements(ctx context.Context, arg WfCopySubjectPeriodRequirementsParams) (int64, error)
@@ -820,9 +822,20 @@ type Querier interface {
 	WfCreateTerm(ctx context.Context, arg WfCreateTermParams) error
 	WfCurrentTerm(ctx context.Context) (uuid.UUID, error)
 	WfDeleteAcademicYear(ctx context.Context, id uuid.UUID) error
+	WfDeleteEmptyClasses(ctx context.Context, ids []uuid.UUID) error
+	WfDeleteIntakes(ctx context.Context, ids []uuid.UUID) error
 	// Classes RESTRICT their year, so they go first; the rest cascades from the year.
 	WfDeleteYearClasses(ctx context.Context, academicYearID uuid.UUID) error
 	WfGetAcademicYear(ctx context.Context, id uuid.UUID) (WfGetAcademicYearRow, error)
+	// Grades whose curriculum has a real subject choice; their incoming students default to by_subject_choice.
+	WfGradesWithChoiceGroups(ctx context.Context) ([]uuid.UUID, error)
+	// Grades whose levels are tied to an A/L stream; their incoming students default to by_stream.
+	WfGradesWithStreamLevels(ctx context.Context) ([]uuid.UUID, error)
+	// Admitted students waiting for a class in the target year.
+	WfIntakeStudents(ctx context.Context, academicYearID uuid.UUID) ([]WfIntakeStudentsRow, error)
+	WfIntakesByIDs(ctx context.Context, ids []uuid.UUID) ([]WfIntakesByIDsRow, error)
+	// Each student's average percentage in the latest term of the year that has marks.
+	WfLatestAverages(ctx context.Context, arg WfLatestAveragesParams) ([]WfLatestAveragesRow, error)
 	// ---- Shared reads ----
 	WfListAcademicYears(ctx context.Context) ([]WfListAcademicYearsRow, error)
 	// ---- W2 leavers ----
@@ -832,9 +845,21 @@ type Querier interface {
 	WfListTerms(ctx context.Context, academicYearID uuid.UUID) ([]WfListTermsRow, error)
 	WfListYearClasses(ctx context.Context, academicYearID uuid.UUID) ([]WfListYearClassesRow, error)
 	WfMarkStudentsLeft(ctx context.Context, arg WfMarkStudentsLeftParams) (int64, error)
+	WfPromotionPolicies(ctx context.Context) ([]WfPromotionPoliciesRow, error)
+	// ---- W5 promotion ----
+	// Active students in the source year with what placement needs: class, grade, medium, gender, house.
+	WfPromotionStudents(ctx context.Context, academicYearID uuid.UUID) ([]WfPromotionStudentsRow, error)
+	WfRestoreIntake(ctx context.Context, arg WfRestoreIntakeParams) error
 	WfRestoreStudentsActive(ctx context.Context, ids []uuid.UUID) (int64, error)
 	WfSetCurrentTerm(ctx context.Context, id uuid.UUID) error
 	WfSetCurrentYear(ctx context.Context, id uuid.UUID) error
+	// Each student's optional subjects for the target year, and the stream of the level they are in.
+	// A group is a real choice when it offers more subjects than a student may take.
+	WfStudentChoices(ctx context.Context, arg WfStudentChoicesParams) ([]WfStudentChoicesRow, error)
+	// Seats already taken in target classes by students outside this promotion (for example placed by hand).
+	WfTargetOccupancy(ctx context.Context, arg WfTargetOccupancyParams) ([]WfTargetOccupancyRow, error)
+	WfUpsertPromotionPolicy(ctx context.Context, arg WfUpsertPromotionPolicyParams) error
+	WfYearAssignments(ctx context.Context, arg WfYearAssignmentsParams) ([]WfYearAssignmentsRow, error)
 	// True once anything real is recorded against the year's classes; a rollover can no longer be reverted.
 	WfYearHasActivity(ctx context.Context, academicYearID uuid.UUID) (bool, error)
 	// ---- W8 go live ----

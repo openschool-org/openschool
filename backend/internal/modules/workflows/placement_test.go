@@ -198,7 +198,7 @@ func TestNextSectionName(t *testing.T) {
 			t.Errorf("nextSectionName(%v) = %s, want %s", c.existing, got, c.want)
 		}
 	}
-	if !naturalLess("7-B", "7-10") || !naturalLess("12-S2", "12-S10") || naturalLess("7-C", "7-B") {
+	if !naturalLess("7-9", "7-10") || !naturalLess("12-S2", "12-S10") || naturalLess("7-C", "7-B") {
 		t.Error("naturalLess ordering is wrong")
 	}
 }

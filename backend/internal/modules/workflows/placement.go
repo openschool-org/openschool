@@ -364,7 +364,7 @@ func nextSectionName(existing []string, template string) string {
 	return template + " (new)"
 }
 
-// naturalLess sorts "7-B" before "7-10" and "12-S2" before "12-S10".
+// naturalLess sorts "7-9" before "7-10" and "12-S2" before "12-S10".
 func naturalLess(a, b string) bool {
 	ai, bi := 0, 0
 	for ai < len(a) && bi < len(b) {

@@ -142,4 +142,3 @@ func (Leavers) Revert(ctx context.Context, tx *Store, snapshot json.RawMessage) 
 	_, err := tx.restoreActive(ctx, snap.IDs)
 	return err
 }
-

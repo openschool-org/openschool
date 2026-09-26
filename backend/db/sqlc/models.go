@@ -363,6 +363,14 @@ type StudentGuardian struct {
 	IsPrimaryContact bool      `json:"is_primary_contact"`
 }
 
+type StudentIntake struct {
+	StudentID      uuid.UUID          `json:"student_id"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	GradeID        uuid.UUID          `json:"grade_id"`
+	MediumID       pgtype.UUID        `json:"medium_id"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type StudentLeadershipRole struct {
 	ID             uuid.UUID          `json:"id"`
 	StudentID      uuid.UUID          `json:"student_id"`

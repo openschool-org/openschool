@@ -173,3 +173,101 @@ UPDATE academic_years SET is_current = (id = $1) WHERE id = $1 OR is_current = T
 
 -- name: WfSetCurrentTerm :exec
 UPDATE terms SET is_current = (id = $1) WHERE id = $1 OR is_current = TRUE;
+
+-- ---- W5 promotion ----
+
+-- name: WfPromotionStudents :many
+-- Active students in the source year with what placement needs: class, grade, medium, gender, house.
+SELECT sp.id, sp.full_name, sp.index_number, COALESCE(sp.gender, '')::text AS gender,
+       COALESCE(sp.house_id::text, '')::text AS house_id,
+       c.name AS class_name, c.grade_id, COALESCE(c.medium_id::text, '')::text AS medium_id
+FROM student_profiles sp
+JOIN class_students cs ON cs.student_id = sp.id
+JOIN classes c ON c.id = cs.class_id AND c.academic_year_id = $1
+WHERE sp.enrollment_status = 'active'
+ORDER BY sp.full_name, sp.id;
+
+-- name: WfTargetOccupancy :many
+-- Seats already taken in target classes by students outside this promotion (for example placed by hand).
+SELECT cs.class_id, COUNT(*)::int AS taken
+FROM class_students cs
+JOIN classes c ON c.id = cs.class_id AND c.academic_year_id = sqlc.arg(year)::uuid
+WHERE NOT (cs.student_id = ANY(sqlc.arg(exclude)::uuid[]))
+GROUP BY cs.class_id;
+
+-- name: WfStudentChoices :many
+-- Each student's optional subjects for the target year, and the stream of the level they are in.
+-- A group is a real choice when it offers more subjects than a student may take.
+SELECT e.student_id, s.name AS subject_name, e.subject_id,
+       COALESCE(l.stream_id::text, '')::text AS stream_id,
+       COALESCE(l.stream_group_id::text, '')::text AS stream_group_id,
+       ((SELECT COUNT(*) FROM group_subjects gs WHERE gs.group_id = g.id) > g.max_select)::bool AS is_choice
+FROM student_subject_enrollments e
+JOIN selection_groups g ON g.id = e.group_id
+JOIN levels l ON l.id = g.level_id
+JOIN subjects s ON s.id = e.subject_id
+WHERE e.academic_year_id = sqlc.arg(year)::uuid AND e.student_id = ANY(sqlc.arg(ids)::uuid[])
+ORDER BY e.student_id, s.name;
+
+-- name: WfPromotionPolicies :many
+SELECT from_grade_id, policy, spread_by_marks FROM promotion_policies;
+
+-- name: WfUpsertPromotionPolicy :exec
+INSERT INTO promotion_policies (from_grade_id, policy, spread_by_marks) VALUES ($1, $2, $3)
+ON CONFLICT (from_grade_id) DO UPDATE SET policy = EXCLUDED.policy, spread_by_marks = EXCLUDED.spread_by_marks, updated_at = NOW();
+
+-- name: WfGradesWithChoiceGroups :many
+-- Grades whose curriculum has a real subject choice; their incoming students default to by_subject_choice.
+SELECT DISTINCT l.grade_id::uuid AS grade_id
+FROM levels l JOIN selection_groups g ON g.level_id = l.id
+WHERE l.grade_id IS NOT NULL AND (SELECT COUNT(*) FROM group_subjects gs WHERE gs.group_id = g.id) > g.max_select;
+
+-- name: WfLatestAverages :many
+-- Each student's average percentage in the latest term of the year that has marks.
+WITH latest AS (
+    SELECT t.id FROM terms t
+    WHERE t.academic_year_id = sqlc.arg(year)::uuid AND EXISTS (SELECT 1 FROM term_marks m WHERE m.term_id = t.id)
+    ORDER BY t.sort_order DESC, t.start_date DESC LIMIT 1
+)
+SELECT m.student_id, (AVG(m.marks / NULLIF(m.max_marks, 0) * 100))::float8 AS average
+FROM term_marks m JOIN latest ON latest.id = m.term_id
+WHERE m.student_id = ANY(sqlc.arg(ids)::uuid[]) AND NOT m.is_absent
+GROUP BY m.student_id;
+
+-- name: WfYearAssignments :many
+SELECT cs.student_id, cs.class_id
+FROM class_students cs JOIN classes c ON c.id = cs.class_id AND c.academic_year_id = sqlc.arg(year)::uuid
+WHERE cs.student_id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: WfClassesHaveRecords :one
+-- Attendance or marks already recorded in these classes; a placement can no longer be reverted.
+SELECT (EXISTS (SELECT 1 FROM attendance_sessions a WHERE a.class_id = ANY(sqlc.arg(class_ids)::uuid[]))
+     OR EXISTS (SELECT 1 FROM term_marks m JOIN terms t ON t.id = m.term_id
+                WHERE t.academic_year_id = sqlc.arg(year)::uuid AND m.student_id = ANY(sqlc.arg(student_ids)::uuid[])))::bool AS has_records;
+
+-- name: WfDeleteEmptyClasses :exec
+DELETE FROM classes c WHERE c.id = ANY(sqlc.arg(ids)::uuid[]) AND NOT EXISTS (SELECT 1 FROM class_students cs WHERE cs.class_id = c.id);
+
+-- name: WfIntakeStudents :many
+-- Admitted students waiting for a class in the target year.
+SELECT sp.id, sp.full_name, sp.index_number, COALESCE(sp.gender, '')::text AS gender,
+       COALESCE(sp.house_id::text, '')::text AS house_id,
+       i.grade_id, COALESCE(i.medium_id::text, '')::text AS medium_id
+FROM student_intakes i
+JOIN student_profiles sp ON sp.id = i.student_id
+WHERE i.academic_year_id = $1 AND sp.enrollment_status = 'active'
+ORDER BY sp.full_name, sp.id;
+
+-- name: WfDeleteIntakes :exec
+DELETE FROM student_intakes WHERE student_id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: WfRestoreIntake :exec
+INSERT INTO student_intakes (student_id, academic_year_id, grade_id, medium_id) VALUES ($1, $2, $3, $4)
+ON CONFLICT (student_id) DO NOTHING;
+
+-- name: WfIntakesByIDs :many
+SELECT student_id, academic_year_id, grade_id, medium_id FROM student_intakes WHERE student_id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: WfGradesWithStreamLevels :many
+-- Grades whose levels are tied to an A/L stream; their incoming students default to by_stream.
+SELECT DISTINCT grade_id::uuid AS grade_id FROM levels WHERE grade_id IS NOT NULL AND stream_id IS NOT NULL;

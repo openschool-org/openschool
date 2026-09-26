@@ -405,3 +405,211 @@ func (s *Store) setCurrentYear(ctx context.Context, year uuid.UUID) error {
 func (s *Store) setCurrentTerm(ctx context.Context, term uuid.UUID) error {
 	return s.q.WfSetCurrentTerm(ctx, term)
 }
+
+// ---- W5 promotion and W4 intake ----
+
+// PromotionCandidate is a student moving into a new grade: from a current class, or from intake.
+type PromotionCandidate struct {
+	ID                                      uuid.UUID
+	Name, Index, Gender, HouseID, ClassName string
+	MediumID                                string
+	FromGradeID                             uuid.UUID
+	IntakeGradeID                           *uuid.UUID // set for admitted students, who go straight into this grade
+}
+
+func (s *Store) promotionStudents(ctx context.Context, year uuid.UUID) ([]PromotionCandidate, error) {
+	rows, err := s.q.WfPromotionStudents(ctx, year)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]PromotionCandidate, len(rows))
+	for i, r := range rows {
+		out[i] = PromotionCandidate{ID: r.ID, Name: r.FullName, Index: r.IndexNumber, Gender: r.Gender, HouseID: r.HouseID, ClassName: r.ClassName, MediumID: r.MediumID, FromGradeID: r.GradeID}
+	}
+	return out, nil
+}
+
+func (s *Store) intakeStudents(ctx context.Context, year uuid.UUID) ([]PromotionCandidate, error) {
+	rows, err := s.q.WfIntakeStudents(ctx, year)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]PromotionCandidate, len(rows))
+	for i, r := range rows {
+		grade := r.GradeID
+		out[i] = PromotionCandidate{ID: r.ID, Name: r.FullName, Index: r.IndexNumber, Gender: r.Gender, HouseID: r.HouseID, ClassName: "New admission", MediumID: r.MediumID, IntakeGradeID: &grade}
+	}
+	return out, nil
+}
+
+func (s *Store) targetOccupancy(ctx context.Context, year uuid.UUID, exclude []uuid.UUID) (map[uuid.UUID]int, error) {
+	rows, err := s.q.WfTargetOccupancy(ctx, db.WfTargetOccupancyParams{Year: year, Exclude: exclude})
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]int, len(rows))
+	for _, r := range rows {
+		out[r.ClassID] = int(r.Taken)
+	}
+	return out, nil
+}
+
+// StudentChoice summarises a student's next-year subjects for placement.
+type StudentChoice struct {
+	Key, Label              string // optional subjects only, sorted
+	StreamID, StreamGroupID string
+	Subjects                int
+}
+
+func (s *Store) studentChoices(ctx context.Context, year uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]StudentChoice, error) {
+	rows, err := s.q.WfStudentChoices(ctx, db.WfStudentChoicesParams{Year: year, Ids: ids})
+	if err != nil {
+		return nil, err
+	}
+	out := map[uuid.UUID]StudentChoice{}
+	for _, r := range rows {
+		c := out[r.StudentID]
+		c.Subjects++
+		if r.StreamID != "" {
+			c.StreamID, c.StreamGroupID = r.StreamID, r.StreamGroupID
+		}
+		if r.IsChoice {
+			if c.Key != "" {
+				c.Key += "+"
+				c.Label += ", "
+			}
+			c.Key += r.SubjectID.String()
+			c.Label += r.SubjectName
+		}
+		out[r.StudentID] = c
+	}
+	return out, nil
+}
+
+// PolicySetting is the stored rule for one grade move.
+type PolicySetting struct {
+	Policy        string
+	SpreadByMarks bool
+}
+
+func (s *Store) policies(ctx context.Context) (map[uuid.UUID]PolicySetting, error) {
+	rows, err := s.q.WfPromotionPolicies(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]PolicySetting, len(rows))
+	for _, r := range rows {
+		out[r.FromGradeID] = PolicySetting{Policy: r.Policy, SpreadByMarks: r.SpreadByMarks}
+	}
+	return out, nil
+}
+
+func (s *Store) savePolicy(ctx context.Context, grade uuid.UUID, p PolicySetting) error {
+	return s.q.WfUpsertPromotionPolicy(ctx, db.WfUpsertPromotionPolicyParams{FromGradeID: grade, Policy: p.Policy, SpreadByMarks: p.SpreadByMarks})
+}
+
+func (s *Store) gradesWithChoice(ctx context.Context) (map[uuid.UUID]bool, error) {
+	ids, err := s.q.WfGradesWithChoiceGroups(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]bool, len(ids))
+	for _, id := range ids {
+		out[id] = true
+	}
+	return out, nil
+}
+
+func (s *Store) latestAverages(ctx context.Context, year uuid.UUID, ids []uuid.UUID) (map[uuid.UUID]float64, error) {
+	rows, err := s.q.WfLatestAverages(ctx, db.WfLatestAveragesParams{Year: year, Ids: ids})
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]float64, len(rows))
+	for _, r := range rows {
+		out[r.StudentID] = r.Average
+	}
+	return out, nil
+}
+
+// Assignment is one student's class in a year.
+type Assignment struct {
+	StudentID uuid.UUID `json:"student_id"`
+	ClassID   uuid.UUID `json:"class_id"`
+}
+
+func (s *Store) yearAssignments(ctx context.Context, year uuid.UUID, ids []uuid.UUID) ([]Assignment, error) {
+	rows, err := s.q.WfYearAssignments(ctx, db.WfYearAssignmentsParams{Year: year, Ids: ids})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Assignment, len(rows))
+	for i, r := range rows {
+		out[i] = Assignment{StudentID: r.StudentID, ClassID: r.ClassID}
+	}
+	return out, nil
+}
+
+// reassign clears these students' classes for the year, then writes the given assignments.
+func (s *Store) reassign(ctx context.Context, year uuid.UUID, clear []uuid.UUID, assignments []Assignment) error {
+	if err := s.q.BulkDeleteClassStudentsForYear(ctx, db.BulkDeleteClassStudentsForYearParams{AcademicYearID: year, StudentIds: clear}); err != nil {
+		return err
+	}
+	if len(assignments) == 0 {
+		return nil
+	}
+	classes := make([]uuid.UUID, len(assignments))
+	students := make([]uuid.UUID, len(assignments))
+	for i, a := range assignments {
+		classes[i], students[i] = a.ClassID, a.StudentID
+	}
+	return s.q.BulkInsertClassStudents(ctx, db.BulkInsertClassStudentsParams{ClassIds: classes, StudentIds: students})
+}
+
+func (s *Store) classesHaveRecords(ctx context.Context, year uuid.UUID, classes, students []uuid.UUID) (bool, error) {
+	return s.q.WfClassesHaveRecords(ctx, db.WfClassesHaveRecordsParams{Year: year, ClassIds: classes, StudentIds: students})
+}
+
+func (s *Store) deleteEmptyClasses(ctx context.Context, ids []uuid.UUID) error {
+	return s.q.WfDeleteEmptyClasses(ctx, ids)
+}
+
+// Intake is a pending admission, kept in snapshots so revert can put it back.
+type Intake struct {
+	StudentID uuid.UUID  `json:"student_id"`
+	YearID    uuid.UUID  `json:"year_id"`
+	GradeID   uuid.UUID  `json:"grade_id"`
+	MediumID  *uuid.UUID `json:"medium_id,omitempty"`
+}
+
+func (s *Store) intakesByIDs(ctx context.Context, ids []uuid.UUID) ([]Intake, error) {
+	rows, err := s.q.WfIntakesByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Intake, len(rows))
+	for i, r := range rows {
+		out[i] = Intake{StudentID: r.StudentID, YearID: r.AcademicYearID, GradeID: r.GradeID, MediumID: fromPgUUID(r.MediumID)}
+	}
+	return out, nil
+}
+
+func (s *Store) deleteIntakes(ctx context.Context, ids []uuid.UUID) error {
+	return s.q.WfDeleteIntakes(ctx, ids)
+}
+
+func (s *Store) restoreIntake(ctx context.Context, in Intake) error {
+	return s.q.WfRestoreIntake(ctx, db.WfRestoreIntakeParams{StudentID: in.StudentID, AcademicYearID: in.YearID, GradeID: in.GradeID, MediumID: optUUID(in.MediumID)})
+}
+
+func (s *Store) gradesWithStreams(ctx context.Context) (map[uuid.UUID]bool, error) {
+	ids, err := s.q.WfGradesWithStreamLevels(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]bool, len(ids))
+	for _, id := range ids {
+		out[id] = true
+	}
+	return out, nil
+}

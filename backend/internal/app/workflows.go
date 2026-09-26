@@ -11,6 +11,7 @@ func registerWorkflows(groups HTTPGroups, pool *pgxpool.Pool, shared sharedServi
 	engine := workflowsmodule.NewEngine(store, shared.audit, []workflowsmodule.Definition{
 		workflowsmodule.YearRollover{},
 		workflowsmodule.Leavers{},
+		workflowsmodule.Promotion{},
 		workflowsmodule.NewGoLive(shared.notifications),
 	})
 	workflowsmodule.RegisterRoutes(groups.Admin, engine)
