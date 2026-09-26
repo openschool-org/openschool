@@ -332,3 +332,52 @@ WHERE index_number = ANY(sqlc.arg(numbers)::text[]) AND user_id IS NULL;
 
 -- name: WfSetStudentUser :exec
 UPDATE student_profiles SET user_id = $2, updated_at = NOW() WHERE id = $1;
+
+-- ---- W3 subject choices ----
+
+-- name: WfLevelsForGrades :many
+-- Curriculum levels tied to a grade, in school order.
+SELECT l.id, l.label, l.grade_id::uuid AS grade_id, g.name AS grade_name
+FROM levels l JOIN grades g ON g.id = l.grade_id
+ORDER BY g.sort_order, l.sort_order, l.label;
+
+-- name: WfLevelGroupSubjects :many
+SELECT sg.id AS group_id, sg.label AS group_label, sg.min_select, sg.max_select,
+       s.id AS subject_id, s.name AS subject_name, COALESCE(s.code, '')::text AS subject_code
+FROM selection_groups sg
+JOIN group_subjects gs ON gs.group_id = sg.id
+JOIN subjects s ON s.id = gs.subject_id
+WHERE sg.level_id = $1
+ORDER BY sg.sort_order, sg.label, gs.sort_order, s.name;
+
+-- name: WfYearEnrollments :many
+SELECT e.student_id, e.group_id, e.subject_id, e.medium_id, g.level_id
+FROM student_subject_enrollments e JOIN selection_groups g ON g.id = e.group_id
+WHERE e.academic_year_id = sqlc.arg(year)::uuid AND e.student_id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: WfEnrollmentLocks :many
+SELECT student_id FROM student_enrollment_locks
+WHERE academic_year_id = sqlc.arg(year)::uuid AND level_id = sqlc.arg(level)::uuid AND student_id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: WfDeleteLevelEnrollments :exec
+DELETE FROM student_subject_enrollments e USING selection_groups g
+WHERE e.group_id = g.id AND g.level_id = sqlc.arg(level)::uuid
+  AND e.academic_year_id = sqlc.arg(year)::uuid AND e.student_id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: WfInsertEnrollment :exec
+INSERT INTO student_subject_enrollments (student_id, academic_year_id, group_id, subject_id, medium_id)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (student_id, academic_year_id, group_id, subject_id) DO UPDATE SET medium_id = EXCLUDED.medium_id;
+
+-- name: WfSetLevelLocks :exec
+INSERT INTO student_enrollment_locks (student_id, level_id, academic_year_id)
+SELECT unnest(sqlc.arg(ids)::uuid[]), sqlc.arg(level)::uuid, sqlc.arg(year)::uuid
+ON CONFLICT DO NOTHING;
+
+-- name: WfClearLevelLocks :exec
+DELETE FROM student_enrollment_locks
+WHERE academic_year_id = sqlc.arg(year)::uuid AND level_id = sqlc.arg(level)::uuid AND student_id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: WfStudentsHaveMarks :one
+SELECT EXISTS (SELECT 1 FROM term_marks m JOIN terms t ON t.id = m.term_id
+               WHERE t.academic_year_id = sqlc.arg(year)::uuid AND m.student_id = ANY(sqlc.arg(ids)::uuid[]))::bool AS has_marks;
