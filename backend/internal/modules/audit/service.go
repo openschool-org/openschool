@@ -4,6 +4,7 @@ package audit
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -32,9 +33,19 @@ type row struct {
 	ActorName  pgtype.Text
 }
 
+// ListFilter narrows the audit log; zero values mean "no filter".
+type ListFilter struct {
+	EntityType    string
+	EntityID      *uuid.UUID
+	Search        string
+	From, To      *time.Time
+	Limit, Offset int32
+}
+
 type store interface {
 	create(context.Context, createCommand) error
-	list(context.Context, string, *uuid.UUID, int32, int32) ([]row, int64, error)
+	list(context.Context, ListFilter) ([]row, int64, error)
+	entityTypes(context.Context) ([]string, error)
 }
 
 type Service struct{ store store }
@@ -65,8 +76,13 @@ func (s *Service) Record(ctx context.Context, entityType string, entityID uuid.U
 	})
 }
 
-func (s *Service) List(ctx context.Context, entityType string, entityID *uuid.UUID, limit, offset int32) ([]AuditLogResponse, int64, error) {
-	rows, total, err := s.store.list(ctx, entityType, entityID, limit, offset)
+// EntityTypes lists every entity type that has at least one entry.
+func (s *Service) EntityTypes(ctx context.Context) ([]string, error) {
+	return s.store.entityTypes(ctx)
+}
+
+func (s *Service) List(ctx context.Context, filter ListFilter) ([]AuditLogResponse, int64, error) {
+	rows, total, err := s.store.list(ctx, filter)
 	if err != nil {
 		return nil, 0, err
 	}

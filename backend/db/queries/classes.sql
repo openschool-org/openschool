@@ -267,3 +267,11 @@ AND c.id NOT IN (
 -- name: GetClassStudentCount :one
 SELECT COUNT(*) FROM class_students
 WHERE class_id = $1;
+-- name: ListClassesWithoutHomeroom :many
+-- Classes in the given year that were created before homerooms were automatic.
+SELECT id, name FROM classes
+WHERE academic_year_id = $1 AND home_classroom_id IS NULL
+ORDER BY name ASC;
+
+-- name: SetClassHomeClassroom :exec
+UPDATE classes SET home_classroom_id = $2 WHERE id = $1;

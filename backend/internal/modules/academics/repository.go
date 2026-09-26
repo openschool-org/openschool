@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	db "github.com/openschool-org/openschool/db/sqlc"
@@ -80,10 +82,33 @@ func newStreamRepository(pool *pgxpool.Pool) *streamRepository {
 	return &streamRepository{queries: db.New(pool)}
 }
 
-type classRepository struct{ queries *db.Queries }
+type classRepository struct {
+	pool    *pgxpool.Pool
+	queries *db.Queries
+}
 
 func newClassRepository(pool *pgxpool.Pool) *classRepository {
-	return &classRepository{queries: db.New(pool)}
+	return &classRepository{pool: pool, queries: db.New(pool)}
+}
+
+// homeroomFor returns the regular room named after the class, creating it if missing.
+// A lab or ECA room that happens to share the name is never used as a homeroom.
+func homeroomFor(ctx context.Context, q *db.Queries, className string) (pgtype.UUID, error) {
+	room, err := q.FindClassroomByName(ctx, className)
+	if err == nil {
+		if room.RoomType != "regular" {
+			return pgtype.UUID{}, nil
+		}
+		return pgtype.UUID{Bytes: room.ID, Valid: true}, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return pgtype.UUID{}, err
+	}
+	created, err := q.CreateClassroom(ctx, db.CreateClassroomParams{Name: className, RoomType: "regular"})
+	if err != nil {
+		return pgtype.UUID{}, err
+	}
+	return pgtype.UUID{Bytes: created.ID, Valid: true}, nil
 }
 
 func classUUID(v pgtype.UUID) *uuid.UUID {
@@ -113,9 +138,58 @@ func classUUIDParam(v *uuid.UUID) pgtype.UUID {
 	return pgtype.UUID{Bytes: *v, Valid: true}
 }
 
+// create links a homeroom in the same transaction when the caller gives none, so every
+// path (setup wizard, Add class, future workflows) gets one.
 func (r *classRepository) create(ctx context.Context, v createClassRequest) (Class, error) {
-	row, e := r.queries.CreateClass(ctx, db.CreateClassParams{GradeID: v.GradeID, AcademicYearID: v.AcademicYearID, Name: v.Name, FormTeacherID: classUUIDParam(v.FormTeacherID), StreamID: classUUIDParam(v.StreamID), StreamGroupID: classUUIDParam(v.StreamGroupID), MediumID: classUUIDParam(v.MediumID), HomeClassroomID: classUUIDParam(v.HomeClassroomID)})
-	return mapClass(row), e
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return Class{}, err
+	}
+	defer tx.Rollback(ctx)
+	q := r.queries.WithTx(tx)
+	room := classUUIDParam(v.HomeClassroomID)
+	if !room.Valid {
+		if room, err = homeroomFor(ctx, q, strings.TrimSpace(v.Name)); err != nil {
+			return Class{}, err
+		}
+	}
+	row, err := q.CreateClass(ctx, db.CreateClassParams{GradeID: v.GradeID, AcademicYearID: v.AcademicYearID, Name: v.Name, FormTeacherID: classUUIDParam(v.FormTeacherID), StreamID: classUUIDParam(v.StreamID), StreamGroupID: classUUIDParam(v.StreamGroupID), MediumID: classUUIDParam(v.MediumID), HomeClassroomID: room})
+	if err != nil {
+		return Class{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Class{}, err
+	}
+	return mapClass(row), nil
+}
+
+// backfillHomerooms gives every class in the year without a homeroom one named after it.
+func (r *classRepository) backfillHomerooms(ctx context.Context, year uuid.UUID) (int, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+	q := r.queries.WithTx(tx)
+	classes, err := q.ListClassesWithoutHomeroom(ctx, year)
+	if err != nil {
+		return 0, err
+	}
+	linked := 0
+	for _, c := range classes {
+		room, err := homeroomFor(ctx, q, c.Name)
+		if err != nil {
+			return 0, err
+		}
+		if !room.Valid {
+			continue
+		}
+		if err := q.SetClassHomeClassroom(ctx, db.SetClassHomeClassroomParams{ID: c.ID, HomeClassroomID: room}); err != nil {
+			return 0, err
+		}
+		linked++
+	}
+	return linked, tx.Commit(ctx)
 }
 func (r *classRepository) get(ctx context.Context, id uuid.UUID) (Class, error) {
 	v, e := r.queries.GetClassByID(ctx, id)

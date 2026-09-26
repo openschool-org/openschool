@@ -105,6 +105,186 @@ func (q *Queries) ListNonAcademicStaffAttendanceHistory(ctx context.Context, arg
 	return items, nil
 }
 
+const listStaffAttendanceMonthly = `-- name: ListStaffAttendanceMonthly :many
+WITH people AS (
+    SELECT tp.id, tp.full_name, tp.employee_number, 'teacher'::text AS kind
+    FROM teacher_profiles tp
+    WHERE tp.employment_status = 'active' AND $6::text = 'teacher'
+    UNION ALL
+    SELECT nas.id, nas.full_name, nas.employee_number, 'staff'::text AS kind
+    FROM non_academic_staff nas
+    WHERE nas.employment_status = 'active' AND $6::text = 'staff'
+)
+SELECT
+    p.id              AS staff_id,
+    p.full_name       AS full_name,
+    p.employee_number AS employee_number,
+    COUNT(sar.id) FILTER (WHERE sar.status = 'present') AS present_count,
+    COUNT(sar.id) FILTER (WHERE sar.status = 'late')    AS late_count,
+    COUNT(sar.id) FILTER (WHERE sar.status = 'absent')  AS absent_count,
+    COUNT(sar.id) FILTER (WHERE sar.status = 'leave')   AS leave_count,
+    COUNT(*) OVER () AS total
+FROM people p
+LEFT JOIN staff_attendance_records sar
+    ON sar.date BETWEEN $1::date AND $2::date
+   AND ((p.kind = 'teacher' AND sar.teacher_id = p.id) OR (p.kind = 'staff' AND sar.non_academic_staff_id = p.id))
+WHERE ($3::text IS NULL OR p.full_name ILIKE '%' || $3::text || '%' OR p.employee_number ILIKE '%' || $3::text || '%')
+GROUP BY p.id, p.full_name, p.employee_number
+ORDER BY p.full_name ASC, p.id ASC
+LIMIT $5::int OFFSET $4::int
+`
+
+type ListStaffAttendanceMonthlyParams struct {
+	FromDate   pgtype.Date `json:"from_date"`
+	ToDate     pgtype.Date `json:"to_date"`
+	Search     pgtype.Text `json:"search"`
+	PageOffset int32       `json:"page_offset"`
+	PageLimit  int32       `json:"page_limit"`
+	Kind       string      `json:"kind"`
+}
+
+type ListStaffAttendanceMonthlyRow struct {
+	StaffID        uuid.UUID `json:"staff_id"`
+	FullName       string    `json:"full_name"`
+	EmployeeNumber string    `json:"employee_number"`
+	PresentCount   int64     `json:"present_count"`
+	LateCount      int64     `json:"late_count"`
+	AbsentCount    int64     `json:"absent_count"`
+	LeaveCount     int64     `json:"leave_count"`
+	Total          int64     `json:"total"`
+}
+
+// One page of per-person status counts for the date range, same kind/search contract as above.
+func (q *Queries) ListStaffAttendanceMonthly(ctx context.Context, arg ListStaffAttendanceMonthlyParams) ([]ListStaffAttendanceMonthlyRow, error) {
+	rows, err := q.db.Query(ctx, listStaffAttendanceMonthly,
+		arg.FromDate,
+		arg.ToDate,
+		arg.Search,
+		arg.PageOffset,
+		arg.PageLimit,
+		arg.Kind,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListStaffAttendanceMonthlyRow{}
+	for rows.Next() {
+		var i ListStaffAttendanceMonthlyRow
+		if err := rows.Scan(
+			&i.StaffID,
+			&i.FullName,
+			&i.EmployeeNumber,
+			&i.PresentCount,
+			&i.LateCount,
+			&i.AbsentCount,
+			&i.LeaveCount,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStaffAttendanceRoster = `-- name: ListStaffAttendanceRoster :many
+WITH people AS (
+    SELECT tp.id, tp.full_name, tp.employee_number, 'teacher'::text AS kind
+    FROM teacher_profiles tp
+    WHERE tp.employment_status = 'active' AND $5::text = 'teacher'
+    UNION ALL
+    SELECT nas.id, nas.full_name, nas.employee_number, 'staff'::text AS kind
+    FROM non_academic_staff nas
+    WHERE nas.employment_status = 'active' AND $5::text = 'staff'
+)
+SELECT
+    p.id              AS staff_id,
+    p.full_name       AS full_name,
+    p.employee_number AS employee_number,
+    sar.id            AS record_id,
+    sar.status        AS status,
+    sar.note          AS note,
+    COUNT(*) OVER () AS total,
+    COUNT(sar.id) FILTER (WHERE sar.status = 'present') OVER () AS present_total,
+    COUNT(sar.id) FILTER (WHERE sar.status = 'late')    OVER () AS late_total,
+    COUNT(sar.id) FILTER (WHERE sar.status = 'absent')  OVER () AS absent_total,
+    COUNT(sar.id) FILTER (WHERE sar.status = 'leave')   OVER () AS leave_total
+FROM people p
+LEFT JOIN staff_attendance_records sar
+    ON sar.date = $1::date
+   AND ((p.kind = 'teacher' AND sar.teacher_id = p.id) OR (p.kind = 'staff' AND sar.non_academic_staff_id = p.id))
+WHERE ($2::text IS NULL OR p.full_name ILIKE '%' || $2::text || '%' OR p.employee_number ILIKE '%' || $2::text || '%')
+ORDER BY p.full_name ASC, p.id ASC
+LIMIT $4::int OFFSET $3::int
+`
+
+type ListStaffAttendanceRosterParams struct {
+	Date       pgtype.Date `json:"date"`
+	Search     pgtype.Text `json:"search"`
+	PageOffset int32       `json:"page_offset"`
+	PageLimit  int32       `json:"page_limit"`
+	Kind       string      `json:"kind"`
+}
+
+type ListStaffAttendanceRosterRow struct {
+	StaffID        uuid.UUID   `json:"staff_id"`
+	FullName       string      `json:"full_name"`
+	EmployeeNumber string      `json:"employee_number"`
+	RecordID       pgtype.UUID `json:"record_id"`
+	Status         pgtype.Text `json:"status"`
+	Note           pgtype.Text `json:"note"`
+	Total          int64       `json:"total"`
+	PresentTotal   int64       `json:"present_total"`
+	LateTotal      int64       `json:"late_total"`
+	AbsentTotal    int64       `json:"absent_total"`
+	LeaveTotal     int64       `json:"leave_total"`
+}
+
+// One page of active teachers or non-academic staff (kind = 'teacher' | 'staff') with
+// their record for the date. The window totals cover the whole filtered set, not just
+// the page, so the UI can show "12 unmarked" correctly. Search is escaped by the caller.
+func (q *Queries) ListStaffAttendanceRoster(ctx context.Context, arg ListStaffAttendanceRosterParams) ([]ListStaffAttendanceRosterRow, error) {
+	rows, err := q.db.Query(ctx, listStaffAttendanceRoster,
+		arg.Date,
+		arg.Search,
+		arg.PageOffset,
+		arg.PageLimit,
+		arg.Kind,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListStaffAttendanceRosterRow{}
+	for rows.Next() {
+		var i ListStaffAttendanceRosterRow
+		if err := rows.Scan(
+			&i.StaffID,
+			&i.FullName,
+			&i.EmployeeNumber,
+			&i.RecordID,
+			&i.Status,
+			&i.Note,
+			&i.Total,
+			&i.PresentTotal,
+			&i.LateTotal,
+			&i.AbsentTotal,
+			&i.LeaveTotal,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listTeacherAttendanceByDate = `-- name: ListTeacherAttendanceByDate :many
 SELECT
     tp.id          AS teacher_id,
@@ -196,6 +376,49 @@ func (q *Queries) ListTeacherAttendanceHistory(ctx context.Context, arg ListTeac
 		return nil, err
 	}
 	return items, nil
+}
+
+const markUnmarkedNonAcademicStaffPresent = `-- name: MarkUnmarkedNonAcademicStaffPresent :execrows
+INSERT INTO staff_attendance_records (non_academic_staff_id, date, status, marked_by)
+SELECT nas.id, $1::date, 'present', $2::uuid
+FROM non_academic_staff nas
+WHERE nas.employment_status = 'active'
+ON CONFLICT (non_academic_staff_id, date) WHERE non_academic_staff_id IS NOT NULL DO NOTHING
+`
+
+type MarkUnmarkedNonAcademicStaffPresentParams struct {
+	Date     pgtype.Date `json:"date"`
+	MarkedBy uuid.UUID   `json:"marked_by"`
+}
+
+func (q *Queries) MarkUnmarkedNonAcademicStaffPresent(ctx context.Context, arg MarkUnmarkedNonAcademicStaffPresentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markUnmarkedNonAcademicStaffPresent, arg.Date, arg.MarkedBy)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const markUnmarkedTeachersPresent = `-- name: MarkUnmarkedTeachersPresent :execrows
+INSERT INTO staff_attendance_records (teacher_id, date, status, marked_by)
+SELECT tp.id, $1::date, 'present', $2::uuid
+FROM teacher_profiles tp
+WHERE tp.employment_status = 'active'
+ON CONFLICT (teacher_id, date) WHERE teacher_id IS NOT NULL DO NOTHING
+`
+
+type MarkUnmarkedTeachersPresentParams struct {
+	Date     pgtype.Date `json:"date"`
+	MarkedBy uuid.UUID   `json:"marked_by"`
+}
+
+// Present for every active teacher with no record that day; existing marks are left alone.
+func (q *Queries) MarkUnmarkedTeachersPresent(ctx context.Context, arg MarkUnmarkedTeachersPresentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markUnmarkedTeachersPresent, arg.Date, arg.MarkedBy)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const monthlyNonAcademicStaffAttendanceSummary = `-- name: MonthlyNonAcademicStaffAttendanceSummary :many

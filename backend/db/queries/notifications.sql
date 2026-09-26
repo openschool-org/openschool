@@ -58,3 +58,27 @@ SELECT
     COUNT(*) FILTER (WHERE is_read)::int AS read_count
 FROM notification_recipients
 WHERE notification_id = $1;
+
+-- name: SearchSentNotifications :many
+-- Paged history of sent notifications. Admins pass no sender (whole school);
+-- teachers are forced to their own id by the service. Search is escaped by the caller.
+SELECT
+    n.id, n.title, n.message, n.category, n.priority, n.sent_at, n.created_by,
+    u.full_name AS sender_name,
+    (SELECT COUNT(*) FROM notification_recipients r WHERE r.notification_id = n.id)::int AS recipient_count,
+    (SELECT COUNT(*) FROM notification_recipients r WHERE r.notification_id = n.id AND r.is_read)::int AS read_count,
+    COUNT(*) OVER () AS total
+FROM notifications n
+INNER JOIN users u ON u.id = n.created_by
+WHERE n.status = 'sent'
+  AND (sqlc.narg(sender_id)::uuid IS NULL OR n.created_by = sqlc.narg(sender_id)::uuid)
+  AND (sqlc.narg(search)::text IS NULL
+       OR n.title ILIKE '%' || sqlc.narg(search)::text || '%'
+       OR n.message ILIKE '%' || sqlc.narg(search)::text || '%'
+       OR u.full_name ILIKE '%' || sqlc.narg(search)::text || '%')
+  AND (sqlc.narg(category)::text IS NULL OR n.category = sqlc.narg(category)::text)
+  AND (sqlc.narg(priority)::text IS NULL OR n.priority = sqlc.narg(priority)::text)
+  AND (sqlc.narg(from_date)::date IS NULL OR n.sent_at >= sqlc.narg(from_date)::date)
+  AND (sqlc.narg(to_date)::date IS NULL OR n.sent_at < sqlc.narg(to_date)::date + 1)
+ORDER BY n.sent_at DESC, n.id DESC
+LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int;

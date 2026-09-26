@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -227,4 +228,73 @@ func mapNotification(row db.Notification) notification {
 }
 func notificationFromSent(id uuid.UUID, title, message, category, priority, status string, rules []byte, createdBy uuid.UUID, sentAt, createdAt, updatedAt pgtype.Timestamptz) notification {
 	return notification{ID: id, Title: title, Message: message, Category: category, Priority: priority, Status: status, RecipientRules: rules, CreatedBy: createdBy, SentAt: sentAt, CreatedAt: createdAt, UpdatedAt: updatedAt}
+}
+
+func optionalText(v string) pgtype.Text { return pgtype.Text{String: v, Valid: v != ""} }
+
+func optionalDate(t *time.Time) pgtype.Date {
+	if t == nil {
+		return pgtype.Date{}
+	}
+	return pgtype.Date{Time: *t, Valid: true}
+}
+
+func (r *NotificationRepository) SearchSent(ctx context.Context, f HistoryFilter) (HistoryPage, error) {
+	params := db.SearchSentNotificationsParams{
+		Search: optionalText(f.Search), Category: optionalText(f.Category), Priority: optionalText(f.Priority),
+		FromDate: optionalDate(f.From), ToDate: optionalDate(f.To), PageLimit: f.Limit, PageOffset: f.Offset,
+	}
+	if f.SenderID != nil {
+		params.SenderID = pgtype.UUID{Bytes: *f.SenderID, Valid: true}
+	}
+	rows, err := r.queries.SearchSentNotifications(ctx, params)
+	if err != nil {
+		return HistoryPage{}, err
+	}
+	page := HistoryPage{Items: make([]HistoryItem, len(rows)), Limit: f.Limit, Offset: f.Offset}
+	for i, row := range rows {
+		page.Items[i] = HistoryItem{ID: row.ID, Title: row.Title, Message: row.Message, Category: row.Category, Priority: row.Priority, SenderName: row.SenderName, SentAt: row.SentAt, RecipientCount: row.RecipientCount, ReadCount: row.ReadCount}
+		page.Total = row.Total
+	}
+	if len(rows) == 0 && f.Offset > 0 {
+		params.PageLimit, params.PageOffset = 1, 0
+		probe, err := r.queries.SearchSentNotifications(ctx, params)
+		if err != nil {
+			return HistoryPage{}, err
+		}
+		if len(probe) > 0 {
+			page.Total = probe[0].Total
+		}
+	}
+	return page, nil
+}
+
+func (r *NotificationRepository) SearchMine(ctx context.Context, userID uuid.UUID, f InboxFilter) ([]MyNotificationResponse, int64, error) {
+	params := db.SearchMyNotificationsParams{UserID: userID, Box: f.Box, Search: optionalText(f.Search), Category: optionalText(f.Category), PageLimit: f.Limit, PageOffset: f.Offset}
+	rows, err := r.queries.SearchMyNotifications(ctx, params)
+	if err != nil {
+		return nil, 0, err
+	}
+	out := make([]MyNotificationResponse, len(rows))
+	var total int64
+	for i, row := range rows {
+		out[i] = MyNotificationResponse{RecipientID: row.RecipientID, NotificationID: row.NotificationID, Title: row.Title, Message: row.Message, Category: row.Category, Priority: row.Priority, SenderName: row.SenderName, SentAt: row.SentAt, IsRead: row.IsRead, IsArchived: row.IsArchived}
+		total = row.Total
+	}
+	if len(rows) == 0 && f.Offset > 0 {
+		params.PageLimit, params.PageOffset = 1, 0
+		probe, err := r.queries.SearchMyNotifications(ctx, params)
+		if err != nil {
+			return nil, 0, err
+		}
+		if len(probe) > 0 {
+			total = probe[0].Total
+		}
+	}
+	return out, total, nil
+}
+
+func (r *NotificationRepository) CountBoxes(ctx context.Context, userID uuid.UUID) (InboxCounts, error) {
+	row, err := r.queries.CountMyNotificationBoxes(ctx, userID)
+	return InboxCounts{Unread: row.Unread, Read: row.Read, Archived: row.Archived}, err
 }

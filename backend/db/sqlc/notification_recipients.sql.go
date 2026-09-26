@@ -12,6 +12,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countMyNotificationBoxes = `-- name: CountMyNotificationBoxes :one
+SELECT
+    COUNT(*) FILTER (WHERE NOT is_archived AND NOT is_read)::int AS unread,
+    COUNT(*) FILTER (WHERE NOT is_archived AND is_read)::int     AS read,
+    COUNT(*) FILTER (WHERE is_archived)::int                     AS archived
+FROM notification_recipients
+WHERE user_id = $1
+`
+
+type CountMyNotificationBoxesRow struct {
+	Unread   int32 `json:"unread"`
+	Read     int32 `json:"read"`
+	Archived int32 `json:"archived"`
+}
+
+func (q *Queries) CountMyNotificationBoxes(ctx context.Context, userID uuid.UUID) (CountMyNotificationBoxesRow, error) {
+	row := q.db.QueryRow(ctx, countMyNotificationBoxes, userID)
+	var i CountMyNotificationBoxesRow
+	err := row.Scan(&i.Unread, &i.Read, &i.Archived)
+	return i, err
+}
+
 const countMyUnreadNotifications = `-- name: CountMyUnreadNotifications :one
 SELECT COUNT(*) FROM notification_recipients
 WHERE user_id = $1 AND is_read = FALSE AND is_archived = FALSE
@@ -202,6 +224,99 @@ type MarkNotificationRecipientReadParams struct {
 func (q *Queries) MarkNotificationRecipientRead(ctx context.Context, arg MarkNotificationRecipientReadParams) error {
 	_, err := q.db.Exec(ctx, markNotificationRecipientRead, arg.NotificationID, arg.UserID)
 	return err
+}
+
+const searchMyNotifications = `-- name: SearchMyNotifications :many
+SELECT
+    nr.id AS recipient_id,
+    nr.is_read,
+    nr.is_archived,
+    n.id AS notification_id,
+    n.title,
+    n.message,
+    n.category,
+    n.priority,
+    n.sent_at,
+    u.full_name AS sender_name,
+    COUNT(*) OVER () AS total
+FROM notification_recipients nr
+INNER JOIN notifications n ON n.id = nr.notification_id
+INNER JOIN users u          ON u.id = n.created_by
+WHERE nr.user_id = $1::uuid
+  AND CASE $2::text
+        WHEN 'unread'   THEN NOT nr.is_archived AND NOT nr.is_read
+        WHEN 'read'     THEN NOT nr.is_archived AND nr.is_read
+        ELSE nr.is_archived
+      END
+  AND ($3::text IS NULL
+       OR n.title ILIKE '%' || $3::text || '%'
+       OR n.message ILIKE '%' || $3::text || '%')
+  AND ($4::text IS NULL OR n.category = $4::text)
+ORDER BY n.sent_at DESC, nr.id DESC
+LIMIT $6::int OFFSET $5::int
+`
+
+type SearchMyNotificationsParams struct {
+	UserID     uuid.UUID   `json:"user_id"`
+	Box        string      `json:"box"`
+	Search     pgtype.Text `json:"search"`
+	Category   pgtype.Text `json:"category"`
+	PageOffset int32       `json:"page_offset"`
+	PageLimit  int32       `json:"page_limit"`
+}
+
+type SearchMyNotificationsRow struct {
+	RecipientID    uuid.UUID          `json:"recipient_id"`
+	IsRead         bool               `json:"is_read"`
+	IsArchived     bool               `json:"is_archived"`
+	NotificationID uuid.UUID          `json:"notification_id"`
+	Title          string             `json:"title"`
+	Message        string             `json:"message"`
+	Category       string             `json:"category"`
+	Priority       string             `json:"priority"`
+	SentAt         pgtype.Timestamptz `json:"sent_at"`
+	SenderName     string             `json:"sender_name"`
+	Total          int64              `json:"total"`
+}
+
+// One page of the caller's inbox. box is 'unread', 'read' or 'archived'. Search is escaped by the caller.
+func (q *Queries) SearchMyNotifications(ctx context.Context, arg SearchMyNotificationsParams) ([]SearchMyNotificationsRow, error) {
+	rows, err := q.db.Query(ctx, searchMyNotifications,
+		arg.UserID,
+		arg.Box,
+		arg.Search,
+		arg.Category,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchMyNotificationsRow{}
+	for rows.Next() {
+		var i SearchMyNotificationsRow
+		if err := rows.Scan(
+			&i.RecipientID,
+			&i.IsRead,
+			&i.IsArchived,
+			&i.NotificationID,
+			&i.Title,
+			&i.Message,
+			&i.Category,
+			&i.Priority,
+			&i.SentAt,
+			&i.SenderName,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setNotificationRecipientArchived = `-- name: SetNotificationRecipientArchived :exec

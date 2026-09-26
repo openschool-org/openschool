@@ -1,4 +1,5 @@
 import api from "@/shared/api/client";
+import type { Page } from "@/shared/api/page";
 
 export type RecipientRuleType =
   | "everyone"
@@ -105,6 +106,45 @@ export interface MyNotification {
   is_archived: boolean;
 }
 
+export interface NotificationHistoryItem {
+  id: string;
+  title: string;
+  message: string;
+  category: NotificationCategory;
+  priority: NotificationPriority;
+  sender_name: string;
+  sent_at: string;
+  recipient_count: number;
+  read_count: number;
+}
+
+export interface NotificationHistoryParams {
+  search?: string;
+  category?: string;
+  priority?: string;
+  from?: string;
+  to?: string;
+  limit: number;
+  offset: number;
+}
+
+export type InboxBox = "unread" | "read" | "archived";
+
+export interface InboxPage extends Page<MyNotification> {
+  counts: Record<InboxBox, number>;
+}
+
+export interface InboxParams {
+  box: InboxBox;
+  search?: string;
+  category?: string;
+  limit: number;
+  offset: number;
+}
+
+// Drops empty filters so they never reach the query string.
+const compact = <T extends object>(params: T) => Object.fromEntries(Object.entries(params).filter(([, v]) => v !== "" && v !== undefined));
+
 export const notificationApi = {
   create: (data: CreateNotificationRequest) =>
     api.post<Notification>("/notifications", data).then((r) => r.data),
@@ -116,7 +156,11 @@ export const notificationApi = {
 
   remove: (id: string) => api.delete(`/notifications/${id}`).then((r) => r.data),
 
-  listSent: () => api.get<Notification[]>("/notifications/sent").then((r) => r.data),
+  // Admin: every sender; teacher: own. Server-paginated and searchable.
+  history: (params: NotificationHistoryParams) =>
+    api.get<Page<NotificationHistoryItem>>("/notifications/history", { params: compact(params) }).then((r) => r.data),
+
+  inbox: (params: InboxParams) => api.get<InboxPage>("/me/notifications/inbox", { params: compact(params) }).then((r) => r.data),
 
   listDrafts: () => api.get<Notification[]>("/notifications/drafts").then((r) => r.data),
 
@@ -124,7 +168,6 @@ export const notificationApi = {
 
   listMine: () => api.get<MyNotification[]>("/me/notifications").then((r) => r.data),
 
-  listMyArchived: () => api.get<MyNotification[]>("/me/notifications/archived").then((r) => r.data),
 
   unreadCount: () =>
     api.get<{ unread_count: number }>("/me/notifications/unread-count").then((r) => r.data.unread_count),

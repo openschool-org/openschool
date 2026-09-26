@@ -101,6 +101,28 @@ func TestNotificationComposerAndInboxAPIWithPostgres(t *testing.T) {
 		t.Fatalf("unarchive notification: code=%d body=%s", unarchived.Code, unarchived.Body.String())
 	}
 
+	expect := func(router http.Handler, path string, want ...string) {
+		t.Helper()
+		res := performNotificationRequest(t, router, http.MethodGet, path, nil)
+		for _, w := range want {
+			if res.Code != http.StatusOK || !bytes.Contains(res.Body.Bytes(), []byte(w)) {
+				t.Fatalf("GET %s: want %s, code=%d body=%s", path, w, res.Code, res.Body.String())
+			}
+		}
+	}
+	expect(studentRouter, "/me/notifications/inbox?box=read", `"total":1`, `"read":1`, `"unread":0`)
+	expect(studentRouter, "/me/notifications/inbox?box=unread", `"items":[]`)
+	expect(studentRouter, "/me/notifications/inbox?box=read&search=assessm", `"total":1`)
+	expect(studentRouter, "/me/notifications/inbox?box=read&search=nothing-like-this", `"items":[]`)
+	expect(adminRouter, "/notifications/history?search=assessm", `"total":1`, `"recipient_count":3`, `"read_count":1`)
+	expect(adminRouter, "/notifications/history?category=sports", `"items":[]`)
+	if bad := performNotificationRequest(t, studentRouter, http.MethodGet, "/me/notifications/inbox?box=spam", nil); bad.Code != http.StatusBadRequest {
+		t.Fatalf("invalid box: code=%d", bad.Code)
+	}
+	if readAll := performNotificationRequest(t, studentRouter, http.MethodPost, "/me/notifications/read-all", nil); readAll.Code != http.StatusOK {
+		t.Fatalf("read all: code=%d body=%s", readAll.Code, readAll.Body.String())
+	}
+
 	request.Title = "Disposable draft"
 	deletedDraftResponse := performNotificationRequest(t, adminRouter, http.MethodPost, "/notifications", request)
 	var deletedDraft NotificationResponse

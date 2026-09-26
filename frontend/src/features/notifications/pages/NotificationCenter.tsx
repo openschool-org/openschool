@@ -1,11 +1,10 @@
 import { NOTIFICATION_PRIORITY_TAG as PRIORITY_TAG } from "@/shared/lib/constants/tags";
-import { useMemo, useState } from "react";
-import { Tag, Dropdown, Button } from "@carbon/react";
+import { useState } from "react";
+import { Tag, Dropdown, Button, Pagination } from "@carbon/react";
 import { Archive, ArrowUpRight, Search } from "@carbon/icons-react";
 import { formatDateTime } from "@/shared/lib/date";
 import {
-  useMyNotifications,
-  useMyArchivedNotifications,
+  useInbox,
   useMarkNotificationRead,
   useArchiveNotification,
   useUnarchiveNotification,
@@ -15,6 +14,7 @@ import type { MyNotification, NotificationCategory } from "@/features/notificati
 import EmptyState from "@/shared/ui/EmptyState";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
+import { useDebounced } from "@/shared/hooks/useDebounced";
 import { useT } from "@/shared/i18n/useT";
 import { translateValue } from "@/shared/i18n/translateValue";
 
@@ -76,30 +76,33 @@ function NotificationRow({ n }: { n: MyNotification }) {
 
 export default function NotificationCenter() {
   const { t } = useT();
-  const { data: inbox, isLoading: inboxLoading } = useMyNotifications();
   usePageTitle(t("nav.notifications"));
-  const { data: archived, isLoading: archivedLoading } = useMyArchivedNotifications();
 
-  const [tab, setTab] = useState<Tab>("unread");
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<NotificationCategory | "">("");
+  const [tab, setTabState] = useState<Tab>("unread");
+  const [query, setQueryState] = useState("");
+  const [category, setCategoryState] = useState<NotificationCategory | "">("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const search = useDebounced(query, 250);
 
-  const isLoading = tab === "archived" ? archivedLoading : inboxLoading;
+  // Search, box and paging run on the server, so a long inbox never loads in one go.
+  const { data, isLoading } = useInbox({ box: tab, search, category, limit: pageSize, offset: (page - 1) * pageSize });
+  const filtered = data?.items ?? [];
+  const unreadCount = data?.counts.unread ?? 0;
+  const readCount = data?.counts.read ?? 0;
 
-  const filtered = useMemo(() => {
-    let list = tab === "archived" ? (archived ?? []) : (inbox ?? []);
-    if (tab === "unread") list = list.filter((n) => !n.is_read);
-    if (tab === "read") list = list.filter((n) => n.is_read);
-    if (category) list = list.filter((n) => n.category === category);
-    const q = query.trim().toLowerCase();
-    if (q) {
-      list = list.filter((n) => n.title.toLowerCase().includes(q) || n.message.toLowerCase().includes(q));
-    }
-    return [...list].sort((a, b) => b.sent_at.localeCompare(a.sent_at));
-  }, [inbox, archived, tab, category, query]);
-
-  const unreadCount = (inbox ?? []).filter((n) => !n.is_read).length;
-  const readCount = (inbox ?? []).filter((n) => n.is_read).length;
+  const setTab = (next: Tab) => {
+    setTabState(next);
+    setPage(1);
+  };
+  const setQuery = (next: string) => {
+    setQueryState(next);
+    setPage(1);
+  };
+  const setCategory = (next: NotificationCategory | "") => {
+    setCategoryState(next);
+    setPage(1);
+  };
 
   return (
     <div className="os-page">
@@ -163,6 +166,18 @@ export default function NotificationCenter() {
             {filtered.map((n) => (
               <NotificationRow key={n.recipient_id} n={n} />
             ))}
+            {(data?.total ?? 0) > pageSize && (
+              <Pagination
+                totalItems={data?.total ?? 0}
+                page={page}
+                pageSize={pageSize}
+                pageSizes={[25, 50, 100]}
+                onChange={({ page: p, pageSize: ps }) => {
+                  setPage(ps === pageSize ? p : 1);
+                  setPageSize(ps);
+                }}
+              />
+            )}
           </div>
         )}
       </div>

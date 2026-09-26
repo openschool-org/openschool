@@ -1,14 +1,53 @@
 # Automation and Fixes Plan
 
-Status: **draft, 26 Sep 2026, awaiting approval.** No code for this plan has been written.
-Part A covers small fixes. Part B is the automation work (year-end workflows, promotion,
-timetable). Part C lists the questions I need answered before Part B starts.
+Status: **Part A done (26 Sep 2026). Part B awaits approval and the answers in Part C.**
 
 ---
 
-## Part A. Quick fixes
+## Score: where the system really stands
 
-These are independent of Part B. Each can ship on its own.
+Scored out of 10 by what a school would experience today, not by how much code exists.
+
+| Area | Before Part A | After Part A | Why this number |
+|------|---------------|--------------|-----------------|
+| Navigation and layout | 7 | 7 | Hubs, breadcrumbs, page titles and a phone drawer exist. None of it has been looked at in a browser. |
+| Daily tasks (attendance, marks) | 6 | 7 | Student attendance and marks entry are solid. Staff attendance was one long unpaged list; now paged with "mark all present". |
+| Admin data work (find, filter, export) | 3 | 5 | Audit log, orphaned accounts and notifications had no search; now they do. Still no real export and no reports beyond two class PDFs (T8 paused). List sorting works in the API but is not wired into the pages. |
+| Year-end work (promotion, classes, timetable) | 3 | 3 | Promotion is one grade at a time with no rules. No subject-choice step, no intake, no teacher allocation, no option blocks in the timetable. Homerooms are now automatic, which is small. This is the biggest gap and Part B. |
+| Feedback and errors | 7 | 7 | Toasts, skeletons, offline banner, error summary. About 58 error messages are still unaudited. |
+| Forms and copy | 7 | 7 | Lint enforces sentence case, British spelling, no em-dashes, calendar-only dates. |
+| Accessibility | 6 | 6 | Labels, focus ring, skip link, named dialogs, axe on a few components. No page-level audit, never tried with a screen reader. |
+| Mobile | 5 | 5 | Drawer, bottom tabs and stacked tables are CSS only. Never opened on a real phone. |
+| Sinhala and Tamil | 3 | 3 | Student and parent portals only, machine-drafted, not reviewed by a native speaker. Teachers and admins see English. |
+| Evidence it works | 3 | 4 | Good Go integration tests (Part A added four, all against real Postgres). 20 frontend unit tests. Zero end-to-end tests, zero browser checks, zero sessions with real clerks, teachers or parents. |
+| **Overall** | **5.0** | **5.4** | |
+
+The plain truth:
+
+1. **None of the 26 Sep frontend work has been seen in a browser.** It compiles, lints and passes unit tests. That proves it builds, not that it looks or works right. Someone must click through every changed page before release.
+2. **The UX playbook's "After: 8" is not reached.** Realistically the product is a 5 today. The code is cleaner than the score suggests; the score is held down by missing workflows and missing proof.
+3. **The job schools will judge us on is year-end, and it is still mostly manual.** A clerk forming grade 10 classes from basket choices, or building A/L classes with intake, does it by hand here, the same as on paper. Until Part B ships, OpenSchool is a good record-keeping system, not a time saver for the hardest weeks of the year.
+4. **Sinhala and Tamil are drafts.** Shipping them unreviewed to parents risks embarrassing wording.
+5. **Scale is unmeasured.** Pagination is in place, but nobody has loaded 7,000 students and timed the pages.
+6. **A regression in sign-in, attendance marking or marks entry would ship unnoticed.** There is no end-to-end test covering them.
+
+What would move the score most, in order: Part B phases 1 to 3 (year-end workflows), one day of browser testing on every page, native review of the translations, then a Playwright smoke test for sign-in, attendance and marks.
+
+---
+
+## Part A. Quick fixes (done 26 Sep 2026)
+
+All five are built and tested with integration tests against real Postgres. None has been checked in a browser.
+
+| # | What was built |
+|---|----------------|
+| A1 | `CreateClass` links a homeroom in the same transaction: it reuses a regular room with the same name (case-insensitive) or creates one; a lab or ECA room with that name is never used. The setup wizard, Add class and any future workflow get it for free; the browser no longer creates rooms. `POST /academic-years/:id/classes/homerooms` backfills existing classes, exposed as "Add missing homerooms" on the Classrooms tab. |
+| A2 | `GET /staff-attendance/roster` and `/staff-attendance/monthly` (kind, search, limit, offset) with day totals for the whole filtered set; `POST /staff-attendance/mark-unmarked` marks everyone without a record as present and never overwrites a mark. The page has Teachers and Non-academic staff tabs, search, paging (25/50/100, remembered), status tags and 44 px buttons on phones. The old unpaged endpoints stay for the dashboard. |
+| A3 | `GET /audit-logs` takes `search` (person, action, record type, reason), `from`, `to`; `GET /audit-logs/entity-types` feeds the record-type filter so the list is never typed by hand. Filters live in the URL. |
+| A4 | Client-side search over username, email and ID on Orphaned accounts. |
+| A5 | `GET /notifications/history` (admin: whole school, teacher: own; search, category, priority, dates, paging, read counts) shown as "Sent history" under the composer. `GET /me/notifications/inbox` (box, search, category, paging, counts per box) now drives the Notification centre. The dead "Recently sent" list and archived-list code were removed. |
+
+Original plan for reference:
 
 | # | Problem today | Fix | Effort |
 |---|---------------|-----|--------|

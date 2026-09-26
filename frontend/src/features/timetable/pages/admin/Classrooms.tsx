@@ -11,6 +11,7 @@ import TableSkeleton from "@/shared/ui/TableSkeleton";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import InfoTip from "@/shared/ui/InfoTip";
+import BackfillHomeroomsButton from "@/features/timetable/components/BackfillHomeroomsButton";
 
 const TYPE_LABEL: Record<ClassroomType, string> = { regular: "Regular", lab: "Lab", eca: "ECA" };
 const TYPE_TAG: Record<ClassroomType, "gray" | "purple" | "teal"> = { regular: "gray", lab: "purple", eca: "teal" };
@@ -84,13 +85,19 @@ export default function Classrooms({ inline = false }: { inline?: boolean }) {
               <InfoTip>Rooms are booked into periods so two classes never clash.</InfoTip>
             </div>
           </div>
-          <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>Add classroom</Button>
+          <div className="os-flex os-gap-2">
+            <BackfillHomeroomsButton />
+            <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>Add classroom</Button>
+          </div>
         </div>
       )}
       {inline && (
         <div className="os-flex os-justify-between os-items-center os-mb-4 os-wrap os-gap-4">
           <p className="os-m-0 os-text-md os-c-secondary">Regular homerooms, subject-tagged labs, and ECA facilities.</p>
-          <Button renderIcon={Add} kind="primary" size="sm" onClick={openCreate}>Add classroom</Button>
+          <div className="os-flex os-gap-2">
+            <BackfillHomeroomsButton size="sm" />
+            <Button renderIcon={Add} kind="primary" size="sm" onClick={openCreate}>Add classroom</Button>
+          </div>
         </div>
       )}
 

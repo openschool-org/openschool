@@ -32,4 +32,8 @@ export const classroomApi = {
     api.put<Classroom>(`/classrooms/${id}`, data).then((r) => r.data),
 
   remove: (id: string) => api.delete(`/classrooms/${id}`).then((r) => r.data),
+
+  // Links a homeroom named after the class to every class in the year that has none.
+  backfillHomerooms: (academicYearId: string) =>
+    api.post<{ linked: number }>(`/academic-years/${academicYearId}/classes/homerooms`).then((r) => r.data),
 };

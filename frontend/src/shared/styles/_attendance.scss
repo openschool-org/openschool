@@ -344,3 +344,9 @@
     font-family: 'IBM Plex Sans', sans-serif !important;
   }
 }
+
+// Staff attendance status buttons: 44px targets on phones.
+.os-staff-status { min-height: 2rem; }
+@media (max-width: 42rem) {
+  .os-staff-status { min-height: 2.75rem; flex: 1 1 40%; }
+}

@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openschool-org/openschool/internal/apierror"
 	"github.com/openschool-org/openschool/internal/middleware"
+	"github.com/openschool-org/openschool/internal/platform/httpx"
 )
 
 type TeacherResolver interface {
@@ -27,6 +28,9 @@ func RegisterStaffRoutes(admin, teacher *gin.RouterGroup, service *StaffService,
 	admin.POST("/staff-attendance", h.mark)
 	admin.GET("/staff-attendance", h.listByDate)
 	admin.GET("/staff-attendance/monthly-summary", h.monthlySummary)
+	admin.GET("/staff-attendance/roster", h.roster)
+	admin.GET("/staff-attendance/monthly", h.monthly)
+	admin.POST("/staff-attendance/mark-unmarked", h.markUnmarked)
 	admin.GET("/staff-attendance/teachers/:id/history", h.teacherHistory)
 	admin.GET("/staff-attendance/non-academic-staff/:id/history", h.nonAcademicHistory)
 	teacher.GET("/me/teacher/attendance", h.myTeacherHistory)
@@ -157,4 +161,69 @@ func (h *staffHandler) myTeacherHistory(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, records)
+}
+
+// rosterQuery reads kind plus the shared limit/offset/search contract.
+func rosterQuery(c *gin.Context) (StaffRosterQuery, bool) {
+	kind := StaffKind(c.Query("kind"))
+	if kind != StaffKindTeacher && kind != StaffKindStaff {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "kind must be teacher or staff"})
+		return StaffRosterQuery{}, false
+	}
+	p := httpx.ParsePage(c)
+	return StaffRosterQuery{Kind: kind, Search: p.Search, Limit: p.Limit, Offset: p.Offset}, true
+}
+
+func (h *staffHandler) roster(c *gin.Context) {
+	date, err := time.Parse("2006-01-02", c.Query("date"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or missing date (expected YYYY-MM-DD)"})
+		return
+	}
+	q, ok := rosterQuery(c)
+	if !ok {
+		return
+	}
+	page, err := h.service.Roster(c, date, q)
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, page)
+}
+
+func (h *staffHandler) monthly(c *gin.Context) {
+	from, to, ok := monthRange(c)
+	if !ok {
+		return
+	}
+	q, ok := rosterQuery(c)
+	if !ok {
+		return
+	}
+	page, err := h.service.Monthly(c, from, to, q)
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, page)
+}
+
+func (h *staffHandler) markUnmarked(c *gin.Context) {
+	var req MarkUnmarkedRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "date and kind (teacher or staff) are required"})
+		return
+	}
+	markedBy, err := middleware.UserIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
+		return
+	}
+	n, err := h.service.MarkUnmarkedPresent(c, req, markedBy)
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"marked": n})
 }

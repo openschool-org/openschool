@@ -44,4 +44,25 @@ func TestAuditLogPersistenceAndFilteringWithPostgres(t *testing.T) {
 	if invalidResponse.Code != http.StatusBadRequest {
 		t.Fatalf("invalid audit filter: code=%d body=%s", invalidResponse.Code, invalidResponse.Body.String())
 	}
+
+	get := func(path string) string {
+		res := httptest.NewRecorder()
+		router.ServeHTTP(res, httptest.NewRequest(http.MethodGet, path, nil))
+		if res.Code != http.StatusOK {
+			t.Fatalf("GET %s: code=%d body=%s", path, res.Code, res.Body.String())
+		}
+		return res.Body.String()
+	}
+	if body := get("/audit-logs?search=verif"); !strings.Contains(body, `"total":1`) {
+		t.Fatalf("search by reason: %s", body)
+	}
+	if body := get("/audit-logs?search=audit%20adm"); !strings.Contains(body, `"total":2`) {
+		t.Fatalf("search by actor: %s", body)
+	}
+	if body := get("/audit-logs?from=2000-01-01&to=2000-12-31"); !strings.Contains(body, `"total":0`) {
+		t.Fatalf("date range: %s", body)
+	}
+	if body := get("/audit-logs/entity-types"); !strings.Contains(body, `"student"`) {
+		t.Fatalf("entity types: %s", body)
+	}
 }

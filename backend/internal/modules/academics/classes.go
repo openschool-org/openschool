@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/openschool-org/openschool/internal/apierror"
 	"github.com/openschool-org/openschool/internal/platform/httpx"
 )
 
@@ -72,6 +73,7 @@ type subjectTeacherRequest struct {
 
 type classStore interface {
 	create(context.Context, createClassRequest) (Class, error)
+	backfillHomerooms(context.Context, uuid.UUID) (int, error)
 	get(context.Context, uuid.UUID) (Class, error)
 	listCurrent(context.Context) ([]ClassDetails, error)
 	listByYear(context.Context, uuid.UUID) ([]ClassDetails, error)
@@ -143,6 +145,7 @@ func RegisterClassRoutes(admin, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.P
 	admin.POST("/classes/:id/subject-teachers", h.subjectTeacher)
 	admin.GET("/classes/:id/subject-teachers", h.subjectTeachers)
 	teacherOrAdmin.GET("/academic-years/:academic_year_id/classes", h.byYear)
+	admin.POST("/academic-years/:academic_year_id/classes/homerooms", h.backfillHomerooms)
 	teacherOrAdmin.POST("/classes/:id/students/:student_id/enroll", h.enroll)
 	teacherOrAdmin.DELETE("/classes/:id/students/:student_id/unenroll", h.unenroll)
 }
@@ -166,6 +169,20 @@ func (h *classHandler) create(c *gin.Context) {
 		return
 	}
 	c.JSON(201, v)
+}
+
+// backfillHomerooms links a homeroom to every class in the year that has none.
+func (h *classHandler) backfillHomerooms(c *gin.Context) {
+	year, ok := classID(c, "academic_year_id")
+	if !ok {
+		return
+	}
+	n, err := h.service.store.backfillHomerooms(c.Request.Context(), year)
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"linked": n})
 }
 func (h *classHandler) get(c *gin.Context) {
 	id, ok := classID(c, "id")

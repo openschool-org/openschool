@@ -4,6 +4,7 @@ package notifications
 import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"time"
 )
 
 type RecipientRuleType string
@@ -105,3 +106,53 @@ var ValidCategories = map[string]bool{
 }
 
 var ValidPriorities = map[string]bool{"normal": true, "important": true, "urgent": true}
+
+// HistoryFilter pages the sent-notification history; SenderID is forced for teachers.
+type HistoryFilter struct {
+	SenderID                   *uuid.UUID
+	Search, Category, Priority string
+	From, To                   *time.Time
+	Limit, Offset              int32
+}
+
+type HistoryItem struct {
+	ID             uuid.UUID          `json:"id"`
+	Title          string             `json:"title"`
+	Message        string             `json:"message"`
+	Category       string             `json:"category"`
+	Priority       string             `json:"priority"`
+	SenderName     string             `json:"sender_name"`
+	SentAt         pgtype.Timestamptz `json:"sent_at"`
+	RecipientCount int32              `json:"recipient_count"`
+	ReadCount      int32              `json:"read_count"`
+}
+
+type HistoryPage struct {
+	Items  []HistoryItem `json:"items"`
+	Total  int64         `json:"total"`
+	Limit  int32         `json:"limit"`
+	Offset int32         `json:"offset"`
+}
+
+// InboxFilter pages one box of the caller's inbox.
+type InboxFilter struct {
+	Box              string
+	Search, Category string
+	Limit, Offset    int32
+}
+
+type InboxCounts struct {
+	Unread   int32 `json:"unread"`
+	Read     int32 `json:"read"`
+	Archived int32 `json:"archived"`
+}
+
+type InboxPage struct {
+	Items  []MyNotificationResponse `json:"items"`
+	Total  int64                    `json:"total"`
+	Limit  int32                    `json:"limit"`
+	Offset int32                    `json:"offset"`
+	Counts InboxCounts              `json:"counts"`
+}
+
+var validBoxes = map[string]bool{"unread": true, "read": true, "archived": true}

@@ -300,6 +300,97 @@ func (q *Queries) MarkNotificationSent(ctx context.Context, id uuid.UUID) (Notif
 	return i, err
 }
 
+const searchSentNotifications = `-- name: SearchSentNotifications :many
+SELECT
+    n.id, n.title, n.message, n.category, n.priority, n.sent_at, n.created_by,
+    u.full_name AS sender_name,
+    (SELECT COUNT(*) FROM notification_recipients r WHERE r.notification_id = n.id)::int AS recipient_count,
+    (SELECT COUNT(*) FROM notification_recipients r WHERE r.notification_id = n.id AND r.is_read)::int AS read_count,
+    COUNT(*) OVER () AS total
+FROM notifications n
+INNER JOIN users u ON u.id = n.created_by
+WHERE n.status = 'sent'
+  AND ($1::uuid IS NULL OR n.created_by = $1::uuid)
+  AND ($2::text IS NULL
+       OR n.title ILIKE '%' || $2::text || '%'
+       OR n.message ILIKE '%' || $2::text || '%'
+       OR u.full_name ILIKE '%' || $2::text || '%')
+  AND ($3::text IS NULL OR n.category = $3::text)
+  AND ($4::text IS NULL OR n.priority = $4::text)
+  AND ($5::date IS NULL OR n.sent_at >= $5::date)
+  AND ($6::date IS NULL OR n.sent_at < $6::date + 1)
+ORDER BY n.sent_at DESC, n.id DESC
+LIMIT $8::int OFFSET $7::int
+`
+
+type SearchSentNotificationsParams struct {
+	SenderID   pgtype.UUID `json:"sender_id"`
+	Search     pgtype.Text `json:"search"`
+	Category   pgtype.Text `json:"category"`
+	Priority   pgtype.Text `json:"priority"`
+	FromDate   pgtype.Date `json:"from_date"`
+	ToDate     pgtype.Date `json:"to_date"`
+	PageOffset int32       `json:"page_offset"`
+	PageLimit  int32       `json:"page_limit"`
+}
+
+type SearchSentNotificationsRow struct {
+	ID             uuid.UUID          `json:"id"`
+	Title          string             `json:"title"`
+	Message        string             `json:"message"`
+	Category       string             `json:"category"`
+	Priority       string             `json:"priority"`
+	SentAt         pgtype.Timestamptz `json:"sent_at"`
+	CreatedBy      uuid.UUID          `json:"created_by"`
+	SenderName     string             `json:"sender_name"`
+	RecipientCount int32              `json:"recipient_count"`
+	ReadCount      int32              `json:"read_count"`
+	Total          int64              `json:"total"`
+}
+
+// Paged history of sent notifications. Admins pass no sender (whole school);
+// teachers are forced to their own id by the service. Search is escaped by the caller.
+func (q *Queries) SearchSentNotifications(ctx context.Context, arg SearchSentNotificationsParams) ([]SearchSentNotificationsRow, error) {
+	rows, err := q.db.Query(ctx, searchSentNotifications,
+		arg.SenderID,
+		arg.Search,
+		arg.Category,
+		arg.Priority,
+		arg.FromDate,
+		arg.ToDate,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchSentNotificationsRow{}
+	for rows.Next() {
+		var i SearchSentNotificationsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Message,
+			&i.Category,
+			&i.Priority,
+			&i.SentAt,
+			&i.CreatedBy,
+			&i.SenderName,
+			&i.RecipientCount,
+			&i.ReadCount,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateNotificationDraft = `-- name: UpdateNotificationDraft :one
 UPDATE notifications
 SET title = $2, message = $3, category = $4, priority = $5, recipient_rules = $6, updated_at = NOW()

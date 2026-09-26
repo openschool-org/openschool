@@ -15,5 +15,17 @@ FROM audit_logs al
 LEFT JOIN users u ON u.id = al.actor_id
 WHERE (sqlc.narg(entity_type)::text IS NULL OR al.entity_type = sqlc.narg(entity_type))
   AND (sqlc.narg(entity_id)::uuid IS NULL OR al.entity_id = sqlc.narg(entity_id))
+  -- search is escaped by httpx.ParsePage; it matches who, what and why.
+  AND (sqlc.narg(search)::text IS NULL
+       OR u.full_name     ILIKE '%' || sqlc.narg(search)::text || '%'
+       OR al.action       ILIKE '%' || sqlc.narg(search)::text || '%'
+       OR al.entity_type  ILIKE '%' || sqlc.narg(search)::text || '%'
+       OR al.reason       ILIKE '%' || sqlc.narg(search)::text || '%')
+  AND (sqlc.narg(from_date)::date IS NULL OR al.created_at >= sqlc.narg(from_date)::date)
+  AND (sqlc.narg(to_date)::date IS NULL OR al.created_at < sqlc.narg(to_date)::date + 1)
 ORDER BY al.created_at DESC, al.id DESC
 LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int;
+
+-- name: ListAuditEntityTypes :many
+-- Feeds the entity filter so the frontend never hard-codes the list.
+SELECT DISTINCT entity_type FROM audit_logs ORDER BY entity_type;

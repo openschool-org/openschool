@@ -1,6 +1,7 @@
 # UX Review Playbook
 
-Status: **updated 26 Sep 2026.** Every finding has a Status column: ✅ Done · 🚧 Started ·
+Status: **updated 26 Sep 2026.** An honest current score (5.4 of 10 overall) is in
+`docs/finfix/AUTOMATION_AND_FIXES_PLAN.md`; the "After" column below is the original target, not where we are. Every finding has a Status column: ✅ Done · 🚧 Started ·
 ⏸ Paused · ⬜ Not started. Open items are listed in section 4. New work the user asked
 for on 26 Sep (automation agents, promotion, homerooms, staff attendance paging, Settings
 search) is planned in `docs/finfix/AUTOMATION_AND_FIXES_PLAN.md`, awaiting approval.
@@ -72,7 +73,7 @@ Impact: H / M / L. Effort: S (under a day), M (days), L (a week or more).
 | T4 | ✅ Done | M | Pickers load every student to filter in the browser. | `EntityCombobox` | Server search with 2-character minimum and recent choices at the top. Already existed before this pass. | M |
 | T5 | ✅ Done | M | Idle logout after 30 minutes with no warning. A teacher mid-marking loses work. | `useIdleLogout.ts` | The 60-second warning modal with "Stay signed in" already existed before this pass. `sessionStorage` draft persistence + restore now lives in `useAttendanceMarking.ts`: marks/notes are written to `sessionStorage` as they're entered, restored (with a toast) if the page remounts with an unsent draft for that session, and cleared on successful save. Scoped to attendance marking, the page T1/T5's evidence names; marks entry (T2, not started) doesn't have this yet. | S |
 | T6 | ✅ Done | L | Filters are lost on refresh and cannot be shared. | `useListFilters` | Done 26 Sep: `useListFilters` reads and writes the URL query string (replace, not push), so filters survive refresh and can be shared. Unit tested. | S |
-| T7 | ✅ Done | M | *(User-requested, added 20 Sep 2026, not from the original review.)* Staff Attendance has no way to search for a specific teacher - admins scroll the whole roster. | `StaffAttendance.tsx` | Done 26 Sep: search by name or employee number on both the daily and monthly views. Pagination for 100+ staff is in the new plan (see `docs/finfix/AUTOMATION_AND_FIXES_PLAN.md`). | S |
+| T7 | ✅ Done | M | *(User-requested, added 20 Sep 2026, not from the original review.)* Staff Attendance has no way to search for a specific teacher - admins scroll the whole roster. | `StaffAttendance.tsx` | Done 26 Sep: search by name or employee number, server pagination, Teachers and Staff tabs, and "mark all not marked as present" (plan item A2 in `docs/finfix/AUTOMATION_AND_FIXES_PLAN.md`). | S |
 | T8 | ⏸ Paused | H | *(User-requested, added 20 Sep 2026, not from the original review.)* Reports only covers what exists today; there's no way to run a report for a specific entity (Students, Parents, Teachers, Classes, ...), and "export" produces a sample/template file or a raw dump of the current table rather than a meaningful, complete export of the actual data. | `Reports.tsx`, export flow | Design drafted, no code: one backend export endpoint per entity (students, parents, teachers, staff, classes) built from SQL with the list filters, CSV with a UTF-8 BOM so Sinhala and Tamil names open in Excel, audit-logged. Paused on 26 Sep at the user's request. | L |
 
 ### 3.4 Feedback and system status

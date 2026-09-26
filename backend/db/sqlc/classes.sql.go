@@ -615,6 +615,38 @@ func (q *Queries) ListClassesByGradeSection(ctx context.Context, arg ListClasses
 	return items, nil
 }
 
+const listClassesWithoutHomeroom = `-- name: ListClassesWithoutHomeroom :many
+SELECT id, name FROM classes
+WHERE academic_year_id = $1 AND home_classroom_id IS NULL
+ORDER BY name ASC
+`
+
+type ListClassesWithoutHomeroomRow struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+// Classes in the given year that were created before homerooms were automatic.
+func (q *Queries) ListClassesWithoutHomeroom(ctx context.Context, academicYearID uuid.UUID) ([]ListClassesWithoutHomeroomRow, error) {
+	rows, err := q.db.Query(ctx, listClassesWithoutHomeroom, academicYearID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListClassesWithoutHomeroomRow{}
+	for rows.Next() {
+		var i ListClassesWithoutHomeroomRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCurrentClasses = `-- name: ListCurrentClasses :many
 SELECT
     c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id,
@@ -858,6 +890,20 @@ func (q *Queries) ListSubjectTeachersByClass(ctx context.Context, classID uuid.U
 		return nil, err
 	}
 	return items, nil
+}
+
+const setClassHomeClassroom = `-- name: SetClassHomeClassroom :exec
+UPDATE classes SET home_classroom_id = $2 WHERE id = $1
+`
+
+type SetClassHomeClassroomParams struct {
+	ID              uuid.UUID   `json:"id"`
+	HomeClassroomID pgtype.UUID `json:"home_classroom_id"`
+}
+
+func (q *Queries) SetClassHomeClassroom(ctx context.Context, arg SetClassHomeClassroomParams) error {
+	_, err := q.db.Exec(ctx, setClassHomeClassroom, arg.ID, arg.HomeClassroomID)
+	return err
 }
 
 const unenrollStudentFromClass = `-- name: UnenrollStudentFromClass :exec

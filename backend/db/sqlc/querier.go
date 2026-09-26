@@ -53,6 +53,7 @@ type Querier interface {
 	CountClassesInYearByIDs(ctx context.Context, arg CountClassesInYearByIDsParams) (int64, error)
 	CountEntriesBySubjectForTimetable(ctx context.Context, timetableID uuid.UUID) ([]CountEntriesBySubjectForTimetableRow, error)
 	CountGroupSubjects(ctx context.Context, groupID uuid.UUID) (int64, error)
+	CountMyNotificationBoxes(ctx context.Context, userID uuid.UUID) (CountMyNotificationBoxesRow, error)
 	CountMyUnreadNotifications(ctx context.Context, userID uuid.UUID) (int64, error)
 	CountSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID) (int64, error)
 	CountUsersByRole(ctx context.Context, role string) (int64, error)
@@ -202,6 +203,8 @@ type Querier interface {
 	// same-name carryover suggestion (e.g. "6A" -> "7A"); ErrNoRows means no
 	// suggestion, the frontend leaves the target class blank for a manual pick.
 	FindClassByGradeAndName(ctx context.Context, arg FindClassByGradeAndNameParams) (Class, error)
+	// Case-insensitive so "10-a" and "10-A" resolve to the same homeroom.
+	FindClassroomByName(ctx context.Context, name string) (Classroom, error)
 	// Near-matches by phone or email, surfaced as a soft warning ("this
 	// guardian may already exist") when creating a new guardian record —
 	// never hard-blocked, since a shared home phone across two guardians is
@@ -387,6 +390,8 @@ type Querier interface {
 	// entirely), plus how many such hours were observed so the caller can
 	// decide whether the baseline has enough data to trust.
 	ListAuditActivityBaseline(ctx context.Context, baselineDays int32) ([]ListAuditActivityBaselineRow, error)
+	// Feeds the entity filter so the frontend never hard-codes the list.
+	ListAuditEntityTypes(ctx context.Context) ([]string, error)
 	// Server-paginated (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 4) —
 	// an append-only log grows without bound, so a fixed LIMIT eventually hides
 	// older entries silently rather than paging to them. entity_type/entity_id
@@ -413,6 +418,8 @@ type Querier interface {
 	// academic year — the auto-generator's unit of work (teachers/labs shared
 	// across these classes must be scheduled together to avoid conflicts)
 	ListClassesByGradeSection(ctx context.Context, arg ListClassesByGradeSectionParams) ([]Class, error)
+	// Classes in the given year that were created before homerooms were automatic.
+	ListClassesWithoutHomeroom(ctx context.Context, academicYearID uuid.UUID) ([]ListClassesWithoutHomeroomRow, error)
 	ListClassrooms(ctx context.Context) ([]ListClassroomsRow, error)
 	// free-standing lab rooms tagged to a subject — the auto-generator's pool
 	// of candidate rooms for that subject's lab periods
@@ -545,6 +552,12 @@ type Querier interface {
 	// every academic year that has at least one society — powers the
 	// year-selector's archive view, same pattern as ListPrefectYears.
 	ListSocietyYears(ctx context.Context) ([]ListSocietyYearsRow, error)
+	// One page of per-person status counts for the date range, same kind/search contract as above.
+	ListStaffAttendanceMonthly(ctx context.Context, arg ListStaffAttendanceMonthlyParams) ([]ListStaffAttendanceMonthlyRow, error)
+	// One page of active teachers or non-academic staff (kind = 'teacher' | 'staff') with
+	// their record for the date. The window totals cover the whole filtered set, not just
+	// the page, so the UI can show "12 unmarked" correctly. Search is escaped by the caller.
+	ListStaffAttendanceRoster(ctx context.Context, arg ListStaffAttendanceRosterParams) ([]ListStaffAttendanceRosterRow, error)
 	// ── Stale/incomplete attendance session watcher ─────────────────────────────
 	// a session created more than the given interval ago with fewer attendance
 	// records than the class's roster size — a teacher started it and never
@@ -659,6 +672,9 @@ type Querier interface {
 	MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error)
 	MarkNotificationRecipientRead(ctx context.Context, arg MarkNotificationRecipientReadParams) error
 	MarkNotificationSent(ctx context.Context, id uuid.UUID) (Notification, error)
+	MarkUnmarkedNonAcademicStaffPresent(ctx context.Context, arg MarkUnmarkedNonAcademicStaffPresentParams) (int64, error)
+	// Present for every active teacher with no record that day; existing marks are left alone.
+	MarkUnmarkedTeachersPresent(ctx context.Context, arg MarkUnmarkedTeachersPresentParams) (int64, error)
 	MonthlyNonAcademicStaffAttendanceSummary(ctx context.Context, arg MonthlyNonAcademicStaffAttendanceSummaryParams) ([]MonthlyNonAcademicStaffAttendanceSummaryRow, error)
 	// one row per teacher with a count for each status in the given date range
 	// (the caller passes the first/last day of the month).
@@ -692,15 +708,21 @@ type Querier interface {
 	// Top 5 guardians matching a name/phone fragment, for the admin header's
 	// global search.
 	SearchGuardians(ctx context.Context, dollar_1 pgtype.Text) ([]SearchGuardiansRow, error)
+	// One page of the caller's inbox. box is 'unread', 'read' or 'archived'. Search is escaped by the caller.
+	SearchMyNotifications(ctx context.Context, arg SearchMyNotificationsParams) ([]SearchMyNotificationsRow, error)
 	// Top 5 non-academic staff matching a name/employee-number fragment, for
 	// the admin header's global search.
 	SearchNonAcademicStaff(ctx context.Context, dollar_1 pgtype.Text) ([]SearchNonAcademicStaffRow, error)
+	// Paged history of sent notifications. Admins pass no sender (whole school);
+	// teachers are forced to their own id by the service. Search is escaped by the caller.
+	SearchSentNotifications(ctx context.Context, arg SearchSentNotificationsParams) ([]SearchSentNotificationsRow, error)
 	// Top 5 students matching a name/index-number fragment, for the admin
 	// header's global search — not a full paginated list endpoint.
 	SearchStudents(ctx context.Context, dollar_1 pgtype.Text) ([]SearchStudentsRow, error)
 	// Top 5 teachers matching a name/employee-number fragment, for the admin
 	// header's global search.
 	SearchTeachers(ctx context.Context, dollar_1 pgtype.Text) ([]SearchTeachersRow, error)
+	SetClassHomeClassroom(ctx context.Context, arg SetClassHomeClassroomParams) error
 	SetCurrentAcademicYear(ctx context.Context, id uuid.UUID) error
 	SetCurrentTerm(ctx context.Context, id uuid.UUID) error
 	// Links a guardian record to the ThunderID identity created for their

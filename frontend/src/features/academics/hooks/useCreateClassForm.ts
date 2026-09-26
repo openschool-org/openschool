@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useCreateClass, useStreamGroups } from "@/features/academics/queries/useClasses";
-import { useClassrooms, useCreateClassroom } from "@/features/timetable/queries/useClassrooms";
+import { useClassrooms } from "@/features/timetable/queries/useClassrooms";
 import { useAcademicYears } from "@/features/school/queries/useAcademicYears";
 import { getErrorMessage } from "@/shared/api/errors";
 import { suggestHomeClassroom } from "@/features/timetable/lib/classroom";
@@ -20,17 +20,15 @@ const EMPTY_CLASS_FORM = {
 export type ClassForm = typeof EMPTY_CLASS_FORM;
 type Touched = Partial<Record<"grade" | "name" | "year", boolean>>;
 
-// Form state, validation and the two-step save (auto-create a homeroom, then the class).
+// Form state and validation; the backend links or creates the homeroom when none is chosen.
 export function useCreateClassForm(preselectedGradeId: string) {
   const navigate = useNavigate();
   const { data: years } = useAcademicYears();
   const { data: classrooms } = useClassrooms();
   const createClass = useCreateClass();
-  const createClassroom = useCreateClassroom();
 
   const [form, setForm] = useState<ClassForm>({ ...EMPTY_CLASS_FORM, grade_id: preselectedGradeId });
   const [touched, setTouched] = useState<Touched>({});
-  const [roomError, setRoomError] = useState<string | null>(null);
   const { data: streamGroups } = useStreamGroups(form.stream_id);
 
   const suggestedHomeClassroom = suggestHomeClassroom(classrooms, form.name);
@@ -41,22 +39,9 @@ export function useCreateClassForm(preselectedGradeId: string) {
   const set = (field: keyof ClassForm, value: string) =>
     setForm((f) => (field === "stream_id" ? { ...f, stream_id: value, stream_group_id: "" } : { ...f, [field]: value }));
 
-  const save = async () => {
+  const save = () => {
     setTouched({ grade: true, name: true, year: true });
     if (!isValid) return;
-    setRoomError(null);
-
-    // With no room chosen, a homeroom named after the class is created first.
-    let homeClassroomId = effectiveHomeClassroomId;
-    if (!homeClassroomId) {
-      try {
-        homeClassroomId = (await createClassroom.mutateAsync({ name: form.name.trim(), room_type: "regular" })).id;
-      } catch (e) {
-        setRoomError(getErrorMessage(e, "Failed to create this class's home classroom"));
-        return;
-      }
-    }
-
     createClass.mutate(
       {
         grade_id: form.grade_id,
@@ -66,7 +51,7 @@ export function useCreateClassForm(preselectedGradeId: string) {
         stream_group_id: form.stream_group_id || null,
         form_teacher_id: form.form_teacher_id || null,
         medium_id: form.medium_id || null,
-        home_classroom_id: homeClassroomId || null,
+        home_classroom_id: effectiveHomeClassroomId || null,
       },
       { onSuccess: () => navigate("/classes") },
     );
@@ -84,9 +69,9 @@ export function useCreateClassForm(preselectedGradeId: string) {
     effectiveHomeClassroomId,
     academicYearId,
     isValid,
-    isSaving: createClassroom.isPending || createClass.isPending,
-    error: roomError ?? (createClass.isError ? getErrorMessage(createClass.error, "Failed to create class") : null),
-    clearError: () => { setRoomError(null); createClass.reset(); },
+    isSaving: createClass.isPending,
+    error: createClass.isError ? getErrorMessage(createClass.error, "Could not create the class.") : null,
+    clearError: () => createClass.reset(),
     save,
   };
 }

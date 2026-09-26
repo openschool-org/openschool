@@ -2,6 +2,7 @@ package audit
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -10,6 +11,14 @@ import (
 )
 
 func RegisterRoutes(admin *gin.RouterGroup, service *Service) {
+	admin.GET("/audit-logs/entity-types", func(c *gin.Context) {
+		types, err := service.EntityTypes(c)
+		if err != nil {
+			apierror.RespondInternal(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, types)
+	})
 	admin.GET("/audit-logs", func(c *gin.Context) {
 		entityType := c.Query("entity_type")
 		var entityID *uuid.UUID
@@ -22,7 +31,18 @@ func RegisterRoutes(admin *gin.RouterGroup, service *Service) {
 			entityID = &parsed
 		}
 		page := httpx.ParsePage(c)
-		logs, total, err := service.List(c, entityType, entityID, page.Limit, page.Offset)
+		filter := ListFilter{EntityType: entityType, EntityID: entityID, Search: page.Search, Limit: page.Limit, Offset: page.Offset}
+		for key, target := range map[string]**time.Time{"from": &filter.From, "to": &filter.To} {
+			if raw := c.Query(key); raw != "" {
+				parsed, err := time.Parse("2006-01-02", raw)
+				if err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "invalid " + key + " (expected YYYY-MM-DD)"})
+					return
+				}
+				*target = &parsed
+			}
+		}
+		logs, total, err := service.List(c, filter)
 		if err != nil {
 			apierror.RespondInternal(c, err)
 			return
