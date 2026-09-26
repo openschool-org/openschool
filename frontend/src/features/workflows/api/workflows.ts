@@ -6,7 +6,7 @@ export interface Option {
   label: string;
 }
 
-export type InputType = "select" | "multiselect" | "text" | "date" | "boolean";
+export type InputType = "select" | "multiselect" | "text" | "date" | "boolean" | "csv";
 
 export interface InputField {
   key: string;
@@ -16,6 +16,7 @@ export interface InputField {
   default?: string;
   help?: string;
   options?: Option[];
+  template?: string;
 }
 
 export interface Check {

@@ -686,6 +686,7 @@ func (r *timetableEntryRepository) listEntries(ctx context.Context, timetableID 
 			SubjectID: entryUUID(row.SubjectID), TeacherID: entryUUID(row.TeacherID), ClassroomID: entryUUID(row.ClassroomID),
 			CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time, SubjectName: entryText(row.SubjectName),
 			TeacherName: entryText(row.TeacherName), ClassroomName: entryText(row.ClassroomName),
+			OptionBlockID: entryUUID(row.OptionBlockID), OptionBlockName: entryText(row.OptionBlockName),
 		}
 	}
 	return result, nil
@@ -722,7 +723,7 @@ func (r *timetableEntryRepository) crossBookings(ctx context.Context, yearID, ti
 	}
 	result := make([]crossBooking, len(rows))
 	for i, row := range rows {
-		result[i] = crossBooking{DayOfWeek: row.DayOfWeek, PeriodNumber: row.PeriodNumber, TeacherID: entryUUID(row.TeacherID), ClassroomID: entryUUID(row.ClassroomID), ClassName: row.ClassName}
+		result[i] = crossBooking{DayOfWeek: row.DayOfWeek, PeriodNumber: row.PeriodNumber, TeacherID: entryUUID(row.TeacherID), ClassroomID: entryUUID(row.ClassroomID), ClassName: row.ClassName, OptionBlockID: entryUUID(row.OptionBlockID)}
 	}
 	return result, nil
 }
@@ -798,4 +799,68 @@ func formatClock(value pgtype.Time) string {
 }
 func mapSettings(row db.TimetableSetting) Settings {
 	return Settings{AcademicYearID: row.AcademicYearID, SchoolStartTime: formatClock(row.SchoolStartTime), SchoolEndTime: formatClock(row.SchoolEndTime), NumberOfPeriods: row.NumberOfPeriods, PeriodDurationMinutes: row.PeriodDurationMinutes, IntervalDurationMinutes: row.IntervalDurationMinutes}
+}
+
+// OptionBlock is a set of option subjects (an O/L basket, A/L options) taught at the same
+// period in every class that shares it; each class's students split up by subject.
+type OptionBlock struct {
+	ID       uuid.UUID
+	GradeID  uuid.UUID
+	Name     string
+	Periods  int32
+	Subjects []uuid.UUID
+	Classes  []uuid.UUID
+}
+
+func (r *timetableEntryRepository) blockTeachers(ctx context.Context, classID, blockID uuid.UUID) ([]blockTeacher, error) {
+	rows, err := r.queries.ListOptionBlockTeachersForClass(ctx, db.ListOptionBlockTeachersForClassParams{ClassID: classID, BlockID: blockID})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]blockTeacher, len(rows))
+	for i, row := range rows {
+		out[i] = blockTeacher{ID: row.TeacherID, Name: row.TeacherName}
+	}
+	return out, nil
+}
+
+// optionBlocks loads the blocks that include any of these classes, with their subjects and classes.
+func (r *timetableRepository) optionBlocks(ctx context.Context, classIDs []uuid.UUID) ([]OptionBlock, error) {
+	rows, err := r.queries.ListOptionBlocksForClasses(ctx, classIDs)
+	if err != nil || len(rows) == 0 {
+		return nil, err
+	}
+	ids := make([]uuid.UUID, len(rows))
+	out := make([]OptionBlock, len(rows))
+	index := map[uuid.UUID]int{}
+	for i, row := range rows {
+		ids[i] = row.ID
+		index[row.ID] = i
+		out[i] = OptionBlock{ID: row.ID, GradeID: row.GradeID, Name: row.Name, Periods: row.PeriodsPerWeek}
+	}
+	classes, err := r.queries.ListOptionBlockClasses(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range classes {
+		out[index[c.BlockID]].Classes = append(out[index[c.BlockID]].Classes, c.ClassID)
+	}
+	subjects, err := r.queries.ListOptionBlockSubjects(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range subjects {
+		out[index[s.BlockID]].Subjects = append(out[index[s.BlockID]].Subjects, s.SubjectID)
+	}
+	return out, nil
+}
+
+func (r *timetableRepository) upsertBlockEntry(ctx context.Context, timetableID uuid.UUID, day, period int16, blockID uuid.UUID) error {
+	return r.queries.UpsertOptionBlockEntry(ctx, db.UpsertOptionBlockEntryParams{TimetableID: timetableID, DayOfWeek: day, PeriodNumber: period, OptionBlockID: pgtype.UUID{Bytes: blockID, Valid: true}})
+}
+
+// GenerateWith runs the generator for one grade section on the given queries, so a caller can
+// run it inside its own transaction (the year-end timetable workflow uses this for its dry run).
+func GenerateWith(ctx context.Context, queries *db.Queries, request GenerationRequest, actor uuid.UUID) (GenerationResult, error) {
+	return (&generationService{store: &timetableRepository{queries: queries}}).generate(ctx, request, actor)
 }

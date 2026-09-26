@@ -14,6 +14,8 @@ import (
 type Querier interface {
 	// ── group subjects ──────────────────────────────────────────────────────────
 	AddGroupSubject(ctx context.Context, arg AddGroupSubjectParams) (GroupSubject, error)
+	AddOptionBlockClass(ctx context.Context, arg AddOptionBlockClassParams) error
+	AddOptionBlockSubject(ctx context.Context, arg AddOptionBlockSubjectParams) error
 	// Scrubs personal data from a profile without deleting the row, so
 	// historical marks/attendance stay attributable in aggregate without
 	// retaining the identifying details (S11's "erase person" flow and the
@@ -51,6 +53,7 @@ type Querier interface {
 	// validates that every target class ID a commit request references
 	// actually belongs to the target academic year, before writing anything.
 	CountClassesInYearByIDs(ctx context.Context, arg CountClassesInYearByIDsParams) (int64, error)
+	// a block period counts once for each of the block's subjects
 	CountEntriesBySubjectForTimetable(ctx context.Context, timetableID uuid.UUID) ([]CountEntriesBySubjectForTimetableRow, error)
 	CountGroupSubjects(ctx context.Context, groupID uuid.UUID) (int64, error)
 	CountMyNotificationBoxes(ctx context.Context, userID uuid.UUID) (CountMyNotificationBoxesRow, error)
@@ -76,6 +79,7 @@ type Querier interface {
 	CreateNonAcademicStaff(ctx context.Context, arg CreateNonAcademicStaffParams) (NonAcademicStaff, error)
 	CreateNotification(ctx context.Context, arg CreateNotificationParams) (Notification, error)
 	CreateNotificationRecipient(ctx context.Context, arg CreateNotificationRecipientParams) error
+	CreateOptionBlock(ctx context.Context, arg CreateOptionBlockParams) (uuid.UUID, error)
 	CreatePasswordResetToken(ctx context.Context, arg CreatePasswordResetTokenParams) (PasswordResetToken, error)
 	// Progress reports --------------------------------------------------------
 	CreateProgressReport(ctx context.Context, arg CreateProgressReportParams) (StudentProgressReport, error)
@@ -159,6 +163,7 @@ type Querier interface {
 	DeleteLevel(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteMedium(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteNonAcademicStaff(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteOptionBlocks(ctx context.Context, ids []uuid.UUID) error
 	DeletePendingErasure(ctx context.Context, id uuid.UUID) error
 	DeletePrefect(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteProgressReport(ctx context.Context, arg DeleteProgressReportParams) (int64, error)
@@ -444,7 +449,8 @@ type Querier interface {
 	ListCurrentYearClassesMissingTodaySession(ctx context.Context) ([]ListCurrentYearClassesMissingTodaySessionRow, error)
 	ListDisciplinaryRecordsByStudent(ctx context.Context, studentID uuid.UUID) ([]StudentDisciplinaryRecord, error)
 	// every booked (teacher or classroom) cell across other timetables in the
-	// same academic year, used for cross-timetable clash detection
+	// same academic year, used for cross-timetable clash detection; an option
+	// block period books each of the class's teachers for the block's subjects
 	ListEntriesForYearExcludingTimetable(ctx context.Context, arg ListEntriesForYearExcludingTimetableParams) ([]ListEntriesForYearExcludingTimetableRow, error)
 	// ── Student gender / school-type watcher ────────────────────────────────────
 	// a single-sex school's own student roster drifting out of sync with
@@ -529,6 +535,13 @@ type Querier interface {
 	// for (subject selection is per-student for A/L buckets) — so this is a
 	// breadth proxy, not a claim of exact completion percentage.
 	ListOpenTermMarksProgress(ctx context.Context) ([]ListOpenTermMarksProgressRow, error)
+	ListOptionBlockClasses(ctx context.Context, blockIds []uuid.UUID) ([]TimetableOptionBlockClass, error)
+	ListOptionBlockSubjects(ctx context.Context, blockIds []uuid.UUID) ([]ListOptionBlockSubjectsRow, error)
+	// the teachers a class's students go to in one option block period
+	ListOptionBlockTeachersForClass(ctx context.Context, arg ListOptionBlockTeachersForClassParams) ([]ListOptionBlockTeachersForClassRow, error)
+	// every option block that includes at least one of these classes
+	ListOptionBlocksForClasses(ctx context.Context, classIds []uuid.UUID) ([]ListOptionBlocksForClassesRow, error)
+	ListOptionBlocksForYear(ctx context.Context, academicYearID uuid.UUID) ([]ListOptionBlocksForYearRow, error)
 	ListPendingErasures(ctx context.Context, limit int32) ([]PendingIdentityErasure, error)
 	// every prefect appointment a student has held, across all years — for the
 	// student portfolio's read-only "prefect appointments" rollup tab.
@@ -641,6 +654,7 @@ type Querier interface {
 	ListTeacherPositions(ctx context.Context) ([]ListTeacherPositionsRow, error)
 	// a teacher's full weekly schedule across every published timetable, for
 	// the teacher's own "My Timetable" view
+	// option block periods where this teacher takes the class's students for one of the block's subjects
 	ListTeacherScheduleForYear(ctx context.Context, arg ListTeacherScheduleForYearParams) ([]ListTeacherScheduleForYearRow, error)
 	// the form teacher, plus every subject teacher assigned to this class
 	ListTeacherUserIDsByClass(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error)
@@ -698,6 +712,8 @@ type Querier interface {
 	NextEmployeeNumber(ctx context.Context) (string, error)
 	// shares the numbering pool with teacher_profiles (migration 000026).
 	NextNonAcademicEmployeeNumber(ctx context.Context) (string, error)
+	// a block already used by a timetable past draft cannot be replaced
+	OptionBlocksInSubmittedTimetables(ctx context.Context, ids []uuid.UUID) (bool, error)
 	// Picks whichever house currently has the fewest students, breaking ties
 	// randomly. A newly-created house has zero members and so is naturally
 	// preferred until it catches up — no manual remainder bookkeeping needed.
@@ -789,6 +805,8 @@ type Querier interface {
 	// Teacher-in-charge for a whole grade (grades without A/L streams).
 	UpsertGradeSectionHead(ctx context.Context, arg UpsertGradeSectionHeadParams) (SectionHead, error)
 	UpsertNonAcademicStaffAttendance(ctx context.Context, arg UpsertNonAcademicStaffAttendanceParams) (StaffAttendanceRecord, error)
+	// a period where the class splits into an option block; replaces whatever was there
+	UpsertOptionBlockEntry(ctx context.Context, arg UpsertOptionBlockEntryParams) error
 	// Records that a user still needs identity cleanup after its profile was
 	// already anonymised. local_done/idp_done only ever move true → stays true
 	// (the OR keeps a step already confirmed done from being un-done by a
@@ -808,8 +826,13 @@ type Querier interface {
 	UpsertTimetableSettings(ctx context.Context, arg UpsertTimetableSettingsParams) (TimetableSetting, error)
 	UpsertVicePrincipal(ctx context.Context, arg UpsertVicePrincipalParams) (TeacherPosition, error)
 	WfAcademicYearLabelExists(ctx context.Context, lower string) (bool, error)
+	WfActiveTeachers(ctx context.Context) ([]WfActiveTeachersRow, error)
+	// For each class in the target year, the source-year class most of its students came from.
+	WfClassPredecessors(ctx context.Context, arg WfClassPredecessorsParams) ([]WfClassPredecessorsRow, error)
 	// Attendance or marks already recorded in these classes; a placement can no longer be reverted.
 	WfClassesHaveRecords(ctx context.Context, arg WfClassesHaveRecordsParams) (bool, error)
+	WfClassesHaveSubmittedTimetables(ctx context.Context, ids []uuid.UUID) (bool, error)
+	WfClearLevelLocks(ctx context.Context, arg WfClearLevelLocksParams) error
 	WfCopyGradeSectionGrades(ctx context.Context, arg WfCopyGradeSectionGradesParams) error
 	WfCopySectionHeads(ctx context.Context, arg WfCopySectionHeadsParams) (int64, error)
 	WfCopySubjectPeriodRequirements(ctx context.Context, arg WfCopySubjectPeriodRequirementsParams) (int64, error)
@@ -819,29 +842,53 @@ type Querier interface {
 	WfCreateAcademicYear(ctx context.Context, arg WfCreateAcademicYearParams) (uuid.UUID, error)
 	WfCreateClass(ctx context.Context, arg WfCreateClassParams) (uuid.UUID, error)
 	WfCreateGradeSection(ctx context.Context, arg WfCreateGradeSectionParams) (uuid.UUID, error)
+	WfCreateGuardian(ctx context.Context, arg WfCreateGuardianParams) (uuid.UUID, error)
+	WfCreateIntake(ctx context.Context, arg WfCreateIntakeParams) error
+	WfCreateIntakeStudent(ctx context.Context, arg WfCreateIntakeStudentParams) (uuid.UUID, error)
 	WfCreateTerm(ctx context.Context, arg WfCreateTermParams) error
 	WfCurrentTerm(ctx context.Context) (uuid.UUID, error)
 	WfDeleteAcademicYear(ctx context.Context, id uuid.UUID) error
+	WfDeleteDraftTimetables(ctx context.Context, ids []uuid.UUID) error
 	WfDeleteEmptyClasses(ctx context.Context, ids []uuid.UUID) error
 	WfDeleteIntakes(ctx context.Context, ids []uuid.UUID) error
+	WfDeleteLevelEnrollments(ctx context.Context, arg WfDeleteLevelEnrollmentsParams) error
+	WfDeleteStudents(ctx context.Context, ids []uuid.UUID) error
+	WfDeleteSubjectTeacher(ctx context.Context, arg WfDeleteSubjectTeacherParams) error
+	WfDeleteUnlinkedGuardians(ctx context.Context, ids []uuid.UUID) error
 	// Classes RESTRICT their year, so they go first; the rest cascades from the year.
 	WfDeleteYearClasses(ctx context.Context, academicYearID uuid.UUID) error
+	WfEnrollmentLocks(ctx context.Context, arg WfEnrollmentLocksParams) ([]uuid.UUID, error)
+	WfExistingIndexNumbers(ctx context.Context, numbers []string) ([]string, error)
 	WfGetAcademicYear(ctx context.Context, id uuid.UUID) (WfGetAcademicYearRow, error)
 	// Grades whose curriculum has a real subject choice; their incoming students default to by_subject_choice.
 	WfGradesWithChoiceGroups(ctx context.Context) ([]uuid.UUID, error)
 	// Grades whose levels are tied to an A/L stream; their incoming students default to by_stream.
 	WfGradesWithStreamLevels(ctx context.Context) ([]uuid.UUID, error)
+	// Classes of the year holding at least one student enrolled in this selection group.
+	WfGroupClasses(ctx context.Context, arg WfGroupClassesParams) ([]uuid.UUID, error)
+	WfGuardiansByNIC(ctx context.Context, nics []string) ([]WfGuardiansByNICRow, error)
+	WfInsertEnrollment(ctx context.Context, arg WfInsertEnrollmentParams) error
 	// Admitted students waiting for a class in the target year.
 	WfIntakeStudents(ctx context.Context, academicYearID uuid.UUID) ([]WfIntakeStudentsRow, error)
 	WfIntakesByIDs(ctx context.Context, ids []uuid.UUID) ([]WfIntakesByIDsRow, error)
 	// Each student's average percentage in the latest term of the year that has marks.
 	WfLatestAverages(ctx context.Context, arg WfLatestAveragesParams) ([]WfLatestAveragesRow, error)
+	WfLatestTimetableStatus(ctx context.Context, academicYearID uuid.UUID) ([]WfLatestTimetableStatusRow, error)
+	// The house with the fewest active students, so imported students spread evenly.
+	WfLeastUsedHouse(ctx context.Context) (uuid.UUID, error)
+	WfLevelGroupSubjects(ctx context.Context, levelID uuid.UUID) ([]WfLevelGroupSubjectsRow, error)
+	// ---- W3 subject choices ----
+	// Curriculum levels tied to a grade, in school order.
+	WfLevelsForGrades(ctx context.Context) ([]WfLevelsForGradesRow, error)
+	WfLinkGuardian(ctx context.Context, arg WfLinkGuardianParams) error
 	// ---- Shared reads ----
 	WfListAcademicYears(ctx context.Context) ([]WfListAcademicYearsRow, error)
 	// ---- W2 leavers ----
 	WfListActiveStudentsInGrades(ctx context.Context, arg WfListActiveStudentsInGradesParams) ([]WfListActiveStudentsInGradesRow, error)
 	WfListGradeSections(ctx context.Context, academicYearID uuid.UUID) ([]WfListGradeSectionsRow, error)
 	WfListGrades(ctx context.Context) ([]WfListGradesRow, error)
+	// ---- W4 intake ----
+	WfListMediums(ctx context.Context) ([]WfListMediumsRow, error)
 	WfListTerms(ctx context.Context, academicYearID uuid.UUID) ([]WfListTermsRow, error)
 	WfListYearClasses(ctx context.Context, academicYearID uuid.UUID) ([]WfListYearClassesRow, error)
 	WfMarkStudentsLeft(ctx context.Context, arg WfMarkStudentsLeftParams) (int64, error)
@@ -851,19 +898,41 @@ type Querier interface {
 	WfPromotionStudents(ctx context.Context, academicYearID uuid.UUID) ([]WfPromotionStudentsRow, error)
 	WfRestoreIntake(ctx context.Context, arg WfRestoreIntakeParams) error
 	WfRestoreStudentsActive(ctx context.Context, ids []uuid.UUID) (int64, error)
+	WfSchoolType(ctx context.Context) (string, error)
+	// ---- W7 timetable ----
+	// Each class of the year with the grade section its grade belongs to.
+	WfSectionClasses(ctx context.Context, academicYearID uuid.UUID) ([]WfSectionClassesRow, error)
+	WfSectionPeriodCounts(ctx context.Context, academicYearID uuid.UUID) ([]WfSectionPeriodCountsRow, error)
 	WfSetCurrentTerm(ctx context.Context, id uuid.UUID) error
 	WfSetCurrentYear(ctx context.Context, id uuid.UUID) error
+	WfSetFormTeacher(ctx context.Context, arg WfSetFormTeacherParams) error
+	WfSetLevelLocks(ctx context.Context, arg WfSetLevelLocksParams) error
+	WfSetStudentUser(ctx context.Context, arg WfSetStudentUserParams) error
 	// Each student's optional subjects for the target year, and the stream of the level they are in.
 	// A group is a real choice when it offers more subjects than a student may take.
 	WfStudentChoices(ctx context.Context, arg WfStudentChoicesParams) ([]WfStudentChoicesRow, error)
+	WfStudentsHaveMarks(ctx context.Context, arg WfStudentsHaveMarksParams) (bool, error)
+	// An imported student can no longer be removed once they have an account, a class, subjects or records.
+	WfStudentsInUse(ctx context.Context, ids []uuid.UUID) (bool, error)
+	WfStudentsWithoutAccount(ctx context.Context, numbers []string) ([]WfStudentsWithoutAccountRow, error)
+	// ---- W6 teacher allocation ----
+	WfSubjectHours(ctx context.Context, academicYearID uuid.UUID) ([]WfSubjectHoursRow, error)
+	// Subjects that need lab periods in this year but have no lab room tagged for them.
+	WfSubjectsMissingLabs(ctx context.Context, academicYearID uuid.UUID) ([]string, error)
 	// Seats already taken in target classes by students outside this promotion (for example placed by hand).
 	WfTargetOccupancy(ctx context.Context, arg WfTargetOccupancyParams) ([]WfTargetOccupancyRow, error)
+	WfTeacherAvailabilityCount(ctx context.Context, academicYearID uuid.UUID) (int32, error)
+	WfTeacherSubjects(ctx context.Context) ([]TeacherSubject, error)
+	WfTimetablesPastDraft(ctx context.Context, ids []uuid.UUID) (bool, error)
 	WfUpsertPromotionPolicy(ctx context.Context, arg WfUpsertPromotionPolicyParams) error
+	WfUpsertSubjectTeacher(ctx context.Context, arg WfUpsertSubjectTeacherParams) error
 	WfYearAssignments(ctx context.Context, arg WfYearAssignmentsParams) ([]WfYearAssignmentsRow, error)
+	WfYearEnrollments(ctx context.Context, arg WfYearEnrollmentsParams) ([]WfYearEnrollmentsRow, error)
 	// True once anything real is recorded against the year's classes; a rollover can no longer be reverted.
 	WfYearHasActivity(ctx context.Context, academicYearID uuid.UUID) (bool, error)
 	// ---- W8 go live ----
 	WfYearReadiness(ctx context.Context, academicYearID uuid.UUID) (WfYearReadinessRow, error)
+	WfYearSubjectTeachers(ctx context.Context, academicYearID uuid.UUID) ([]ClassSubjectTeacher, error)
 }
 
 var _ Querier = (*Queries)(nil)

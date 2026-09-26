@@ -1,6 +1,6 @@
 # Automation and Fixes Plan
 
-Status: **Part A done. Part B: phases 1 to 3 done, phase 4 started (see "Part B progress").** Part C defaults below are what the built parts use.
+Status: **Part A done. Part B: phases 1 to 6 done; phase 7 (end-to-end rehearsal) dropped (see "Part B progress").** Part C defaults below are what the built parts use.
 
 ---
 
@@ -59,25 +59,29 @@ Original plan for reference:
 
 ---
 
-## Part B progress (paused 26 Sep 2026)
+## Part B progress (updated 26 Sep 2026)
 
-Nothing from Part B has been checked in a browser. Backend builds and `go vet` is clean;
-frontend passes `tsc` and ESLint.
+Nothing from Part B has been checked in a browser. Backend: build, `go vet`, `staticcheck`, unit tests
+and integration tests against Postgres all pass. Frontend: `tsc`, ESLint, 27 unit tests, build and
+`pnpm audit --prod` pass; new component tests cover the CSV input, proposal tables, option-block cells
+and the workflow list on the Automation page.
 
 | Phase | State | What exists |
 |-------|-------|-------------|
 | 1. Engine, catalogue, hub | Done | New module `internal/modules/workflows`. Migration 046 (`workflow_runs`: proposal, trace, snapshot, one open proposal per workflow and scope). Engine: check, propose, edit cells (validated against the column type and options), apply in one transaction, discard, revert, all audit-logged. Tools registry (`tools.go`): every step names a declared tool, returned by `GET /workflows` with inputs, defaults and options. Routes: `/workflows`, `/workflows/:key/check`, `/workflows/:key/runs`, `/workflow-runs/:id` (+ `/rows`, `/apply`, `/discard`, `/revert`). Frontend `features/workflows`: Year-end hub (`/year-end`, replaces the Promotion nav item; the manual page stays at `/promotion`) and a generic workflow page that renders any workflow from the catalogue (inputs, checks with fix links, steps and tools, editable proposal tables with search and paging, step trace, apply and revert with confirmation, history). |
 | 1b. Existing monitors | Done | Each of the 7 agents declares `Title`, `CanDisable` and `Checks` (with the exact notice title and the pages it belongs on). `GET /jobs` returns them plus a schedule label; `GET /jobs/findings?page=` serves the page banners. The frontend no longer hard-codes agent names, schedules, the always-on agent or finding titles (8 pages switched to `<AgentFindingsBanner />`). A unit test fails if a notice title is not declared. |
 | 2. W1 Year rollover, W2 Leavers, W8 Go live | Done | W1 copies terms (dates moved forward), classes with homeroom and capacity (untick to skip), optional form teachers, and the timetable setup (grade sections, periods, subject hours, settings, section heads); revert refused once the year has students or records. W2 lists active students in chosen grades, final grade ticked by default, marks ticked ones as left with a date; revert restores. W8 makes the year and its first term current, sends one notice to everyone after commit; revert restores the previous year and term. Covered by one integration test against Postgres (catalogue, blocked check, edit validation, apply, double-apply conflict, revert, re-apply, history). |
-| 3. W5 Promotion | Done (not integration-tested) | Migration 047 (`classes.capacity` default 45, `levels.stream_id`/`stream_group_id`, `promotion_policies`). Placement engine `placement.go`, 9 unit tests passing. SQL reads for students, intake, choices, free seats, rules and marks. `promotion.go`: a rule per grade move (defaults from stored rules, else inferred from the curriculum), checks for leavers, missing choices and missing streams, proposal with editable class per student, extra sections to keep or drop, leaving list and class sizes; apply creates sections with homerooms, reassigns classes, clears placed admissions and saves the rules; revert refused once attendance or marks exist. Registered in the engine. |
-| 4. W3 Subject choices, W4 Intake | Started | Migration 048 `student_intakes` and its queries exist; W5 already places admitted students from it. **Not done:** the W4 intake workflow (CSV import of new students and guardians) and the W3 subject-choice workflow. |
-| 5. W6 Teacher allocation | Not started | |
-| 6. W7 Timetable (option blocks, repair pass) | Not started | |
-| 7. End-to-end rehearsal | Not started | |
+| 3. W5 Promotion | Done | Migration 047, placement engine (`placement.go`) with unit tests, `promotion.go`. Integration test against Postgres: keep-section placement, a new admission, an extra section with homeroom, intake cleared, rule saved, revert, and revert refused once attendance exists. Fix found by the test: returning students now claim their section before new admissions. |
+| 4. W3 Subject choices, W4 Intake | Done | **W4** (`intake.go`): CSV import (template served by the backend) of students and guardians; checks required fields, phones, NIC, gender against school type, medium, duplicate index numbers; siblings share a guardian by NIC, guardians already on record are reused; students are queued in `student_intakes`; sign-in accounts optionally created after commit. Revert refused once a student has an account, class, subjects or records. **W3** (`choices.go`): one run per curriculum level (O/L, or one A/L stream); one select per pick, compulsory groups filled automatically; optional CSV of paper forms; group rules checked on apply; saved to `student_subject_enrollments` with optional locks; revert refused once marks exist. Integration tests cover both, and W3 feeding W5's by-choice placement. |
+| 5. W6 Teacher allocation | Done | `allocation.go` (pure, unit-tested) and `teacher_allocation.go`: fills `class_subject_teachers` (what the generator reads) from subject hours and qualifications; keeps existing assignments, fills scarcest subjects first, keeps last year's teacher with the class, never exceeds the weekly period limit (default 35); suggests form teachers. Revert refused once a timetable is submitted. Integration test. |
+| 6. W7 Timetable | Done | Migration 049: `timetable_option_blocks` (+ subjects, classes) and `timetable_entries.option_block_id`. Generator places option blocks first (same period in every class of the block, all its teachers free), then lessons, then a repair pass that moves one of the teacher's lessons to close a gap. Clash validation, subject-hour counts, teacher schedules and copies understand block periods; the grid and day views show the block name. `timetable_workflow.go`: readiness checks, a block per one-pick group from recorded choices, a real dry run (rolled-back transaction), apply generates drafts per section; revert until a draft is submitted. Unit and integration tests, including the validator. Groups where students pick several subjects are not blocked yet (reported in the proposal). |
+| 7. End-to-end rehearsal | Dropped | Not needed, per the product owner. |
+
+The Automation page now also lists the year-end workflows (steps, tools, last run, link), fetched from `GET /workflows`, next to the scheduled checks.
 
 Also done alongside: `academics.EnsureHomeroom` is exported so workflows apply the same homeroom rule inside their own transaction.
 
-Before resuming: add an integration test for W5, then build W4 and W3. Migrations 046, 047 and 048 must run before deploying this code.
+Migrations 046 to 049 must run before deploying this code. Pipeline order in the hub: rollover, leavers, intake, subject choices, promotion, teacher allocation, timetable, go live.
 
 ## Part B. Automation workflows
 

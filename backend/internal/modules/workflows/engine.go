@@ -37,11 +37,12 @@ type Option struct {
 type InputField struct {
 	Key      string   `json:"key"`
 	Label    string   `json:"label"`
-	Type     string   `json:"type"` // select, text, date, boolean
+	Type     string   `json:"type"` // select, multiselect, text, date, boolean, csv
 	Required bool     `json:"required"`
 	Default  string   `json:"default,omitempty"`
 	Help     string   `json:"help,omitempty"`
 	Options  []Option `json:"options,omitempty"`
+	Template string   `json:"template,omitempty"` // csv only: header and an example row, offered as a download
 }
 
 // Check is one precondition. A blocking check that fails disables Propose and Apply.
@@ -154,6 +155,18 @@ type Definition interface {
 	// Apply runs inside one transaction and returns what it changed, for Revert.
 	Apply(ctx context.Context, tx *Store, in Inputs, p Proposal, actor uuid.UUID, trace *Trace) (json.RawMessage, string, error)
 	Revert(ctx context.Context, tx *Store, snapshot json.RawMessage) error
+}
+
+type actorKey struct{}
+
+func withActor(ctx context.Context, actor uuid.UUID) context.Context {
+	return context.WithValue(ctx, actorKey{}, actor)
+}
+
+// actorFrom returns the person running the workflow, for proposals that need to attribute a dry run.
+func actorFrom(ctx context.Context) uuid.UUID {
+	id, _ := ctx.Value(actorKey{}).(uuid.UUID)
+	return id
 }
 
 // stepByKey returns the declared step so traces always match the catalogue.

@@ -526,15 +526,35 @@ type Timetable struct {
 }
 
 type TimetableEntry struct {
-	ID           uuid.UUID          `json:"id"`
-	TimetableID  uuid.UUID          `json:"timetable_id"`
-	DayOfWeek    int16              `json:"day_of_week"`
-	PeriodNumber int16              `json:"period_number"`
-	SubjectID    pgtype.UUID        `json:"subject_id"`
-	TeacherID    pgtype.UUID        `json:"teacher_id"`
-	ClassroomID  pgtype.UUID        `json:"classroom_id"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	ID            uuid.UUID          `json:"id"`
+	TimetableID   uuid.UUID          `json:"timetable_id"`
+	DayOfWeek     int16              `json:"day_of_week"`
+	PeriodNumber  int16              `json:"period_number"`
+	SubjectID     pgtype.UUID        `json:"subject_id"`
+	TeacherID     pgtype.UUID        `json:"teacher_id"`
+	ClassroomID   pgtype.UUID        `json:"classroom_id"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	OptionBlockID pgtype.UUID        `json:"option_block_id"`
+}
+
+type TimetableOptionBlock struct {
+	ID             uuid.UUID          `json:"id"`
+	AcademicYearID uuid.UUID          `json:"academic_year_id"`
+	GradeID        uuid.UUID          `json:"grade_id"`
+	Name           string             `json:"name"`
+	PeriodsPerWeek int32              `json:"periods_per_week"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type TimetableOptionBlockClass struct {
+	BlockID uuid.UUID `json:"block_id"`
+	ClassID uuid.UUID `json:"class_id"`
+}
+
+type TimetableOptionBlockSubject struct {
+	BlockID   uuid.UUID `json:"block_id"`
+	SubjectID uuid.UUID `json:"subject_id"`
 }
 
 type TimetablePeriod struct {

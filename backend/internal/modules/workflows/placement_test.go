@@ -202,3 +202,18 @@ func TestNextSectionName(t *testing.T) {
 		t.Error("naturalLess ordering is wrong")
 	}
 }
+
+func TestKeepSectionPlacesReturningStudentsBeforeAdmissions(t *testing.T) {
+	students := []PlacementStudent{{ID: "0-new", Name: "New"}, {ID: "1", Name: "Returning", CurrentClass: "6-A"}}
+	classes := []PlacementClass{{ID: "a", Name: "7-A", Capacity: 1}}
+	for _, seed := range []string{"x", "y", "z", "w"} {
+		got, added := Place(students, classes, PolicyKeepSection, false, seed, 45)
+		byID := map[string]Placement{}
+		for _, p := range got {
+			byID[p.StudentID] = p
+		}
+		if byID["1"].ClassID != "a" || len(added) != 1 || byID["0-new"].ClassID != "new:7-B" {
+			t.Fatalf("seed %s: %+v, added %+v", seed, got, added)
+		}
+	}
+}

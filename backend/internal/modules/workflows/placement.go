@@ -121,6 +121,14 @@ func orderStudents(students []PlacementStudent, policy string, spreadByMarks boo
 			}
 			return hash(seed, out[i].ID) < hash(seed, out[j].ID)
 		})
+	case policy == PolicyKeepSection:
+		// Returning students claim their section first; new admissions fill what is left.
+		sort.SliceStable(out, func(i, j int) bool {
+			if ri, rj := out[i].CurrentClass != "", out[j].CurrentClass != ""; ri != rj {
+				return ri
+			}
+			return hash(seed, out[i].ID) < hash(seed, out[j].ID)
+		})
 	default:
 		sort.SliceStable(out, func(i, j int) bool { return hash(seed, out[i].ID) < hash(seed, out[j].ID) })
 	}
@@ -158,6 +166,13 @@ func (st *placementState) place(s PlacementStudent, policy string, spreadByMarks
 	var chosen *PlacementClass
 	switch policy {
 	case PolicyKeepSection:
+		if s.CurrentClass == "" {
+			// A new admission has no section to keep.
+			if chosen = st.leastLoaded(candidates, s); chosen != nil {
+				p.Reason = "New admission: placed where there is space."
+			}
+			break
+		}
 		section := sectionOf(s.CurrentClass)
 		for _, c := range candidates {
 			if sectionOf(c.Name) == section && st.hasRoom(c) {

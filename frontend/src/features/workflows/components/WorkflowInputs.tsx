@@ -1,6 +1,7 @@
 import { Checkbox, FilterableMultiSelect, Select, SelectItem, TextInput } from "@carbon/react";
 import type { InputField, Inputs } from "@/features/workflows/api/workflows";
 import DateField from "@/shared/ui/DateField";
+import CsvInput from "@/features/workflows/components/CsvInput";
 
 interface Props {
   fields: InputField[];
@@ -47,6 +48,8 @@ export default function WorkflowInputs({ fields, values, onChange }: Props) {
                 {f.help && <p className="os-m-0 os-text-xs os-c-tertiary">{f.help}</p>}
               </div>
             );
+          case "csv":
+            return <CsvInput key={f.key} id={id} label={f.label} help={f.help} template={f.template} value={value} onChange={(v) => onChange(f.key, v)} />;
           default:
             return <TextInput key={f.key} id={id} labelText={f.label} helperText={f.help} value={value} onChange={(e) => onChange(f.key, e.target.value)} />;
         }

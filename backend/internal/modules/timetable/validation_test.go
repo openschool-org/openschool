@@ -46,6 +46,9 @@ func (s *validationStoreStub) requirements(context.Context, uuid.UUID, uuid.UUID
 func (s *validationStoreStub) entrySubjectCounts(context.Context, uuid.UUID) (map[uuid.UUID]int32, error) {
 	return s.counts, nil
 }
+func (s *validationStoreStub) blockTeachers(context.Context, uuid.UUID, uuid.UUID) ([]blockTeacher, error) {
+	return nil, nil
+}
 func (s *validationStoreStub) authorizedReviewers(context.Context, uuid.UUID, uuid.UUID) ([]uuid.UUID, error) {
 	return s.reviewers, nil
 }

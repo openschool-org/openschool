@@ -30,6 +30,9 @@ type TimetableEntry struct {
 	SubjectName   *string    `json:"subject_name"`
 	TeacherName   *string    `json:"teacher_name"`
 	ClassroomName *string    `json:"classroom_name"`
+	// Set for an option block period: the class splits by subject, so there is no single subject or teacher.
+	OptionBlockID   *uuid.UUID `json:"option_block_id"`
+	OptionBlockName *string    `json:"option_block_name"`
 }
 
 type timetableEntryCommand struct {

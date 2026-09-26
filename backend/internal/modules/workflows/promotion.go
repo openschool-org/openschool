@@ -342,7 +342,11 @@ func (w Promotion) Propose(ctx context.Context, s *Store, in Inputs, trace *Trac
 			for i, m := range group {
 				ch := choices[m.ID]
 				avg, has := averages[m.ID]
-				pss[i] = PlacementStudent{ID: m.ID.String(), Name: m.Name, Gender: m.Gender, HouseID: m.HouseID, CurrentClass: m.ClassName, MediumID: m.MediumID,
+				current := m.ClassName
+				if m.IntakeGradeID != nil {
+					current = ""
+				}
+				pss[i] = PlacementStudent{ID: m.ID.String(), Name: m.Name, Gender: m.Gender, HouseID: m.HouseID, CurrentClass: current, MediumID: m.MediumID,
 					StreamID: ch.StreamID, StreamGroupID: ch.StreamGroupID, ChoiceKey: ch.Key, ChoiceLabel: ch.Label, Marks: avg, HasMarks: has}
 			}
 			result, extra := Place(pss, pcs, policy, spread, target.String()+":"+g.ID.String(), defaultCapacity)

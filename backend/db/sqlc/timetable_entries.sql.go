@@ -13,8 +13,8 @@ import (
 )
 
 const copyTimetableEntries = `-- name: CopyTimetableEntries :exec
-INSERT INTO timetable_entries (timetable_id, day_of_week, period_number, subject_id, teacher_id, classroom_id)
-SELECT $2, src.day_of_week, src.period_number, src.subject_id, src.teacher_id, src.classroom_id
+INSERT INTO timetable_entries (timetable_id, day_of_week, period_number, subject_id, teacher_id, classroom_id, option_block_id)
+SELECT $2, src.day_of_week, src.period_number, src.subject_id, src.teacher_id, src.classroom_id, src.option_block_id
 FROM timetable_entries src
 WHERE src.timetable_id = $1
 `
@@ -30,10 +30,15 @@ func (q *Queries) CopyTimetableEntries(ctx context.Context, arg CopyTimetableEnt
 }
 
 const countEntriesBySubjectForTimetable = `-- name: CountEntriesBySubjectForTimetable :many
-SELECT subject_id, COUNT(*)::int AS entry_count
-FROM timetable_entries
-WHERE timetable_id = $1 AND subject_id IS NOT NULL
-GROUP BY subject_id
+SELECT x.subject_id, COUNT(*)::int AS entry_count
+FROM (
+    SELECT te.subject_id FROM timetable_entries te WHERE te.timetable_id = $1 AND te.subject_id IS NOT NULL
+    UNION ALL
+    SELECT bs.subject_id FROM timetable_entries te
+    INNER JOIN timetable_option_block_subjects bs ON bs.block_id = te.option_block_id
+    WHERE te.timetable_id = $1
+) x
+GROUP BY x.subject_id
 `
 
 type CountEntriesBySubjectForTimetableRow struct {
@@ -41,6 +46,7 @@ type CountEntriesBySubjectForTimetableRow struct {
 	EntryCount int32       `json:"entry_count"`
 }
 
+// a block period counts once for each of the block's subjects
 func (q *Queries) CountEntriesBySubjectForTimetable(ctx context.Context, timetableID uuid.UUID) ([]CountEntriesBySubjectForTimetableRow, error) {
 	rows, err := q.db.Query(ctx, countEntriesBySubjectForTimetable, timetableID)
 	if err != nil {
@@ -103,6 +109,15 @@ INNER JOIN classes c    ON c.id = t.class_id
 WHERE t.academic_year_id = $1
   AND t.status IN ('draft', 'under_review', 'approved', 'published')
   AND (te.teacher_id IS NOT NULL OR te.classroom_id IS NOT NULL)
+UNION ALL
+SELECT te.day_of_week, te.period_number, cst.teacher_id, NULL::uuid, t.id, t.class_id, c.name
+FROM timetable_entries te
+INNER JOIN timetables t ON t.id = te.timetable_id
+INNER JOIN classes c    ON c.id = t.class_id
+INNER JOIN timetable_option_block_subjects bs ON bs.block_id = te.option_block_id
+INNER JOIN class_subject_teachers cst ON cst.class_id = t.class_id AND cst.subject_id = bs.subject_id
+WHERE t.academic_year_id = $1
+  AND t.status IN ('draft', 'under_review', 'approved', 'published')
 `
 
 type ListAllTimetableEntriesForYearRow struct {
@@ -147,7 +162,7 @@ func (q *Queries) ListAllTimetableEntriesForYear(ctx context.Context, academicYe
 }
 
 const listEntriesForYearExcludingTimetable = `-- name: ListEntriesForYearExcludingTimetable :many
-SELECT te.day_of_week, te.period_number, te.teacher_id, te.classroom_id, t.id AS timetable_id, t.class_id, c.name AS class_name
+SELECT te.day_of_week, te.period_number, te.teacher_id, te.classroom_id, t.id AS timetable_id, t.class_id, c.name AS class_name, te.option_block_id
 FROM timetable_entries te
 INNER JOIN timetables t ON t.id = te.timetable_id
 INNER JOIN classes c    ON c.id = t.class_id
@@ -155,6 +170,16 @@ WHERE t.academic_year_id = $1
   AND t.id != $2
   AND t.status IN ('draft', 'under_review', 'approved', 'published')
   AND (te.teacher_id IS NOT NULL OR te.classroom_id IS NOT NULL)
+UNION ALL
+SELECT te.day_of_week, te.period_number, cst.teacher_id, NULL::uuid, t.id, t.class_id, c.name, te.option_block_id
+FROM timetable_entries te
+INNER JOIN timetables t ON t.id = te.timetable_id
+INNER JOIN classes c    ON c.id = t.class_id
+INNER JOIN timetable_option_block_subjects bs ON bs.block_id = te.option_block_id
+INNER JOIN class_subject_teachers cst ON cst.class_id = t.class_id AND cst.subject_id = bs.subject_id
+WHERE t.academic_year_id = $1
+  AND t.id != $2
+  AND t.status IN ('draft', 'under_review', 'approved', 'published')
 `
 
 type ListEntriesForYearExcludingTimetableParams struct {
@@ -163,17 +188,19 @@ type ListEntriesForYearExcludingTimetableParams struct {
 }
 
 type ListEntriesForYearExcludingTimetableRow struct {
-	DayOfWeek    int16       `json:"day_of_week"`
-	PeriodNumber int16       `json:"period_number"`
-	TeacherID    pgtype.UUID `json:"teacher_id"`
-	ClassroomID  pgtype.UUID `json:"classroom_id"`
-	TimetableID  uuid.UUID   `json:"timetable_id"`
-	ClassID      uuid.UUID   `json:"class_id"`
-	ClassName    string      `json:"class_name"`
+	DayOfWeek     int16       `json:"day_of_week"`
+	PeriodNumber  int16       `json:"period_number"`
+	TeacherID     pgtype.UUID `json:"teacher_id"`
+	ClassroomID   pgtype.UUID `json:"classroom_id"`
+	TimetableID   uuid.UUID   `json:"timetable_id"`
+	ClassID       uuid.UUID   `json:"class_id"`
+	ClassName     string      `json:"class_name"`
+	OptionBlockID pgtype.UUID `json:"option_block_id"`
 }
 
 // every booked (teacher or classroom) cell across other timetables in the
-// same academic year, used for cross-timetable clash detection
+// same academic year, used for cross-timetable clash detection; an option
+// block period books each of the class's teachers for the block's subjects
 func (q *Queries) ListEntriesForYearExcludingTimetable(ctx context.Context, arg ListEntriesForYearExcludingTimetableParams) ([]ListEntriesForYearExcludingTimetableRow, error) {
 	rows, err := q.db.Query(ctx, listEntriesForYearExcludingTimetable, arg.AcademicYearID, arg.ID)
 	if err != nil {
@@ -191,6 +218,7 @@ func (q *Queries) ListEntriesForYearExcludingTimetable(ctx context.Context, arg 
 			&i.TimetableID,
 			&i.ClassID,
 			&i.ClassName,
+			&i.OptionBlockID,
 		); err != nil {
 			return nil, err
 		}
@@ -215,7 +243,17 @@ INNER JOIN grades g     ON g.id = c.grade_id
 LEFT JOIN subjects s    ON s.id = te.subject_id
 LEFT JOIN classrooms cr ON cr.id = te.classroom_id
 WHERE te.teacher_id = $1 AND t.academic_year_id = $2 AND t.status = 'published'
-ORDER BY te.day_of_week ASC, te.period_number ASC
+UNION ALL
+SELECT te.day_of_week, te.period_number, bs.subject_id, s.name, NULL::uuid, NULL::text, t.class_id, c.name, g.name
+FROM timetable_entries te
+INNER JOIN timetables t ON t.id = te.timetable_id
+INNER JOIN classes c    ON c.id = t.class_id
+INNER JOIN grades g     ON g.id = c.grade_id
+INNER JOIN timetable_option_block_subjects bs ON bs.block_id = te.option_block_id
+INNER JOIN class_subject_teachers cst ON cst.class_id = t.class_id AND cst.subject_id = bs.subject_id
+INNER JOIN subjects s   ON s.id = bs.subject_id
+WHERE cst.teacher_id = $1 AND t.academic_year_id = $2 AND t.status = 'published'
+ORDER BY 1, 2
 `
 
 type ListTeacherScheduleForYearParams struct {
@@ -237,6 +275,7 @@ type ListTeacherScheduleForYearRow struct {
 
 // a teacher's full weekly schedule across every published timetable, for
 // the teacher's own "My Timetable" view
+// option block periods where this teacher takes the class's students for one of the block's subjects
 func (q *Queries) ListTeacherScheduleForYear(ctx context.Context, arg ListTeacherScheduleForYearParams) ([]ListTeacherScheduleForYearRow, error) {
 	rows, err := q.db.Query(ctx, listTeacherScheduleForYear, arg.TeacherID, arg.AcademicYearID)
 	if err != nil {
@@ -269,31 +308,35 @@ func (q *Queries) ListTeacherScheduleForYear(ctx context.Context, arg ListTeache
 
 const listTimetableEntriesByTimetable = `-- name: ListTimetableEntriesByTimetable :many
 SELECT
-    te.id, te.timetable_id, te.day_of_week, te.period_number, te.subject_id, te.teacher_id, te.classroom_id, te.created_at, te.updated_at,
+    te.id, te.timetable_id, te.day_of_week, te.period_number, te.subject_id, te.teacher_id, te.classroom_id, te.created_at, te.updated_at, te.option_block_id,
     s.name       AS subject_name,
     tp.full_name AS teacher_name,
-    cr.name      AS classroom_name
+    cr.name      AS classroom_name,
+    ob.name      AS option_block_name
 FROM timetable_entries te
-LEFT JOIN subjects         s  ON s.id  = te.subject_id
-LEFT JOIN teacher_profiles tp ON tp.id = te.teacher_id
-LEFT JOIN classrooms       cr ON cr.id = te.classroom_id
+LEFT JOIN subjects                s  ON s.id  = te.subject_id
+LEFT JOIN teacher_profiles        tp ON tp.id = te.teacher_id
+LEFT JOIN classrooms              cr ON cr.id = te.classroom_id
+LEFT JOIN timetable_option_blocks ob ON ob.id = te.option_block_id
 WHERE te.timetable_id = $1
 ORDER BY te.day_of_week ASC, te.period_number ASC
 `
 
 type ListTimetableEntriesByTimetableRow struct {
-	ID            uuid.UUID          `json:"id"`
-	TimetableID   uuid.UUID          `json:"timetable_id"`
-	DayOfWeek     int16              `json:"day_of_week"`
-	PeriodNumber  int16              `json:"period_number"`
-	SubjectID     pgtype.UUID        `json:"subject_id"`
-	TeacherID     pgtype.UUID        `json:"teacher_id"`
-	ClassroomID   pgtype.UUID        `json:"classroom_id"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
-	SubjectName   pgtype.Text        `json:"subject_name"`
-	TeacherName   pgtype.Text        `json:"teacher_name"`
-	ClassroomName pgtype.Text        `json:"classroom_name"`
+	ID              uuid.UUID          `json:"id"`
+	TimetableID     uuid.UUID          `json:"timetable_id"`
+	DayOfWeek       int16              `json:"day_of_week"`
+	PeriodNumber    int16              `json:"period_number"`
+	SubjectID       pgtype.UUID        `json:"subject_id"`
+	TeacherID       pgtype.UUID        `json:"teacher_id"`
+	ClassroomID     pgtype.UUID        `json:"classroom_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+	OptionBlockID   pgtype.UUID        `json:"option_block_id"`
+	SubjectName     pgtype.Text        `json:"subject_name"`
+	TeacherName     pgtype.Text        `json:"teacher_name"`
+	ClassroomName   pgtype.Text        `json:"classroom_name"`
+	OptionBlockName pgtype.Text        `json:"option_block_name"`
 }
 
 func (q *Queries) ListTimetableEntriesByTimetable(ctx context.Context, timetableID uuid.UUID) ([]ListTimetableEntriesByTimetableRow, error) {
@@ -315,9 +358,11 @@ func (q *Queries) ListTimetableEntriesByTimetable(ctx context.Context, timetable
 			&i.ClassroomID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.OptionBlockID,
 			&i.SubjectName,
 			&i.TeacherName,
 			&i.ClassroomName,
+			&i.OptionBlockName,
 		); err != nil {
 			return nil, err
 		}
@@ -329,6 +374,35 @@ func (q *Queries) ListTimetableEntriesByTimetable(ctx context.Context, timetable
 	return items, nil
 }
 
+const upsertOptionBlockEntry = `-- name: UpsertOptionBlockEntry :exec
+INSERT INTO timetable_entries (timetable_id, day_of_week, period_number, option_block_id)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (timetable_id, day_of_week, period_number) DO UPDATE
+SET subject_id = NULL,
+    teacher_id = NULL,
+    classroom_id = NULL,
+    option_block_id = EXCLUDED.option_block_id,
+    updated_at = NOW()
+`
+
+type UpsertOptionBlockEntryParams struct {
+	TimetableID   uuid.UUID   `json:"timetable_id"`
+	DayOfWeek     int16       `json:"day_of_week"`
+	PeriodNumber  int16       `json:"period_number"`
+	OptionBlockID pgtype.UUID `json:"option_block_id"`
+}
+
+// a period where the class splits into an option block; replaces whatever was there
+func (q *Queries) UpsertOptionBlockEntry(ctx context.Context, arg UpsertOptionBlockEntryParams) error {
+	_, err := q.db.Exec(ctx, upsertOptionBlockEntry,
+		arg.TimetableID,
+		arg.DayOfWeek,
+		arg.PeriodNumber,
+		arg.OptionBlockID,
+	)
+	return err
+}
+
 const upsertTimetableEntry = `-- name: UpsertTimetableEntry :one
 INSERT INTO timetable_entries (timetable_id, day_of_week, period_number, subject_id, teacher_id, classroom_id)
 VALUES ($1, $2, $3, $4, $5, $6)
@@ -336,8 +410,9 @@ ON CONFLICT (timetable_id, day_of_week, period_number) DO UPDATE
 SET subject_id = EXCLUDED.subject_id,
     teacher_id = EXCLUDED.teacher_id,
     classroom_id = EXCLUDED.classroom_id,
+    option_block_id = NULL,
     updated_at = NOW()
-RETURNING id, timetable_id, day_of_week, period_number, subject_id, teacher_id, classroom_id, created_at, updated_at
+RETURNING id, timetable_id, day_of_week, period_number, subject_id, teacher_id, classroom_id, created_at, updated_at, option_block_id
 `
 
 type UpsertTimetableEntryParams struct {
@@ -369,6 +444,7 @@ func (q *Queries) UpsertTimetableEntry(ctx context.Context, arg UpsertTimetableE
 		&i.ClassroomID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OptionBlockID,
 	)
 	return i, err
 }

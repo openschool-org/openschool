@@ -32,6 +32,13 @@ type crossBooking struct {
 	DayOfWeek, PeriodNumber int16
 	TeacherID, ClassroomID  *uuid.UUID
 	ClassName               string
+	OptionBlockID           *uuid.UUID // set when the booking is a teacher's share of an option block period
+}
+
+// blockTeacher is a teacher a class's students go to during an option block period.
+type blockTeacher struct {
+	ID   uuid.UUID
+	Name string
 }
 type requirementValue struct {
 	SubjectID      uuid.UUID
@@ -49,6 +56,7 @@ type timetableValidationStore interface {
 	requirements(context.Context, uuid.UUID, uuid.UUID) ([]requirementValue, error)
 	entrySubjectCounts(context.Context, uuid.UUID) (map[uuid.UUID]int32, error)
 	authorizedReviewers(context.Context, uuid.UUID, uuid.UUID) ([]uuid.UUID, error)
+	blockTeachers(context.Context, uuid.UUID, uuid.UUID) ([]blockTeacher, error)
 }
 
 type validationService struct{ store timetableValidationStore }
@@ -72,6 +80,12 @@ func (s *validationService) validate(ctx context.Context, timetableID uuid.UUID)
 		issues = append(issues, ValidationIssue{Severity: "error", Message: fmt.Sprintf(format, args...), DayOfWeek: &d, PeriodNumber: &p})
 	}
 	for _, entry := range entries {
+		if entry.OptionBlockID != nil {
+			if err := s.validateBlockEntry(ctx, metadata, entry, crossBookings, addError); err != nil {
+				return ValidationResult{}, err
+			}
+			continue
+		}
 		if entry.TeacherID != nil {
 			teacherID := *entry.TeacherID
 			for _, booking := range crossBookings {
@@ -131,6 +145,31 @@ func (s *validationService) validate(ctx context.Context, timetableID uuid.UUID)
 		}
 	}
 	return result, nil
+}
+
+// validateBlockEntry checks each teacher of an option block period; the same block in another
+// class is the same lesson, so it is not a clash.
+func (s *validationService) validateBlockEntry(ctx context.Context, metadata validationContext, entry TimetableEntry, bookings []crossBooking, addError func(int16, int16, string, ...any)) error {
+	teachers, err := s.store.blockTeachers(ctx, metadata.ClassID, *entry.OptionBlockID)
+	if err != nil {
+		return err
+	}
+	block := nameOrID(entry.OptionBlockName, *entry.OptionBlockID)
+	if len(teachers) == 0 {
+		addError(entry.DayOfWeek, entry.PeriodNumber, "No teacher is assigned for any subject of %s in this class", block)
+	}
+	for _, teacher := range teachers {
+		for _, booking := range bookings {
+			sameBlock := booking.OptionBlockID != nil && *booking.OptionBlockID == *entry.OptionBlockID
+			if !sameBlock && booking.TeacherID != nil && *booking.TeacherID == teacher.ID && booking.DayOfWeek == entry.DayOfWeek && booking.PeriodNumber == entry.PeriodNumber {
+				addError(entry.DayOfWeek, entry.PeriodNumber, "Teacher %s (%s) is already booked for %s at this time", teacher.Name, block, booking.ClassName)
+			}
+		}
+		if unavailable, err := s.store.teacherUnavailable(ctx, teacher.ID, metadata.AcademicYearID, entry.DayOfWeek, entry.PeriodNumber); err == nil && unavailable {
+			addError(entry.DayOfWeek, entry.PeriodNumber, "Teacher %s (%s) marked themselves unavailable at this time", teacher.Name, block)
+		}
+	}
+	return nil
 }
 
 func nameOrID(name *string, id uuid.UUID) string {

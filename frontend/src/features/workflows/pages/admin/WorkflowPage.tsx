@@ -102,7 +102,7 @@ export default function WorkflowPage() {
       <ConfirmActionModal
         open={confirm === "apply"}
         title={`Apply ${entry.title.toLowerCase()}?`}
-        body="This writes the reviewed proposal in one step. It can be reverted until real attendance or marks depend on it."
+        body="This writes the reviewed proposal in one step. It can be reverted until real data depends on it; if not, the server says why."
         confirmLabel="Apply"
         busy={p.busy.apply}
         onCancel={() => setConfirm(null)}

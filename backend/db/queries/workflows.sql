@@ -271,3 +271,205 @@ SELECT student_id, academic_year_id, grade_id, medium_id FROM student_intakes WH
 -- name: WfGradesWithStreamLevels :many
 -- Grades whose levels are tied to an A/L stream; their incoming students default to by_stream.
 SELECT DISTINCT grade_id::uuid AS grade_id FROM levels WHERE grade_id IS NOT NULL AND stream_id IS NOT NULL;
+
+-- ---- W4 intake ----
+
+-- name: WfListMediums :many
+SELECT id, name FROM mediums ORDER BY name;
+
+-- name: WfSchoolType :one
+SELECT COALESCE(school_type, '')::text AS school_type FROM school LIMIT 1;
+
+-- name: WfExistingIndexNumbers :many
+SELECT index_number FROM student_profiles WHERE index_number = ANY(sqlc.arg(numbers)::text[]);
+
+-- name: WfGuardiansByNIC :many
+SELECT id, nic_number, full_name FROM guardians WHERE nic_number = ANY(sqlc.arg(nics)::text[]);
+
+-- name: WfLeastUsedHouse :one
+-- The house with the fewest active students, so imported students spread evenly.
+SELECT h.id FROM houses h
+LEFT JOIN student_profiles sp ON sp.house_id = h.id AND sp.enrollment_status = 'active'
+GROUP BY h.id, h.name
+ORDER BY COUNT(sp.id), h.name
+LIMIT 1;
+
+-- name: WfCreateIntakeStudent :one
+INSERT INTO student_profiles (full_name, index_number, address, phone, gender, house_id)
+VALUES (sqlc.arg(full_name), sqlc.arg(index_number), sqlc.narg(address), sqlc.narg(phone), sqlc.narg(gender), sqlc.narg(house_id))
+RETURNING id;
+
+-- name: WfCreateGuardian :one
+INSERT INTO guardians (full_name, relationship, phone, email, nic_number)
+VALUES (sqlc.arg(full_name), sqlc.arg(relationship), sqlc.arg(phone), sqlc.narg(email), sqlc.arg(nic_number))
+RETURNING id;
+
+-- name: WfLinkGuardian :exec
+INSERT INTO student_guardians (student_id, guardian_id, is_primary_contact) VALUES ($1, $2, TRUE)
+ON CONFLICT DO NOTHING;
+
+-- name: WfCreateIntake :exec
+INSERT INTO student_intakes (student_id, academic_year_id, grade_id, medium_id) VALUES ($1, $2, $3, $4);
+
+-- name: WfStudentsInUse :one
+-- An imported student can no longer be removed once they have an account, a class, subjects or records.
+SELECT (EXISTS (SELECT 1 FROM student_profiles WHERE id = ANY(sqlc.arg(ids)::uuid[]) AND user_id IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM class_students WHERE student_id = ANY(sqlc.arg(ids)::uuid[]))
+     OR EXISTS (SELECT 1 FROM student_subject_enrollments WHERE student_id = ANY(sqlc.arg(ids)::uuid[]))
+     OR EXISTS (SELECT 1 FROM attendance_records WHERE student_id = ANY(sqlc.arg(ids)::uuid[]))
+     OR EXISTS (SELECT 1 FROM term_marks WHERE student_id = ANY(sqlc.arg(ids)::uuid[])))::bool AS in_use;
+
+-- name: WfDeleteStudents :exec
+DELETE FROM student_profiles WHERE id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: WfDeleteUnlinkedGuardians :exec
+DELETE FROM guardians g WHERE g.id = ANY(sqlc.arg(ids)::uuid[])
+  AND NOT EXISTS (SELECT 1 FROM student_guardians sg WHERE sg.guardian_id = g.id);
+
+-- name: WfStudentsWithoutAccount :many
+SELECT id, full_name, index_number FROM student_profiles
+WHERE index_number = ANY(sqlc.arg(numbers)::text[]) AND user_id IS NULL;
+
+-- name: WfSetStudentUser :exec
+UPDATE student_profiles SET user_id = $2, updated_at = NOW() WHERE id = $1;
+
+-- ---- W3 subject choices ----
+
+-- name: WfLevelsForGrades :many
+-- Curriculum levels tied to a grade, in school order.
+SELECT l.id, l.label, l.grade_id::uuid AS grade_id, g.name AS grade_name
+FROM levels l JOIN grades g ON g.id = l.grade_id
+ORDER BY g.sort_order, l.sort_order, l.label;
+
+-- name: WfLevelGroupSubjects :many
+SELECT sg.id AS group_id, sg.label AS group_label, sg.min_select, sg.max_select,
+       s.id AS subject_id, s.name AS subject_name, COALESCE(s.code, '')::text AS subject_code
+FROM selection_groups sg
+JOIN group_subjects gs ON gs.group_id = sg.id
+JOIN subjects s ON s.id = gs.subject_id
+WHERE sg.level_id = $1
+ORDER BY sg.sort_order, sg.label, gs.sort_order, s.name;
+
+-- name: WfYearEnrollments :many
+SELECT e.student_id, e.group_id, e.subject_id, e.medium_id, g.level_id
+FROM student_subject_enrollments e JOIN selection_groups g ON g.id = e.group_id
+WHERE e.academic_year_id = sqlc.arg(year)::uuid AND e.student_id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: WfEnrollmentLocks :many
+SELECT student_id FROM student_enrollment_locks
+WHERE academic_year_id = sqlc.arg(year)::uuid AND level_id = sqlc.arg(level)::uuid AND student_id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: WfDeleteLevelEnrollments :exec
+DELETE FROM student_subject_enrollments e USING selection_groups g
+WHERE e.group_id = g.id AND g.level_id = sqlc.arg(level)::uuid
+  AND e.academic_year_id = sqlc.arg(year)::uuid AND e.student_id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: WfInsertEnrollment :exec
+INSERT INTO student_subject_enrollments (student_id, academic_year_id, group_id, subject_id, medium_id)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (student_id, academic_year_id, group_id, subject_id) DO UPDATE SET medium_id = EXCLUDED.medium_id;
+
+-- name: WfSetLevelLocks :exec
+INSERT INTO student_enrollment_locks (student_id, level_id, academic_year_id)
+SELECT unnest(sqlc.arg(ids)::uuid[]), sqlc.arg(level)::uuid, sqlc.arg(year)::uuid
+ON CONFLICT DO NOTHING;
+
+-- name: WfClearLevelLocks :exec
+DELETE FROM student_enrollment_locks
+WHERE academic_year_id = sqlc.arg(year)::uuid AND level_id = sqlc.arg(level)::uuid AND student_id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: WfStudentsHaveMarks :one
+SELECT EXISTS (SELECT 1 FROM term_marks m JOIN terms t ON t.id = m.term_id
+               WHERE t.academic_year_id = sqlc.arg(year)::uuid AND m.student_id = ANY(sqlc.arg(ids)::uuid[]))::bool AS has_marks;
+
+-- ---- W6 teacher allocation ----
+
+-- name: WfSubjectHours :many
+SELECT r.grade_id, r.subject_id, s.name AS subject_name, r.periods_per_week
+FROM subject_period_requirements r JOIN subjects s ON s.id = r.subject_id
+WHERE r.academic_year_id = $1
+ORDER BY s.name;
+
+-- name: WfActiveTeachers :many
+SELECT id, full_name FROM teacher_profiles
+WHERE employment_status = 'active'
+ORDER BY full_name, id;
+
+-- name: WfTeacherSubjects :many
+SELECT teacher_id, subject_id FROM teacher_subjects;
+
+-- name: WfYearSubjectTeachers :many
+SELECT cst.class_id, cst.subject_id, cst.teacher_id
+FROM class_subject_teachers cst JOIN classes c ON c.id = cst.class_id
+WHERE c.academic_year_id = $1;
+
+-- name: WfClassPredecessors :many
+-- For each class in the target year, the source-year class most of its students came from.
+SELECT DISTINCT ON (tc.id) tc.id AS class_id, sc.id AS previous_class_id
+FROM classes tc
+JOIN class_students tcs ON tcs.class_id = tc.id
+JOIN class_students scs ON scs.student_id = tcs.student_id
+JOIN classes sc ON sc.id = scs.class_id AND sc.academic_year_id = sqlc.arg(source)::uuid
+WHERE tc.academic_year_id = sqlc.arg(target)::uuid
+GROUP BY tc.id, sc.id, sc.name
+ORDER BY tc.id, COUNT(*) DESC, sc.name;
+
+-- name: WfUpsertSubjectTeacher :exec
+INSERT INTO class_subject_teachers (class_id, subject_id, teacher_id) VALUES ($1, $2, $3)
+ON CONFLICT (class_id, subject_id) DO UPDATE SET teacher_id = EXCLUDED.teacher_id;
+
+-- name: WfDeleteSubjectTeacher :exec
+DELETE FROM class_subject_teachers WHERE class_id = $1 AND subject_id = $2;
+
+-- name: WfSetFormTeacher :exec
+UPDATE classes SET form_teacher_id = sqlc.narg(teacher_id) WHERE id = sqlc.arg(class_id);
+
+-- name: WfClassesHaveSubmittedTimetables :one
+SELECT EXISTS (SELECT 1 FROM timetables WHERE class_id = ANY(sqlc.arg(ids)::uuid[]) AND status <> 'draft')::bool AS has_timetables;
+
+-- ---- W7 timetable ----
+
+-- name: WfSectionClasses :many
+-- Each class of the year with the grade section its grade belongs to.
+SELECT gsg.grade_section_id, c.id AS class_id, c.name AS class_name, c.grade_id, g.name AS grade_name, g.sort_order AS grade_order
+FROM classes c
+JOIN grades g ON g.id = c.grade_id
+JOIN grade_section_grades gsg ON gsg.grade_id = c.grade_id AND gsg.academic_year_id = c.academic_year_id
+WHERE c.academic_year_id = $1
+ORDER BY g.sort_order, c.name;
+
+-- name: WfSectionPeriodCounts :many
+SELECT gs.id AS grade_section_id, COUNT(tp.id) FILTER (WHERE tp.slot_type = 'period')::int AS periods
+FROM grade_sections gs LEFT JOIN timetable_periods tp ON tp.grade_section_id = gs.id
+WHERE gs.academic_year_id = $1
+GROUP BY gs.id;
+
+-- name: WfSubjectsMissingLabs :many
+-- Subjects that need lab periods in this year but have no lab room tagged for them.
+SELECT DISTINCT s.name FROM subject_period_requirements r
+JOIN subjects s ON s.id = r.subject_id
+WHERE r.academic_year_id = $1 AND r.lab_periods_per_week > 0
+  AND NOT EXISTS (SELECT 1 FROM classrooms cr WHERE cr.room_type = 'lab' AND cr.subject_id = r.subject_id)
+ORDER BY s.name;
+
+-- name: WfTeacherAvailabilityCount :one
+SELECT COUNT(DISTINCT teacher_id)::int FROM teacher_availability WHERE academic_year_id = $1;
+
+-- name: WfLatestTimetableStatus :many
+SELECT DISTINCT ON (class_id) class_id, status FROM timetables
+WHERE academic_year_id = $1 AND status <> 'archived'
+ORDER BY class_id, version DESC;
+
+-- name: WfGroupClasses :many
+-- Classes of the year holding at least one student enrolled in this selection group.
+SELECT DISTINCT cs.class_id
+FROM student_subject_enrollments e
+JOIN class_students cs ON cs.student_id = e.student_id
+JOIN classes c ON c.id = cs.class_id AND c.academic_year_id = e.academic_year_id
+WHERE e.academic_year_id = sqlc.arg(year)::uuid AND e.group_id = sqlc.arg(group_id)::uuid;
+
+-- name: WfDeleteDraftTimetables :exec
+DELETE FROM timetables WHERE id = ANY(sqlc.arg(ids)::uuid[]) AND status = 'draft';
+
+-- name: WfTimetablesPastDraft :one
+SELECT EXISTS (SELECT 1 FROM timetables WHERE id = ANY(sqlc.arg(ids)::uuid[]) AND status <> 'draft')::bool AS past_draft;
