@@ -808,8 +808,12 @@ type Querier interface {
 	UpsertTimetableSettings(ctx context.Context, arg UpsertTimetableSettingsParams) (TimetableSetting, error)
 	UpsertVicePrincipal(ctx context.Context, arg UpsertVicePrincipalParams) (TeacherPosition, error)
 	WfAcademicYearLabelExists(ctx context.Context, lower string) (bool, error)
+	WfActiveTeachers(ctx context.Context) ([]WfActiveTeachersRow, error)
+	// For each class in the target year, the source-year class most of its students came from.
+	WfClassPredecessors(ctx context.Context, arg WfClassPredecessorsParams) ([]WfClassPredecessorsRow, error)
 	// Attendance or marks already recorded in these classes; a placement can no longer be reverted.
 	WfClassesHaveRecords(ctx context.Context, arg WfClassesHaveRecordsParams) (bool, error)
+	WfClassesHaveSubmittedTimetables(ctx context.Context, ids []uuid.UUID) (bool, error)
 	WfClearLevelLocks(ctx context.Context, arg WfClearLevelLocksParams) error
 	WfCopyGradeSectionGrades(ctx context.Context, arg WfCopyGradeSectionGradesParams) error
 	WfCopySectionHeads(ctx context.Context, arg WfCopySectionHeadsParams) (int64, error)
@@ -830,6 +834,7 @@ type Querier interface {
 	WfDeleteIntakes(ctx context.Context, ids []uuid.UUID) error
 	WfDeleteLevelEnrollments(ctx context.Context, arg WfDeleteLevelEnrollmentsParams) error
 	WfDeleteStudents(ctx context.Context, ids []uuid.UUID) error
+	WfDeleteSubjectTeacher(ctx context.Context, arg WfDeleteSubjectTeacherParams) error
 	WfDeleteUnlinkedGuardians(ctx context.Context, ids []uuid.UUID) error
 	// Classes RESTRICT their year, so they go first; the rest cascades from the year.
 	WfDeleteYearClasses(ctx context.Context, academicYearID uuid.UUID) error
@@ -874,6 +879,7 @@ type Querier interface {
 	WfSchoolType(ctx context.Context) (string, error)
 	WfSetCurrentTerm(ctx context.Context, id uuid.UUID) error
 	WfSetCurrentYear(ctx context.Context, id uuid.UUID) error
+	WfSetFormTeacher(ctx context.Context, arg WfSetFormTeacherParams) error
 	WfSetLevelLocks(ctx context.Context, arg WfSetLevelLocksParams) error
 	WfSetStudentUser(ctx context.Context, arg WfSetStudentUserParams) error
 	// Each student's optional subjects for the target year, and the stream of the level they are in.
@@ -883,15 +889,20 @@ type Querier interface {
 	// An imported student can no longer be removed once they have an account, a class, subjects or records.
 	WfStudentsInUse(ctx context.Context, ids []uuid.UUID) (bool, error)
 	WfStudentsWithoutAccount(ctx context.Context, numbers []string) ([]WfStudentsWithoutAccountRow, error)
+	// ---- W6 teacher allocation ----
+	WfSubjectHours(ctx context.Context, academicYearID uuid.UUID) ([]WfSubjectHoursRow, error)
 	// Seats already taken in target classes by students outside this promotion (for example placed by hand).
 	WfTargetOccupancy(ctx context.Context, arg WfTargetOccupancyParams) ([]WfTargetOccupancyRow, error)
+	WfTeacherSubjects(ctx context.Context) ([]TeacherSubject, error)
 	WfUpsertPromotionPolicy(ctx context.Context, arg WfUpsertPromotionPolicyParams) error
+	WfUpsertSubjectTeacher(ctx context.Context, arg WfUpsertSubjectTeacherParams) error
 	WfYearAssignments(ctx context.Context, arg WfYearAssignmentsParams) ([]WfYearAssignmentsRow, error)
 	WfYearEnrollments(ctx context.Context, arg WfYearEnrollmentsParams) ([]WfYearEnrollmentsRow, error)
 	// True once anything real is recorded against the year's classes; a rollover can no longer be reverted.
 	WfYearHasActivity(ctx context.Context, academicYearID uuid.UUID) (bool, error)
 	// ---- W8 go live ----
 	WfYearReadiness(ctx context.Context, academicYearID uuid.UUID) (WfYearReadinessRow, error)
+	WfYearSubjectTeachers(ctx context.Context, academicYearID uuid.UUID) ([]ClassSubjectTeacher, error)
 }
 
 var _ Querier = (*Queries)(nil)

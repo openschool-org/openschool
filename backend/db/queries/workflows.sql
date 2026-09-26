@@ -381,3 +381,48 @@ WHERE academic_year_id = sqlc.arg(year)::uuid AND level_id = sqlc.arg(level)::uu
 -- name: WfStudentsHaveMarks :one
 SELECT EXISTS (SELECT 1 FROM term_marks m JOIN terms t ON t.id = m.term_id
                WHERE t.academic_year_id = sqlc.arg(year)::uuid AND m.student_id = ANY(sqlc.arg(ids)::uuid[]))::bool AS has_marks;
+
+-- ---- W6 teacher allocation ----
+
+-- name: WfSubjectHours :many
+SELECT r.grade_id, r.subject_id, s.name AS subject_name, r.periods_per_week
+FROM subject_period_requirements r JOIN subjects s ON s.id = r.subject_id
+WHERE r.academic_year_id = $1
+ORDER BY s.name;
+
+-- name: WfActiveTeachers :many
+SELECT id, full_name FROM teacher_profiles
+WHERE employment_status = 'active'
+ORDER BY full_name, id;
+
+-- name: WfTeacherSubjects :many
+SELECT teacher_id, subject_id FROM teacher_subjects;
+
+-- name: WfYearSubjectTeachers :many
+SELECT cst.class_id, cst.subject_id, cst.teacher_id
+FROM class_subject_teachers cst JOIN classes c ON c.id = cst.class_id
+WHERE c.academic_year_id = $1;
+
+-- name: WfClassPredecessors :many
+-- For each class in the target year, the source-year class most of its students came from.
+SELECT DISTINCT ON (tc.id) tc.id AS class_id, sc.id AS previous_class_id
+FROM classes tc
+JOIN class_students tcs ON tcs.class_id = tc.id
+JOIN class_students scs ON scs.student_id = tcs.student_id
+JOIN classes sc ON sc.id = scs.class_id AND sc.academic_year_id = sqlc.arg(source)::uuid
+WHERE tc.academic_year_id = sqlc.arg(target)::uuid
+GROUP BY tc.id, sc.id, sc.name
+ORDER BY tc.id, COUNT(*) DESC, sc.name;
+
+-- name: WfUpsertSubjectTeacher :exec
+INSERT INTO class_subject_teachers (class_id, subject_id, teacher_id) VALUES ($1, $2, $3)
+ON CONFLICT (class_id, subject_id) DO UPDATE SET teacher_id = EXCLUDED.teacher_id;
+
+-- name: WfDeleteSubjectTeacher :exec
+DELETE FROM class_subject_teachers WHERE class_id = $1 AND subject_id = $2;
+
+-- name: WfSetFormTeacher :exec
+UPDATE classes SET form_teacher_id = sqlc.narg(teacher_id) WHERE id = sqlc.arg(class_id);
+
+-- name: WfClassesHaveSubmittedTimetables :one
+SELECT EXISTS (SELECT 1 FROM timetables WHERE class_id = ANY(sqlc.arg(ids)::uuid[]) AND status <> 'draft')::bool AS has_timetables;

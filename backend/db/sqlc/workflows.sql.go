@@ -314,6 +314,79 @@ func (q *Queries) WfAcademicYearLabelExists(ctx context.Context, lower string) (
 	return exists, err
 }
 
+const wfActiveTeachers = `-- name: WfActiveTeachers :many
+SELECT id, full_name FROM teacher_profiles
+WHERE employment_status = 'active'
+ORDER BY full_name, id
+`
+
+type WfActiveTeachersRow struct {
+	ID       uuid.UUID `json:"id"`
+	FullName string    `json:"full_name"`
+}
+
+func (q *Queries) WfActiveTeachers(ctx context.Context) ([]WfActiveTeachersRow, error) {
+	rows, err := q.db.Query(ctx, wfActiveTeachers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WfActiveTeachersRow{}
+	for rows.Next() {
+		var i WfActiveTeachersRow
+		if err := rows.Scan(&i.ID, &i.FullName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const wfClassPredecessors = `-- name: WfClassPredecessors :many
+SELECT DISTINCT ON (tc.id) tc.id AS class_id, sc.id AS previous_class_id
+FROM classes tc
+JOIN class_students tcs ON tcs.class_id = tc.id
+JOIN class_students scs ON scs.student_id = tcs.student_id
+JOIN classes sc ON sc.id = scs.class_id AND sc.academic_year_id = $1::uuid
+WHERE tc.academic_year_id = $2::uuid
+GROUP BY tc.id, sc.id, sc.name
+ORDER BY tc.id, COUNT(*) DESC, sc.name
+`
+
+type WfClassPredecessorsParams struct {
+	Source uuid.UUID `json:"source"`
+	Target uuid.UUID `json:"target"`
+}
+
+type WfClassPredecessorsRow struct {
+	ClassID         uuid.UUID `json:"class_id"`
+	PreviousClassID uuid.UUID `json:"previous_class_id"`
+}
+
+// For each class in the target year, the source-year class most of its students came from.
+func (q *Queries) WfClassPredecessors(ctx context.Context, arg WfClassPredecessorsParams) ([]WfClassPredecessorsRow, error) {
+	rows, err := q.db.Query(ctx, wfClassPredecessors, arg.Source, arg.Target)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WfClassPredecessorsRow{}
+	for rows.Next() {
+		var i WfClassPredecessorsRow
+		if err := rows.Scan(&i.ClassID, &i.PreviousClassID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const wfClassesHaveRecords = `-- name: WfClassesHaveRecords :one
 SELECT (EXISTS (SELECT 1 FROM attendance_sessions a WHERE a.class_id = ANY($1::uuid[]))
      OR EXISTS (SELECT 1 FROM term_marks m JOIN terms t ON t.id = m.term_id
@@ -332,6 +405,17 @@ func (q *Queries) WfClassesHaveRecords(ctx context.Context, arg WfClassesHaveRec
 	var has_records bool
 	err := row.Scan(&has_records)
 	return has_records, err
+}
+
+const wfClassesHaveSubmittedTimetables = `-- name: WfClassesHaveSubmittedTimetables :one
+SELECT EXISTS (SELECT 1 FROM timetables WHERE class_id = ANY($1::uuid[]) AND status <> 'draft')::bool AS has_timetables
+`
+
+func (q *Queries) WfClassesHaveSubmittedTimetables(ctx context.Context, ids []uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, wfClassesHaveSubmittedTimetables, ids)
+	var has_timetables bool
+	err := row.Scan(&has_timetables)
+	return has_timetables, err
 }
 
 const wfClearLevelLocks = `-- name: WfClearLevelLocks :exec
@@ -681,6 +765,20 @@ DELETE FROM student_profiles WHERE id = ANY($1::uuid[])
 
 func (q *Queries) WfDeleteStudents(ctx context.Context, ids []uuid.UUID) error {
 	_, err := q.db.Exec(ctx, wfDeleteStudents, ids)
+	return err
+}
+
+const wfDeleteSubjectTeacher = `-- name: WfDeleteSubjectTeacher :exec
+DELETE FROM class_subject_teachers WHERE class_id = $1 AND subject_id = $2
+`
+
+type WfDeleteSubjectTeacherParams struct {
+	ClassID   uuid.UUID `json:"class_id"`
+	SubjectID uuid.UUID `json:"subject_id"`
+}
+
+func (q *Queries) WfDeleteSubjectTeacher(ctx context.Context, arg WfDeleteSubjectTeacherParams) error {
+	_, err := q.db.Exec(ctx, wfDeleteSubjectTeacher, arg.ClassID, arg.SubjectID)
 	return err
 }
 
@@ -1614,6 +1712,20 @@ func (q *Queries) WfSetCurrentYear(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const wfSetFormTeacher = `-- name: WfSetFormTeacher :exec
+UPDATE classes SET form_teacher_id = $1 WHERE id = $2
+`
+
+type WfSetFormTeacherParams struct {
+	TeacherID pgtype.UUID `json:"teacher_id"`
+	ClassID   uuid.UUID   `json:"class_id"`
+}
+
+func (q *Queries) WfSetFormTeacher(ctx context.Context, arg WfSetFormTeacherParams) error {
+	_, err := q.db.Exec(ctx, wfSetFormTeacher, arg.TeacherID, arg.ClassID)
+	return err
+}
+
 const wfSetLevelLocks = `-- name: WfSetLevelLocks :exec
 INSERT INTO student_enrollment_locks (student_id, level_id, academic_year_id)
 SELECT unnest($1::uuid[]), $2::uuid, $3::uuid
@@ -1765,6 +1877,47 @@ func (q *Queries) WfStudentsWithoutAccount(ctx context.Context, numbers []string
 	return items, nil
 }
 
+const wfSubjectHours = `-- name: WfSubjectHours :many
+
+SELECT r.grade_id, r.subject_id, s.name AS subject_name, r.periods_per_week
+FROM subject_period_requirements r JOIN subjects s ON s.id = r.subject_id
+WHERE r.academic_year_id = $1
+ORDER BY s.name
+`
+
+type WfSubjectHoursRow struct {
+	GradeID        uuid.UUID `json:"grade_id"`
+	SubjectID      uuid.UUID `json:"subject_id"`
+	SubjectName    string    `json:"subject_name"`
+	PeriodsPerWeek int32     `json:"periods_per_week"`
+}
+
+// ---- W6 teacher allocation ----
+func (q *Queries) WfSubjectHours(ctx context.Context, academicYearID uuid.UUID) ([]WfSubjectHoursRow, error) {
+	rows, err := q.db.Query(ctx, wfSubjectHours, academicYearID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WfSubjectHoursRow{}
+	for rows.Next() {
+		var i WfSubjectHoursRow
+		if err := rows.Scan(
+			&i.GradeID,
+			&i.SubjectID,
+			&i.SubjectName,
+			&i.PeriodsPerWeek,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const wfTargetOccupancy = `-- name: WfTargetOccupancy :many
 SELECT cs.class_id, COUNT(*)::int AS taken
 FROM class_students cs
@@ -1804,6 +1957,30 @@ func (q *Queries) WfTargetOccupancy(ctx context.Context, arg WfTargetOccupancyPa
 	return items, nil
 }
 
+const wfTeacherSubjects = `-- name: WfTeacherSubjects :many
+SELECT teacher_id, subject_id FROM teacher_subjects
+`
+
+func (q *Queries) WfTeacherSubjects(ctx context.Context) ([]TeacherSubject, error) {
+	rows, err := q.db.Query(ctx, wfTeacherSubjects)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TeacherSubject{}
+	for rows.Next() {
+		var i TeacherSubject
+		if err := rows.Scan(&i.TeacherID, &i.SubjectID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const wfUpsertPromotionPolicy = `-- name: WfUpsertPromotionPolicy :exec
 INSERT INTO promotion_policies (from_grade_id, policy, spread_by_marks) VALUES ($1, $2, $3)
 ON CONFLICT (from_grade_id) DO UPDATE SET policy = EXCLUDED.policy, spread_by_marks = EXCLUDED.spread_by_marks, updated_at = NOW()
@@ -1817,6 +1994,22 @@ type WfUpsertPromotionPolicyParams struct {
 
 func (q *Queries) WfUpsertPromotionPolicy(ctx context.Context, arg WfUpsertPromotionPolicyParams) error {
 	_, err := q.db.Exec(ctx, wfUpsertPromotionPolicy, arg.FromGradeID, arg.Policy, arg.SpreadByMarks)
+	return err
+}
+
+const wfUpsertSubjectTeacher = `-- name: WfUpsertSubjectTeacher :exec
+INSERT INTO class_subject_teachers (class_id, subject_id, teacher_id) VALUES ($1, $2, $3)
+ON CONFLICT (class_id, subject_id) DO UPDATE SET teacher_id = EXCLUDED.teacher_id
+`
+
+type WfUpsertSubjectTeacherParams struct {
+	ClassID   uuid.UUID `json:"class_id"`
+	SubjectID uuid.UUID `json:"subject_id"`
+	TeacherID uuid.UUID `json:"teacher_id"`
+}
+
+func (q *Queries) WfUpsertSubjectTeacher(ctx context.Context, arg WfUpsertSubjectTeacherParams) error {
+	_, err := q.db.Exec(ctx, wfUpsertSubjectTeacher, arg.ClassID, arg.SubjectID, arg.TeacherID)
 	return err
 }
 
@@ -1943,4 +2136,30 @@ func (q *Queries) WfYearReadiness(ctx context.Context, academicYearID uuid.UUID)
 		&i.Terms,
 	)
 	return i, err
+}
+
+const wfYearSubjectTeachers = `-- name: WfYearSubjectTeachers :many
+SELECT cst.class_id, cst.subject_id, cst.teacher_id
+FROM class_subject_teachers cst JOIN classes c ON c.id = cst.class_id
+WHERE c.academic_year_id = $1
+`
+
+func (q *Queries) WfYearSubjectTeachers(ctx context.Context, academicYearID uuid.UUID) ([]ClassSubjectTeacher, error) {
+	rows, err := q.db.Query(ctx, wfYearSubjectTeachers, academicYearID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ClassSubjectTeacher{}
+	for rows.Next() {
+		var i ClassSubjectTeacher
+		if err := rows.Scan(&i.ClassID, &i.SubjectID, &i.TeacherID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
