@@ -6,6 +6,7 @@ import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import type { JobRunStatus } from "@/features/system/api/jobs";
 import { formatDateTime } from "@/shared/lib/date";
 import InfoTip from "@/shared/ui/InfoTip";
+import WorkflowAgents from "@/features/workflows/components/WorkflowAgents";
 
 function statusTag(status: JobRunStatus) {
   switch (status) {
@@ -30,7 +31,7 @@ export default function Automation({ inline = false }: { inline?: boolean }) {
           <div className="os-page__header-left">
             <h1 className="os-page__title">Automation</h1>
             <div className="os-page__subtitle os-page__subtitle--tip">
-              Background checks that run on a schedule. Each one lists what it checks.
+              Background checks that run on a schedule, and the year-end workflows that run when you ask. Each one lists what it does.
               <InfoTip>Other features do not depend on these checks. Agents marked Always on, such as the backup, cannot be turned off.</InfoTip>
             </div>
           </div>
@@ -130,6 +131,8 @@ export default function Automation({ inline = false }: { inline?: boolean }) {
             </div>
           ))}
       </div>
+
+      <WorkflowAgents />
     </div>
   );
 }

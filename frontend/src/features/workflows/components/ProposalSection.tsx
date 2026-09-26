@@ -61,7 +61,8 @@ export default function ProposalSection({ section, editable, onEdit, busyRowId }
           <FilterBar search={{ value: search, onChange: (v) => { setSearch(v); setPage(1); }, placeholder: `Search ${section.title.toLowerCase()}` }} />
         </div>
       )}
-      <div className="os-table-scroll">
+      {section.rows.length === 0 && <p className="os-px-6 os-py-4 os-m-0 os-text-sm os-c-tertiary">Nothing to show here for this run.</p>}
+      {section.rows.length > 0 && <div className="os-table-scroll">
         <table className="os-table os-table--stack os-table--no-hover">
           <thead>
             <tr>
@@ -91,7 +92,7 @@ export default function ProposalSection({ section, editable, onEdit, busyRowId }
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
       {rows.length > PAGE_SIZES[0] && (
         <Pagination totalItems={rows.length} page={page} pageSize={pageSize} pageSizes={PAGE_SIZES} onChange={({ page: p, pageSize: ps }) => { setPage(p); setPageSize(ps); }} />
       )}
