@@ -7,26 +7,6 @@ import type { JobRunStatus } from "@/features/system/api/jobs";
 import { formatDateTime } from "@/shared/lib/date";
 import InfoTip from "@/shared/ui/InfoTip";
 
-function humanizeJobName(name: string) {
-  return name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-// Agent schedules are fixed cron expressions set in code; this just reads friendlier than raw cron next to each name.
-const SCHEDULE_LABELS: Record<string, string> = {
-  "0 * * * *": "Hourly",
-  "0 2 * * *": "Daily at 2:00 AM",
-  "0 3 * * *": "Daily at 3:00 AM",
-  "0 5 * * *": "Daily at 5:00 AM",
-  "0 12 * * 1-5": "Weekdays at 12:00 PM",
-};
-
-function humanizeSchedule(cron: string) {
-  return SCHEDULE_LABELS[cron] ?? cron;
-}
-
-// Can't be disabled, it's the school's only backup mechanism (see internal/handlers/jobs.go's SetEnabled).
-const NON_DISABLEABLE_JOBS = new Set(["system_health_agent"]);
-
 function statusTag(status: JobRunStatus) {
   switch (status) {
     case "ok":
@@ -50,8 +30,8 @@ export default function Automation({ inline = false }: { inline?: boolean }) {
           <div className="os-page__header-left">
             <h1 className="os-page__title">Automation</h1>
             <div className="os-page__subtitle os-page__subtitle--tip">
-              Background jobs. Each one can be turned off safely.
-              <InfoTip>Other features do not depend on these jobs. Keep System Health on, since it runs the backup.</InfoTip>
+              Background checks that run on a schedule. Each one lists what it checks.
+              <InfoTip>Other features do not depend on these checks. Agents marked Always on, such as the backup, cannot be turned off.</InfoTip>
             </div>
           </div>
         </div>
@@ -88,10 +68,22 @@ export default function Automation({ inline = false }: { inline?: boolean }) {
             >
               <div className="os-flex-1 os-min-w-20">
                 <div className="os-flex os-items-center os-gap-2h os-wrap">
-                  <span className="os-fw-600 os-text-md">{humanizeJobName(job.name)}</span>
-                  <Tag type="blue" size="sm">{humanizeSchedule(job.schedule)}</Tag>
+                  <span className="os-fw-600 os-text-md">{job.title}</span>
+                  <Tag type="blue" size="sm">{job.schedule_label}</Tag>
                 </div>
                 <p className="os-mt-1 os-mx-0 os-mb-0 os-text-sm os-c-secondary">{job.description}</p>
+                {job.checks.length > 0 && (
+                  <details className="os-agent-checks os-mt-2">
+                    <summary className="os-text-sm os-c-accent-dark os-pointer">What it checks ({job.checks.length})</summary>
+                    <ul>
+                      {job.checks.map((c) => (
+                        <li key={c.key}>
+                          <span className="os-fw-600">{c.title}.</span> {c.description}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
 
                 {job.last_run ? (
                   <div className="os-flex os-items-center os-gap-2 os-mt-2h os-wrap">
@@ -121,13 +113,13 @@ export default function Automation({ inline = false }: { inline?: boolean }) {
                 >
                   Run now
                 </Button>
-                {NON_DISABLEABLE_JOBS.has(job.name) ? (
+                {!job.can_disable ? (
                   <Tag type="gray" size="sm">Always on</Tag>
                 ) : (
                   <Toggle
                     id={`job-toggle-${job.name}`}
                     size="sm"
-                    labelText={`Enable ${humanizeJobName(job.name)}`}
+                    labelText={`Enable ${job.title}`}
                     hideLabel
                     toggled={job.enabled}
                     disabled={setEnabled.isPending}

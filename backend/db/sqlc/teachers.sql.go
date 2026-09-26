@@ -122,7 +122,7 @@ func (q *Queries) DeleteTeacher(ctx context.Context, id uuid.UUID) (int64, error
 
 const getFormTeacherClass = `-- name: GetFormTeacherClass :one
 SELECT
-    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id
+    c.id, c.grade_id, c.academic_year_id, c.form_teacher_id, c.stream_id, c.stream_group_id, c.name, c.created_at, c.girl_monitor_id, c.boy_monitor_id, c.medium_id, c.home_classroom_id, c.capacity
 FROM classes c
 WHERE c.form_teacher_id = $1
   AND c.academic_year_id = (
@@ -146,6 +146,7 @@ func (q *Queries) GetFormTeacherClass(ctx context.Context, formTeacherID pgtype.
 		&i.BoyMonitorID,
 		&i.MediumID,
 		&i.HomeClassroomID,
+		&i.Capacity,
 	)
 	return i, err
 }

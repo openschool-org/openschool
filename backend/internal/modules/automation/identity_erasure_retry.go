@@ -102,3 +102,16 @@ func (a *IdentityErasureRetryAgent) Run(ctx context.Context) (Result, error) {
 	}
 	return result, nil
 }
+
+// Title is the agent's name on the Automation panel.
+func (a *IdentityErasureRetryAgent) Title() string { return "Identity erasure retry" }
+
+// CanDisable reports whether an admin may switch this agent off.
+func (a *IdentityErasureRetryAgent) CanDisable() bool { return true }
+
+// Checks lists what this agent checks and where each finding is shown.
+func (a *IdentityErasureRetryAgent) Checks() []CheckInfo {
+	return []CheckInfo{
+		{Key: "erasure_retry", Title: "Retry sign-in account deletion", Description: "Retries deleting ThunderID accounts that failed to delete earlier."},
+	}
+}

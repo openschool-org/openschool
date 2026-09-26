@@ -30,7 +30,7 @@ export default function Streams() {
         <Button renderIcon={Add} kind="primary" size="md" onClick={() => setCreateOpen(true)}>New stream</Button>
       </div>
 
-      <AgentFindingsBanner titles={["Streams with no current-year classes"]} />
+      <AgentFindingsBanner />
 
       <div className="os-section">
         <div className="os-section__header">

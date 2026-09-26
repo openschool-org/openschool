@@ -91,9 +91,10 @@ func newClassRepository(pool *pgxpool.Pool) *classRepository {
 	return &classRepository{pool: pool, queries: db.New(pool)}
 }
 
-// homeroomFor returns the regular room named after the class, creating it if missing.
+// EnsureHomeroom returns the regular room named after the class, creating it if missing.
+// Exported so the year-end workflows apply the same rule inside their own transaction.
 // A lab or ECA room that happens to share the name is never used as a homeroom.
-func homeroomFor(ctx context.Context, q *db.Queries, className string) (pgtype.UUID, error) {
+func EnsureHomeroom(ctx context.Context, q *db.Queries, className string) (pgtype.UUID, error) {
 	room, err := q.FindClassroomByName(ctx, className)
 	if err == nil {
 		if room.RoomType != "regular" {
@@ -149,7 +150,7 @@ func (r *classRepository) create(ctx context.Context, v createClassRequest) (Cla
 	q := r.queries.WithTx(tx)
 	room := classUUIDParam(v.HomeClassroomID)
 	if !room.Valid {
-		if room, err = homeroomFor(ctx, q, strings.TrimSpace(v.Name)); err != nil {
+		if room, err = EnsureHomeroom(ctx, q, strings.TrimSpace(v.Name)); err != nil {
 			return Class{}, err
 		}
 	}
@@ -177,7 +178,7 @@ func (r *classRepository) backfillHomerooms(ctx context.Context, year uuid.UUID)
 	}
 	linked := 0
 	for _, c := range classes {
-		room, err := homeroomFor(ctx, q, c.Name)
+		room, err := EnsureHomeroom(ctx, q, c.Name)
 		if err != nil {
 			return 0, err
 		}

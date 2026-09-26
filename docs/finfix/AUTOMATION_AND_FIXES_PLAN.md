@@ -1,6 +1,6 @@
 # Automation and Fixes Plan
 
-Status: **Part A done (26 Sep 2026). Part B awaits approval and the answers in Part C.**
+Status: **Part A done. Part B paused on 26 Sep 2026 partway through Phase 3 (see "Part B progress").** Part C defaults below are what the built parts use.
 
 ---
 
@@ -58,6 +58,26 @@ Original plan for reference:
 | A5 | Admins cannot see every notification sent in the school, only their own recent 100; the inbox has no server search. | New `GET /notifications` (admin: all senders; teacher: own) with `search`, `category`, `priority`, `sender`, `from`, `to`, server pagination. Frontend: a "History" tab on the Notifications page (`FilterBar` + `DataGrid` + per-row read stats). `GET /me/notifications` gains `search` and pagination so the Notification centre stops filtering in the browser. | M |
 
 ---
+
+## Part B progress (paused 26 Sep 2026)
+
+Nothing from Part B has been checked in a browser. Backend builds and `go vet` is clean;
+frontend passes `tsc` and ESLint.
+
+| Phase | State | What exists |
+|-------|-------|-------------|
+| 1. Engine, catalogue, hub | Done | New module `internal/modules/workflows`. Migration 046 (`workflow_runs`: proposal, trace, snapshot, one open proposal per workflow and scope). Engine: check, propose, edit cells (validated against the column type and options), apply in one transaction, discard, revert, all audit-logged. Tools registry (`tools.go`): every step names a declared tool, returned by `GET /workflows` with inputs, defaults and options. Routes: `/workflows`, `/workflows/:key/check`, `/workflows/:key/runs`, `/workflow-runs/:id` (+ `/rows`, `/apply`, `/discard`, `/revert`). Frontend `features/workflows`: Year-end hub (`/year-end`, replaces the Promotion nav item; the manual page stays at `/promotion`) and a generic workflow page that renders any workflow from the catalogue (inputs, checks with fix links, steps and tools, editable proposal tables with search and paging, step trace, apply and revert with confirmation, history). |
+| 1b. Existing monitors | Done | Each of the 7 agents declares `Title`, `CanDisable` and `Checks` (with the exact notice title and the pages it belongs on). `GET /jobs` returns them plus a schedule label; `GET /jobs/findings?page=` serves the page banners. The frontend no longer hard-codes agent names, schedules, the always-on agent or finding titles (8 pages switched to `<AgentFindingsBanner />`). A unit test fails if a notice title is not declared. |
+| 2. W1 Year rollover, W2 Leavers, W8 Go live | Done | W1 copies terms (dates moved forward), classes with homeroom and capacity (untick to skip), optional form teachers, and the timetable setup (grade sections, periods, subject hours, settings, section heads); revert refused once the year has students or records. W2 lists active students in chosen grades, final grade ticked by default, marks ticked ones as left with a date; revert restores. W8 makes the year and its first term current, sends one notice to everyone after commit; revert restores the previous year and term. Covered by one integration test against Postgres (catalogue, blocked check, edit validation, apply, double-apply conflict, revert, re-apply, history). |
+| 3. W5 Promotion | Started | Migration 047: `classes.capacity` (default 45), `levels.stream_id` / `stream_group_id`, `promotion_policies`. Pure placement engine `placement.go` (keep section, balanced reshuffle, by subject choice, by stream, graduate; medium matching; spread by marks; adds the next section when classes are full; a reason on every row; deterministic by seed). Unit tests written; 8 of 9 pass, the `naturalLess` assertion in `TestNextSectionName` fails and needs a look. **Not done:** the SQL reads (students, choices, occupancy, policies, marks), the W5 definition (proposal, apply, revert), wiring it into the engine list. |
+| 4. W3 Subject choices, W4 Intake | Not started | |
+| 5. W6 Teacher allocation | Not started | |
+| 6. W7 Timetable (option blocks, repair pass) | Not started | |
+| 7. End-to-end rehearsal | Not started | |
+
+Also done alongside: `academics.EnsureHomeroom` is exported so workflows apply the same homeroom rule inside their own transaction.
+
+Before resuming: fix the failing placement test, then finish Phase 3. Migrations 046 and 047 must run before deploying this code.
 
 ## Part B. Automation workflows
 
@@ -118,7 +138,7 @@ hub also shows "Done by hand" for a step if its postconditions already hold.
 
 | Change | Why |
 |--------|-----|
-| `classes.capacity` (default 40) | Class formation must balance sizes. |
+| `classes.capacity` (default 45) | Class formation must balance sizes. |
 | `promotion_policies` (from grade, policy, options JSON) | Policy per grade move, school-configurable. |
 | `student_subject_choices` (student, academic year, selection group, subject, status) | W3 output, reused by W5 and W6. Can reuse `student_subject_enrollments` if you prefer; see questions. |
 | `intake_batches` and rows | W4 import with per-row errors and dedupe results. |
@@ -155,6 +175,23 @@ Estimates for a 1,800-student school, to be checked with real admins:
 ---
 
 ## Part C. Questions before Part B starts
+
+The user approved Part B on 26 Sep 2026 and set class capacity to 45. Until the other
+questions are answered, Part B is built with these defaults, all changeable in Settings
+or per run:
+
+| # | Default used |
+|---|--------------|
+| 1 | Grades 6 to 9 keep their section letter (`keep_section`); `balanced_reshuffle` is available per grade move. |
+| 2 | Grade 10 classes are formed by medium, then basket combination (`by_subject_choice`). Spreading by marks is an option, off by default. |
+| 3 | A/L intake works at any time of year. Staff record the stream a student is admitted to; O/L results are not stored. |
+| 4 | Capacity 45 per class, editable per class. |
+| 5 | Any admin can approve and apply a run. Every step is audit-logged. |
+| 6 | A run can be reverted until the first attendance session or mark is recorded against the classes it touched. |
+| 7 | Subject choices reuse `student_subject_enrollments` and the existing locks for the target year. A/L levels gain an optional stream link. |
+| 8 | Staff enter choices; the student and parent portal step comes later. |
+
+Original questions:
 
 1. Grades 6 to 9: keep the section letter by default, or reshuffle every year? Do any of your schools stream by marks here?
 2. Grade 10: are classes formed by basket combination, by medium, or both? Is a marks rule needed as an option?

@@ -59,6 +59,7 @@ type Class struct {
 	BoyMonitorID    pgtype.UUID        `json:"boy_monitor_id"`
 	MediumID        pgtype.UUID        `json:"medium_id"`
 	HomeClassroomID pgtype.UUID        `json:"home_classroom_id"`
+	Capacity        int32              `json:"capacity"`
 }
 
 type ClassStudent struct {
@@ -153,11 +154,13 @@ type JobSetting struct {
 }
 
 type Level struct {
-	ID        uuid.UUID          `json:"id"`
-	Label     string             `json:"label"`
-	GradeID   pgtype.UUID        `json:"grade_id"`
-	SortOrder int32              `json:"sort_order"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID            uuid.UUID          `json:"id"`
+	Label         string             `json:"label"`
+	GradeID       pgtype.UUID        `json:"grade_id"`
+	SortOrder     int32              `json:"sort_order"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	StreamID      pgtype.UUID        `json:"stream_id"`
+	StreamGroupID pgtype.UUID        `json:"stream_group_id"`
 }
 
 type Medium struct {
@@ -230,6 +233,13 @@ type Prefect struct {
 	StudentID      uuid.UUID          `json:"student_id"`
 	Rank           string             `json:"rank"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type PromotionPolicy struct {
+	FromGradeID   uuid.UUID          `json:"from_grade_id"`
+	Policy        string             `json:"policy"`
+	SpreadByMarks bool               `json:"spread_by_marks"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 }
 
 type School struct {
@@ -568,4 +578,23 @@ type User struct {
 type VicePrincipalGradeScope struct {
 	PositionID uuid.UUID `json:"position_id"`
 	GradeID    uuid.UUID `json:"grade_id"`
+}
+
+type WorkflowRun struct {
+	ID          uuid.UUID          `json:"id"`
+	WorkflowKey string             `json:"workflow_key"`
+	ScopeKey    string             `json:"scope_key"`
+	State       string             `json:"state"`
+	Inputs      []byte             `json:"inputs"`
+	Proposal    []byte             `json:"proposal"`
+	Trace       []byte             `json:"trace"`
+	Snapshot    []byte             `json:"snapshot"`
+	Summary     pgtype.Text        `json:"summary"`
+	Error       pgtype.Text        `json:"error"`
+	CreatedBy   pgtype.UUID        `json:"created_by"`
+	AppliedBy   pgtype.UUID        `json:"applied_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	AppliedAt   pgtype.Timestamptz `json:"applied_at"`
+	RevertedAt  pgtype.Timestamptz `json:"reverted_at"`
 }

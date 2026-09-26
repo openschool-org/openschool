@@ -113,13 +113,7 @@ export default function Attendance() {
         </div>
       </div>
 
-      <AgentFindingsBanner
-        titles={[
-          "Incomplete attendance sessions",
-          "Classes missing today's attendance session",
-          "Classes with inconsistent attendance-taking",
-        ]}
-      />
+      <AgentFindingsBanner />
 
       {!isToday && (
         <div className="os-mb-4">

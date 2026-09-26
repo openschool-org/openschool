@@ -172,3 +172,20 @@ func (a *StructuralIntegrityAgent) checkUnclassedStudents(ctx context.Context) c
 	}
 	return checkOutcome{findings: len(students), label: fmt.Sprintf("%d unclassed student(s)", len(students))}
 }
+
+// Title is the agent's name on the Automation panel.
+func (a *StructuralIntegrityAgent) Title() string { return "Structural integrity" }
+
+// CanDisable reports whether an admin may switch this agent off.
+func (a *StructuralIntegrityAgent) CanDisable() bool { return true }
+
+// Checks lists what this agent checks and where each finding is shown.
+func (a *StructuralIntegrityAgent) Checks() []CheckInfo {
+	return []CheckInfo{
+		{Key: "current_year", Title: "One current academic year", Description: "Exactly one academic year must be current (ADR 0003).", FindingTitle: "Current-academic-year invariant violated", Pages: []string{"/academic-years"}},
+		{Key: "gender_school_type", Title: "Student gender matches school type", Description: "In a boys or girls school every student matches the school type.", FindingTitle: "Student gender / school-type mismatches", Pages: []string{"/students"}},
+		{Key: "empty_grades", Title: "Grades have classes", Description: "Every grade has at least one class this year.", FindingTitle: "Grades with no current-year classes", Pages: []string{"/classes"}},
+		{Key: "empty_streams", Title: "Streams have classes", Description: "Every stream has at least one class this year.", FindingTitle: "Streams with no current-year classes", Pages: []string{"/streams"}},
+		{Key: "unclassed_students", Title: "Students have a class", Description: "Every active student is in a class this year.", FindingTitle: "Students with no current-year class", Pages: []string{"/students", "/classes"}},
+	}
+}

@@ -99,3 +99,16 @@ func (a *DataRetentionAgent) Run(ctx context.Context) (Result, error) {
 	}
 	return result, nil
 }
+
+// Title is the agent's name on the Automation panel.
+func (a *DataRetentionAgent) Title() string { return "Data retention" }
+
+// CanDisable reports whether an admin may switch this agent off.
+func (a *DataRetentionAgent) CanDisable() bool { return true }
+
+// Checks lists what this agent checks and where each finding is shown.
+func (a *DataRetentionAgent) Checks() []CheckInfo {
+	return []CheckInfo{
+		{Key: "retention_purge", Title: "PDPA retention purge", Description: "Erases personal data of people who left longer ago than the retention period.", FindingTitle: "Nightly retention purge ran", Pages: []string{"/settings"}},
+	}
+}

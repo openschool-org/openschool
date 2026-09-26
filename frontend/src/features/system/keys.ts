@@ -7,4 +7,5 @@ export const systemKeys = {
   globalSearch: (q: string) => ["system", "search", q] as const,
   orphanedAccounts: () => ["system", "orphaned-accounts"] as const,
   jobs: () => ["system", "jobs"] as const,
+  findings: (page: string) => ["system", "jobs", "findings", page] as const,
 };

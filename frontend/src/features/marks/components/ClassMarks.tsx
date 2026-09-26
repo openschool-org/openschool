@@ -67,7 +67,7 @@ export default function ClassMarks({
 
   return (
     <div>
-      <AgentFindingsBanner titles={["Terms nearing deadline with no marks entered", "Terms falling behind on marks-entry pace"]} />
+      <AgentFindingsBanner />
       <div className="os-section">
         <SectionHeader
           title="Term marks"

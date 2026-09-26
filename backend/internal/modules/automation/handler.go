@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/openschool-org/openschool/internal/apierror"
+	"github.com/openschool-org/openschool/internal/middleware"
 	"github.com/openschool-org/openschool/internal/platform/httpx"
 )
 
@@ -67,4 +68,19 @@ func (h *JobsHandler) RunNow(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"summary": result.Summary, "findings": result.Findings})
+}
+
+// Findings returns the agent notices that belong on the given page (?page=/attendance).
+func (h *JobsHandler) Findings(c *gin.Context) {
+	userID, err := middleware.UserIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
+		return
+	}
+	out, err := h.service.Findings(c.Request.Context(), userID, c.Query("page"))
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, out)
 }

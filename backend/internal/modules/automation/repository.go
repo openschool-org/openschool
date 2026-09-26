@@ -333,3 +333,7 @@ func mapRows[T, U any](query func() ([]T, error), mapRow func(T) U) ([]U, error)
 	}
 	return result, nil
 }
+
+func (r *Repository) ListUnreadFindingsByTitle(ctx context.Context, userID uuid.UUID, titles []string) ([]db.ListUnreadFindingsByTitleRow, error) {
+	return r.queries.ListUnreadFindingsByTitle(ctx, db.ListUnreadFindingsByTitleParams{UserID: userID, Titles: titles})
+}

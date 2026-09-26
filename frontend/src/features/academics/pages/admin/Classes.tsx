@@ -14,7 +14,6 @@ import SectionHeader from "@/shared/ui/SectionHeader";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import AgentFindingsBanner from "@/features/notifications/components/AgentFindingsBanner";
 
-const FINDINGS = ["Grades with no current-year classes", "Inactive teachers still assigned to classes", "Students with no current-year class"];
 
 export default function Classes() {
   const page = useGradesPage();
@@ -51,7 +50,7 @@ export default function Classes() {
         </div>
       </div>
 
-      <AgentFindingsBanner titles={FINDINGS} />
+      <AgentFindingsBanner />
 
       <div className="os-section">
         <SectionHeader

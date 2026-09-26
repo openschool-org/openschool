@@ -36,6 +36,8 @@ const AcademicYears = page(() => import("@/features/school/pages/admin/AcademicY
 const SettingsPage = page(() => import("@/features/school/pages/admin/Settings"));
 const SchoolSetup = page(() => import("@/features/school/pages/admin/SchoolSetup"));
 const GradeSections = page(() => import("@/features/timetable/pages/admin/GradeSections"));
+const YearEnd = page(() => import("@/features/workflows/pages/admin/YearEnd"));
+const WorkflowPage = page(() => import("@/features/workflows/pages/admin/WorkflowPage"));
 const TimetableHub = page(() => import("@/features/timetable/pages/admin/TimetableHub"));
 const TimetableEditor = page(() => import("@/features/timetable/pages/admin/TimetableEditor"));
 const NotificationComposer = page(() => import("@/features/notifications/pages/NotificationComposer"));
@@ -75,6 +77,8 @@ export function adminRoutes() {
       <Route path="/attendance/sessions/:id/mark" element={<AttendanceMark />} />
       <Route path="/academic-years" element={<AcademicYears />} />
       <Route path="/promotion" element={<Promotion />} />
+      <Route path="/year-end" element={<YearEnd />} />
+      <Route path="/year-end/:key" element={<WorkflowPage />} />
       <Route path="/notifications" element={<NotificationComposer />} />
       <Route path="/notification-center" element={<NotificationCenter />} />
       <Route path="/settings" element={<SettingsPage />} />

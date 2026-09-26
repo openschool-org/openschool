@@ -73,7 +73,7 @@ export default function Teachers() {
         <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/teachers/new">Add teacher</Button>
       </div>
 
-      <AgentFindingsBanner titles={["Inactive teachers still assigned to classes", "Teacher accounts stuck in first-login setup"]} />
+      <AgentFindingsBanner />
 
       <div className="os-section">
         <FilterBar

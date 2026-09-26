@@ -24,3 +24,11 @@ export function getErrorMessage(
 export function isNotFoundError(error: unknown): boolean {
   return error instanceof AxiosError && error.response?.status === 404;
 }
+
+// Body of a 409 Conflict, for endpoints that explain the conflict (for example failed workflow checks).
+export function getConflictData(error: unknown): Record<string, unknown> | null {
+  if (error instanceof AxiosError && error.response?.status === 409 && error.response.data && typeof error.response.data === "object") {
+    return error.response.data as Record<string, unknown>;
+  }
+  return null;
+}

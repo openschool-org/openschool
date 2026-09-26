@@ -101,6 +101,7 @@ type Querier interface {
 	CreateTimetablePeriod(ctx context.Context, arg CreateTimetablePeriodParams) (TimetablePeriod, error)
 	CreateTimetableStatusHistory(ctx context.Context, arg CreateTimetableStatusHistoryParams) (TimetableStatusHistory, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	CreateWorkflowRun(ctx context.Context, arg CreateWorkflowRunParams) (WorkflowRun, error)
 	DashboardAttendancePercentage(ctx context.Context) (DashboardAttendancePercentageRow, error)
 	DashboardClassWisePerformance(ctx context.Context) ([]DashboardClassWisePerformanceRow, error)
 	DashboardExaminationSummary(ctx context.Context) (DashboardExaminationSummaryRow, error)
@@ -189,6 +190,7 @@ type Querier interface {
 	DeleteTimetablePeriodsBySection(ctx context.Context, gradeSectionID uuid.UUID) error
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	DeleteVicePrincipalScopes(ctx context.Context, positionID uuid.UUID) error
+	DiscardOpenWorkflowRuns(ctx context.Context, arg DiscardOpenWorkflowRunsParams) error
 	EnrollStudentInClass(ctx context.Context, arg EnrollStudentInClassParams) error
 	// Atomic get-or-create: used to provision the local row for an identity
 	// that just authenticated for the first time. The no-op DO UPDATE (rather
@@ -290,6 +292,8 @@ type Querier interface {
 	GetTimetableSettingsByYear(ctx context.Context, academicYearID uuid.UUID) (TimetableSetting, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	GetWorkflowRun(ctx context.Context, id uuid.UUID) (WorkflowRun, error)
+	GetWorkflowRunForUpdate(ctx context.Context, id uuid.UUID) (WorkflowRun, error)
 	InsertVicePrincipalScope(ctx context.Context, arg InsertVicePrincipalScopeParams) error
 	// used by PositionService.RankForTeacher to detect "Class Teacher" rank,
 	// since that's classes.form_teacher_id rather than a teacher_positions row.
@@ -317,6 +321,8 @@ type Querier interface {
 	// true if the teacher is a Vice Principal with either notify_whole_school =
 	// TRUE or the given grade in their scope.
 	IsVicePrincipalAuthorizedForGrade(ctx context.Context, arg IsVicePrincipalAuthorizedForGradeParams) (bool, error)
+	// Latest run per workflow for the hub cards.
+	LatestWorkflowRuns(ctx context.Context) ([]LatestWorkflowRunsRow, error)
 	// Phase 9.3 — the deepened role-differentiated dashboard's "School/Grades
 	// Overview" panel for Principal/Vice Principal/Section Head. Both queries
 	// filter by grade at the SQL WHERE clause level (never fetched-then-
@@ -664,9 +670,12 @@ type Querier interface {
 	ListTimetablesByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]ListTimetablesByAcademicYearRow, error)
 	ListTimetablesByClass(ctx context.Context, arg ListTimetablesByClassParams) ([]ListTimetablesByClassRow, error)
 	ListUnderReviewTimetablesForGrades(ctx context.Context, arg ListUnderReviewTimetablesForGradesParams) ([]ListUnderReviewTimetablesForGradesRow, error)
+	// Latest unread, unarchived agent notice per title for one admin; drives the page banners.
+	ListUnreadFindingsByTitle(ctx context.Context, arg ListUnreadFindingsByTitleParams) ([]ListUnreadFindingsByTitleRow, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListUsersByRole(ctx context.Context, role string) ([]User, error)
 	ListVicePrincipalScopeGrades(ctx context.Context, positionID uuid.UUID) ([]ListVicePrincipalScopeGradesRow, error)
+	ListWorkflowRuns(ctx context.Context, workflowKey string) ([]ListWorkflowRunsRow, error)
 	LockStudentEnrollment(ctx context.Context, arg LockStudentEnrollmentParams) error
 	MarkAllNotificationRecipientsRead(ctx context.Context, userID uuid.UUID) error
 	MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error)
@@ -675,6 +684,9 @@ type Querier interface {
 	MarkUnmarkedNonAcademicStaffPresent(ctx context.Context, arg MarkUnmarkedNonAcademicStaffPresentParams) (int64, error)
 	// Present for every active teacher with no record that day; existing marks are left alone.
 	MarkUnmarkedTeachersPresent(ctx context.Context, arg MarkUnmarkedTeachersPresentParams) (int64, error)
+	MarkWorkflowRunApplied(ctx context.Context, arg MarkWorkflowRunAppliedParams) error
+	MarkWorkflowRunFailed(ctx context.Context, arg MarkWorkflowRunFailedParams) error
+	MarkWorkflowRunState(ctx context.Context, arg MarkWorkflowRunStateParams) error
 	MonthlyNonAcademicStaffAttendanceSummary(ctx context.Context, arg MonthlyNonAcademicStaffAttendanceSummaryParams) ([]MonthlyNonAcademicStaffAttendanceSummaryRow, error)
 	// one row per teacher with a count for each status in the given date range
 	// (the caller passes the first/last day of the month).
@@ -773,6 +785,7 @@ type Querier interface {
 	UpdateTerm(ctx context.Context, arg UpdateTermParams) (Term, error)
 	UpdateTimetablePeriod(ctx context.Context, arg UpdateTimetablePeriodParams) (TimetablePeriod, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	UpdateWorkflowRunProposal(ctx context.Context, arg UpdateWorkflowRunProposalParams) error
 	// Teacher-in-charge for a whole grade (grades without A/L streams).
 	UpsertGradeSectionHead(ctx context.Context, arg UpsertGradeSectionHeadParams) (SectionHead, error)
 	UpsertNonAcademicStaffAttendance(ctx context.Context, arg UpsertNonAcademicStaffAttendanceParams) (StaffAttendanceRecord, error)
@@ -794,6 +807,38 @@ type Querier interface {
 	UpsertTimetableEntry(ctx context.Context, arg UpsertTimetableEntryParams) (TimetableEntry, error)
 	UpsertTimetableSettings(ctx context.Context, arg UpsertTimetableSettingsParams) (TimetableSetting, error)
 	UpsertVicePrincipal(ctx context.Context, arg UpsertVicePrincipalParams) (TeacherPosition, error)
+	WfAcademicYearLabelExists(ctx context.Context, lower string) (bool, error)
+	WfCopyGradeSectionGrades(ctx context.Context, arg WfCopyGradeSectionGradesParams) error
+	WfCopySectionHeads(ctx context.Context, arg WfCopySectionHeadsParams) (int64, error)
+	WfCopySubjectPeriodRequirements(ctx context.Context, arg WfCopySubjectPeriodRequirementsParams) (int64, error)
+	WfCopyTimetablePeriods(ctx context.Context, arg WfCopyTimetablePeriodsParams) error
+	WfCopyTimetableSettings(ctx context.Context, arg WfCopyTimetableSettingsParams) (int64, error)
+	// ---- W1 year rollover ----
+	WfCreateAcademicYear(ctx context.Context, arg WfCreateAcademicYearParams) (uuid.UUID, error)
+	WfCreateClass(ctx context.Context, arg WfCreateClassParams) (uuid.UUID, error)
+	WfCreateGradeSection(ctx context.Context, arg WfCreateGradeSectionParams) (uuid.UUID, error)
+	WfCreateTerm(ctx context.Context, arg WfCreateTermParams) error
+	WfCurrentTerm(ctx context.Context) (uuid.UUID, error)
+	WfDeleteAcademicYear(ctx context.Context, id uuid.UUID) error
+	// Classes RESTRICT their year, so they go first; the rest cascades from the year.
+	WfDeleteYearClasses(ctx context.Context, academicYearID uuid.UUID) error
+	WfGetAcademicYear(ctx context.Context, id uuid.UUID) (WfGetAcademicYearRow, error)
+	// ---- Shared reads ----
+	WfListAcademicYears(ctx context.Context) ([]WfListAcademicYearsRow, error)
+	// ---- W2 leavers ----
+	WfListActiveStudentsInGrades(ctx context.Context, arg WfListActiveStudentsInGradesParams) ([]WfListActiveStudentsInGradesRow, error)
+	WfListGradeSections(ctx context.Context, academicYearID uuid.UUID) ([]WfListGradeSectionsRow, error)
+	WfListGrades(ctx context.Context) ([]WfListGradesRow, error)
+	WfListTerms(ctx context.Context, academicYearID uuid.UUID) ([]WfListTermsRow, error)
+	WfListYearClasses(ctx context.Context, academicYearID uuid.UUID) ([]WfListYearClassesRow, error)
+	WfMarkStudentsLeft(ctx context.Context, arg WfMarkStudentsLeftParams) (int64, error)
+	WfRestoreStudentsActive(ctx context.Context, ids []uuid.UUID) (int64, error)
+	WfSetCurrentTerm(ctx context.Context, id uuid.UUID) error
+	WfSetCurrentYear(ctx context.Context, id uuid.UUID) error
+	// True once anything real is recorded against the year's classes; a rollover can no longer be reverted.
+	WfYearHasActivity(ctx context.Context, academicYearID uuid.UUID) (bool, error)
+	// ---- W8 go live ----
+	WfYearReadiness(ctx context.Context, academicYearID uuid.UUID) (WfYearReadinessRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

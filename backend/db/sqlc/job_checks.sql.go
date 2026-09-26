@@ -851,3 +851,49 @@ func (q *Queries) ListTermsNearDeadlineWithNoMarks(ctx context.Context, withinDa
 	}
 	return items, nil
 }
+
+const listUnreadFindingsByTitle = `-- name: ListUnreadFindingsByTitle :many
+SELECT DISTINCT ON (n.title) n.id AS notification_id, n.title, n.message, n.sent_at
+FROM notification_recipients nr
+JOIN notifications n ON n.id = nr.notification_id
+WHERE nr.user_id = $1 AND NOT nr.is_read AND NOT nr.is_archived AND n.title = ANY($2::text[])
+ORDER BY n.title, n.sent_at DESC
+`
+
+type ListUnreadFindingsByTitleParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	Titles []string  `json:"titles"`
+}
+
+type ListUnreadFindingsByTitleRow struct {
+	NotificationID uuid.UUID          `json:"notification_id"`
+	Title          string             `json:"title"`
+	Message        string             `json:"message"`
+	SentAt         pgtype.Timestamptz `json:"sent_at"`
+}
+
+// Latest unread, unarchived agent notice per title for one admin; drives the page banners.
+func (q *Queries) ListUnreadFindingsByTitle(ctx context.Context, arg ListUnreadFindingsByTitleParams) ([]ListUnreadFindingsByTitleRow, error) {
+	rows, err := q.db.Query(ctx, listUnreadFindingsByTitle, arg.UserID, arg.Titles)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListUnreadFindingsByTitleRow{}
+	for rows.Next() {
+		var i ListUnreadFindingsByTitleRow
+		if err := rows.Scan(
+			&i.NotificationID,
+			&i.Title,
+			&i.Message,
+			&i.SentAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

@@ -27,12 +27,6 @@ const FILTER_LABELS: Record<string, string> = {
   house: "House",
 };
 
-const FINDINGS = [
-  "Students with no guardian on file",
-  "Student gender / school-type mismatches",
-  "Students with no current-year class",
-  "Student accounts stuck in first-login setup",
-];
 
 export default function Students() {
   const navigate = useNavigate();
@@ -125,7 +119,7 @@ export default function Students() {
         </Button>
       </div>
 
-      <AgentFindingsBanner titles={FINDINGS} />
+      <AgentFindingsBanner />
 
       <div className="os-section">
         <FilterBar

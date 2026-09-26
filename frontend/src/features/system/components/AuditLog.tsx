@@ -55,7 +55,7 @@ export default function AuditLog() {
         </div>
       </div>
 
-      <AgentFindingsBanner titles={["Unusual audit-log activity", "Unusual off-hours account activity"]} />
+      <AgentFindingsBanner />
 
       <FilterBar
         search={{ value: filters.auditQuery, onChange: (v) => update("auditQuery", v), placeholder: "Search by person, action or reason" }}

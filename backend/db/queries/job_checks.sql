@@ -309,3 +309,11 @@ AND EXTRACT(HOUR FROM (al.created_at AT TIME ZONE 'Asia/Colombo')) BETWEEN 0 AND
 GROUP BY al.actor_id, u.full_name
 HAVING COUNT(*) >= sqlc.arg(min_changes)::int
 ORDER BY change_count DESC;
+
+-- name: ListUnreadFindingsByTitle :many
+-- Latest unread, unarchived agent notice per title for one admin; drives the page banners.
+SELECT DISTINCT ON (n.title) n.id AS notification_id, n.title, n.message, n.sent_at
+FROM notification_recipients nr
+JOIN notifications n ON n.id = nr.notification_id
+WHERE nr.user_id = $1 AND NOT nr.is_read AND NOT nr.is_archived AND n.title = ANY(sqlc.arg(titles)::text[])
+ORDER BY n.title, n.sent_at DESC;
