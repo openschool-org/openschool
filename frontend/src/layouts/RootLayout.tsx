@@ -2,7 +2,7 @@ import { Navigate, useLocation } from "react-router";
 import { isNotFoundError } from "@/shared/api/errors";
 import { useSchool } from "@/features/school/queries/useSchool";
 import PortalShell from "@/layouts/PortalShell";
-import { ADMIN_NAV } from "@/layouts/nav/admin";
+import { ADMIN_NAV, ADMIN_ALIASES } from "@/layouts/nav/admin";
 
 export default function RootLayout() {
   const { pathname } = useLocation();
@@ -13,5 +13,5 @@ export default function RootLayout() {
     return <Navigate to="/school-setup" replace />;
   }
 
-  return <PortalShell navGroups={ADMIN_NAV} showSearch collapsible />;
+  return <PortalShell navGroups={ADMIN_NAV} navAliases={ADMIN_ALIASES} showSearch />;
 }

@@ -14,7 +14,7 @@ function formatAction(action: string) {
   return action.replace(/_/g, " ");
 }
 
-// Server-paginated (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 4) —
+// Server-paginated (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 4) -
 // an append-only log grows without bound, so this can no longer just show
 // "the last 200" and call it done.
 export default function AuditLog() {
@@ -28,7 +28,7 @@ export default function AuditLog() {
       <div className="os-page__header">
         <div>
           <h2 className="os-section__title os-m-0">
-            Audit Log
+            Audit log
           </h2>
           <p className="os-page__subtitle os-mt-1">
             Manual house re-assignments and admin edits made to attendance

@@ -8,7 +8,7 @@ interface StatusViewProps {
   badge?: string;
   code?: string;
   /** "page" sits inline within a layout's content area (404, coming soon).
-   *  "fullscreen" takes over the viewport in a card, like sign-in/setup —
+   *  "fullscreen" takes over the viewport in a card, like sign-in/setup -
    *  for states reached before/outside any layout (access restricted). */
   variant?: "page" | "fullscreen";
 }

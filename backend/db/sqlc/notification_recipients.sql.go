@@ -177,6 +177,17 @@ func (q *Queries) ListMyNotifications(ctx context.Context, userID uuid.UUID) ([]
 	return items, nil
 }
 
+const markAllNotificationRecipientsRead = `-- name: MarkAllNotificationRecipientsRead :exec
+UPDATE notification_recipients
+SET is_read = TRUE, read_at = NOW()
+WHERE user_id = $1 AND is_read = FALSE
+`
+
+func (q *Queries) MarkAllNotificationRecipientsRead(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, markAllNotificationRecipientsRead, userID)
+	return err
+}
+
 const markNotificationRecipientRead = `-- name: MarkNotificationRecipientRead :exec
 UPDATE notification_recipients
 SET is_read = TRUE, read_at = NOW()

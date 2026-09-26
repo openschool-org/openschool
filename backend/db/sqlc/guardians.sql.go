@@ -190,6 +190,74 @@ func (q *Queries) GetGuardianByUserIDAndNIC(ctx context.Context, arg GetGuardian
 	return i, err
 }
 
+const getGuardianChildrenSummary = `-- name: GetGuardianChildrenSummary :many
+SELECT
+    sg.student_id,
+    COALESCE(att.total, 0)::int AS sessions_this_month,
+    COALESCE(att.attended, 0)::int AS attended_this_month,
+    COALESCE(latest.term_name, '')::text AS latest_term_name,
+    COALESCE(latest.average_percent, 0)::float8 AS latest_average_percent,
+    (latest.term_name IS NOT NULL)::bool AS has_marks
+FROM guardians g
+JOIN student_guardians sg ON sg.guardian_id = g.id
+LEFT JOIN LATERAL (
+    SELECT COUNT(*) AS total,
+           COUNT(*) FILTER (WHERE ar.status IN ('present', 'late')) AS attended
+    FROM attendance_records ar
+    JOIN attendance_sessions s ON s.id = ar.session_id
+    WHERE ar.student_id = sg.student_id
+      AND s.date >= date_trunc('month', CURRENT_DATE)::date
+) att ON TRUE
+LEFT JOIN LATERAL (
+    SELECT t.name AS term_name,
+           ROUND((AVG(tm.marks / NULLIF(tm.max_marks, 0) * 100) FILTER (WHERE NOT tm.is_absent))::numeric, 1) AS average_percent
+    FROM term_marks tm
+    JOIN terms t ON t.id = tm.term_id
+    WHERE tm.student_id = sg.student_id
+    GROUP BY t.id, t.name, t.start_date
+    ORDER BY t.start_date DESC
+    LIMIT 1
+) latest ON TRUE
+WHERE g.user_id = $1
+`
+
+type GetGuardianChildrenSummaryRow struct {
+	StudentID            uuid.UUID `json:"student_id"`
+	SessionsThisMonth    int32     `json:"sessions_this_month"`
+	AttendedThisMonth    int32     `json:"attended_this_month"`
+	LatestTermName       string    `json:"latest_term_name"`
+	LatestAveragePercent float64   `json:"latest_average_percent"`
+	HasMarks             bool      `json:"has_marks"`
+}
+
+// One row per linked child so the parent dashboard costs one request however many children there are.
+func (q *Queries) GetGuardianChildrenSummary(ctx context.Context, userID pgtype.UUID) ([]GetGuardianChildrenSummaryRow, error) {
+	rows, err := q.db.Query(ctx, getGuardianChildrenSummary, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetGuardianChildrenSummaryRow{}
+	for rows.Next() {
+		var i GetGuardianChildrenSummaryRow
+		if err := rows.Scan(
+			&i.StudentID,
+			&i.SessionsThisMonth,
+			&i.AttendedThisMonth,
+			&i.LatestTermName,
+			&i.LatestAveragePercent,
+			&i.HasMarks,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPrimaryGuardian = `-- name: GetPrimaryGuardian :one
 SELECT
     g.id, g.user_id, g.full_name, g.relationship, g.phone, g.email, g.created_at, g.nic_number
@@ -300,15 +368,23 @@ WHERE (
     $2::bool IS NOT TRUE
     OR NOT EXISTS (SELECT 1 FROM student_guardians sg WHERE sg.guardian_id = g.id)
   )
-ORDER BY g.full_name ASC, g.id ASC
-LIMIT $3::int OFFSET $4::int
+ORDER BY
+    -- Whitelisted by httpx.ParseSort; an empty key keeps the default name order.
+    CASE WHEN $3::text = 'name' AND NOT $4::bool THEN g.full_name END ASC,
+    CASE WHEN $3::text = 'name' AND $4::bool THEN g.full_name END DESC,
+    CASE WHEN $3::text = 'relationship' AND NOT $4::bool THEN g.relationship END ASC,
+    CASE WHEN $3::text = 'relationship' AND $4::bool THEN g.relationship END DESC,
+    g.full_name ASC, g.id ASC
+LIMIT $6::int OFFSET $5::int
 `
 
 type ListGuardiansParams struct {
 	Search      pgtype.Text `json:"search"`
 	OrphansOnly pgtype.Bool `json:"orphans_only"`
-	PageLimit   int32       `json:"page_limit"`
+	SortKey     string      `json:"sort_key"`
+	SortDesc    bool        `json:"sort_desc"`
 	PageOffset  int32       `json:"page_offset"`
+	PageLimit   int32       `json:"page_limit"`
 }
 
 type ListGuardiansRow struct {
@@ -320,16 +396,25 @@ type ListGuardiansRow struct {
 	Email        pgtype.Text        `json:"email"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	NicNumber    string             `json:"nic_number"`
-	// Hand-edited: excluded from JSON — read once for the page envelope's total.
-	Total int64 `json:"-"`
+	Total        int64              `json:"total"`
 }
 
 // Server-paginated (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 4):
 // serves both the guardian directory (no search term, paged) and the "link
 // an existing guardian to this student too" search picker (siblings
-// sharing a guardian; always passes a search term).
+// sharing a guardian; always passes a search term). The caller-supplied
+// search term is escaped by the service layer (httpx.EscapeLikeTerm)
+// before it reaches here, restricted to "orphans" (linked to no student —
+// e.g. their last child left the school).
 func (q *Queries) ListGuardians(ctx context.Context, arg ListGuardiansParams) ([]ListGuardiansRow, error) {
-	rows, err := q.db.Query(ctx, listGuardians, arg.Search, arg.OrphansOnly, arg.PageLimit, arg.PageOffset)
+	rows, err := q.db.Query(ctx, listGuardians,
+		arg.Search,
+		arg.OrphansOnly,
+		arg.SortKey,
+		arg.SortDesc,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -411,7 +496,7 @@ func (q *Queries) ListGuardiansByStudent(ctx context.Context, studentID uuid.UUI
 }
 
 const listStudentsByGuardianID = `-- name: ListStudentsByGuardianID :many
-SELECT sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status
+SELECT sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status, sp.left_at, sp.erased_at
 FROM student_profiles sp
 INNER JOIN student_guardians sg ON sg.student_id = sp.id
 WHERE sg.guardian_id = $1
@@ -444,6 +529,8 @@ func (q *Queries) ListStudentsByGuardianID(ctx context.Context, guardianID uuid.
 			&i.Gender,
 			&i.HouseID,
 			&i.EnrollmentStatus,
+			&i.LeftAt,
+			&i.ErasedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -457,7 +544,7 @@ func (q *Queries) ListStudentsByGuardianID(ctx context.Context, guardianID uuid.
 
 const listStudentsByGuardianUserID = `-- name: ListStudentsByGuardianUserID :many
 SELECT
-    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status,
+    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status, sp.left_at, sp.erased_at,
     c.id     AS class_id,
     c.name   AS class_name,
     gr.name  AS grade_name
@@ -486,6 +573,8 @@ type ListStudentsByGuardianUserIDRow struct {
 	Gender           pgtype.Text        `json:"gender"`
 	HouseID          pgtype.UUID        `json:"house_id"`
 	EnrollmentStatus string             `json:"enrollment_status"`
+	LeftAt           pgtype.Timestamptz `json:"left_at"`
+	ErasedAt         pgtype.Timestamptz `json:"erased_at"`
 	ClassID          pgtype.UUID        `json:"class_id"`
 	ClassName        pgtype.Text        `json:"class_name"`
 	GradeName        pgtype.Text        `json:"grade_name"`
@@ -515,6 +604,8 @@ func (q *Queries) ListStudentsByGuardianUserID(ctx context.Context, userID pgtyp
 			&i.Gender,
 			&i.HouseID,
 			&i.EnrollmentStatus,
+			&i.LeftAt,
+			&i.ErasedAt,
 			&i.ClassID,
 			&i.ClassName,
 			&i.GradeName,

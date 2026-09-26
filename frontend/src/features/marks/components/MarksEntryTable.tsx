@@ -44,8 +44,8 @@ export default function MarksEntryTable({ students, subjectName, maxMarks, draft
         <thead>
           <tr>
             <th className="os-w-3">#</th>
-            <th>Student Name</th>
-            <th>Index Number</th>
+            <th>Student name</th>
+            <th>Index number</th>
             <th className="os-w-8">Marks</th>
             <th className="os-w-5">Absent</th>
             <th className="os-w-7">Status</th>

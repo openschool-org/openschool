@@ -13,7 +13,7 @@ export default function TeacherTimetable() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">My Timetable</h1>
+          <h1 className="os-page__title">My timetable</h1>
           <p className="os-page__subtitle">{currentYear?.label ?? ""}</p>
         </div>
       </div>

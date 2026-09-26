@@ -18,7 +18,7 @@ import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 
 const SOCIETY_ROLE_LABELS: Record<string, string> = {
   leader: "Leader",
-  deputy_leader: "Deputy Leader",
+  deputy_leader: "Deputy leader",
   secretary: "Secretary",
   treasurer: "Treasurer",
   member: "Member",
@@ -42,7 +42,7 @@ function StudentSocietyMemberships({ studentId }: { studentId: string }) {
   return (
     <div className="os-mb-6">
       <h3 className="os-text-xs os-fw-600 os-uppercase os-c-tertiary os-mt-0 os-mx-0 os-mb-2">
-        Society Memberships
+        Society memberships
       </h3>
       {memberships?.map((m) => (
         <div key={m.id} className="os-list-row os-list-row--compact os-gap-2h">

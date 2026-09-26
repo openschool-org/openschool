@@ -50,7 +50,7 @@ export default function SubjectsPanel() {
     { key: "code", header: "Code", render: (s) => <span className="os-table__mono">{s.code}</span> },
     { key: "name", header: "Subject", render: (s) => s.name },
     { key: "type", header: "Type", render: (s) => (s.type ? <Tag type="blue" size="sm">{s.type}</Tag> : <span className="os-table__muted">-</span>) },
-    { key: "max", header: "Max Marks", render: (s) => s.max_marks },
+    { key: "max", header: "Max marks", render: (s) => s.max_marks },
     {
       key: "actions",
       header: "Actions",
@@ -67,8 +67,8 @@ export default function SubjectsPanel() {
   return (
     <div>
       <div className="os-flex os-items-center os-justify-between os-gap-4 os-wrap os-my-4">
-        <p className="os-m-0 os-text-sm os-c-secondary">The school's subject catalogue. Offer a subject to students by adding it to a selection group under the Curriculum tab.</p>
-        <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/subjects/new">Add Subject</Button>
+        <p className="os-m-0 os-text-sm os-c-secondary">The school's subject catalogue. Offer a subject to students by adding it to a selection group under the curriculum tab.</p>
+        <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/subjects/new">Add subject</Button>
       </div>
 
       <div className="os-section">
@@ -84,7 +84,7 @@ export default function SubjectsPanel() {
           empty={{
             title: searching ? "No subjects found" : "No subjects yet",
             description: searching ? `No subject matches "${debouncedSearch}".` : "Add the subjects your school teaches to get started.",
-            action: searching ? undefined : <Button renderIcon={Add} kind="primary" as={Link} to="/subjects/new">Add Subject</Button>,
+            action: searching ? undefined : <Button renderIcon={Add} kind="primary" as={Link} to="/subjects/new">Add subject</Button>,
           }}
         >
           <DataGrid rows={filtered} columns={columns} getRowId={(s) => s.id} countLabel={(shown, total) => `Showing ${shown} of ${total} subjects`} />

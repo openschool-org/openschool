@@ -68,7 +68,7 @@ export default function GroupsList({
             description="Add a group for each decision a student makes at this level - one for compulsory subjects, and one per elective pool."
             action={
               <Button renderIcon={Add} kind="primary" onClick={onOpenCreateGroup}>
-                New Group
+                New group
               </Button>
             }
           />

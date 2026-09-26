@@ -106,7 +106,7 @@ export default function TeacherSubjects() {
   const [pageSize, setPageSize] = useState(25);
 
   // Server-paginated and server-searched (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md
-  // section 4) — a client-side filter over a capped page could neither find
+  // section 4) - a client-side filter over a capped page could neither find
   // nor act on a teacher past the first page.
   const { data: teacherPage, isLoading: loadingTeachers, isError: teachersError, refetch: refetchTeachers } = useTeachers({
     limit: pageSize,
@@ -133,10 +133,8 @@ export default function TeacherSubjects() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">Teacher Subjects</h1>
-          <p className="os-page__subtitle">
-            Assign subjects to teachers globally. These assignments designate which subjects a teacher is qualified to teach.
-          </p>
+          <h1 className="os-page__title">Teacher subjects</h1>
+          <p className="os-page__subtitle">Subjects each teacher is qualified to teach.</p>
         </div>
       </div>
 
@@ -156,8 +154,8 @@ export default function TeacherSubjects() {
             <tr>
               <th>Teacher</th>
               <th>Employee #</th>
-              <th>Assigned Subjects (Click to remove)</th>
-              <th>Assign Subject</th>
+              <th>Assigned subjects (click to remove)</th>
+              <th>Assign subject</th>
             </tr>
           </thead>
           <tbody>

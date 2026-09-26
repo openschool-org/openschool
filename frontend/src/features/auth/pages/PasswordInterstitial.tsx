@@ -9,7 +9,7 @@ import PasswordFields from "@/shared/ui/PasswordFields";
 
 // First sign-in with a system-assigned password: keep it or set a new one.
 // Once a prior "keep it" choice has expired (S1), "keep it" is no longer
-// offered — the account must actually set a new password.
+// offered - the account must actually set a new password.
 export default function PasswordInterstitial() {
   const { signOut } = useThunderID();
   const { data: me } = useProvisionUser();

@@ -19,8 +19,8 @@ export default function SettingsPage() {
         <TabList aria-label="Settings sections">
           <Tab>General</Tab>
           <Tab>Houses</Tab>
-          <Tab>Audit Log</Tab>
-          <Tab>Orphaned Accounts</Tab>
+          <Tab>Audit log</Tab>
+          <Tab>Orphaned accounts</Tab>
           <Tab>Automation</Tab>
         </TabList>
         <TabPanels>

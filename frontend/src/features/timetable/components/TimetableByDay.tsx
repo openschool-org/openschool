@@ -1,5 +1,7 @@
 import { WEEKDAYS } from "@/shared/lib/timetable";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
+import { useT } from "@/shared/i18n/useT";
+import type { MessageKey } from "@/shared/i18n/messages/en";
 
 interface Entry {
   day_of_week: number;
@@ -19,12 +21,14 @@ interface Props<T extends Entry> {
 
 // One read-only table per weekday, used by the student, teacher and parent timetable views.
 export default function TimetableByDay<T extends Entry>({ entries, middle, getRowId, asSections = false }: Props<T>) {
+  const { t } = useT();
   const columns: GridColumn<T>[] = [
-    { key: "period", header: "Period", render: (e) => `P${e.period_number}` },
-    { key: "subject", header: "Subject", render: (e) => e.subject_name ?? <span className="os-table__muted">-</span> },
+    { key: "period", header: t("table.period"), render: (e) => t("table.periodShort", { n: e.period_number }) },
+    { key: "subject", header: t("table.subject"), render: (e) => e.subject_name ?? <span className="os-table__muted">-</span> },
     middle,
-    { key: "room", header: "Classroom", render: (e) => e.classroom_name ?? <span className="os-table__muted">-</span> },
+    { key: "room", header: t("table.classroom"), render: (e) => e.classroom_name ?? <span className="os-table__muted">-</span> },
   ];
+  const dayLabel = (value: number) => t(`weekday.${value}` as MessageKey);
   return (
     <>
       {WEEKDAYS.map((day) => {
@@ -34,13 +38,13 @@ export default function TimetableByDay<T extends Entry>({ entries, middle, getRo
         return asSections ? (
           <div key={day.value} className="os-section">
             <div className="os-section__header">
-              <h2 className="os-section__title">{day.label}</h2>
+              <h2 className="os-section__title">{dayLabel(day.value)}</h2>
             </div>
             {grid}
           </div>
         ) : (
           <div key={day.value}>
-            <h3 className="os-text-md os-fw-600 os-mt-0 os-mx-0 os-mb-2">{day.label}</h3>
+            <h3 className="os-text-md os-fw-600 os-mt-0 os-mx-0 os-mb-2">{dayLabel(day.value)}</h3>
             {grid}
           </div>
         );

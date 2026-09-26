@@ -36,8 +36,8 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
   const busy = save.isPending || regenerate.isPending;
 
   return (
-    <ComposedModal open size="md" onClose={onClose} aria-label={`${section.name} — period grid`}>
-      <ModalHeader title={`${section.name} — period grid`} />
+    <ComposedModal open size="md" onClose={onClose} aria-label={`${section.name} - period grid`}>
+      <ModalHeader title={`${section.name} - period grid`} />
       <ModalBody>
         <MutationErrorNotification
           isError={save.isError}

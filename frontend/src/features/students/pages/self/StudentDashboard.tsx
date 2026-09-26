@@ -10,8 +10,11 @@ import ErrorMessage from "@/shared/ui/ErrorMessage";
 import TodayStatCard from "@/shared/ui/TodayStatCard";
 import { getInitials } from "@/shared/lib/name";
 import { todayISODate } from "@/shared/lib/date";
+import { formatPercent } from "@/shared/lib/number";
+import { useT } from "@/shared/i18n/useT";
 
 export default function StudentDashboard() {
+  const { t } = useT();
   const { data: profile, isLoading, isError, refetch } = useMyStudentProfile();
   const { data: attendance, isLoading: attendanceLoading } = useMyAttendance();
   const { data: currentTerm } = useCurrentTerm();
@@ -43,7 +46,7 @@ export default function StudentDashboard() {
   if (isError || !profile) {
     return (
       <div className="os-p-8">
-        <ErrorMessage message="Failed to load your profile" onRetry={refetch} />
+        <ErrorMessage message={t("student.loadProfileFailed")} onRetry={refetch} />
       </div>
     );
   }
@@ -65,7 +68,7 @@ export default function StudentDashboard() {
         {profile.house_name && (
           <div className="os-profile__actions">
             <Tag type="blue" size="sm">
-              {profile.house_name} House
+              {t("student.houseTag", { house: profile.house_name })}
             </Tag>
           </div>
         )}
@@ -74,22 +77,22 @@ export default function StudentDashboard() {
       <div className="os-py-6 os-px-8">
         <div className="os-stat-grid">
           <TodayStatCard
-            label="Attendance this month"
-            value={attendanceThisMonth === null ? "-" : `${attendanceThisMonth}%`}
+            label={t("student.attendanceThisMonth")}
+            value={formatPercent(attendanceThisMonth)}
             loading={attendanceLoading}
             Icon={EventSchedule}
             path="/s/attendance"
           />
           <TodayStatCard
-            label="Latest marks"
-            value={marksAverage === null ? "-" : `${marksAverage}%`}
+            label={t("student.latestMarks")}
+            value={formatPercent(marksAverage)}
             meta={currentTerm?.name}
             loading={marksLoading || !currentTerm}
             Icon={Report}
             path="/s/marks"
           />
           <TodayStatCard
-            label="Today's classes"
+            label={t("student.todaysClasses")}
             value={todayClasses.length}
             meta={todayClasses.length > 0 ? todayClasses[0].subject_name ?? undefined : undefined}
             loading={timetableLoading}
@@ -97,7 +100,7 @@ export default function StudentDashboard() {
             path="/s/timetable"
           />
           <TodayStatCard
-            label="Unread notices"
+            label={t("student.unreadNotices")}
             value={unread ?? 0}
             loading={unreadLoading}
             Icon={Notification}
@@ -107,27 +110,27 @@ export default function StudentDashboard() {
 
         <div className="os-section">
           <div className="os-section__header">
-            <h2 className="os-section__title">Student Details</h2>
+            <h2 className="os-section__title">{t("student.details")}</h2>
           </div>
           <div className="os-section__body os-grid os-grid-auto-200 os-gap-4">
             <div className="os-kv-item os-border os-bg-layer">
-              <p className="os-kv-item__label">Full Name</p>
+              <p className="os-kv-item__label">{t("field.fullName")}</p>
               <p className="os-kv-item__value">{profile.full_name}</p>
             </div>
             <div className="os-kv-item os-border os-bg-layer">
-              <p className="os-kv-item__label">Index Number</p>
+              <p className="os-kv-item__label">{t("field.indexNumber")}</p>
               <p className="os-kv-item__value">{profile.index_number}</p>
             </div>
             <div className="os-kv-item os-border os-bg-layer">
-              <p className="os-kv-item__label">Class</p>
+              <p className="os-kv-item__label">{t("field.class")}</p>
               <p className="os-kv-item__value">{profile.class_name || "-"}</p>
             </div>
             <div className="os-kv-item os-border os-bg-layer">
-              <p className="os-kv-item__label">Grade</p>
+              <p className="os-kv-item__label">{t("field.grade")}</p>
               <p className="os-kv-item__value">{profile.grade_name || "-"}</p>
             </div>
             <div className="os-kv-item os-border os-bg-layer">
-              <p className="os-kv-item__label">House</p>
+              <p className="os-kv-item__label">{t("field.house")}</p>
               <p className="os-kv-item__value">{profile.house_name || "-"}</p>
             </div>
           </div>

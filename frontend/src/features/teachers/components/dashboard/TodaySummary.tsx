@@ -12,10 +12,10 @@ export default function TodaySummary({
   totalStudents: number;
 }) {
   const rows = [
-    { label: "Sessions Marked", value: markedCount, color: "var(--os-success)" },
-    { label: "Sessions Pending", value: pendingCount, color: pendingCount > 0 ? "var(--os-warning)" : "var(--os-text-tertiary)" },
-    { label: "My Classes", value: myClassCount, color: "var(--os-text-primary)" },
-    { label: "Total Students", value: totalStudents, color: "var(--os-accent)" },
+    { label: "Sessions marked", value: markedCount, color: "var(--os-success)" },
+    { label: "Sessions pending", value: pendingCount, color: pendingCount > 0 ? "var(--os-warning)" : "var(--os-text-tertiary)" },
+    { label: "My classes", value: myClassCount, color: "var(--os-text-primary)" },
+    { label: "Total students", value: totalStudents, color: "var(--os-accent)" },
   ];
 
   return (

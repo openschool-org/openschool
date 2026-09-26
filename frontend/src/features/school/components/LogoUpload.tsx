@@ -22,7 +22,7 @@ export default function LogoUpload({ value, editing, onChange }: LogoUploadProps
       return;
     }
     if (file.size > MAX_LOGO_BYTES) {
-      setError("Image is too large — please choose one under 500KB.");
+      setError("Image is too large - please choose one under 500KB.");
       return;
     }
     const reader = new FileReader();
@@ -33,7 +33,7 @@ export default function LogoUpload({ value, editing, onChange }: LogoUploadProps
 
   return (
     <div>
-      <p className="os-text-xs os-c-secondary os-mb-2">School Logo (optional)</p>
+      <p className="os-text-xs os-c-secondary os-mb-2">School logo (optional)</p>
       <div className="os-flex os-items-center os-gap-4">
         <div className="os-w-4 os-h-4 os-rounded-lg os-border os-bg-layer-hover os-flex os-items-center os-justify-center os-overflow-hidden os-shrink-0"
         >

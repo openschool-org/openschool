@@ -42,7 +42,7 @@ export default function AssignMonitorsModal({
       <div className="os-grid os-gap-4">
         <EntityCombobox
           id="girl-monitor-choice"
-          labelText="Girl Monitor"
+          labelText="Girl monitor"
           items={girlMonitorCandidates}
           selectedId={girlMonitorChoice}
           onSelect={onGirlMonitorChoiceChange}
@@ -52,7 +52,7 @@ export default function AssignMonitorsModal({
         />
         <EntityCombobox
           id="boy-monitor-choice"
-          labelText="Boy Monitor"
+          labelText="Boy monitor"
           items={boyMonitorCandidates}
           selectedId={boyMonitorChoice}
           onSelect={onBoyMonitorChoiceChange}

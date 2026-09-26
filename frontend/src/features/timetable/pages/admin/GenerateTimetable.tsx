@@ -10,6 +10,7 @@ import { useGenerateTimetables } from "@/features/timetable/queries/useGenerate"
 import EmptyState from "@/shared/ui/EmptyState";
 import type { ClassGenerationResult } from "@/features/timetable/api/generate";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import InfoTip from "@/shared/ui/InfoTip";
 
 function ClassResultCard({ result }: { result: ClassGenerationResult }) {
   if (result.skipped) {
@@ -48,7 +49,7 @@ function ClassResultCard({ result }: { result: ClassGenerationResult }) {
           {result.gaps.map((g, i) => (
             <li key={i}>
               {g.subject_name || "Unresolved subject"}
-              {g.teacher_name ? ` (${g.teacher_name})` : ""} — {g.reason}
+              {g.teacher_name ? ` (${g.teacher_name})` : ""} - {g.reason}
             </li>
           ))}
         </ul>
@@ -76,12 +77,11 @@ export default function GenerateTimetable({ inline = false }: { inline?: boolean
       {!inline && (
         <div className="os-page__header">
           <div className="os-page__header-left">
-            <h1 className="os-page__title">Generate Timetable</h1>
-            <p className="os-page__subtitle">
-              Best-effort auto-fills draft timetables for every class in a grade section at once — students keep one
-              fixed homeroom, teachers rotate in, and lab-required periods go to a matching lab classroom. Anything it
-              can't place is left as a gap for you to finish by hand.
-            </p>
+            <h1 className="os-page__title">Generate timetable</h1>
+            <div className="os-page__subtitle os-page__subtitle--tip">
+              Fill draft timetables for every class in a grade section at once.
+              <InfoTip>Students stay in their homeroom, teachers move, and lab periods go to a matching lab. Anything it cannot place is left for you to finish by hand.</InfoTip>
+            </div>
           </div>
         </div>
       )}

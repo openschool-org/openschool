@@ -120,6 +120,10 @@ func (r *NotificationRepository) MarkRead(ctx context.Context, notificationID, u
 	return r.queries.MarkNotificationRecipientRead(ctx, db.MarkNotificationRecipientReadParams{NotificationID: notificationID, UserID: userID})
 }
 
+func (r *NotificationRepository) MarkAllRead(ctx context.Context, userID uuid.UUID) error {
+	return r.queries.MarkAllNotificationRecipientsRead(ctx, userID)
+}
+
 func (r *NotificationRepository) SetArchived(ctx context.Context, notificationID, userID uuid.UUID, archived bool) error {
 	return r.queries.SetNotificationRecipientArchived(ctx, db.SetNotificationRecipientArchivedParams{NotificationID: notificationID, UserID: userID, IsArchived: archived})
 }

@@ -74,7 +74,7 @@ export default function StaffDetail({ staff, onDeleted }: { staff: StaffRow; onD
         <div className="os-grid os-grid-cols-2 os-gap-4">
           <Select
             id="staff-employment-status"
-            labelText="Employment Status"
+            labelText="Employment status"
             value={staff.employment_status}
             disabled={updateStatus.isPending}
             onChange={(e) =>

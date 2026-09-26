@@ -48,8 +48,8 @@ export default function TeacherMyAttendance() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">My Attendance</h1>
-          <p className="os-page__subtitle">Your own attendance record — marked by an administrator</p>
+          <h1 className="os-page__title">My attendance</h1>
+          <p className="os-page__subtitle">Your own attendance record - marked by an administrator</p>
         </div>
       </div>
 

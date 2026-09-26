@@ -41,10 +41,10 @@ export default function Teachers() {
   const teachers = data?.items ?? [];
 
   const columns: GridColumn<Teacher>[] = [
-    { key: "employee_number", header: "Employee No.", render: (t) => <span className="os-table__mono">{t.employee_number}</span> },
-    { key: "full_name", header: "Full Name", render: (t) => <Link to={`/teachers/${t.id}`} className="os-table__link">{t.full_name}</Link> },
+    { key: "employee_number", header: "Employee no.", render: (t) => <span className="os-table__mono">{t.employee_number}</span> },
+    { key: "full_name", header: "Full name", render: (t) => <Link to={`/teachers/${t.id}`} className="os-table__link">{t.full_name}</Link> },
     { key: "phone", header: "Phone", render: (t) => <span className="os-table__muted">{t.phone ?? "-"}</span> },
-    { key: "joined_date", header: "Joined Date", render: (t) => <span className="os-table__muted">{t.joined_date ?? "-"}</span> },
+    { key: "joined_date", header: "Joined date", render: (t) => <span className="os-table__muted">{t.joined_date ?? "-"}</span> },
     {
       key: "status",
       header: "Status",
@@ -70,7 +70,7 @@ export default function Teachers() {
           <h1 className="os-page__title">Teachers</h1>
           <p className="os-page__subtitle">Manage teacher profiles</p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/teachers/new">Add Teacher</Button>
+        <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/teachers/new">Add teacher</Button>
       </div>
 
       <AgentFindingsBanner titles={["Inactive teachers still assigned to classes", "Teacher accounts stuck in first-login setup"]} />
@@ -83,7 +83,7 @@ export default function Teachers() {
               label: "Status",
               node: (
                 <Select id="filter-teacher-status" labelText="Status" hideLabel size="md" value={filters.status} onChange={(e) => setFilter("status", e.target.value)}>
-                  <SelectItem value="" text="All Statuses" />
+                  <SelectItem value="" text="All statuses" />
                   {EMPLOYMENT_STATUSES.map((s) => <SelectItem key={s.value} value={s.value} text={s.label} />)}
                 </Select>
               ),

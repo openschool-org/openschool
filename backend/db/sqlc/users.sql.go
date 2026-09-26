@@ -22,6 +22,11 @@ type ClearMustChangePasswordParams struct {
 	KeptDefaultPassword bool      `json:"kept_default_password"`
 }
 
+// Used by both a real password change (kept_default_password = FALSE) and
+// the first-login "keep this password" choice (kept_default_password =
+// TRUE) — the two clear must_change_password identically but need telling
+// apart so an unchanged default password can still expire after a week
+// (S1, docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md).
 func (q *Queries) ClearMustChangePassword(ctx context.Context, arg ClearMustChangePasswordParams) error {
 	_, err := q.db.Exec(ctx, clearMustChangePassword, arg.ID, arg.KeptDefaultPassword)
 	return err
@@ -49,7 +54,7 @@ INSERT INTO users (
 ) VALUES (
     $1, $2, $3, $4, $5
 )
-RETURNING id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password
+RETURNING id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password, preferred_language
 `
 
 type CreateUserParams struct {
@@ -79,6 +84,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.UpdatedAt,
 		&i.MustChangePassword,
 		&i.KeptDefaultPassword,
+		&i.PreferredLanguage,
 	)
 	return i, err
 }
@@ -89,7 +95,7 @@ SET
     is_active  = FALSE,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password
+RETURNING id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password, preferred_language
 `
 
 func (q *Queries) DeactivateUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -105,6 +111,7 @@ func (q *Queries) DeactivateUser(ctx context.Context, id uuid.UUID) (User, error
 		&i.UpdatedAt,
 		&i.MustChangePassword,
 		&i.KeptDefaultPassword,
+		&i.PreferredLanguage,
 	)
 	return i, err
 }
@@ -120,7 +127,7 @@ INSERT INTO users (
     $1, $2, $3, $4, $5
 )
 ON CONFLICT (id) DO UPDATE SET id = users.id
-RETURNING id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password
+RETURNING id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password, preferred_language
 `
 
 type EnsureUserExistsParams struct {
@@ -154,12 +161,13 @@ func (q *Queries) EnsureUserExists(ctx context.Context, arg EnsureUserExistsPara
 		&i.UpdatedAt,
 		&i.MustChangePassword,
 		&i.KeptDefaultPassword,
+		&i.PreferredLanguage,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password FROM users
+SELECT id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password, preferred_language FROM users
 WHERE email = $1
 `
 
@@ -176,12 +184,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.UpdatedAt,
 		&i.MustChangePassword,
 		&i.KeptDefaultPassword,
+		&i.PreferredLanguage,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password FROM users
+SELECT id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password, preferred_language FROM users
 WHERE id = $1
 `
 
@@ -198,12 +207,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.UpdatedAt,
 		&i.MustChangePassword,
 		&i.KeptDefaultPassword,
+		&i.PreferredLanguage,
 	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password FROM users
+SELECT id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password, preferred_language FROM users
 ORDER BY full_name ASC
 `
 
@@ -226,6 +236,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.UpdatedAt,
 			&i.MustChangePassword,
 			&i.KeptDefaultPassword,
+			&i.PreferredLanguage,
 		); err != nil {
 			return nil, err
 		}
@@ -238,7 +249,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 }
 
 const listUsersByRole = `-- name: ListUsersByRole :many
-SELECT id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password FROM users
+SELECT id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password, preferred_language FROM users
 WHERE role = $1
 ORDER BY full_name ASC
 `
@@ -262,6 +273,7 @@ func (q *Queries) ListUsersByRole(ctx context.Context, role string) ([]User, err
 			&i.UpdatedAt,
 			&i.MustChangePassword,
 			&i.KeptDefaultPassword,
+			&i.PreferredLanguage,
 		); err != nil {
 			return nil, err
 		}
@@ -289,6 +301,22 @@ func (q *Queries) SetMustChangePassword(ctx context.Context, arg SetMustChangePa
 	return err
 }
 
+const setUserPreferredLanguage = `-- name: SetUserPreferredLanguage :exec
+UPDATE users
+SET preferred_language = $2, updated_at = NOW()
+WHERE id = $1
+`
+
+type SetUserPreferredLanguageParams struct {
+	ID                uuid.UUID `json:"id"`
+	PreferredLanguage string    `json:"preferred_language"`
+}
+
+func (q *Queries) SetUserPreferredLanguage(ctx context.Context, arg SetUserPreferredLanguageParams) error {
+	_, err := q.db.Exec(ctx, setUserPreferredLanguage, arg.ID, arg.PreferredLanguage)
+	return err
+}
+
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET
@@ -296,7 +324,7 @@ SET
     email      = $3,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password
+RETURNING id, email, full_name, role, is_active, created_at, updated_at, must_change_password, kept_default_password, preferred_language
 `
 
 type UpdateUserParams struct {
@@ -318,6 +346,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.UpdatedAt,
 		&i.MustChangePassword,
 		&i.KeptDefaultPassword,
+		&i.PreferredLanguage,
 	)
 	return i, err
 }

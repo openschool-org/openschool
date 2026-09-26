@@ -13,10 +13,8 @@ export default function TimetableReview() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">Timetable Review</h1>
-          <p className="os-page__subtitle">
-            Timetables submitted for your approval as a section head, for {currentYear?.label ?? "the current year"}.
-          </p>
+          <h1 className="os-page__title">Timetable review</h1>
+          <p className="os-page__subtitle">Timetables waiting for your approval for {currentYear?.label ?? "the current year"}.</p>
         </div>
       </div>
 

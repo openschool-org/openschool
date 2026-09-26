@@ -12,6 +12,31 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const consumePasswordResetToken = `-- name: ConsumePasswordResetToken :one
+UPDATE password_reset_tokens
+SET used_at = NOW()
+WHERE token_hash = $1
+  AND used_at IS NULL
+  AND expires_at > NOW()
+RETURNING id, user_id, token_hash, expires_at, used_at, created_at
+`
+
+// Atomically claims a valid token. This prevents two concurrent reset
+// requests from both changing the account password with the same token.
+func (q *Queries) ConsumePasswordResetToken(ctx context.Context, tokenHash string) (PasswordResetToken, error) {
+	row := q.db.QueryRow(ctx, consumePasswordResetToken, tokenHash)
+	var i PasswordResetToken
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.TokenHash,
+		&i.ExpiresAt,
+		&i.UsedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createPasswordResetToken = `-- name: CreatePasswordResetToken :one
 INSERT INTO password_reset_tokens (
     user_id,
@@ -31,31 +56,6 @@ type CreatePasswordResetTokenParams struct {
 
 func (q *Queries) CreatePasswordResetToken(ctx context.Context, arg CreatePasswordResetTokenParams) (PasswordResetToken, error) {
 	row := q.db.QueryRow(ctx, createPasswordResetToken, arg.UserID, arg.TokenHash, arg.ExpiresAt)
-	var i PasswordResetToken
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.TokenHash,
-		&i.ExpiresAt,
-		&i.UsedAt,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const consumePasswordResetToken = `-- name: ConsumePasswordResetToken :one
--- Atomically claims a valid token. This prevents two concurrent reset
--- requests from both changing the account password with the same token.
-UPDATE password_reset_tokens
-SET used_at = NOW()
-WHERE token_hash = $1
-  AND used_at IS NULL
-  AND expires_at > NOW()
-RETURNING id, user_id, token_hash, expires_at, used_at, created_at
-`
-
-func (q *Queries) ConsumePasswordResetToken(ctx context.Context, tokenHash string) (PasswordResetToken, error) {
-	row := q.db.QueryRow(ctx, consumePasswordResetToken, tokenHash)
 	var i PasswordResetToken
 	err := row.Scan(
 		&i.ID,

@@ -13,6 +13,7 @@ func Register(protected *gin.RouterGroup, pool *pgxpool.Pool) {
 	repository := newUserRepository(pool)
 	handler := newMeHandler(newMeService(repository))
 	protected.GET("/me", handler.get)
+	protected.PUT("/me/language", handler.setLanguage)
 }
 
 // RegisterReconciliation mounts the admin-only orphaned-account operations.

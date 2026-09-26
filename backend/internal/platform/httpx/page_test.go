@@ -54,3 +54,25 @@ func TestEscapeLikeTermEscapesAllWildcards(t *testing.T) {
 		t.Fatalf("EscapeLikeTerm() = %q", got)
 	}
 }
+func parseSortFor(t *testing.T, rawQuery string) SortParams {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	context, _ := gin.CreateTestContext(httptest.NewRecorder())
+	context.Request = httptest.NewRequest("GET", "/students?"+rawQuery, nil)
+	return ParseSort(context, "name", "index")
+}
+
+func TestParseSortAcceptsAllowedKeys(t *testing.T) {
+	if got := parseSortFor(t, "sort=index&order=desc"); got.Key != "index" || !got.Desc {
+		t.Fatalf("ParseSort() = %+v, want index desc", got)
+	}
+	if got := parseSortFor(t, "sort=name"); got.Key != "name" || got.Desc {
+		t.Fatalf("ParseSort() = %+v, want name asc", got)
+	}
+}
+
+func TestParseSortIgnoresUnknownKeys(t *testing.T) {
+	if got := parseSortFor(t, "sort=password_hash&order=desc"); got != (SortParams{}) {
+		t.Fatalf("ParseSort() = %+v, want the zero value for an unknown key", got)
+	}
+}

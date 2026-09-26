@@ -77,3 +77,22 @@ type Page[T any] struct {
 	Limit  int32 `json:"limit"`
 	Offset int32 `json:"offset"`
 }
+
+// SortParams is a validated sort column and direction for a list endpoint.
+type SortParams struct {
+	Key  string
+	Desc bool
+}
+
+// ParseSort reads ?sort=<key>&order=asc|desc. Keys outside allowed are
+// ignored, so the query falls back to its default order rather than
+// letting a client pick an arbitrary column.
+func ParseSort(c *gin.Context, allowed ...string) SortParams {
+	key := c.Query("sort")
+	for _, a := range allowed {
+		if key == a {
+			return SortParams{Key: key, Desc: c.Query("order") == "desc"}
+		}
+	}
+	return SortParams{}
+}

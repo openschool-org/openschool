@@ -562,6 +562,7 @@ type User struct {
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	MustChangePassword  bool               `json:"must_change_password"`
 	KeptDefaultPassword bool               `json:"kept_default_password"`
+	PreferredLanguage   string             `json:"preferred_language"`
 }
 
 type VicePrincipalGradeScope struct {

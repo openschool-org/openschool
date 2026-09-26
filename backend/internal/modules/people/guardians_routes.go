@@ -16,6 +16,7 @@ import (
 // shared limit/offset/search contract plus the orphans-only filter.
 type GuardianListParams struct {
 	httpx.PageParams
+	Sort        httpx.SortParams
 	OrphansOnly bool
 }
 
@@ -189,7 +190,7 @@ func guardianActor(c *gin.Context) (uuid.UUID, bool) {
 
 func RegisterGuardianReadRoutes(teacherOrAdmin, studentAccess *gin.RouterGroup, reader GuardianReader) {
 	teacherOrAdmin.GET("/guardians", func(c *gin.Context) {
-		params := GuardianListParams{PageParams: httpx.ParsePage(c), OrphansOnly: c.Query("orphans") == "true"}
+		params := GuardianListParams{PageParams: httpx.ParsePage(c), Sort: httpx.ParseSort(c, "name", "relationship"), OrphansOnly: c.Query("orphans") == "true"}
 		value, err := reader.ListPage(c, params)
 		readGuardians(c, value, err)
 	})

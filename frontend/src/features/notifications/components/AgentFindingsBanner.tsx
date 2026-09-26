@@ -38,7 +38,7 @@ export default function AgentFindingsBanner({ titles }: Props) {
           hideCloseButton={false}
           title={n.title}
           subtitle={n.message}
-          actionButtonLabel="View in Automation"
+          actionButtonLabel="View in automation"
           onActionButtonClick={() => navigate("/automation")}
           onClose={() => setDismissed((prev) => new Set(prev).add(n.notification_id))} className="os-max-w-full"
         />

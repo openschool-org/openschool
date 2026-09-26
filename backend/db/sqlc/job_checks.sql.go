@@ -737,7 +737,11 @@ type ListStaleMustChangePasswordUsersByRoleRow struct {
 // ── Onboarding watchers (role-scoped) ────────────────────────────────────────
 // provisioned but never completed first login, past the given age, scoped
 // to one role — so the finding can be shown correctly on a role-specific
-// page (Teachers vs Students) instead of a mixed list.
+// page (Teachers vs Students) instead of a mixed list. Also catches an
+// account that clicked "keep this password" and is still on the default
+// past its expiry window (S1) — kept_default_password alone doesn't force
+// must_change_password back to TRUE in the database, only in the /me
+// response, so this check has to test both.
 func (q *Queries) ListStaleMustChangePasswordUsersByRole(ctx context.Context, arg ListStaleMustChangePasswordUsersByRoleParams) ([]ListStaleMustChangePasswordUsersByRoleRow, error) {
 	rows, err := q.db.Query(ctx, listStaleMustChangePasswordUsersByRole, arg.Role, arg.OlderThanDays)
 	if err != nil {

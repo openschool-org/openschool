@@ -62,7 +62,7 @@ export default function GuardiansDirectory() {
           </div>
           <Checkbox
             id="orphans-only"
-            labelText="Unlinked Guardians Only (Orphans)"
+            labelText="Unlinked guardians only (orphans)"
             checked={orphansOnly}
             onChange={(_e, { checked }) => { setOrphansOnly(checked); setPage(1); }}
           />
@@ -70,11 +70,11 @@ export default function GuardiansDirectory() {
 
         {(search || orphansOnly) && (
           <div className="os-flex os-items-center os-gap-2 os-wrap os-mt-3">
-            <span className="os-text-xs os-fw-600 os-c-tertiary">Active Filters:</span>
+            <span className="os-text-xs os-fw-600 os-c-tertiary">Active filters:</span>
             {orphansOnly && <Tag type="magenta" filter onClose={() => { setOrphansOnly(false); setPage(1); }}>Filter: Unlinked Only</Tag>}
             {search && <Tag type="blue" filter onClose={() => { setSearch(""); setPage(1); }}>Search: "{search}"</Tag>}
             <Button kind="ghost" size="sm" renderIcon={Close} onClick={() => { setSearch(""); setOrphansOnly(false); setPage(1); }}>
-              Clear All
+              Clear all
             </Button>
           </div>
         )}

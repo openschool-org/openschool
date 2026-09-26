@@ -24,11 +24,7 @@ export default function Analytics({ scope = "admin" }: { scope?: "admin" | "lead
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">Analytics</h1>
-          <p className="os-page__subtitle">
-            School-wide reporting across students, academics, staff and
-            operations - marks by subject, attendance, house distribution and
-            growth trends.
-          </p>
+          <p className="os-page__subtitle">Marks, attendance, houses and growth across the school.</p>
         </div>
       </div>
 
@@ -94,11 +90,11 @@ function StudentsPanel({ data }: { data: AnalyticsData }) {
   return (
     <div className="os-my-4 os-mx-0">
       <div className="os-stat-grid">
-        <StatTile label="Total Students" value={data.student.total} color={ACCENT} />
+        <StatTile label="Total students" value={data.student.total} color={ACCENT} />
       </div>
 
       <div className="os-grid os-grid-cols-2 os-gap-6 os-mt-6">
-        <Section title="Gender Distribution">
+        <Section title="Gender distribution">
           <DonutChart
             slices={genderRows.map((r) => ({
               label: r.label,
@@ -107,7 +103,7 @@ function StudentsPanel({ data }: { data: AnalyticsData }) {
             }))}
           />
         </Section>
-        <Section title="House Distribution">
+        <Section title="House distribution">
           <DonutChart
             slices={data.student.house_distribution.map((h, i) => ({
               label: h.name,
@@ -119,10 +115,10 @@ function StudentsPanel({ data }: { data: AnalyticsData }) {
       </div>
 
       <div className="os-grid os-grid-cols-2 os-gap-6 os-mt-6">
-        <Section title="Students by Grade">
+        <Section title="Students by grade">
           <BarList rows={data.student.by_grade.map((r: CountRow) => ({ label: r.label, value: r.count }))} />
         </Section>
-        <Section title="Students by Class">
+        <Section title="Students by class">
           <BarList
             rows={data.student.by_class.map((r: CountRow) => ({ label: r.label, value: r.count }))}
             color={CHART_BLUE}
@@ -131,7 +127,7 @@ function StudentsPanel({ data }: { data: AnalyticsData }) {
       </div>
 
       <div className="os-mt-6">
-        <Section title="Attendance Trend (last 14 days)">
+        <Section title="Attendance trend (last 14 days)">
           <Sparkline
             points={trendPoints.map((p) => ({ label: p.label, value: p.pct }))}
             min={0}
@@ -149,20 +145,20 @@ function AcademicsPanel({ data }: { data: AnalyticsData }) {
   return (
     <div className="os-my-4 os-mx-0">
       <div className="os-stat-grid">
-        <StatTile label="Examination Average" value={`${data.academic.examination_average}%`} color={ACCENT} />
-        <StatTile label="Students With Marks" value={data.academic.students_with_marks} color={CHART_BLUE} />
-        <StatTile label="Overall Attendance %" value={`${Math.round(data.academic.attendance_percentage)}%`} color={STATUS_COLORS.present} />
-        <StatTile label="Mark Entries This Term" value={data.academic.examination_entries} color={CHART_PURPLE} />
+        <StatTile label="Examination average" value={`${data.academic.examination_average}%`} color={ACCENT} />
+        <StatTile label="Students with marks" value={data.academic.students_with_marks} color={CHART_BLUE} />
+        <StatTile label="Overall attendance %" value={`${Math.round(data.academic.attendance_percentage)}%`} color={STATUS_COLORS.present} />
+        <StatTile label="Mark entries this term" value={data.academic.examination_entries} color={CHART_PURPLE} />
       </div>
 
       <div className="os-grid os-grid-cols-2 os-gap-6 os-mt-6">
-        <Section title="Marks by Subject (avg %, current term)">
+        <Section title="Marks by subject (avg %, current term)">
           <BarList
             rows={data.academic.subject_performance.map((r) => ({ label: r.label, value: r.average_percentage }))}
             formatValue={(v) => `${v}%`}
           />
         </Section>
-        <Section title="Marks by Grade (avg %, current term)">
+        <Section title="Marks by grade (avg %, current term)">
           <BarList
             rows={data.academic.grade_wise_performance.map((r) => ({ label: r.label, value: r.average_percentage }))}
             color={CHART_BLUE}
@@ -172,7 +168,7 @@ function AcademicsPanel({ data }: { data: AnalyticsData }) {
       </div>
 
       <div className="os-mt-6">
-        <Section title="Marks by Class (avg %, current term)">
+        <Section title="Marks by class (avg %, current term)">
           <BarList
             rows={data.academic.class_wise_performance.map((r) => ({ label: r.label, value: r.average_percentage }))}
             color={STATUS_COLORS.present}
@@ -188,12 +184,12 @@ function StaffPanel({ data }: { data: AnalyticsData }) {
   return (
     <div className="os-my-4 os-mx-0">
       <div className="os-stat-grid">
-        <StatTile label="Academic Staff" value={data.staff.academic_staff_count} color={ACCENT} />
-        <StatTile label="Non-Academic Staff" value={data.staff.non_academic_staff_count} color={CHART_PURPLE} />
+        <StatTile label="Academic staff" value={data.staff.academic_staff_count} color={ACCENT} />
+        <StatTile label="Non-academic staff" value={data.staff.non_academic_staff_count} color={CHART_PURPLE} />
       </div>
 
       <div className="os-grid os-grid-cols-2 os-gap-6 os-mt-6">
-        <Section title="Staff Attendance This Month">
+        <Section title="Staff attendance this month">
           <DonutChart
             slices={[
               { label: "Present", value: data.staff.attendance_this_month.present_count, color: STATUS_COLORS.present },
@@ -203,7 +199,7 @@ function StaffPanel({ data }: { data: AnalyticsData }) {
             ]}
           />
         </Section>
-        <TrendSummary title="Staff Growth by Joining Year" points={data.school.staff_growth} color={CHART_PURPLE} />
+        <TrendSummary title="Staff growth by joining year" points={data.school.staff_growth} color={CHART_PURPLE} />
       </div>
     </div>
   );
@@ -213,14 +209,14 @@ function SchoolPanel({ data }: { data: AnalyticsData }) {
   return (
     <div className="os-my-4 os-mx-0">
       <div className="os-stat-grid">
-        <StatTile label="Notifications Sent" value={data.school.notifications_sent_count} color={CHART_BLUE} />
-        <StatTile label="Timetable Completion" value={`${Math.round(data.school.timetable_completion_pct)}%`} color={STATUS_COLORS.present} />
-        <StatTile label="Total Classes" value={data.school.total_classes} color={ACCENT} />
-        <StatTile label="Published Timetables" value={data.school.published_classes} color={CHART_PURPLE} />
+        <StatTile label="Notifications sent" value={data.school.notifications_sent_count} color={CHART_BLUE} />
+        <StatTile label="Timetable completion" value={`${Math.round(data.school.timetable_completion_pct)}%`} color={STATUS_COLORS.present} />
+        <StatTile label="Total classes" value={data.school.total_classes} color={ACCENT} />
+        <StatTile label="Published timetables" value={data.school.published_classes} color={CHART_PURPLE} />
       </div>
 
       <div className="os-mt-6">
-        <TrendSummary title="Student Growth by Year" points={data.school.student_growth} color={ACCENT} />
+        <TrendSummary title="Student growth by year" points={data.school.student_growth} color={ACCENT} />
       </div>
     </div>
   );

@@ -139,10 +139,10 @@ export default function CurriculumPanel() {
               setPresetConfirmOpen(true);
             }}
           >
-            Load Curriculum Preset
+            Load curriculum preset
           </Button>
           <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>
-            New Level
+            New level
           </Button>
         </div>
       </div>

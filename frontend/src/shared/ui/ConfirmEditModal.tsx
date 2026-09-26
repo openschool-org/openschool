@@ -21,7 +21,7 @@ export default function ConfirmEditModal({
   title,
   description,
   isPending,
-  confirmLabel = "Save Changes",
+  confirmLabel = "Save changes",
   onClose,
   onConfirm,
 }: Props) {

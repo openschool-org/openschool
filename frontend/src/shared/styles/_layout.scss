@@ -282,3 +282,98 @@
 .os-search-popover { top: calc(100% + 0.25rem); max-height: 22rem; }
 .os-bell__dot { top: -2px; right: -2px; background: var(--os-danger); }
 .os-bell__popover { top: calc(100% + 0.75rem); max-height: 28rem; }
+
+// Skip link: hidden until focused, then the first thing on screen.
+.os-skip-link {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 10000;
+  padding: 0.75rem 1rem;
+  background: var(--os-layer);
+  color: $os-accent-dark;
+  font-weight: 600;
+  border: 2px solid $os-accent;
+  transform: translateY(-200%);
+  &:focus { transform: none; }
+}
+
+.os-layout__content:focus { outline: none; }
+
+// Drawer sidebar under 66rem for every portal.
+.os-layout.is-drawer {
+  .os-layout__sidebar { z-index: 8000; box-shadow: 0 8px 24px $os-scrim; }
+  .os-layout__sidebar.is-collapsed { box-shadow: none; }
+  .os-layout__content { margin-left: 0; }
+}
+
+.os-layout__scrim {
+  position: fixed;
+  inset: 3rem 0 0;
+  z-index: 7999;
+  background: $os-scrim;
+}
+
+// Route-generated breadcrumb on nested pages.
+.os-shell-breadcrumb {
+  padding: 0.75rem 2rem 0;
+  font-size: 0.75rem;
+
+  ol { display: flex; flex-wrap: wrap; gap: 0.375rem; margin: 0; padding: 0; list-style: none; }
+  li { color: $os-text-secondary; }
+  li + li::before { content: "/"; margin-right: 0.375rem; color: $os-text-tertiary; }
+  a { color: $os-accent-dark; text-decoration: none; &:hover { text-decoration: underline; } }
+}
+
+.os-offline-banner {
+  padding: 0.75rem 2rem 0;
+  .cds--actionable-notification { max-width: none; }
+}
+
+// Bottom tab bar for student and parent portals on phones.
+.os-bottom-tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 7000;
+  display: flex;
+  background: var(--os-layer);
+  border-top: 1px solid $os-border-subtle;
+  padding-bottom: env(safe-area-inset-bottom);
+
+  &__item {
+    flex: 1;
+    min-height: 3.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.125rem;
+    font-size: 0.75rem;
+    color: $os-text-secondary;
+    text-decoration: none;
+    svg { fill: currentColor; }
+
+    &.is-active { color: $os-accent-dark; font-weight: 600; }
+    &:focus-visible { outline: 2px solid $os-accent; outline-offset: -2px; }
+  }
+}
+
+.os-layout.has-bottom-tabs .os-layout__content { padding-bottom: 4rem; }
+
+@media (max-width: 42rem) {
+  .os-page { padding: 1rem; }
+  .os-shell-breadcrumb, .os-offline-banner { padding-left: 1rem; padding-right: 1rem; }
+  .cds--header__global { padding-right: 0.25rem; gap: 0; }
+  .os-header-brand__inner > span:last-child { display: none; }
+}
+
+.os-bell__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  font: inherit;
+  &:focus-visible { outline: 2px solid $os-accent; outline-offset: -2px; }
+}

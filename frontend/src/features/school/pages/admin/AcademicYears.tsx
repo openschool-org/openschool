@@ -69,13 +69,13 @@ export default function AcademicYears() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">Academic Years</h1>
+          <h1 className="os-page__title">Academic years</h1>
           <p className="os-page__subtitle">
             Manage academic year periods for the school
           </p>
         </div>
         <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>
-          New Academic Year
+          New academic year
         </Button>
       </div>
 

@@ -26,6 +26,7 @@ import EmptyState from "@/shared/ui/EmptyState";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import { TIMETABLE_STATUS_TAG } from "@/shared/lib/constants/tags";
+import { usePageTitle } from "@/shared/hooks/usePageTitle";
 
 const EMPTY_FORM: CellForm = { subjectId: "", teacherId: "", classroomId: "" };
 const statusLabel = (s: string) => TIMETABLE_STATUS_TAG[s as keyof typeof TIMETABLE_STATUS_TAG]?.label ?? s;
@@ -37,6 +38,7 @@ export default function TimetableEditor() {
   const { data: timetable, isLoading } = useTimetable(id);
   const { data: entries } = useTimetableEntries(id);
   const { data: cls } = useClass(timetable?.class_id ?? "");
+  usePageTitle(cls ? `Timetable ${cls.name}` : null);
   const { data: grades } = useGrades();
   const [teacherSearch, setTeacherSearch] = useState("");
   const { data: teacherPage } = useTeachers({ limit: 25, search: teacherSearch });
@@ -75,7 +77,7 @@ export default function TimetableEditor() {
   const entryAt = (day: number, period: number) => entries?.find((e) => e.day_of_week === day && e.period_number === period);
 
   // The cell being edited may already have a teacher assigned who isn't
-  // among the current search results (e.g. no search typed yet) — merged
+  // among the current search results (e.g. no search typed yet) - merged
   // in from the entry's own teacher_name so the field doesn't look empty.
   // employee_number is unknown here, so it's left blank in the label.
   const cellTeachers = useMemo(() => {
@@ -124,7 +126,7 @@ export default function TimetableEditor() {
           </h1>
           <p className="os-page__subtitle">
             Status: <strong>{statusLabel(timetable.status)}</strong>
-            {timetable.review_comments && <> — <em>{timetable.review_comments}</em></>}
+            {timetable.review_comments && <> - <em>{timetable.review_comments}</em></>}
           </p>
         </div>
         <div className="os-flex os-gap-2">
@@ -134,7 +136,7 @@ export default function TimetableEditor() {
           </Button>
           {isDraft && (
             <Button kind="primary" onClick={() => submit.mutate()} disabled={submit.isPending}>
-              {submit.isPending ? "Submitting…" : "Submit for Review"}
+              {submit.isPending ? "Submitting…" : "Submit for review"}
             </Button>
           )}
           {timetable.status === "approved" && (
@@ -160,11 +162,11 @@ export default function TimetableEditor() {
 
       {!!history?.length && (
         <div className="os-section os-py-4 os-px-6">
-          <h2 className="os-section__title os-mb-3">Status History</h2>
+          <h2 className="os-section__title os-mb-3">Status history</h2>
           {history.map((h) => (
             <div key={h.id} className="os-text-sm os-c-secondary os-mb-1h">
               <strong>{statusLabel(h.to_status)}</strong> by {h.changed_by_name} on {formatDateTime(h.changed_at)}
-              {h.comment && <> — {h.comment}</>}
+              {h.comment && <> - {h.comment}</>}
             </div>
           ))}
         </div>

@@ -23,7 +23,7 @@ export function useClassDetail(id: string) {
   const teachers = teacherPage?.items;
   // The class's current form teacher, looked up independently of the
   // search-scoped `teachers` list above (a name lookup by id, not a
-  // picker — the "Assign/Change Teacher" picker always starts blank, so
+  // picker - the "Assign/Change Teacher" picker always starts blank, so
   // it never needs the incumbent pre-selected).
   const { data: formTeacher } = useTeacher(cls.data?.form_teacher_id ?? "");
   const { data: years } = useAcademicYears();

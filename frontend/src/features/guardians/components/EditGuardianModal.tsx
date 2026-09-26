@@ -59,7 +59,7 @@ export default function EditGuardianModal({ guardian, onClose }: { guardian: Gua
       <div className="os-grid os-gap-4">
         <TextInput
           id="edit-guardian-name"
-          labelText="Full Name"
+          labelText="Full name"
           value={form.full_name}
           onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
           onBlur={() => setTouched((t) => ({ ...t, full_name: true }))}
@@ -94,7 +94,7 @@ export default function EditGuardianModal({ guardian, onClose }: { guardian: Gua
         />
         <TextInput
           id="edit-guardian-nic"
-          labelText="NIC Number"
+          labelText="NIC number"
           value={form.nic_number}
           onChange={(e) => setForm((f) => ({ ...f, nic_number: e.target.value }))}
           onBlur={() => setTouched((t) => ({ ...t, nic_number: true }))}

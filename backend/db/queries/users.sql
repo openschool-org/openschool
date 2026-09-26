@@ -79,3 +79,8 @@ SET
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: SetUserPreferredLanguage :exec
+UPDATE users
+SET preferred_language = $2, updated_at = NOW()
+WHERE id = $1;

@@ -13,13 +13,13 @@ export type NonAcademicDesignation =
 export type NonAcademicEmploymentStatus = "active" | "resigned" | "transferred";
 
 export const NON_ACADEMIC_DESIGNATIONS: { value: NonAcademicDesignation; label: string }[] = [
-  { value: "lab_assistant", label: "Lab Assistant" },
+  { value: "lab_assistant", label: "Lab assistant" },
   { value: "librarian", label: "Librarian" },
-  { value: "office_staff", label: "Office Staff" },
-  { value: "development_officer", label: "Development Officer" },
-  { value: "it_officer", label: "IT Officer" },
+  { value: "office_staff", label: "Office staff" },
+  { value: "development_officer", label: "Development officer" },
+  { value: "it_officer", label: "IT officer" },
   { value: "security", label: "Security" },
-  { value: "minor_employee", label: "Minor Employee" },
+  { value: "minor_employee", label: "Minor employee" },
 ];
 
 // Matches db.NonAcademicStaff JSON shape returned by the backend

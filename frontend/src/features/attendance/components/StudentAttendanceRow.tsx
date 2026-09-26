@@ -28,14 +28,14 @@ export default function StudentAttendanceRow({
       </td>
       <td>
         <div className="os-flex os-items-center os-gap-2h">
-          <div className="os-w-1t os-h-1t os-rounded-full os-flex os-items-center os-justify-center os-text-2xs os-fw-700 os-shrink-0" style={{ background: status ? STATUS_STYLES[status].bg : "var(--os-accent-light)", border: `1px solid ${status ? STATUS_STYLES[status].border : "var(--os-accent-border)"}`, color: status ? STATUS_STYLES[status].color : "var(--os-accent)" }}
+          <div className="os-w-1t os-h-1t os-rounded-full os-flex os-items-center os-justify-center os-text-xs os-fw-700 os-shrink-0" style={{ background: status ? STATUS_STYLES[status].bg : "var(--os-accent-light)", border: `1px solid ${status ? STATUS_STYLES[status].border : "var(--os-accent-border)"}`, color: status ? STATUS_STYLES[status].color : "var(--os-accent)" }}
           >
             {getInitials(student.full_name)}
           </div>
           <span className="os-fw-500 os-text-md">{student.full_name}</span>
         </div>
       </td>
-      <td className="os-table__mono" data-label="Index No.">{student.index_number}</td>
+      <td className="os-table__mono" data-label="Index no.">{student.index_number}</td>
       <td data-label="Attendance">
         {readOnly ? (
           status ? (

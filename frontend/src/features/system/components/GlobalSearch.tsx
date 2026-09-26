@@ -17,7 +17,7 @@ const GROUPS: { key: GroupKey; label: string; route: (id: string) => string }[] 
   { key: "students", label: "Students", route: (id) => `/students/${id}` },
   { key: "teachers", label: "Teachers", route: (id) => `/teachers/${id}` },
   { key: "guardians", label: "Guardians", route: () => "/guardians" },
-  { key: "non_academic_staff", label: "Non-Academic Staff", route: () => "/non-academic-staff" },
+  { key: "non_academic_staff", label: "Non-academic staff", route: () => "/non-academic-staff" },
 ];
 
 const ACTIONS: { id: string; name: string; route: string }[] = [
@@ -133,7 +133,7 @@ export default function GlobalSearch({ autoFocus, onClose }: Props) {
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
         />
-        <kbd className="os-search-kbd os-absolute os-right-2 os-text-2xs os-fw-600 os-py-h os-px-1h os-rounded-md os-pointer-events-none os-select-none"
+        <kbd className="os-search-kbd os-absolute os-right-2 os-text-xs os-fw-600 os-py-h os-px-1h os-rounded-md os-pointer-events-none os-select-none"
         >
           {typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/i.test(navigator.userAgent) ? "⌘K" : "Ctrl+K"}
         </kbd>
@@ -147,7 +147,7 @@ export default function GlobalSearch({ autoFocus, onClose }: Props) {
           )}
           {!isFetching && isError && (
             <div className="os-py-3 os-px-4 os-text-sm os-c-danger">
-              Search failed — please try again.
+              Search failed - please try again.
             </div>
           )}
           {!isFetching && !isError && flat.length === 0 && (

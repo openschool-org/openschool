@@ -34,8 +34,20 @@ export interface ChildMark {
   teacher_name: string | null;
 }
 
+// Matches db.GetGuardianChildrenSummaryRow: one row per child, this month and the latest term.
+export interface ChildSummary {
+  student_id: string;
+  sessions_this_month: number;
+  attended_this_month: number;
+  latest_term_name: string;
+  latest_average_percent: number;
+  has_marks: boolean;
+}
+
 export const parentApi = {
   listChildren: () => api.get<Child[]>("/me/children").then((r) => r.data),
+
+  childrenSummary: () => api.get<ChildSummary[]>("/me/children/summary").then((r) => r.data),
 
   childAttendance: (studentId: string) =>
     api

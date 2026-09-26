@@ -19,7 +19,7 @@ import { useMemo } from "react";
 
 export default function Dashboard() {
   const { data: school } = useSchool();
-  // Only `total` is used from these two — a small limit keeps the request
+  // Only `total` is used from these two - a small limit keeps the request
   // light since the page doesn't render any of the individual rows.
   const { data: studentPage, isLoading: studentsLoading } = useStudents({ limit: 1 });
   const studentCount = studentPage?.total ?? 0;
@@ -27,7 +27,7 @@ export default function Dashboard() {
   const teacherCount = teacherPage?.total ?? 0;
   // The activity feed comes from a dedicated, server-sorted (created_at
   // DESC) query on the backend (dashboard.Service.recentActivity), not a
-  // client-side slice of a capped, alphabetically-sorted list page — the
+  // client-side slice of a capped, alphabetically-sorted list page - the
   // latter could miss a recently enrolled student/teacher once more than
   // one page of records exists.
   const { data: analytics, isLoading: analyticsLoading } = useDashboardAnalytics();
@@ -39,7 +39,7 @@ export default function Dashboard() {
   const { data: todaySessions, isLoading: sessionsLoading } = useDailySessions(todayISODate());
   const { data: staffAttendance, isLoading: staffAttendanceLoading } = useStaffAttendanceByDate(todayISODate());
 
-  const title = school?.name ? `${school.name} - Admin Dashboard` : "Admin Dashboard";
+  const title = school?.name ? `${school.name} - Admin Dashboard` : "Admin dashboard";
   const currentYear = years?.find((y) => y.is_current) ?? null;
 
   const dashboardLoading = analyticsLoading;
@@ -98,7 +98,7 @@ export default function Dashboard() {
       {!setupLoading && <SetupChecklistCard items={setupItems} />}
 
       <div className="os-stat-grid">
-        <StatCard label="Total Students" value={studentCount} loading={studentsLoading} Icon={UserMultiple} path="/students" />
+        <StatCard label="Total students" value={studentCount} loading={studentsLoading} Icon={UserMultiple} path="/students" />
         <StatCard label="Teachers" value={teacherCount} loading={teachersLoading} Icon={Education} path="/teachers" />
         <StatCard label="Classes" value={classes?.length ?? 0} loading={classesLoading} Icon={Building} path="/classes" />
         <StatCard label="Subjects" value={subjects?.length ?? 0} loading={subjectsLoading} Icon={Book} path="/subjects" />

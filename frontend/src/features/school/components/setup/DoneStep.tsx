@@ -16,7 +16,7 @@ const NEXT_STEPS = [
     icon: Book,
   },
   {
-    title: "Students & Teachers",
+    title: "Students & teachers",
     body: "Enrol students and add teachers - each gets their own sign-in and profile automatically.",
     path: "/students",
     icon: UserMultiple,

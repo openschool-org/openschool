@@ -60,14 +60,14 @@ LEFT JOIN users u ON u.id = al.actor_id
 WHERE ($1::text IS NULL OR al.entity_type = $1)
   AND ($2::uuid IS NULL OR al.entity_id = $2)
 ORDER BY al.created_at DESC, al.id DESC
-LIMIT $3::int OFFSET $4::int
+LIMIT $4::int OFFSET $3::int
 `
 
 type ListAuditLogsParams struct {
 	EntityType pgtype.Text `json:"entity_type"`
 	EntityID   pgtype.UUID `json:"entity_id"`
-	PageLimit  int32       `json:"page_limit"`
 	PageOffset int32       `json:"page_offset"`
+	PageLimit  int32       `json:"page_limit"`
 }
 
 type ListAuditLogsRow struct {
@@ -81,15 +81,22 @@ type ListAuditLogsRow struct {
 	Reason     pgtype.Text        `json:"reason"`
 	CreatedAt  pgtype.Timestamptz `json:"created_at"`
 	ActorName  pgtype.Text        `json:"actor_name"`
-	// Hand-edited: excluded from JSON — read once for the page envelope's total.
-	Total int64 `json:"-"`
+	Total      int64              `json:"total"`
 }
 
-// entity_type/entity_id are optional filters (pass a zero UUID / empty
-// string to skip that filter — checked in the repository layer, since
-// sqlc.narg with a nullable uuid comparison reads awkwardly here).
+// Server-paginated (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 4) —
+// an append-only log grows without bound, so a fixed LIMIT eventually hides
+// older entries silently rather than paging to them. entity_type/entity_id
+// are optional filters (pass a zero UUID / empty string to skip that
+// filter — checked in the repository layer, since sqlc.narg with a
+// nullable uuid comparison reads awkwardly here).
 func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]ListAuditLogsRow, error) {
-	rows, err := q.db.Query(ctx, listAuditLogs, arg.EntityType, arg.EntityID, arg.PageLimit, arg.PageOffset)
+	rows, err := q.db.Query(ctx, listAuditLogs,
+		arg.EntityType,
+		arg.EntityID,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}

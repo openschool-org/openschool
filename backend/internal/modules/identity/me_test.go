@@ -2,23 +2,43 @@ package identity
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/openschool-org/openschool/internal/modules/auth"
 )
 
 type provisionerStub struct {
-	called  bool
-	command ensureUserCommand
-	result  provisionedUser
-	err     error
+	called   bool
+	command  ensureUserCommand
+	result   provisionedUser
+	err      error
+	language string
 }
 
 func (s *provisionerStub) ensureExists(_ context.Context, command ensureUserCommand) (provisionedUser, error) {
 	s.called = true
 	s.command = command
 	return s.result, s.err
+}
+
+func (s *provisionerStub) setLanguage(_ context.Context, _ uuid.UUID, language string) error {
+	s.language = language
+	return s.err
+}
+
+func TestSetLanguageRejectsUnsupported(t *testing.T) {
+	stub := &provisionerStub{}
+	service := newMeService(stub)
+	if err := service.setLanguage(context.Background(), uuid.New(), "fr"); !errors.Is(err, errUnsupportedLanguage) {
+		t.Fatalf("expected errUnsupportedLanguage, got %v", err)
+	}
+	if err := service.setLanguage(context.Background(), uuid.New(), "si"); err != nil || stub.language != "si" {
+		t.Fatalf("supported language was not saved: %v", err)
+	}
 }
 
 func TestEnsureProvisionedSkipsUnknownRoles(t *testing.T) {

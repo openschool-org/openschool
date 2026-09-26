@@ -72,9 +72,9 @@ export default function NotificationComposer() {
         <div className="os-page__header-left">
           <h1 className="os-page__title">Notifications</h1>
           <p className="os-page__subtitle">
-            Send in-app announcements to any combination of grades, classes, subjects, or individuals.
+            Send announcements to grades, classes, subjects or people.
             {role === "teacher" && myPosition && myPosition.rank_label !== "Teacher" && (
-              <> Sending as <strong>{myPosition.rank_label}</strong>{canBroadcastEveryone ? " - whole-school reach." : "."}</>
+              <> Sending as <strong>{myPosition.rank_label}</strong>{canBroadcastEveryone ? ", whole school." : "."}</>
             )}
           </p>
         </div>
@@ -155,7 +155,7 @@ export default function NotificationComposer() {
 
             <div className="os-flex os-gap-3">
               <Button renderIcon={Send} kind="primary" onClick={() => handleSubmit(false)} disabled={!isReady || create.isPending}>
-                {create.isPending ? "Sending…" : "Send Now"}
+                {create.isPending ? "Sending…" : "Send now"}
               </Button>
               <Button renderIcon={Save} kind="secondary" onClick={() => handleSubmit(true)} disabled={!isReady || create.isPending}>
                 Save as Draft
@@ -179,7 +179,7 @@ export default function NotificationComposer() {
 
           <div className="os-section">
             <div className="os-section__header">
-              <h2 className="os-section__title">Recently Sent</h2>
+              <h2 className="os-section__title">Recently sent</h2>
             </div>
             {sentLoading ? (
               <div className="os-py-5 os-px-6">

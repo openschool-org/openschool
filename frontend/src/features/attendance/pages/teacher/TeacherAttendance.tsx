@@ -28,7 +28,7 @@ function PendingClassAction({ classId, className, gradeName }: { classId: string
       onClick={handleClick}
       disabled={createSession.isPending} className="os-py-2 os-px-4 os-bg-accent os-c-layer os-border-none os-pointer os-text-sm os-fw-500 os-nowrap os-flex os-items-center os-gap-1h"
     >
-      <EventSchedule size={14} /> {createSession.isPending ? "Starting…" : `${gradeName} — ${className}`}
+      <EventSchedule size={14} /> {createSession.isPending ? "Starting…" : `${gradeName} - ${className}`}
     </button>
   );
 }
@@ -92,10 +92,10 @@ export default function TeacherAttendance() {
 
       <div className="os-grid os-grid-cols-3 os-gap-4 os-mb-6">
         {[
-          { label: "Total Sessions", value: allSessions.length, borderColor: "var(--os-accent)", valueColor: "var(--os-text-primary)" },
-          { label: "Marked Today", value: todayClassIds.size, borderColor: "var(--os-success)", valueColor: "var(--os-success)" },
+          { label: "Total sessions", value: allSessions.length, borderColor: "var(--os-accent)", valueColor: "var(--os-text-primary)" },
+          { label: "Marked today", value: todayClassIds.size, borderColor: "var(--os-success)", valueColor: "var(--os-success)" },
           {
-            label: "Pending Today",
+            label: "Pending today",
             value: pendingToday.length,
             borderColor: pendingToday.length > 0 ? "var(--os-danger)" : "var(--os-text-tertiary)",
             valueColor: pendingToday.length > 0 ? "var(--os-danger)" : "var(--os-text-tertiary)",

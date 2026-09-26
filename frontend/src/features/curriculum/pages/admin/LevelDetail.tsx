@@ -19,6 +19,8 @@ import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import GroupsList from "@/features/curriculum/components/GroupsList";
 import GroupFormModal, { type GroupForm } from "@/features/curriculum/components/GroupFormModal";
 import AddSubjectModal, { type SubjectForm } from "@/features/curriculum/components/AddSubjectModal";
+import { usePageTitle } from "@/shared/hooks/usePageTitle";
+import InfoTip from "@/shared/ui/InfoTip";
 
 const EMPTY_GROUP: GroupForm = { label: "", min_select: 1, max_select: 1, sort_order: 0 };
 const EMPTY_SUBJECT: SubjectForm = {
@@ -32,6 +34,7 @@ export default function LevelDetail() {
   const { id = "" } = useParams();
 
   const { data: tree, isLoading, isError, refetch } = useLevelTree(id);
+  usePageTitle(tree?.level.label);
   const { data: subjects, isLoading: subjectsLoading, isError: subjectsError, refetch: refetchSubjects } = useSubjects();
   const { data: mediums } = useMediums();
 
@@ -145,24 +148,18 @@ export default function LevelDetail() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <div className="os-page__breadcrumb">
-            <Link to="/curriculum">Curriculum</Link>
-            <span>/</span>
-            <span>{tree.level.label}</span>
-          </div>
           <h1 className="os-page__title">{tree.level.label}</h1>
-          <p className="os-page__subtitle">
-            Each group is a pool of subjects with a pick rule. Make every subject
-            compulsory by setting min and max to the number of subjects in the
-            pool.
-          </p>
+          <div className="os-page__subtitle os-page__subtitle--tip">
+            Subject groups and the pick rule for each.
+            <InfoTip>To make every subject compulsory, set min and max to the number of subjects in the group.</InfoTip>
+          </div>
         </div>
         <div className="os-flex os-gap-2">
           <Button renderIcon={ArrowLeft} kind="ghost" size="md" as={Link} to="/curriculum">
             Back
           </Button>
           <Button renderIcon={Add} kind="primary" size="md" onClick={openCreateGroup}>
-            New Group
+            New group
           </Button>
         </div>
       </div>

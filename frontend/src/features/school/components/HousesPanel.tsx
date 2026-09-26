@@ -65,7 +65,7 @@ export default function HousesPanel() {
             New students and staff are assigned automatically to whichever house currently has the fewest members, with random tie-breaks.
           </p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>Add House</Button>
+        <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>Add house</Button>
       </div>
 
       {isError && <ErrorMessage message="Could not load houses." onRetry={refetch} />}
@@ -100,7 +100,7 @@ export default function HousesPanel() {
           <EmptyState
             title="No houses yet"
             description="Add the houses this school uses. Students and staff are then assigned automatically, balanced across whichever houses exist."
-            action={<Button renderIcon={Add} kind="primary" onClick={openCreate}>Add House</Button>}
+            action={<Button renderIcon={Add} kind="primary" onClick={openCreate}>Add house</Button>}
           />
         )}
 

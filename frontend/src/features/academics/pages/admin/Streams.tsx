@@ -24,10 +24,10 @@ export default function Streams() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">Streams & Section Heads</h1>
-          <p className="os-page__subtitle">A/L streams (with their sub-groups) and the teacher-in-charge for each grade or stream.</p>
+          <h1 className="os-page__title">Streams & section heads</h1>
+          <p className="os-page__subtitle">A/L streams, their sub-groups and the teacher in charge.</p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" onClick={() => setCreateOpen(true)}>New Stream</Button>
+        <Button renderIcon={Add} kind="primary" size="md" onClick={() => setCreateOpen(true)}>New stream</Button>
       </div>
 
       <AgentFindingsBanner titles={["Streams with no current-year classes"]} />
@@ -42,7 +42,7 @@ export default function Streams() {
           <EmptyState
             title="No streams yet"
             description="Add A/L streams like Science, Commerce, Arts or Technology."
-            action={<Button renderIcon={Add} kind="primary" onClick={() => setCreateOpen(true)}>New Stream</Button>}
+            action={<Button renderIcon={Add} kind="primary" onClick={() => setCreateOpen(true)}>New stream</Button>}
           />
         )}
         {streams?.map((s) => (

@@ -7,10 +7,10 @@ import { useInvalidate } from "@/shared/api/useInvalidate";
 // /students is server-paginated; the response is a Page<Student>, not a bare
 // array (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 4). Callers that
 // only need a bounded set for a picker (not the paginated Students page
-// itself) pass a plain limit — see the file-level note on StudentListParams
+// itself) pass a plain limit - see the file-level note on StudentListParams
 // for why that's a stopgap, not the final picker design.
 // Exposed as options (rather than only the hook below) so callers outside
-// this feature — e.g. the sidebar's prefetch-on-hover — can pass it to
+// this feature - e.g. the sidebar's prefetch-on-hover - can pass it to
 // queryClient.prefetchQuery without importing this feature's api/ module
 // directly (the layer rule: only queries/keys/components cross a feature
 // boundary, never api/).

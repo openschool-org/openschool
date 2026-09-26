@@ -75,7 +75,7 @@ export default function TermsModal({ year, onClose }: { year: AcademicYear; onCl
                   {t.is_current ? (
                     <Tag type="teal" size="sm"><Checkmark size={12} className="os-mr-1" />Current</Tag>
                   ) : (
-                    <Button kind="ghost" size="sm" onClick={() => setCurrentTerm.mutate(t.id)} disabled={setCurrentTerm.isPending}>Set Current</Button>
+                    <Button kind="ghost" size="sm" onClick={() => setCurrentTerm.mutate(t.id)} disabled={setCurrentTerm.isPending}>Set current</Button>
                   )}
                   <Button hasIconOnly kind="ghost" size="sm" iconDescription="Edit term" renderIcon={Edit} onClick={() => startEdit(t)} />
                   <RemoveIconButton label="Delete term" onClick={() => setToDelete(t)} />

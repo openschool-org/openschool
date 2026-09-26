@@ -20,7 +20,7 @@ export default function SchoolStep({ school, setSchool, schoolTouched, gradeRang
       <div className="os-school-details-form">
         <TextInput
           id="ss-name"
-          labelText="School Name"
+          labelText="School name"
           placeholder="e.g. Royal College"
           value={school.name}
           onChange={(e) => setSchool((s) => ({ ...s, name: e.target.value }))}
@@ -61,8 +61,8 @@ export default function SchoolStep({ school, setSchool, schoolTouched, gradeRang
         />
         <Select
           id="ss-school-type"
-          labelText="School Type"
-          helperText="Single-sex schools enforce matching student gender on enrollment. Change later in Settings."
+          labelText="School type"
+          helperText="Single-sex schools check student gender on enrolment."
           value={school.school_type}
           onChange={(e) =>
             setSchool((s) => ({ ...s, school_type: e.target.value as "boys" | "girls" | "mixed" }))

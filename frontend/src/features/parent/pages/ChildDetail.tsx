@@ -15,20 +15,24 @@ import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
 import TabSection from "@/shared/ui/TabSection";
 import { getInitials } from "@/shared/lib/name";
+import { usePageTitle } from "@/shared/hooks/usePageTitle";
+import { useT } from "@/shared/i18n/useT";
 
 export default function ChildDetail() {
+  const { t } = useT();
   const { id = "" } = useParams();
   const { data: children, isLoading } = useMyChildren();
   const child = children?.find((c) => c.id === id);
+  usePageTitle(child?.full_name);
 
   if (isLoading) return <LoadingSpinner />;
   if (!child) {
     return (
       <div className="os-p-8">
         <EmptyState
-          title="Child not found"
-          description="This student isn't linked to your account."
-          action={<Link to="/" className="os-table__link">Back to My Children</Link>}
+          title={t("child.notFound")}
+          description={t("child.notLinked")}
+          action={<Link to="/" className="os-table__link">{t("child.backToChildren")}</Link>}
         />
       </div>
     );
@@ -49,30 +53,30 @@ export default function ChildDetail() {
         <div className="os-profile__actions">
           <Link to="/" className="os-table__link os-flex os-items-center os-gap-1h">
             <ArrowLeft size={16} />
-            Back
+            {t("common.back")}
           </Link>
         </div>
       </div>
 
       <div className="os-py-6 os-px-8">
         <Tabs>
-          <TabList aria-label="Child sections">
-            <Tab>Attendance</Tab>
-            <Tab>Marks</Tab>
-            <Tab>Timetable</Tab>
-            <Tab>Enrolments</Tab>
-            <Tab>Progress Reports</Tab>
-            <Tab>Portfolio Details</Tab>
-            <Tab>Guardians</Tab>
+          <TabList aria-label={t("child.sections")}>
+            <Tab>{t("nav.attendance")}</Tab>
+            <Tab>{t("nav.marks")}</Tab>
+            <Tab>{t("nav.timetable")}</Tab>
+            <Tab>{t("child.tab.enrolments")}</Tab>
+            <Tab>{t("child.tab.progress")}</Tab>
+            <Tab>{t("child.tab.portfolio")}</Tab>
+            <Tab>{t("child.tab.guardians")}</Tab>
           </TabList>
           <TabPanels>
-            <TabSection title="Attendance" padded={false}><ChildAttendanceTab studentId={child.id} /></TabSection>
-            <TabSection title="Term Marks"><ChildMarksTab studentId={child.id} /></TabSection>
-            <TabSection title="Timetable"><ChildTimetableTab studentId={child.id} /></TabSection>
-            <TabSection title="Enrolled Subjects"><ChildEnrollmentsTab studentId={child.id} /></TabSection>
-            <TabSection title="Narrative Progress Reports"><ChildProgressReportsTab studentId={child.id} /></TabSection>
-            <TabSection title="Co-curricular & Portfolio Details"><StudentPortfolioSummary studentId={child.id} /></TabSection>
-            <TabSection title="Linked Guardians"><ChildGuardiansTab studentId={child.id} /></TabSection>
+            <TabSection title={t("nav.attendance")} padded={false}><ChildAttendanceTab studentId={child.id} /></TabSection>
+            <TabSection title={t("marks.termMarks")}><ChildMarksTab studentId={child.id} /></TabSection>
+            <TabSection title={t("nav.timetable")}><ChildTimetableTab studentId={child.id} /></TabSection>
+            <TabSection title={t("enrol.title")}><ChildEnrollmentsTab studentId={child.id} /></TabSection>
+            <TabSection title={t("progress.title")}><ChildProgressReportsTab studentId={child.id} /></TabSection>
+            <TabSection title={t("child.section.portfolio")}><StudentPortfolioSummary studentId={child.id} /></TabSection>
+            <TabSection title={t("child.section.guardians")}><ChildGuardiansTab studentId={child.id} /></TabSection>
           </TabPanels>
         </Tabs>
       </div>

@@ -27,7 +27,12 @@ func (r *userRepository) ensureExists(ctx context.Context, command ensureUserCom
 		MustChangePassword:  user.MustChangePassword,
 		KeptDefaultPassword: user.KeptDefaultPassword,
 		CreatedAt:           user.CreatedAt.Time,
+		PreferredLanguage:   user.PreferredLanguage,
 	}, nil
+}
+
+func (r *userRepository) setLanguage(ctx context.Context, id uuid.UUID, language string) error {
+	return r.queries.SetUserPreferredLanguage(ctx, db.SetUserPreferredLanguageParams{ID: id, PreferredLanguage: language})
 }
 
 func (r *userRepository) listIDs(ctx context.Context) ([]uuid.UUID, error) {

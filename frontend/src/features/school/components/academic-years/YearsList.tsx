@@ -30,7 +30,7 @@ export default function YearsList({
   return (
     <div className="os-section">
       <SectionHeader
-        title="Academic Years"
+        title="Academic years"
         meta={years && <span className="os-section__meta">{years.length} total</span>}
       />
 
@@ -75,7 +75,7 @@ export default function YearsList({
                     onClick={() => setCurrent.mutate(y.id)}
                     disabled={setCurrent.isPending}
                   >
-                    Set Current
+                    Set current
                   </Button>
                 )}
                 {!y.is_current && (

@@ -12,11 +12,14 @@ import (
 )
 
 type Querier interface {
-	// Atomically claims a valid token. This prevents two concurrent reset
-	// requests from both changing the account password with the same token.
-	ConsumePasswordResetToken(ctx context.Context, tokenHash string) (PasswordResetToken, error)
 	// ── group subjects ──────────────────────────────────────────────────────────
 	AddGroupSubject(ctx context.Context, arg AddGroupSubjectParams) (GroupSubject, error)
+	// Scrubs personal data from a profile without deleting the row, so
+	// historical marks/attendance stay attributable in aggregate without
+	// retaining the identifying details (S11's "erase person" flow and the
+	// nightly retention purge both call this). index_number is kept: it's
+	// already printed on physical records the school retains regardless, and
+	// removing it would break the FK-based historical reports it anchors.
 	AnonymizeStudentProfile(ctx context.Context, id uuid.UUID) error
 	ApproveTimetable(ctx context.Context, arg ApproveTimetableParams) (Timetable, error)
 	ArchivePublishedForClass(ctx context.Context, arg ArchivePublishedForClassParams) error
@@ -35,6 +38,15 @@ type Querier interface {
 	// Paired via WITH ORDINALITY rather than the two-array UNNEST(a, b) form,
 	// since sqlc's static analyzer doesn't resolve that overload.
 	BulkInsertClassStudents(ctx context.Context, arg BulkInsertClassStudentsParams) error
+	// Used by both a real password change (kept_default_password = FALSE) and
+	// the first-login "keep this password" choice (kept_default_password =
+	// TRUE) — the two clear must_change_password identically but need telling
+	// apart so an unchanged default password can still expire after a week
+	// (S1, docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md).
+	ClearMustChangePassword(ctx context.Context, arg ClearMustChangePasswordParams) error
+	// Atomically claims a valid token. This prevents two concurrent reset
+	// requests from both changing the account password with the same token.
+	ConsumePasswordResetToken(ctx context.Context, tokenHash string) (PasswordResetToken, error)
 	CopyTimetableEntries(ctx context.Context, arg CopyTimetableEntriesParams) error
 	// validates that every target class ID a commit request references
 	// actually belongs to the target academic year, before writing anything.
@@ -226,6 +238,8 @@ type Querier interface {
 	// confirms the caller knows this guardian's NIC before a reset token is
 	// minted for their account.
 	GetGuardianByUserIDAndNIC(ctx context.Context, arg GetGuardianByUserIDAndNICParams) (Guardian, error)
+	// One row per linked child so the parent dashboard costs one request however many children there are.
+	GetGuardianChildrenSummary(ctx context.Context, userID pgtype.UUID) ([]GetGuardianChildrenSummaryRow, error)
 	GetHouseByID(ctx context.Context, id uuid.UUID) (House, error)
 	GetJobSetting(ctx context.Context, jobName string) (JobSetting, error)
 	GetLevelByID(ctx context.Context, id uuid.UUID) (Level, error)
@@ -373,9 +387,12 @@ type Querier interface {
 	// entirely), plus how many such hours were observed so the caller can
 	// decide whether the baseline has enough data to trust.
 	ListAuditActivityBaseline(ctx context.Context, baselineDays int32) ([]ListAuditActivityBaselineRow, error)
-	// entity_type/entity_id are optional filters (pass a zero UUID / empty
-	// string to skip that filter — checked in the repository layer, since
-	// sqlc.narg with a nullable uuid comparison reads awkwardly here).
+	// Server-paginated (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 4) —
+	// an append-only log grows without bound, so a fixed LIMIT eventually hides
+	// older entries silently rather than paging to them. entity_type/entity_id
+	// are optional filters (pass a zero UUID / empty string to skip that
+	// filter — checked in the repository layer, since sqlc.narg with a
+	// nullable uuid comparison reads awkwardly here).
 	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]ListAuditLogsRow, error)
 	// For each current-year class: how many distinct days had an attendance
 	// session created in the trailing window versus how many weekdays fell in
@@ -440,11 +457,13 @@ type Querier interface {
 	// one round trip — used to build notification recipient lists without a
 	// ListByStudent call per student (see timetable.go's notifyPublication).
 	ListGuardianUserIDsByStudentIDs(ctx context.Context, studentIds []uuid.UUID) ([]pgtype.UUID, error)
-	// Every guardian on file, optionally filtered by a search term matched
-	// against name/phone/email and/or restricted to "orphans" (linked to no
-	// student — e.g. their last child left the school). Used both by the
-	// guardian directory and the "link an existing guardian to this student
-	// too" search picker (siblings sharing a guardian).
+	// Server-paginated (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 4):
+	// serves both the guardian directory (no search term, paged) and the "link
+	// an existing guardian to this student too" search picker (siblings
+	// sharing a guardian; always passes a search term). The caller-supplied
+	// search term is escaped by the service layer (httpx.EscapeLikeTerm)
+	// before it reaches here, restricted to "orphans" (linked to no student —
+	// e.g. their last child left the school).
 	ListGuardians(ctx context.Context, arg ListGuardiansParams) ([]ListGuardiansRow, error)
 	ListGuardiansByStudent(ctx context.Context, studentID uuid.UUID) ([]ListGuardiansByStudentRow, error)
 	ListHouses(ctx context.Context) ([]House, error)
@@ -461,11 +480,17 @@ type Querier interface {
 	ListLevelsByGrade(ctx context.Context, gradeID pgtype.UUID) ([]Level, error)
 	ListMediums(ctx context.Context) ([]Medium, error)
 	ListMyArchivedNotifications(ctx context.Context, userID uuid.UUID) ([]ListMyArchivedNotificationsRow, error)
+	// Bounded like the sent-notification lists (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md
+	// section 4): an admin who never sends or deletes a draft could otherwise
+	// grow this without bound.
 	ListMyDraftNotifications(ctx context.Context, createdBy uuid.UUID) ([]Notification, error)
 	// everything not archived, most recent first; category/date/search
 	// filtering happens client-side, matching this app's existing convention
 	// for list pages (see e.g. Subjects, Streams)
 	ListMyNotifications(ctx context.Context, userID uuid.UUID) ([]ListMyNotificationsRow, error)
+	// Server-paginated (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 4).
+	// The caller-supplied search term is escaped by the service layer
+	// (httpx.EscapeLikeTerm) before it reaches here.
 	ListNonAcademicStaff(ctx context.Context, arg ListNonAcademicStaffParams) ([]ListNonAcademicStaffRow, error)
 	ListNonAcademicStaffAttendanceByDate(ctx context.Context, date pgtype.Date) ([]ListNonAcademicStaffAttendanceByDateRow, error)
 	ListNonAcademicStaffAttendanceHistory(ctx context.Context, arg ListNonAcademicStaffAttendanceHistoryParams) ([]StaffAttendanceRecord, error)
@@ -528,7 +553,11 @@ type Querier interface {
 	// ── Onboarding watchers (role-scoped) ────────────────────────────────────────
 	// provisioned but never completed first login, past the given age, scoped
 	// to one role — so the finding can be shown correctly on a role-specific
-	// page (Teachers vs Students) instead of a mixed list.
+	// page (Teachers vs Students) instead of a mixed list. Also catches an
+	// account that clicked "keep this password" and is still on the default
+	// past its expiry window (S1) — kept_default_password alone doesn't force
+	// must_change_password back to TRUE in the database, only in the /me
+	// response, so this check has to test both.
 	ListStaleMustChangePasswordUsersByRole(ctx context.Context, arg ListStaleMustChangePasswordUsersByRoleParams) ([]ListStaleMustChangePasswordUsersByRoleRow, error)
 	ListStreamGroupsByStream(ctx context.Context, streamID uuid.UUID) ([]StreamGroup, error)
 	ListStreams(ctx context.Context) ([]Stream, error)
@@ -574,7 +603,14 @@ type Querier interface {
 	// GetStudentCurrentClass call per student.
 	ListStudentsEnrolledInCurrentClass(ctx context.Context, arg ListStudentsEnrolledInCurrentClassParams) ([]uuid.UUID, error)
 	ListStudentsMissingHouse(ctx context.Context) ([]StudentProfile, error)
+	// Server-paginated replacement for ListStudents (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md
+	// section 4): the caller-supplied search term is escaped by the service layer
+	// before it reaches here (see search.escapeLikeTerm's sibling in this
+	// module), so '%'/'_' can't widen the match. COUNT(*) OVER () returns the
+	// total for the whole filtered set alongside the page in one round trip.
 	ListStudentsPage(ctx context.Context, arg ListStudentsPageParams) ([]ListStudentsPageRow, error)
+	// Left students whose retention window (S11) has elapsed and who haven't
+	// already been anonymised — the nightly retention agent's purge candidates.
 	ListStudentsPastRetention(ctx context.Context, retentionYears int32) ([]ListStudentsPastRetentionRow, error)
 	ListSubjectPeriodRequirementsByGrade(ctx context.Context, arg ListSubjectPeriodRequirementsByGradeParams) ([]ListSubjectPeriodRequirementsByGradeRow, error)
 	ListSubjectTeachersByClass(ctx context.Context, classID uuid.UUID) ([]ListSubjectTeachersByClassRow, error)
@@ -593,13 +629,16 @@ type Querier interface {
 	// every class+subject a teacher is assigned to teach, across academic years
 	ListTeacherWorkload(ctx context.Context, teacherID uuid.UUID) ([]ListTeacherWorkloadRow, error)
 	ListTeachers(ctx context.Context) ([]TeacherProfile, error)
-	ListTeachersPage(ctx context.Context, arg ListTeachersPageParams) ([]ListTeachersPageRow, error)
 	// batched form of GetTeacherByID for resolving several teacher_profile IDs
 	// (e.g. to their user_id, for a notification recipient list) in one query
 	// instead of one per teacher.
 	ListTeachersByIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]TeacherProfile, error)
 	ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID) ([]TeacherProfile, error)
 	ListTeachersMissingHouse(ctx context.Context) ([]TeacherProfile, error)
+	// Server-paginated replacement for ListTeachers (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md
+	// section 4). The caller-supplied search term is escaped by the service
+	// layer (httpx.EscapeLikeTerm) before it reaches here.
+	ListTeachersPage(ctx context.Context, arg ListTeachersPageParams) ([]ListTeachersPageRow, error)
 	ListTermsByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]Term, error)
 	// ── Term-marks deadline watcher ──────────────────────────────────────────────
 	// terms ending within the given number of days (and not already past) with
@@ -616,6 +655,7 @@ type Querier interface {
 	ListUsersByRole(ctx context.Context, role string) ([]User, error)
 	ListVicePrincipalScopeGrades(ctx context.Context, positionID uuid.UUID) ([]ListVicePrincipalScopeGradesRow, error)
 	LockStudentEnrollment(ctx context.Context, arg LockStudentEnrollmentParams) error
+	MarkAllNotificationRecipientsRead(ctx context.Context, userID uuid.UUID) error
 	MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error)
 	MarkNotificationRecipientRead(ctx context.Context, arg MarkNotificationRecipientReadParams) error
 	MarkNotificationSent(ctx context.Context, id uuid.UUID) (Notification, error)
@@ -671,6 +711,7 @@ type Querier interface {
 	SetNotificationRecipientArchived(ctx context.Context, arg SetNotificationRecipientArchivedParams) error
 	SetPrimaryContact(ctx context.Context, arg SetPrimaryContactParams) error
 	SetTeacherActiveStatus(ctx context.Context, arg SetTeacherActiveStatusParams) error
+	SetUserPreferredLanguage(ctx context.Context, arg SetUserPreferredLanguageParams) error
 	SubmitTimetableForReview(ctx context.Context, arg SubmitTimetableForReviewParams) (Timetable, error)
 	UnenrollStudentFromClass(ctx context.Context, arg UnenrollStudentFromClassParams) error
 	UnlinkGuardianFromStudent(ctx context.Context, arg UnlinkGuardianFromStudentParams) error
@@ -694,6 +735,9 @@ type Querier interface {
 	UpdateStream(ctx context.Context, arg UpdateStreamParams) (Stream, error)
 	UpdateStreamGroup(ctx context.Context, arg UpdateStreamGroupParams) (StreamGroup, error)
 	UpdateStudentActivity(ctx context.Context, arg UpdateStudentActivityParams) (StudentActivity, error)
+	// left_at is set the moment status becomes 'left' and cleared on any other
+	// status, so a re-enrolled student's retention clock (S11) starts fresh
+	// rather than counting from a stale prior departure.
 	UpdateStudentEnrollmentStatus(ctx context.Context, arg UpdateStudentEnrollmentStatusParams) (StudentProfile, error)
 	UpdateStudentHouse(ctx context.Context, arg UpdateStudentHouseParams) (StudentProfile, error)
 	UpdateStudentProfile(ctx context.Context, arg UpdateStudentProfileParams) (StudentProfile, error)
@@ -710,6 +754,10 @@ type Querier interface {
 	// Teacher-in-charge for a whole grade (grades without A/L streams).
 	UpsertGradeSectionHead(ctx context.Context, arg UpsertGradeSectionHeadParams) (SectionHead, error)
 	UpsertNonAcademicStaffAttendance(ctx context.Context, arg UpsertNonAcademicStaffAttendanceParams) (StaffAttendanceRecord, error)
+	// Records that a user still needs identity cleanup after its profile was
+	// already anonymised. local_done/idp_done only ever move true → stays true
+	// (the OR keeps a step already confirmed done from being un-done by a
+	// retry that only re-attempts the other step).
 	UpsertPendingErasure(ctx context.Context, arg UpsertPendingErasureParams) error
 	UpsertPrefect(ctx context.Context, arg UpsertPrefectParams) (Prefect, error)
 	// Swaps who the Principal is (at most one row can ever exist — permanent

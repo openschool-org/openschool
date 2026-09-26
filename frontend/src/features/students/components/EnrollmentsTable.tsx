@@ -1,5 +1,6 @@
 import DataGrid from "@/shared/ui/DataGrid";
-import { capitalize } from "@/shared/lib/text";
+import { useT } from "@/shared/i18n/useT";
+import { translateValue } from "@/shared/i18n/translateValue";
 
 interface Row {
   subject_id: string;
@@ -9,6 +10,7 @@ interface Row {
 }
 
 export default function EnrollmentsTable({ rows }: { rows: Row[] }) {
+  const { t } = useT();
   return (
     <DataGrid
       rows={rows}
@@ -16,9 +18,9 @@ export default function EnrollmentsTable({ rows }: { rows: Row[] }) {
       pagination={false}
       noHover
       columns={[
-        { key: "name", header: "Subject Name", render: (e) => <span className="os-fw-500">{e.subject_name}</span> },
-        { key: "code", header: "Subject Code", render: (e) => <span className="os-table__mono">{e.subject_code}</span> },
-        { key: "type", header: "Type", render: (e) => capitalize(e.subject_type, "Core") },
+        { key: "name", header: t("table.subjectName"), render: (e) => <span className="os-fw-500">{e.subject_name}</span> },
+        { key: "code", header: t("table.subjectCode"), render: (e) => <span className="os-table__mono">{e.subject_code}</span> },
+        { key: "type", header: t("table.type"), render: (e) => translateValue(t, "subjectType", e.subject_type, t("subjectType.core")) },
       ]}
     />
   );

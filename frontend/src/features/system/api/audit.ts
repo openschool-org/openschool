@@ -15,7 +15,7 @@ export interface AuditLogEntry {
 }
 
 // /audit-logs is server-paginated (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md
-// section 4) — an append-only log grows without bound.
+// section 4) - an append-only log grows without bound.
 export interface AuditLogFilters {
   entity_type?: string;
   entity_id?: string;

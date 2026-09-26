@@ -180,6 +180,9 @@ ORDER BY updated_at DESC
 LIMIT 100
 `
 
+// Bounded like the sent-notification lists (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md
+// section 4): an admin who never sends or deletes a draft could otherwise
+// grow this without bound.
 func (q *Queries) ListMyDraftNotifications(ctx context.Context, createdBy uuid.UUID) ([]Notification, error) {
 	rows, err := q.db.Query(ctx, listMyDraftNotifications, createdBy)
 	if err != nil {

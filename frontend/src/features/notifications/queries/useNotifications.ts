@@ -43,6 +43,11 @@ export const useMarkNotificationRead = () => {
   });
 };
 
+export const useMarkAllNotificationsRead = () => {
+  const invalidate = useInvalidateMine();
+  return useMutation({ mutationFn: notificationApi.markAllRead, onSuccess: invalidate });
+};
+
 export const useArchiveNotification = () => {
   const invalidate = useInvalidateMine();
   return useMutation({

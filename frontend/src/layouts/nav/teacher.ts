@@ -52,3 +52,12 @@ export function teacherNav(opts: { isLeadership: boolean; isSectionHead: boolean
     SYSTEM_GROUP,
   ];
 }
+
+export const TEACHER_ALIASES: Record<string, string> = {
+  "/attendance/sessions": "/t/attendance",
+  "/timetables": "/t/timetable",
+};
+
+export const LEADERSHIP_ALIASES: Record<string, string> = {
+  "/timetables": "/t/all-timetables",
+};

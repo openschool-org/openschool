@@ -32,6 +32,7 @@ func RegisterRoutes(teacherOrAdmin, protected *gin.RouterGroup, service *Notific
 	protected.GET("/me/notifications", h.ListMine)
 	protected.GET("/me/notifications/archived", h.ListMyArchived)
 	protected.GET("/me/notifications/unread-count", h.UnreadCount)
+	protected.POST("/me/notifications/read-all", h.MarkAllRead)
 	protected.POST("/me/notifications/:id/read", h.MarkRead)
 	protected.POST("/me/notifications/:id/archive", h.Archive)
 	protected.POST("/me/notifications/:id/unarchive", h.Unarchive)
@@ -250,6 +251,18 @@ func (h *NotificationHandler) MarkRead(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "marked as read"})
+}
+
+func (h *NotificationHandler) MarkAllRead(c *gin.Context) {
+	callerID, _, ok := h.caller(c)
+	if !ok {
+		return
+	}
+	if err := h.service.MarkAllRead(c.Request.Context(), callerID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not mark notifications as read"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "marked all as read"})
 }
 
 func (h *NotificationHandler) Archive(c *gin.Context) {

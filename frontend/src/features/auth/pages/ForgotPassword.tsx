@@ -7,9 +7,9 @@ import type { SelfServiceResetRole } from "@/features/auth/api/auth";
 import { getErrorMessage } from "@/shared/api/errors";
 
 const ROLES: { value: SelfServiceResetRole; label: string; secretLabel: string; secretHelp: string }[] = [
-  { value: "teacher", label: "Teacher", secretLabel: "NIC Number", secretHelp: "Your NIC number, as set when your account was created." },
-  { value: "student", label: "Student", secretLabel: "Index Number", secretHelp: "Your school index number." },
-  { value: "parent", label: "Parent / Guardian", secretLabel: "NIC Number", secretHelp: "Your NIC number, as set when your account was created." },
+  { value: "teacher", label: "Teacher", secretLabel: "NIC number", secretHelp: "Your NIC number, as set when your account was created." },
+  { value: "student", label: "Student", secretLabel: "Index number", secretHelp: "Your school index number." },
+  { value: "parent", label: "Parent / guardian", secretLabel: "NIC number", secretHelp: "Your NIC number, as set when your account was created." },
 ];
 
 export default function ForgotPassword() {
@@ -89,7 +89,7 @@ export default function ForgotPassword() {
           </Select>
           <TextInput
             id="forgot-password-identifier"
-            labelText="Email Address"
+            labelText="Email address"
             placeholder="e.g. user@school.edu"
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}

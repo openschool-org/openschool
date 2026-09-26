@@ -4,6 +4,8 @@ import { parentKeys } from "@/features/parent/keys";
 
 export const useMyChildren = () => useQuery({ queryKey: parentKeys.children(), queryFn: parentApi.listChildren });
 
+export const useChildrenSummary = () => useQuery({ queryKey: parentKeys.summary(), queryFn: parentApi.childrenSummary });
+
 export const useChildAttendance = (studentId: string) =>
   useQuery({ queryKey: parentKeys.childAttendance(studentId), queryFn: () => parentApi.childAttendance(studentId), enabled: !!studentId });
 

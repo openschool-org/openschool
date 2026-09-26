@@ -55,8 +55,8 @@ export default function Societies() {
           <h1 className="os-page__title">Societies</h1>
           <p className="os-page__subtitle">
             {isArchive
-              ? `Read-only archive - societies for ${allYears?.find((y) => y.id === viewingYearId)?.label ?? "this year"}.`
-              : `Clubs and societies with a Teacher-in-Charge for ${currentYear?.label ?? "the current year"}.`}
+              ? `Read only. Societies for ${allYears?.find((y) => y.id === viewingYearId)?.label ?? "this year"}.`
+              : `Clubs and societies for ${currentYear?.label ?? "the current year"}.`}
           </p>
         </div>
         <div className="os-flex os-items-end os-gap-3">
@@ -77,7 +77,7 @@ export default function Societies() {
             onClick={() => setFormSociety("new")}
             disabled={!currentYear || isArchive}
           >
-            New Society
+            New society
           </Button>
         </div>
       </div>

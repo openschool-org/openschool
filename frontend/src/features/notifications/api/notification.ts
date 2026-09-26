@@ -42,7 +42,7 @@ export type NotificationCategory =
 export type NotificationPriority = "normal" | "important" | "urgent";
 
 export const CATEGORIES: { value: NotificationCategory; label: string }[] = [
-  { value: "general", label: "General Announcement" },
+  { value: "general", label: "General announcement" },
   { value: "academic", label: "Academic" },
   { value: "examination", label: "Examination" },
   { value: "attendance", label: "Attendance" },
@@ -50,7 +50,7 @@ export const CATEGORIES: { value: NotificationCategory; label: string }[] = [
   { value: "events", label: "Events" },
   { value: "sports", label: "Sports" },
   { value: "meetings", label: "Meetings" },
-  { value: "fee_reminder", label: "Fee Reminder" },
+  { value: "fee_reminder", label: "Fee reminder" },
   { value: "emergency", label: "Emergency" },
   { value: "discipline", label: "Discipline" },
   { value: "holidays", label: "Holidays" },
@@ -131,6 +131,8 @@ export const notificationApi = {
 
   markRead: (notificationId: string) =>
     api.post(`/me/notifications/${notificationId}/read`).then((r) => r.data),
+
+  markAllRead: () => api.post("/me/notifications/read-all").then((r) => r.data),
 
   archive: (notificationId: string) =>
     api.post(`/me/notifications/${notificationId}/archive`).then((r) => r.data),

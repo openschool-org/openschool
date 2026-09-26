@@ -37,6 +37,7 @@ type StudentStatusWriter interface {
 // concrete page type stays an implementation detail of the repository.
 type StudentListParams struct {
 	httpx.PageParams
+	Sort                        httpx.SortParams
 	Grade, Class, Gender, House string
 }
 
@@ -68,6 +69,7 @@ func RegisterStudentRoutes(admin, teacherOrAdmin *gin.RouterGroup, runner Studen
 	teacherOrAdmin.GET("/students", func(c *gin.Context) {
 		params := StudentListParams{
 			PageParams: httpx.ParsePage(c),
+			Sort:       httpx.ParseSort(c, "name", "index", "grade", "class", "house"),
 			Grade:      c.Query("grade"), Class: c.Query("class"), Gender: c.Query("gender"), House: c.Query("house"),
 		}
 		v, e := reader.ListPage(c, params)

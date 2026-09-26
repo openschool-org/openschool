@@ -20,7 +20,7 @@ export default function OrphanedAccounts() {
       <div className="os-page__header">
         <div>
           <h2 className="os-section__title os-m-0">
-            Orphaned Accounts
+            Orphaned accounts
           </h2>
           <p className="os-page__subtitle os-mt-1">
             ThunderID accounts with no matching local user record - left behind when a signup failed partway

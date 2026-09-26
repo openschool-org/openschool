@@ -4,10 +4,13 @@ import { Button, TextInput, NumberInput, InlineNotification } from "@carbon/reac
 import { ArrowLeft, Save } from "@carbon/icons-react";
 import { useCreateSubject } from "@/features/curriculum/queries/useSubjects";
 import { getErrorMessage } from "@/shared/api/errors";
+import { usePageTitle } from "@/shared/hooks/usePageTitle";
+import InfoTip from "@/shared/ui/InfoTip";
 
 type Touched = Partial<Record<"name" | "code", boolean>>;
 
 export default function AddSubject() {
+  usePageTitle("Add subject");
   const navigate = useNavigate();
   const createSubject = useCreateSubject();
 
@@ -41,16 +44,11 @@ export default function AddSubject() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <div className="os-page__breadcrumb">
-            <Link to="/subjects">Subjects</Link>
-            <span>/</span>
-            <span>Add Subject</span>
+          <h1 className="os-page__title">Add new subject</h1>
+          <div className="os-page__subtitle os-page__subtitle--tip">
+            Add a subject to the catalogue.
+            <InfoTip>To offer it to students, add it to a selection group under Curriculum.</InfoTip>
           </div>
-          <h1 className="os-page__title">Add New Subject</h1>
-          <p className="os-page__subtitle">
-            Add a subject to the catalogue. Offer it to students by adding it to
-            a selection group under Curriculum.
-          </p>
         </div>
         <Button
           renderIcon={ArrowLeft}
@@ -65,11 +63,11 @@ export default function AddSubject() {
 
       <div className="os-form">
         <div className="os-form__section">
-          <div className="os-form__section-header">Subject Information</div>
+          <div className="os-form__section-header">Subject information</div>
           <div className="os-form__section-body">
             <TextInput
               id="subject-name"
-              labelText="Subject Name"
+              labelText="Subject name"
               placeholder="e.g. Mathematics"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -79,7 +77,7 @@ export default function AddSubject() {
             />
             <TextInput
               id="subject-code"
-              labelText="Subject Code"
+              labelText="Subject code"
               placeholder="e.g. MATH-01"
               helperText="Any code your school uses. Must be unique."
               value={code}
@@ -98,7 +96,7 @@ export default function AddSubject() {
             />
             <NumberInput
               id="subject-max-marks"
-              label="Max Marks"
+              label="Max marks"
               min={1}
               max={1000}
               value={maxMarks}
@@ -125,7 +123,7 @@ export default function AddSubject() {
             disabled={!isValid || createSubject.isPending}
             onClick={handleSave}
           >
-            {createSubject.isPending ? "Saving…" : "Save Subject"}
+            {createSubject.isPending ? "Saving…" : "Save subject"}
           </Button>
           <Button kind="secondary" as={Link} to="/subjects">
             Cancel

@@ -1,7 +1,6 @@
-import { DatePicker, DatePickerInput } from "@carbon/react";
 import type { useCreateSession } from "@/features/attendance/queries/useAttendance";
 import FormModal from "@/shared/ui/FormModal";
-import { toYmd } from "@/shared/lib/date";
+import DateField from "@/shared/ui/DateField";
 
 interface Props {
   open: boolean;
@@ -37,14 +36,7 @@ export default function NewSessionModal({
       <p className="os-text-md os-c-secondary os-mb-4">
         One session per class per day. Creating it takes you straight to marking attendance.
       </p>
-      <DatePicker
-        datePickerType="single"
-        dateFormat="Y-m-d"
-        value={sessionDate}
-        onChange={(dates) => onSessionDateChange(toYmd(dates[0]))}
-      >
-        <DatePickerInput id="session-date" labelText="Date" placeholder="YYYY-MM-DD" />
-      </DatePicker>
+      <DateField value={sessionDate} onChange={(ymd) => onSessionDateChange(ymd)} id="session-date" labelText="Date" />
     </FormModal>
   );
 }

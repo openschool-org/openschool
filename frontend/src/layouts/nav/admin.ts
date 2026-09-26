@@ -48,3 +48,13 @@ export const ADMIN_NAV: NavGroup[] = [
     ],
   },
 ];
+
+// Hub tabs and legacy routes that belong to a nav page.
+export const ADMIN_ALIASES: Record<string, string> = {
+  "/timetables/generate": "/timetables",
+  "/classrooms": "/timetables",
+  "/subject-requirements": "/timetables",
+  "/timetable-settings": "/timetables",
+  "/grade-sections": "/timetables",
+  "/curriculum": "/subjects",
+};

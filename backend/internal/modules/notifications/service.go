@@ -68,6 +68,7 @@ type store interface {
 	ListMyArchived(context.Context, uuid.UUID) ([]recipientNotification, error)
 	CountMyUnread(context.Context, uuid.UUID) (int64, error)
 	MarkRead(context.Context, uuid.UUID, uuid.UUID) error
+	MarkAllRead(context.Context, uuid.UUID) error
 	SetArchived(context.Context, uuid.UUID, uuid.UUID, bool) error
 	ListAllUserIDs(context.Context) ([]uuid.UUID, error)
 	ListStudentUserIDsByClass(context.Context, uuid.UUID) ([]pgtype.UUID, error)
@@ -667,6 +668,10 @@ func (s *NotificationService) CountMyUnread(ctx context.Context, userID uuid.UUI
 
 func (s *NotificationService) MarkRead(ctx context.Context, notificationID, userID uuid.UUID) error {
 	return s.repo.MarkRead(ctx, notificationID, userID)
+}
+
+func (s *NotificationService) MarkAllRead(ctx context.Context, userID uuid.UUID) error {
+	return s.repo.MarkAllRead(ctx, userID)
 }
 
 func (s *NotificationService) SetArchived(ctx context.Context, notificationID, userID uuid.UUID, archived bool) error {

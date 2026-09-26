@@ -33,6 +33,7 @@ type staffRecord struct{ HouseID *uuid.UUID }
 // limit/offset/search contract plus the designation filter.
 type StaffListParams struct {
 	httpx.PageParams
+	Sort        httpx.SortParams
 	Designation string
 }
 
@@ -140,7 +141,7 @@ func optionalUUID(raw, label string) (*uuid.UUID, error) {
 
 func RegisterNonAcademicStaffRoutes(admin, teacherOrAdmin *gin.RouterGroup, service *NonAcademicStaffService) {
 	teacherOrAdmin.GET("/non-academic-staff", func(c *gin.Context) {
-		params := StaffListParams{PageParams: httpx.ParsePage(c), Designation: c.Query("designation")}
+		params := StaffListParams{PageParams: httpx.ParsePage(c), Sort: httpx.ParseSort(c, "name", "employee", "designation", "joined"), Designation: c.Query("designation")}
 		value, err := service.ListPage(c, params)
 		if err != nil {
 			apierror.RespondInternal(c, err)

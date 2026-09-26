@@ -39,7 +39,7 @@ export default function StudentGuardians({ studentId }: { studentId: string }) {
           onClick={() => setAddOpen(true)}
           disabled={atMax}
         >
-          Add Guardian
+          Add guardian
         </Button>
       </div>
       <div className="os-section__body">

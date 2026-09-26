@@ -254,3 +254,30 @@
   &__title { margin: 0 0 0.5rem; font-size: 1.125rem; font-weight: 600; color: var(--os-text-primary); }
   &__text { margin: 0 0 1.5rem; font-size: 0.875rem; color: var(--os-text-secondary); }
 }
+
+// Subtitle with a trailing InfoTip.
+.os-page__subtitle--tip { display: flex; align-items: center; gap: 0.25rem; }
+.os-infotip { vertical-align: middle; .cds--toggletip-button svg { fill: var(--os-text-tertiary); } }
+.os-infotip .cds--toggletip-content p { max-width: 20rem; }
+
+// Parent dashboard child card with its summary numbers.
+.os-child-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+
+  &__stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin: 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--os-border-subtle);
+
+    dt { display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--os-text-secondary); margin-bottom: 0.25rem; }
+    dd { margin: 0; font-size: 1.25rem; font-weight: 600; color: var(--os-text-primary); }
+  }
+
+  &__meta { display: block; font-size: 0.75rem; font-weight: 400; color: var(--os-text-tertiary); }
+}

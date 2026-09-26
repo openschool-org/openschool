@@ -68,12 +68,12 @@ function SettingsForm({
       {initial && (
         <div className="os-grid os-grid-cols-3 os-gap-5 os-bg-layer-hover os-py-4 os-px-6 os-mb-6 os-border"
         >
-          <SummaryStat label="School Hours" value={`${initial.school_start_time} – ${initial.school_end_time}`} />
+          <SummaryStat label="School hours" value={`${initial.school_start_time} – ${initial.school_end_time}`} />
           <SummaryStat
-            label="Periods & Duration"
+            label="Periods & duration"
             value={`${initial.number_of_periods} periods (${initial.period_duration_minutes} mins)`}
           />
-          <SummaryStat label="Default Interval" value={`${initial.interval_duration_minutes} minutes`} />
+          <SummaryStat label="Default interval" value={`${initial.interval_duration_minutes} minutes`} />
         </div>
       )}
 
@@ -157,7 +157,7 @@ export default function TimetableSettings({ inline = false }: { inline?: boolean
         {!inline && (
           <div className="os-page__header">
             <div className="os-page__header-left">
-              <h1 className="os-page__title">Timetable Settings</h1>
+              <h1 className="os-page__title">Timetable settings</h1>
             </div>
           </div>
         )}
@@ -176,18 +176,16 @@ export default function TimetableSettings({ inline = false }: { inline?: boolean
       {!inline && (
         <div className="os-page__header">
           <div className="os-page__header-left">
-            <h1 className="os-page__title">Timetable Settings</h1>
-            <p className="os-page__subtitle">
-              Configure default timetable structures and custom grade interval times for {currentYear.label}.
-            </p>
+            <h1 className="os-page__title">Timetable settings</h1>
+            <p className="os-page__subtitle">Default periods and interval times for {currentYear.label}.</p>
           </div>
         </div>
       )}
 
       <Tabs>
-        <TabList aria-label="Timetable Settings Tabs">
-          <Tab>Default Templates</Tab>
-          <Tab>Grade Interval Times</Tab>
+        <TabList aria-label="Timetable settings tabs">
+          <Tab>Default templates</Tab>
+          <Tab>Grade interval times</Tab>
         </TabList>
         <TabPanels>
           <TabPanel className="os-py-4 os-px-0">

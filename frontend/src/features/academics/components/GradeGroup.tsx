@@ -41,10 +41,10 @@ export default function GradeGroup(p: Props) {
 
   const columns: GridColumn<ClassWithDetails>[] = [
     { key: "name", header: "Class", render: (c) => <Link to={`/classes/${c.id}`} className="os-table__link">{c.name}</Link> },
-    { key: "teacher", header: "Form Teacher", render: (c) => <span className="os-table__muted">{p.teacherName(c.form_teacher_id) ?? "No form teacher"}</span> },
+    { key: "teacher", header: "Form teacher", render: (c) => <span className="os-table__muted">{p.teacherName(c.form_teacher_id) ?? "No form teacher"}</span> },
     { key: "stream", header: "Stream", render: (c) => p.streamName(c.stream_id) && <Tag type="blue" size="sm">{p.streamName(c.stream_id)}</Tag> },
     { key: "medium", header: "Medium", render: (c) => c.medium_name && <Tag type="purple" size="sm">{c.medium_name}</Tag> },
-    { key: "room", header: "Home Classroom", render: (c) => <span className="os-table__muted">{c.home_classroom_name ?? "-"}</span> },
+    { key: "room", header: "Home classroom", render: (c) => <span className="os-table__muted">{c.home_classroom_name ?? "-"}</span> },
     {
       key: "actions",
       header: "Actions",
@@ -80,8 +80,8 @@ export default function GradeGroup(p: Props) {
       <div className="os-flex os-justify-end os-gap-2 os-mb-4">
         <Button hasIconOnly kind="ghost" size="sm" iconDescription="Move up" renderIcon={ArrowUp} disabled={index === 0 || busy} onClick={p.onMoveUp} />
         <Button hasIconOnly kind="ghost" size="sm" iconDescription="Move down" renderIcon={ArrowDown} disabled={isLast || busy} onClick={p.onMoveDown} />
-        <Button kind="ghost" size="sm" disabled={busy} onClick={p.onEditGrade}>Edit Grade</Button>
-        <Button kind="danger--ghost" size="sm" disabled={busy} onClick={p.onDeleteGrade}>Delete Grade</Button>
+        <Button kind="ghost" size="sm" disabled={busy} onClick={p.onEditGrade}>Edit grade</Button>
+        <Button kind="danger--ghost" size="sm" disabled={busy} onClick={p.onDeleteGrade}>Delete grade</Button>
       </div>
 
       {classes.length === 0 ? (

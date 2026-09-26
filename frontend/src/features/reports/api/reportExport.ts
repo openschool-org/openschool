@@ -3,16 +3,16 @@ import api from "@/shared/api/client";
 export const ATTENDANCE_REPORT_COLUMNS = [
   { value: "date", label: "Date" },
   { value: "student", label: "Student" },
-  { value: "index_number", label: "Index No." },
+  { value: "index_number", label: "Index no." },
   { value: "status", label: "Status" },
   { value: "note", label: "Note" },
 ];
 
 export const MARKS_REPORT_COLUMNS = [
   { value: "student", label: "Student" },
-  { value: "index_number", label: "Index No." },
+  { value: "index_number", label: "Index no." },
   { value: "marks", label: "Marks" },
-  { value: "max_marks", label: "Max Marks" },
+  { value: "max_marks", label: "Max marks" },
   { value: "percentage", label: "%" },
 ];
 

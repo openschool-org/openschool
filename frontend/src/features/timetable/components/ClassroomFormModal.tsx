@@ -27,7 +27,7 @@ export default function ClassroomFormModal({ editing, form, onChange, isPending,
         <Select id="classroom-type" labelText="Type" value={form.room_type} onChange={(e) => onChange({ ...form, room_type: e.target.value as ClassroomType, subject_id: e.target.value === "lab" ? form.subject_id : "" })}>
           <SelectItem value="regular" text="Regular (homeroom)" />
           <SelectItem value="lab" text="Lab" />
-          <SelectItem value="eca" text="ECA (Extra-Curricular Activities)" />
+          <SelectItem value="eca" text="ECA (extra-curricular activities)" />
         </Select>
         {form.room_type === "lab" && (
           <Select id="classroom-subject" labelText="Subject this lab is for" helperText="The auto-generator only sends this subject's lab periods to this room." value={form.subject_id} invalid={labMissingSubject} invalidText="Required for a lab classroom." onChange={(e) => onChange({ ...form, subject_id: e.target.value })}>

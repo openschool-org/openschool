@@ -20,11 +20,13 @@ import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import ConfirmEditModal from "@/shared/ui/ConfirmEditModal";
 import UnsavedChangesModal from "@/shared/ui/UnsavedChangesModal";
 import { useUnsavedChangesGuard } from "@/shared/hooks/useUnsavedChangesGuard";
+import { usePageTitle } from "@/shared/hooks/usePageTitle";
 
 export default function StudentDetail() {
   const { id = "" } = useParams();
   const location = useLocation();
   const { data: student, isLoading, isError, refetch } = useStudentWithClass(id);
+  usePageTitle(student?.full_name);
   const { data: houses } = useHouses();
   const updateHouse = useUpdateStudentHouse();
   const updateStatus = useUpdateStudentEnrollmentStatus();
@@ -54,7 +56,7 @@ export default function StudentDetail() {
             <>
               <Button kind="secondary" size="sm" onClick={() => unsavedGuard.guard(editor.cancel)} disabled={pending}>Cancel</Button>
               <Button renderIcon={Save} kind="primary" size="sm" onClick={() => setConfirmSave(true)} disabled={!editor.isValid || pending}>
-                {pending ? "Saving…" : "Save Changes"}
+                {pending ? "Saving…" : "Save changes"}
               </Button>
             </>
           ) : (
@@ -72,10 +74,10 @@ export default function StudentDetail() {
           <TabList aria-label="Student sections">
             <Tab>Profile</Tab>
             <Tab>Guardians</Tab>
-            <Tab>Subject Enrolment</Tab>
-            <Tab>Progress Reports</Tab>
+            <Tab>Subject enrolment</Tab>
+            <Tab>Progress reports</Tab>
             <Tab>Activities</Tab>
-            <Tab>Leadership &amp; Awards</Tab>
+            <Tab>Leadership &amp; awards</Tab>
             <Tab>Disciplinary</Tab>
             <Tab>Records</Tab>
           </TabList>

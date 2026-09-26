@@ -2,7 +2,7 @@ const PASSWORD_MIN_LENGTH = 10;
 
 // A short list of the most-guessed passwords and keyboard patterns. Not a
 // substitute for the server's own deny list (which also rejects a password
-// equal to the account's NIC/index number) — this is client-side UX so a
+// equal to the account's NIC/index number) - this is client-side UX so a
 // user isn't told only after submitting that "password1234" was rejected.
 const COMMON_PASSWORDS = new Set([
   "password", "password1", "password123", "12345678", "123456789",

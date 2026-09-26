@@ -1,8 +1,9 @@
-import { Button, TextInput, DatePicker, DatePickerInput } from "@carbon/react";
+import { Button, TextInput } from "@carbon/react";
 import { Checkmark, Add } from "@carbon/icons-react";
 import type { Term } from "@/features/school/api/term";
-import { toYmd, isDateRangeInvalid } from "@/shared/lib/date";
+import { isDateRangeInvalid } from "@/shared/lib/date";
 import type { TermFormValues, TermTouched } from "@/features/school/lib/termForm";
+import DateField from "@/shared/ui/DateField";
 
 interface Props {
   form: TermFormValues;
@@ -33,22 +34,15 @@ export default function TermForm({ form, onChange, touched, onTouch, editing, is
         invalid={!!touched.name && !form.name.trim()}
         invalidText="A name is required."
       />
-      <DatePicker key={`start-${pickerKey}`} datePickerType="single" dateFormat="Y-m-d" value={form.start_date} onChange={(dates) => onChange({ ...form, start_date: toYmd(dates[0]) })}>
-        <DatePickerInput id="term-start" labelText="Start Date" placeholder="YYYY-MM-DD" onBlur={() => onTouch("start_date")} invalid={!!touched.start_date && !form.start_date} invalidText="A start date is required." />
-      </DatePicker>
-      <DatePicker key={`end-${pickerKey}`} datePickerType="single" dateFormat="Y-m-d" value={form.end_date} onChange={(dates) => onChange({ ...form, end_date: toYmd(dates[0]) })}>
-        <DatePickerInput
-          id="term-end"
-          labelText="End Date"
-          placeholder="YYYY-MM-DD"
+      <DateField key={`start-${pickerKey}`} value={form.start_date} onChange={(ymd) => onChange({ ...form, start_date: ymd })} id="term-start" labelText="Start date" onBlur={() => onTouch("start_date")} invalid={!!touched.start_date && !form.start_date} invalidText="A start date is required." />
+      <DateField key={`end-${pickerKey}`} value={form.end_date} onChange={(ymd) => onChange({ ...form, end_date: ymd })} id="term-end"
+          labelText="End date"
           onBlur={() => onTouch("end_date")}
           invalid={!!touched.end_date && (!form.end_date || rangeInvalid)}
-          invalidText={rangeInvalid ? "End date must be after the start date." : "An end date is required."}
-        />
-      </DatePicker>
+          invalidText={rangeInvalid ? "End date must be after the start date." : "An end date is required."} />
       <div className="os-flex os-gap-2">
         <Button kind="ghost" size="sm" renderIcon={editing ? Checkmark : Add} onClick={onSubmit} disabled={isSaving}>
-          {isSaving ? (editing ? "Saving…" : "Adding…") : editing ? "Save Changes" : "Add Term"}
+          {isSaving ? (editing ? "Saving…" : "Adding…") : editing ? "Save changes" : "Add term"}
         </Button>
         {editing && <Button kind="ghost" size="sm" onClick={onCancelEdit} disabled={isSaving}>Cancel</Button>}
       </div>

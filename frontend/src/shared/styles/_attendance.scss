@@ -159,7 +159,7 @@
   }
 
   .os-step-description {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     color: var(--os-text-tertiary);
     margin-top: 0.125rem;
     white-space: nowrap;
@@ -234,7 +234,7 @@
 @media (max-width: 480px) {
   .os-custom-stepper {
     .os-step-label {
-      font-size: 0.6875rem;
+      font-size: 0.75rem;
       white-space: normal;
       max-width: 4rem;
       line-height: 1.1;

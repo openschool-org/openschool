@@ -18,7 +18,7 @@ export default function SocietyFormModal({ society, academicYearId, onClose }: P
   const [teacherSearch, setTeacherSearch] = useState("");
   const { data: teacherPage } = useTeachers({ limit: 25, search: teacherSearch });
   // The society's current teacher-in-charge may not be among the search
-  // results (e.g. no search typed yet) — fetched separately and merged in
+  // results (e.g. no search typed yet) - fetched separately and merged in
   // so editing doesn't show an empty-looking field for an already-set value.
   const { data: currentTeacher } = useTeacher(society?.teacher_in_charge_id ?? "");
   const teachers = useMemo(() => {
@@ -78,7 +78,7 @@ export default function SocietyFormModal({ society, academicYearId, onClose }: P
           onSelect={setTeacherChoice}
           onSearch={setTeacherSearch}
           getId={(t) => t.id}
-          itemToString={(t) => `${t.full_name} — ${t.employee_number}`}
+          itemToString={(t) => `${t.full_name} - ${t.employee_number}`}
           placeholder="Search teachers by name or employee number…"
         />
       </div>

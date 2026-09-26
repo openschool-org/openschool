@@ -31,7 +31,7 @@ export default function StudentsTab({
   return (
     <div className="os-section os-mt-4">
       <SectionHeader
-        title="Enrolled Students"
+        title="Enrolled students"
         meta={
           <Button renderIcon={Add} kind="ghost" size="sm" onClick={onOpenEnrol}>
             Enrol
@@ -62,12 +62,12 @@ export default function StudentsTab({
               render: (s) => (
                 <>
                   <Link to={`/students/${s.id}`} className="os-table__link">{s.full_name}</Link>
-                  {s.id === cls.girl_monitor_id && <Tag type="magenta" size="sm" className="os-ml-2">Girl Monitor</Tag>}
-                  {s.id === cls.boy_monitor_id && <Tag type="blue" size="sm" className="os-ml-2">Boy Monitor</Tag>}
+                  {s.id === cls.girl_monitor_id && <Tag type="magenta" size="sm" className="os-ml-2">Girl monitor</Tag>}
+                  {s.id === cls.boy_monitor_id && <Tag type="blue" size="sm" className="os-ml-2">Boy monitor</Tag>}
                 </>
               ),
             },
-            { key: "index", header: "Index No.", render: (s) => <span className="os-table__mono">{s.index_number}</span> },
+            { key: "index", header: "Index no.", render: (s) => <span className="os-table__mono">{s.index_number}</span> },
             { key: "gender", header: "Gender", render: (s) => <span className="os-table__muted">{capitalize(s.gender)}</span> },
             { key: "actions", header: "Actions", align: "end", render: (s) => <Button kind="danger--ghost" size="sm" onClick={() => onRequestUnenroll(s)}>Remove</Button> },
           ]}
@@ -78,7 +78,7 @@ export default function StudentsTab({
           description="Enrol a student from this school into the class."
           action={
             <Button renderIcon={Add} kind="primary" onClick={onOpenEnrol}>
-              Enrol Student
+              Enrol student
             </Button>
           }
         />

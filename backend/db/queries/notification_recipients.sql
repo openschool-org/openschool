@@ -55,6 +55,11 @@ UPDATE notification_recipients
 SET is_read = TRUE, read_at = NOW()
 WHERE notification_id = $1 AND user_id = $2;
 
+-- name: MarkAllNotificationRecipientsRead :exec
+UPDATE notification_recipients
+SET is_read = TRUE, read_at = NOW()
+WHERE user_id = $1 AND is_read = FALSE;
+
 -- name: SetNotificationRecipientArchived :exec
 UPDATE notification_recipients
 SET is_archived = $3

@@ -5,6 +5,7 @@ import ErrorMessage from "@/shared/ui/ErrorMessage";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import type { JobRunStatus } from "@/features/system/api/jobs";
 import { formatDateTime } from "@/shared/lib/date";
+import InfoTip from "@/shared/ui/InfoTip";
 
 function humanizeJobName(name: string) {
   return name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -48,12 +49,10 @@ export default function Automation({ inline = false }: { inline?: boolean }) {
         <div className="os-page__header">
           <div className="os-page__header-left">
             <h1 className="os-page__title">Automation</h1>
-            <p className="os-page__subtitle">
-              Five scheduled background agents that support the system's
-              operation - none of the app's other features depend on them, so
-              any of these can be turned off safely, except System Health
-              (backup).
-            </p>
+            <div className="os-page__subtitle os-page__subtitle--tip">
+              Background jobs. Each one can be turned off safely.
+              <InfoTip>Other features do not depend on these jobs. Keep System Health on, since it runs the backup.</InfoTip>
+            </div>
           </div>
         </div>
       )}

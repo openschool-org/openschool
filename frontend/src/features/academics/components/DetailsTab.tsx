@@ -33,18 +33,18 @@ export default function DetailsTab({
   return (
     <>
       <div className="os-section os-mt-4">
-        <SectionHeader title="Class Information" />
+        <SectionHeader title="Class information" />
         <div className="os-kv-grid">
           {[
-            ["Class Name", cls.name],
+            ["Class name", cls.name],
             ["Grade", gradeName ?? "-"],
             ["Stream", streamName ?? "None"],
             ["Sub-stream", streamGroupName ?? "None"],
             ["Medium", mediumName ?? "Not designated"],
-            ["Home Classroom", homeClassroomName ?? "Not assigned"],
-            ["Academic Year", academicYearLabel ?? "-"],
-            ["Girl Monitor", girlMonitor?.full_name ?? "Unassigned"],
-            ["Boy Monitor", boyMonitor?.full_name ?? "Unassigned"],
+            ["Home classroom", homeClassroomName ?? "Not assigned"],
+            ["Academic year", academicYearLabel ?? "-"],
+            ["Girl monitor", girlMonitor?.full_name ?? "Unassigned"],
+            ["Boy monitor", boyMonitor?.full_name ?? "Unassigned"],
           ].map(([label, value]) => (
             <div key={label} className="os-kv-item">
               <p className="os-kv-item__label">{label}</p>
@@ -55,7 +55,7 @@ export default function DetailsTab({
       </div>
 
       <div className="os-section">
-        <SectionHeader title="Class Teacher" />
+        <SectionHeader title="Class teacher" />
         <div className="os-section__body">
           {formTeacher ? (
             <Link

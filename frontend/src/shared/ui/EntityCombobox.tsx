@@ -21,7 +21,7 @@ interface EntityComboboxProps<T> {
   // Server-search mode: typing debounces into this callback (300ms,
   // 2-character minimum; shorter input calls back with "") instead of
   // Carbon filtering `items` client-side. Pass the current search results
-  // as `items`, not the full list — the parent owns the paginated/searched query.
+  // as `items`, not the full list - the parent owns the paginated/searched query.
   onSearch?: (term: string) => void;
 }
 

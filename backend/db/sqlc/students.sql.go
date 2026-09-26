@@ -26,6 +26,12 @@ SET
 WHERE id = $1
 `
 
+// Scrubs personal data from a profile without deleting the row, so
+// historical marks/attendance stay attributable in aggregate without
+// retaining the identifying details (S11's "erase person" flow and the
+// nightly retention purge both call this). index_number is kept: it's
+// already printed on physical records the school retains regardless, and
+// removing it would break the FK-based historical reports it anchors.
 func (q *Queries) AnonymizeStudentProfile(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, anonymizeStudentProfile, id)
 	return err
@@ -45,7 +51,7 @@ INSERT INTO student_profiles (
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
-RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status
+RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status, left_at, erased_at
 `
 
 type CreateStudentProfileParams struct {
@@ -87,6 +93,8 @@ func (q *Queries) CreateStudentProfile(ctx context.Context, arg CreateStudentPro
 		&i.Gender,
 		&i.HouseID,
 		&i.EnrollmentStatus,
+		&i.LeftAt,
+		&i.ErasedAt,
 	)
 	return i, err
 }
@@ -112,7 +120,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
 }
 
 const getStudentByID = `-- name: GetStudentByID :one
-SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status FROM student_profiles
+SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status, left_at, erased_at FROM student_profiles
 WHERE id = $1
 `
 
@@ -133,12 +141,14 @@ func (q *Queries) GetStudentByID(ctx context.Context, id uuid.UUID) (StudentProf
 		&i.Gender,
 		&i.HouseID,
 		&i.EnrollmentStatus,
+		&i.LeftAt,
+		&i.ErasedAt,
 	)
 	return i, err
 }
 
 const getStudentByIndexNumber = `-- name: GetStudentByIndexNumber :one
-SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status FROM student_profiles
+SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status, left_at, erased_at FROM student_profiles
 WHERE index_number = $1
 `
 
@@ -159,12 +169,14 @@ func (q *Queries) GetStudentByIndexNumber(ctx context.Context, indexNumber strin
 		&i.Gender,
 		&i.HouseID,
 		&i.EnrollmentStatus,
+		&i.LeftAt,
+		&i.ErasedAt,
 	)
 	return i, err
 }
 
 const getStudentByUserID = `-- name: GetStudentByUserID :one
-SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status FROM student_profiles
+SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status, left_at, erased_at FROM student_profiles
 WHERE user_id = $1
 `
 
@@ -185,13 +197,15 @@ func (q *Queries) GetStudentByUserID(ctx context.Context, userID pgtype.UUID) (S
 		&i.Gender,
 		&i.HouseID,
 		&i.EnrollmentStatus,
+		&i.LeftAt,
+		&i.ErasedAt,
 	)
 	return i, err
 }
 
 const getStudentWithClass = `-- name: GetStudentWithClass :one
 SELECT
-    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status,
+    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status, sp.left_at, sp.erased_at,
     u.email       AS email,
     c.name        AS class_name,
     g.name        AS grade_name,
@@ -221,6 +235,8 @@ type GetStudentWithClassRow struct {
 	Gender           pgtype.Text        `json:"gender"`
 	HouseID          pgtype.UUID        `json:"house_id"`
 	EnrollmentStatus string             `json:"enrollment_status"`
+	LeftAt           pgtype.Timestamptz `json:"left_at"`
+	ErasedAt         pgtype.Timestamptz `json:"erased_at"`
 	Email            pgtype.Text        `json:"email"`
 	ClassName        pgtype.Text        `json:"class_name"`
 	GradeName        pgtype.Text        `json:"grade_name"`
@@ -245,6 +261,8 @@ func (q *Queries) GetStudentWithClass(ctx context.Context, id uuid.UUID) (GetStu
 		&i.Gender,
 		&i.HouseID,
 		&i.EnrollmentStatus,
+		&i.LeftAt,
+		&i.ErasedAt,
 		&i.Email,
 		&i.ClassName,
 		&i.GradeName,
@@ -256,7 +274,7 @@ func (q *Queries) GetStudentWithClass(ctx context.Context, id uuid.UUID) (GetStu
 
 const listStudents = `-- name: ListStudents :many
 SELECT
-    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status,
+    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status, sp.left_at, sp.erased_at,
     c.name AS class_name,
     g.name AS grade_name,
     h.name AS house_name
@@ -286,6 +304,8 @@ type ListStudentsRow struct {
 	Gender           pgtype.Text        `json:"gender"`
 	HouseID          pgtype.UUID        `json:"house_id"`
 	EnrollmentStatus string             `json:"enrollment_status"`
+	LeftAt           pgtype.Timestamptz `json:"left_at"`
+	ErasedAt         pgtype.Timestamptz `json:"erased_at"`
 	ClassName        pgtype.Text        `json:"class_name"`
 	GradeName        pgtype.Text        `json:"grade_name"`
 	HouseName        pgtype.Text        `json:"house_name"`
@@ -314,112 +334,11 @@ func (q *Queries) ListStudents(ctx context.Context) ([]ListStudentsRow, error) {
 			&i.Gender,
 			&i.HouseID,
 			&i.EnrollmentStatus,
+			&i.LeftAt,
+			&i.ErasedAt,
 			&i.ClassName,
 			&i.GradeName,
 			&i.HouseName,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listStudentsPage = `-- name: ListStudentsPage :many
-SELECT
-    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status,
-    c.name AS class_name,
-    g.name AS grade_name,
-    h.name AS house_name,
-    COUNT(*) OVER () AS total
-FROM student_profiles sp
-LEFT JOIN class_students cs
-    ON cs.student_id = sp.id
-   AND cs.academic_year_id = (
-       SELECT id FROM academic_years WHERE is_current = TRUE LIMIT 1
-   )
-LEFT JOIN classes c ON c.id = cs.class_id
-LEFT JOIN grades  g ON g.id = c.grade_id
-LEFT JOIN houses  h ON h.id = sp.house_id
-WHERE ($1::text IS NULL OR sp.full_name ILIKE '%' || $1::text || '%' OR sp.index_number ILIKE '%' || $1::text || '%')
-  AND ($2::text IS NULL OR g.name = $2::text)
-  AND ($3::text IS NULL OR c.name = $3::text)
-  AND ($4::text IS NULL OR sp.gender = $4::text)
-  AND ($5::text IS NULL OR h.name = $5::text)
-ORDER BY sp.full_name ASC, sp.id ASC
-LIMIT $6::int OFFSET $7::int
-`
-
-type ListStudentsPageParams struct {
-	Search     pgtype.Text `json:"search"`
-	Grade      pgtype.Text `json:"grade"`
-	Class      pgtype.Text `json:"class"`
-	Gender     pgtype.Text `json:"gender"`
-	House      pgtype.Text `json:"house"`
-	PageLimit  int32       `json:"page_limit"`
-	PageOffset int32       `json:"page_offset"`
-}
-
-type ListStudentsPageRow struct {
-	ID               uuid.UUID          `json:"id"`
-	UserID           pgtype.UUID        `json:"user_id"`
-	FullName         string             `json:"full_name"`
-	IndexNumber      string             `json:"index_number"`
-	Address          pgtype.Text        `json:"address"`
-	Phone            pgtype.Text        `json:"phone"`
-	Whatsapp         pgtype.Text        `json:"whatsapp"`
-	SpecialRemarks   pgtype.Text        `json:"special_remarks"`
-	CreatedAt        pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
-	Gender           pgtype.Text        `json:"gender"`
-	HouseID          pgtype.UUID        `json:"house_id"`
-	EnrollmentStatus string             `json:"enrollment_status"`
-	ClassName        pgtype.Text        `json:"class_name"`
-	GradeName        pgtype.Text        `json:"grade_name"`
-	HouseName        pgtype.Text        `json:"house_name"`
-	// Hand-edited: excluded from JSON since the handler reads it once for the
-	// page envelope's top-level "total" rather than repeating it per row.
-	Total int64 `json:"-"`
-}
-
-func (q *Queries) ListStudentsPage(ctx context.Context, arg ListStudentsPageParams) ([]ListStudentsPageRow, error) {
-	rows, err := q.db.Query(ctx, listStudentsPage,
-		arg.Search,
-		arg.Grade,
-		arg.Class,
-		arg.Gender,
-		arg.House,
-		arg.PageLimit,
-		arg.PageOffset,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListStudentsPageRow{}
-	for rows.Next() {
-		var i ListStudentsPageRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.FullName,
-			&i.IndexNumber,
-			&i.Address,
-			&i.Phone,
-			&i.Whatsapp,
-			&i.SpecialRemarks,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Gender,
-			&i.HouseID,
-			&i.EnrollmentStatus,
-			&i.ClassName,
-			&i.GradeName,
-			&i.HouseName,
-			&i.Total,
 		); err != nil {
 			return nil, err
 		}
@@ -433,7 +352,7 @@ func (q *Queries) ListStudentsPage(ctx context.Context, arg ListStudentsPagePara
 
 const listStudentsByClass = `-- name: ListStudentsByClass :many
 SELECT
-    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status
+    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status, sp.left_at, sp.erased_at
 FROM student_profiles sp
 INNER JOIN class_students cs ON cs.student_id = sp.id
 WHERE cs.class_id = $1
@@ -463,6 +382,178 @@ func (q *Queries) ListStudentsByClass(ctx context.Context, classID uuid.UUID) ([
 			&i.Gender,
 			&i.HouseID,
 			&i.EnrollmentStatus,
+			&i.LeftAt,
+			&i.ErasedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStudentsPage = `-- name: ListStudentsPage :many
+SELECT
+    sp.id, sp.user_id, sp.full_name, sp.index_number, sp.address, sp.phone, sp.whatsapp, sp.special_remarks, sp.created_at, sp.updated_at, sp.gender, sp.house_id, sp.enrollment_status, sp.left_at, sp.erased_at,
+    c.name AS class_name,
+    g.name AS grade_name,
+    h.name AS house_name,
+    COUNT(*) OVER () AS total
+FROM student_profiles sp
+LEFT JOIN class_students cs
+    ON cs.student_id = sp.id
+   AND cs.academic_year_id = (
+       SELECT id FROM academic_years WHERE is_current = TRUE LIMIT 1
+   )
+LEFT JOIN classes c ON c.id = cs.class_id
+LEFT JOIN grades  g ON g.id = c.grade_id
+LEFT JOIN houses  h ON h.id = sp.house_id
+WHERE ($1::text IS NULL OR sp.full_name ILIKE '%' || $1::text || '%' OR sp.index_number ILIKE '%' || $1::text || '%')
+  AND ($2::text IS NULL OR g.name = $2::text)
+  AND ($3::text IS NULL OR c.name = $3::text)
+  AND ($4::text IS NULL OR sp.gender = $4::text)
+  AND ($5::text IS NULL OR h.name = $5::text)
+ORDER BY
+    -- Whitelisted by httpx.ParseSort; an empty key keeps the default name order.
+    CASE WHEN $6::text = 'name' AND NOT $7::bool THEN sp.full_name END ASC,
+    CASE WHEN $6::text = 'name' AND $7::bool THEN sp.full_name END DESC,
+    CASE WHEN $6::text = 'index' AND NOT $7::bool THEN sp.index_number END ASC,
+    CASE WHEN $6::text = 'index' AND $7::bool THEN sp.index_number END DESC,
+    CASE WHEN $6::text = 'grade' AND NOT $7::bool THEN g.sort_order END ASC,
+    CASE WHEN $6::text = 'grade' AND $7::bool THEN g.sort_order END DESC,
+    CASE WHEN $6::text = 'class' AND NOT $7::bool THEN c.name END ASC,
+    CASE WHEN $6::text = 'class' AND $7::bool THEN c.name END DESC,
+    CASE WHEN $6::text = 'house' AND NOT $7::bool THEN h.name END ASC,
+    CASE WHEN $6::text = 'house' AND $7::bool THEN h.name END DESC,
+    sp.full_name ASC, sp.id ASC
+LIMIT $9::int OFFSET $8::int
+`
+
+type ListStudentsPageParams struct {
+	Search     pgtype.Text `json:"search"`
+	Grade      pgtype.Text `json:"grade"`
+	Class      pgtype.Text `json:"class"`
+	Gender     pgtype.Text `json:"gender"`
+	House      pgtype.Text `json:"house"`
+	SortKey    string      `json:"sort_key"`
+	SortDesc   bool        `json:"sort_desc"`
+	PageOffset int32       `json:"page_offset"`
+	PageLimit  int32       `json:"page_limit"`
+}
+
+type ListStudentsPageRow struct {
+	ID               uuid.UUID          `json:"id"`
+	UserID           pgtype.UUID        `json:"user_id"`
+	FullName         string             `json:"full_name"`
+	IndexNumber      string             `json:"index_number"`
+	Address          pgtype.Text        `json:"address"`
+	Phone            pgtype.Text        `json:"phone"`
+	Whatsapp         pgtype.Text        `json:"whatsapp"`
+	SpecialRemarks   pgtype.Text        `json:"special_remarks"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	Gender           pgtype.Text        `json:"gender"`
+	HouseID          pgtype.UUID        `json:"house_id"`
+	EnrollmentStatus string             `json:"enrollment_status"`
+	LeftAt           pgtype.Timestamptz `json:"left_at"`
+	ErasedAt         pgtype.Timestamptz `json:"erased_at"`
+	ClassName        pgtype.Text        `json:"class_name"`
+	GradeName        pgtype.Text        `json:"grade_name"`
+	HouseName        pgtype.Text        `json:"house_name"`
+	Total            int64              `json:"total"`
+}
+
+// Server-paginated replacement for ListStudents (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md
+// section 4): the caller-supplied search term is escaped by the service layer
+// before it reaches here (see search.escapeLikeTerm's sibling in this
+// module), so '%'/'_' can't widen the match. COUNT(*) OVER () returns the
+// total for the whole filtered set alongside the page in one round trip.
+func (q *Queries) ListStudentsPage(ctx context.Context, arg ListStudentsPageParams) ([]ListStudentsPageRow, error) {
+	rows, err := q.db.Query(ctx, listStudentsPage,
+		arg.Search,
+		arg.Grade,
+		arg.Class,
+		arg.Gender,
+		arg.House,
+		arg.SortKey,
+		arg.SortDesc,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListStudentsPageRow{}
+	for rows.Next() {
+		var i ListStudentsPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FullName,
+			&i.IndexNumber,
+			&i.Address,
+			&i.Phone,
+			&i.Whatsapp,
+			&i.SpecialRemarks,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Gender,
+			&i.HouseID,
+			&i.EnrollmentStatus,
+			&i.LeftAt,
+			&i.ErasedAt,
+			&i.ClassName,
+			&i.GradeName,
+			&i.HouseName,
+			&i.Total,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStudentsPastRetention = `-- name: ListStudentsPastRetention :many
+SELECT id, user_id, full_name, left_at
+FROM student_profiles
+WHERE enrollment_status = 'left'
+  AND erased_at IS NULL
+  AND left_at IS NOT NULL
+  AND left_at < NOW() - make_interval(years => $1::int)
+ORDER BY left_at
+`
+
+type ListStudentsPastRetentionRow struct {
+	ID       uuid.UUID          `json:"id"`
+	UserID   pgtype.UUID        `json:"user_id"`
+	FullName string             `json:"full_name"`
+	LeftAt   pgtype.Timestamptz `json:"left_at"`
+}
+
+// Left students whose retention window (S11) has elapsed and who haven't
+// already been anonymised — the nightly retention agent's purge candidates.
+func (q *Queries) ListStudentsPastRetention(ctx context.Context, retentionYears int32) ([]ListStudentsPastRetentionRow, error) {
+	rows, err := q.db.Query(ctx, listStudentsPastRetention, retentionYears)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListStudentsPastRetentionRow{}
+	for rows.Next() {
+		var i ListStudentsPastRetentionRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.FullName,
+			&i.LeftAt,
 		); err != nil {
 			return nil, err
 		}
@@ -481,7 +572,7 @@ SET
     left_at           = CASE WHEN $2 = 'left' THEN NOW() ELSE NULL END,
     updated_at        = NOW()
 WHERE id = $1
-RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status
+RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status, left_at, erased_at
 `
 
 type UpdateStudentEnrollmentStatusParams struct {
@@ -489,6 +580,9 @@ type UpdateStudentEnrollmentStatusParams struct {
 	EnrollmentStatus string    `json:"enrollment_status"`
 }
 
+// left_at is set the moment status becomes 'left' and cleared on any other
+// status, so a re-enrolled student's retention clock (S11) starts fresh
+// rather than counting from a stale prior departure.
 func (q *Queries) UpdateStudentEnrollmentStatus(ctx context.Context, arg UpdateStudentEnrollmentStatusParams) (StudentProfile, error) {
 	row := q.db.QueryRow(ctx, updateStudentEnrollmentStatus, arg.ID, arg.EnrollmentStatus)
 	var i StudentProfile
@@ -506,6 +600,8 @@ func (q *Queries) UpdateStudentEnrollmentStatus(ctx context.Context, arg UpdateS
 		&i.Gender,
 		&i.HouseID,
 		&i.EnrollmentStatus,
+		&i.LeftAt,
+		&i.ErasedAt,
 	)
 	return i, err
 }
@@ -521,7 +617,7 @@ SET
     gender          = $7,
     updated_at      = NOW()
 WHERE id = $1
-RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status
+RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status, left_at, erased_at
 `
 
 type UpdateStudentProfileParams struct {
@@ -559,43 +655,8 @@ func (q *Queries) UpdateStudentProfile(ctx context.Context, arg UpdateStudentPro
 		&i.Gender,
 		&i.HouseID,
 		&i.EnrollmentStatus,
+		&i.LeftAt,
+		&i.ErasedAt,
 	)
 	return i, err
-}
-
-const listStudentsPastRetention = `-- name: ListStudentsPastRetention :many
-SELECT id, user_id, full_name, left_at
-FROM student_profiles
-WHERE enrollment_status = 'left'
-  AND erased_at IS NULL
-  AND left_at IS NOT NULL
-  AND left_at < NOW() - make_interval(years => $1::int)
-ORDER BY left_at
-`
-
-type ListStudentsPastRetentionRow struct {
-	ID       uuid.UUID          `json:"id"`
-	UserID   pgtype.UUID        `json:"user_id"`
-	FullName string             `json:"full_name"`
-	LeftAt   pgtype.Timestamptz `json:"left_at"`
-}
-
-func (q *Queries) ListStudentsPastRetention(ctx context.Context, retentionYears int32) ([]ListStudentsPastRetentionRow, error) {
-	rows, err := q.db.Query(ctx, listStudentsPastRetention, retentionYears)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListStudentsPastRetentionRow{}
-	for rows.Next() {
-		var i ListStudentsPastRetentionRow
-		if err := rows.Scan(&i.ID, &i.UserID, &i.FullName, &i.LeftAt); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }

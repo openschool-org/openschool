@@ -42,7 +42,7 @@ const BRITISH_SPELLING_WORDS = [
 
 const BRITISH_SPELLING_LABEL_KEYS = new Set([
   "label", "labelText", "title", "subtitle", "placeholder", "description",
-  "text", "aria-label", "ariaLabel", "fallback", "heading",
+  "text", "aria-label", "ariaLabel", "fallback", "heading", "helperText", "invalidText",
 ]);
 
 function reportBritishSpelling(context, node, value) {
@@ -75,6 +75,41 @@ const britishSpellingRule = {
         if (node.value.type === "Literal" && typeof node.value.value === "string") {
           reportBritishSpelling(context, node, node.value.value);
         }
+      },
+    };
+  },
+};
+
+// Proper nouns and role titles that stay capitalised inside sentence-case text.
+const SENTENCE_CASE_ALLOW = new Set([
+  "OpenSchool", "ThunderID", "A/L", "O/L", "NIC", "ID", "CSV", "PDF", "ECA", "IT", "Sri", "Lanka", "Sinhala", "Tamil", "English",
+  "Principal", "Vice", "Section", "Head", "WhatsApp", "Grade", "Ctrl", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "January", "December", "September", "August",
+]);
+
+// Flags Title Case copy such as "Save Changes"; a string is only flagged when every word is capitalised.
+function isTitleCase(value) {
+  if (/^e\.g\./.test(value.trim())) return false;
+  const words = value.trim().split(/\s+/).filter((w) => /^[A-Za-z]{2,}/.test(w));
+  if (words.length < 2) return false;
+  const rest = words.slice(1);
+  return rest.every((w) => /^[A-Z][a-z]/.test(w)) && rest.some((w) => !SENTENCE_CASE_ALLOW.has(w.replace(/[^A-Za-z/]/g, "")));
+}
+
+const sentenceCaseRule = {
+  meta: { type: "suggestion" },
+  create(context) {
+    const report = (node, value) => {
+      if (isTitleCase(value)) context.report({ node, message: `Use sentence case in UI copy: "${value.trim()}".` });
+    };
+    return {
+      JSXText(node) {
+        const parent = node.parent?.openingElement?.name?.name;
+        if (["Button", "Tab", "h1", "h2", "h3", "h4", "th", "label", "legend"].includes(parent)) report(node, node.value);
+      },
+      JSXAttribute(node) {
+        if (!BRITISH_SPELLING_LABEL_KEYS.has(node.name.name)) return;
+        const v = node.value;
+        if (v?.type === "Literal" && typeof v.value === "string") report(node, v.value);
       },
     };
   },
@@ -144,7 +179,7 @@ export default defineConfig([
   globalIgnores(["dist", "coverage"]),
   {
     files: ["**/*.{ts,tsx}"],
-    plugins: { local: { rules: { "british-spelling": britishSpellingRule } } },
+    plugins: { local: { rules: { "british-spelling": britishSpellingRule, "sentence-case": sentenceCaseRule } } },
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
@@ -165,7 +200,20 @@ export default defineConfig([
         { property: "toLocaleTimeString", message: "Add a helper to @/shared/lib/date instead of calling this directly." },
       ],
       "local/british-spelling": "error",
+      "local/sentence-case": "error",
+      // Em-dashes render inconsistently on Android fonts; use " - " or " · " (UX playbook C4).
+      "no-restricted-syntax": [
+        "error",
+        { selector: "Literal[value=/\u2014/]", message: "No em-dashes in UI text. Use \" - \" or \" · \"." },
+        { selector: "TemplateElement[value.raw=/\u2014/]", message: "No em-dashes in UI text. Use \" - \" or \" · \"." },
+        { selector: "JSXText[value=/\u2014/]", message: "No em-dashes in UI text. Use \" - \" or \" · \"." },
+        { selector: "ImportSpecifier[imported.name='DatePicker']", message: "Use DateField from @/shared/ui/DateField (calendar only, day-first display)." },
+      ],
     },
+  },
+  {
+    files: ["src/shared/ui/DateField.tsx"],
+    rules: { "no-restricted-syntax": "off" },
   },
   {
     files: ["src/shared/lib/date.ts"],

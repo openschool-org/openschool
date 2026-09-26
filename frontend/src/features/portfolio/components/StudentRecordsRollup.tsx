@@ -22,7 +22,7 @@ export default function StudentRecordsRollup({ studentId }: { studentId: string 
 
   return (
     <>
-      <SectionCard title="Attendance History" className="os-mt-4" flush>
+      <SectionCard title="Attendance history" className="os-mt-4" flush>
         {attendance.isLoading ? (
           <div className="os-p-6"><SkeletonText width="60%" /></div>
         ) : attendance.data?.length ? (
@@ -32,7 +32,7 @@ export default function StudentRecordsRollup({ studentId }: { studentId: string 
         )}
       </SectionCard>
 
-      <SectionCard title="Examination Results">
+      <SectionCard title="Examination results">
         <Select id="rollup-term" labelText="Term" value={termId} onChange={(e) => setTermId(e.target.value)} className="os-max-w-16 os-mb-4">
           <SelectItem value="" text="Select term…" />
           {terms?.map((t) => <SelectItem key={t.id} value={t.id} text={t.name} />)}
@@ -48,7 +48,7 @@ export default function StudentRecordsRollup({ studentId }: { studentId: string 
         )}
       </SectionCard>
 
-      <SectionCard title="Prefect Appointments" flush>
+      <SectionCard title="Prefect appointments" flush>
         {appointments.isLoading ? (
           <div className="os-p-6"><SkeletonText width="60%" /></div>
         ) : appointments.data?.length ? (

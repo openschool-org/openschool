@@ -10,7 +10,7 @@ export function AssignPrincipalModal({ currentTeacherId, onClose }: { currentTea
   const [teacherSearch, setTeacherSearch] = useState("");
   const { data: teacherPage } = useTeachers({ limit: 25, search: teacherSearch });
   // The current principal may not be among the search results (e.g. no
-  // search typed yet) — fetched separately so "Change Principal" doesn't
+  // search typed yet) - fetched separately so "Change principal" doesn't
   // show an empty-looking field for the incumbent.
   const { data: currentTeacher } = useTeacher(currentTeacherId);
   const teachers = useMemo(() => {
@@ -22,7 +22,7 @@ export function AssignPrincipalModal({ currentTeacherId, onClose }: { currentTea
   return (
     <FormModal
       open
-      title={currentTeacherId ? "Change Principal" : "Assign Principal"}
+      title={currentTeacherId ? "Change principal" : "Assign principal"}
       onClose={onClose}
       onSubmit={() => choice && assign.mutate({ teacher_id: choice }, { onSuccess: onClose })}
       isPending={assign.isPending}
@@ -49,7 +49,7 @@ export function AddVicePrincipalModal({ onClose }: { onClose: () => void }) {
   return (
     <FormModal
       open
-      title="Add Vice Principal"
+      title="Add vice principal"
       onClose={onClose}
       onSubmit={() => teacherId && assign.mutate({ teacher_id: teacherId, notify_whole_school: wholeSchool, grade_ids: wholeSchool ? [] : gradeIds }, { onSuccess: onClose })}
       isPending={assign.isPending}

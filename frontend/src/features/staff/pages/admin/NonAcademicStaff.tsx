@@ -42,13 +42,11 @@ export default function NonAcademicStaff() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">Non-Academic Staff</h1>
-          <p className="os-page__subtitle">
-            Lab assistants, librarians, office staff, and other staff without a portal login.
-          </p>
+          <h1 className="os-page__title">Non-academic staff</h1>
+          <p className="os-page__subtitle">Lab assistants, librarians, office and other staff without a login.</p>
         </div>
         <Button renderIcon={Add} kind="primary" size="md" onClick={() => setCreating(true)}>
-          Add Staff
+          Add staff
         </Button>
       </div>
 
@@ -81,7 +79,7 @@ export default function NonAcademicStaff() {
 
         {(search || designation) && (
           <div className="os-flex os-items-center os-gap-2 os-wrap os-mt-3">
-            <span className="os-text-xs os-fw-600 os-c-tertiary">Active Filters:</span>
+            <span className="os-text-xs os-fw-600 os-c-tertiary">Active filters:</span>
             {designation && (
               <Tag type="teal" filter onClose={() => { setDesignation(""); setPage(1); }}>
                 Role: {designationLabel(designation)}
@@ -89,7 +87,7 @@ export default function NonAcademicStaff() {
             )}
             {search && <Tag type="blue" filter onClose={() => { setSearch(""); setPage(1); }}>Search: "{search}"</Tag>}
             <Button kind="ghost" size="sm" renderIcon={Close} onClick={() => { setSearch(""); setDesignation(""); setPage(1); }}>
-              Clear All
+              Clear all
             </Button>
           </div>
         )}
