@@ -271,3 +271,64 @@ SELECT student_id, academic_year_id, grade_id, medium_id FROM student_intakes WH
 -- name: WfGradesWithStreamLevels :many
 -- Grades whose levels are tied to an A/L stream; their incoming students default to by_stream.
 SELECT DISTINCT grade_id::uuid AS grade_id FROM levels WHERE grade_id IS NOT NULL AND stream_id IS NOT NULL;
+
+-- ---- W4 intake ----
+
+-- name: WfListMediums :many
+SELECT id, name FROM mediums ORDER BY name;
+
+-- name: WfSchoolType :one
+SELECT COALESCE(school_type, '')::text AS school_type FROM school LIMIT 1;
+
+-- name: WfExistingIndexNumbers :many
+SELECT index_number FROM student_profiles WHERE index_number = ANY(sqlc.arg(numbers)::text[]);
+
+-- name: WfGuardiansByNIC :many
+SELECT id, nic_number, full_name FROM guardians WHERE nic_number = ANY(sqlc.arg(nics)::text[]);
+
+-- name: WfLeastUsedHouse :one
+-- The house with the fewest active students, so imported students spread evenly.
+SELECT h.id FROM houses h
+LEFT JOIN student_profiles sp ON sp.house_id = h.id AND sp.enrollment_status = 'active'
+GROUP BY h.id, h.name
+ORDER BY COUNT(sp.id), h.name
+LIMIT 1;
+
+-- name: WfCreateIntakeStudent :one
+INSERT INTO student_profiles (full_name, index_number, address, phone, gender, house_id)
+VALUES (sqlc.arg(full_name), sqlc.arg(index_number), sqlc.narg(address), sqlc.narg(phone), sqlc.narg(gender), sqlc.narg(house_id))
+RETURNING id;
+
+-- name: WfCreateGuardian :one
+INSERT INTO guardians (full_name, relationship, phone, email, nic_number)
+VALUES (sqlc.arg(full_name), sqlc.arg(relationship), sqlc.arg(phone), sqlc.narg(email), sqlc.arg(nic_number))
+RETURNING id;
+
+-- name: WfLinkGuardian :exec
+INSERT INTO student_guardians (student_id, guardian_id, is_primary_contact) VALUES ($1, $2, TRUE)
+ON CONFLICT DO NOTHING;
+
+-- name: WfCreateIntake :exec
+INSERT INTO student_intakes (student_id, academic_year_id, grade_id, medium_id) VALUES ($1, $2, $3, $4);
+
+-- name: WfStudentsInUse :one
+-- An imported student can no longer be removed once they have an account, a class, subjects or records.
+SELECT (EXISTS (SELECT 1 FROM student_profiles WHERE id = ANY(sqlc.arg(ids)::uuid[]) AND user_id IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM class_students WHERE student_id = ANY(sqlc.arg(ids)::uuid[]))
+     OR EXISTS (SELECT 1 FROM student_subject_enrollments WHERE student_id = ANY(sqlc.arg(ids)::uuid[]))
+     OR EXISTS (SELECT 1 FROM attendance_records WHERE student_id = ANY(sqlc.arg(ids)::uuid[]))
+     OR EXISTS (SELECT 1 FROM term_marks WHERE student_id = ANY(sqlc.arg(ids)::uuid[])))::bool AS in_use;
+
+-- name: WfDeleteStudents :exec
+DELETE FROM student_profiles WHERE id = ANY(sqlc.arg(ids)::uuid[]);
+
+-- name: WfDeleteUnlinkedGuardians :exec
+DELETE FROM guardians g WHERE g.id = ANY(sqlc.arg(ids)::uuid[])
+  AND NOT EXISTS (SELECT 1 FROM student_guardians sg WHERE sg.guardian_id = g.id);
+
+-- name: WfStudentsWithoutAccount :many
+SELECT id, full_name, index_number FROM student_profiles
+WHERE index_number = ANY(sqlc.arg(numbers)::text[]) AND user_id IS NULL;
+
+-- name: WfSetStudentUser :exec
+UPDATE student_profiles SET user_id = $2, updated_at = NOW() WHERE id = $1;

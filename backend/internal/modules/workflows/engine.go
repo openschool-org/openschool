@@ -37,11 +37,12 @@ type Option struct {
 type InputField struct {
 	Key      string   `json:"key"`
 	Label    string   `json:"label"`
-	Type     string   `json:"type"` // select, text, date, boolean
+	Type     string   `json:"type"` // select, multiselect, text, date, boolean, csv
 	Required bool     `json:"required"`
 	Default  string   `json:"default,omitempty"`
 	Help     string   `json:"help,omitempty"`
 	Options  []Option `json:"options,omitempty"`
+	Template string   `json:"template,omitempty"` // csv only: header and an example row, offered as a download
 }
 
 // Check is one precondition. A blocking check that fails disables Propose and Apply.

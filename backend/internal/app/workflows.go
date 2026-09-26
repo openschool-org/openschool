@@ -3,6 +3,7 @@ package app
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	workflowsmodule "github.com/openschool-org/openschool/internal/modules/workflows"
+	"github.com/openschool-org/openschool/internal/thunderid"
 )
 
 // registerWorkflows wires the year-end workflows in pipeline order.
@@ -11,6 +12,7 @@ func registerWorkflows(groups HTTPGroups, pool *pgxpool.Pool, shared sharedServi
 	engine := workflowsmodule.NewEngine(store, shared.audit, []workflowsmodule.Definition{
 		workflowsmodule.YearRollover{},
 		workflowsmodule.Leavers{},
+		workflowsmodule.NewStudentIntake(thunderid.NewClient()),
 		workflowsmodule.Promotion{},
 		workflowsmodule.NewGoLive(shared.notifications),
 	})

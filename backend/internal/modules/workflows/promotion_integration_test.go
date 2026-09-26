@@ -16,8 +16,8 @@ import (
 
 type promotionFixture struct {
 	admin, year2026, year2027, grade6, grade7, class7A uuid.UUID
-	students                                            [2]uuid.UUID
-	admitted                                            uuid.UUID
+	students                                           [2]uuid.UUID
+	admitted                                           uuid.UUID
 }
 
 // seedPromotion: 6-A holds two students, 7-A next year has room for two, and one new

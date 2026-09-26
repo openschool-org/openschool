@@ -322,6 +322,7 @@
 
 .os-workflow-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
 .os-workflow-inputs__check { align-self: end; }
+.os-workflow-inputs__wide { grid-column: 1 / -1; }
 
 .os-checks {
   margin: 0;

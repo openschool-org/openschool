@@ -46,9 +46,10 @@ func (h *handler) respond(c *gin.Context, err error, checks []Check) bool {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 	case errors.Is(err, ErrChecksFailed):
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error(), "checks": checks})
-	case errors.Is(err, ErrNotProposed), errors.Is(err, ErrNotApplied), errors.Is(err, errYearInUse), errors.Is(err, errClassesInUse):
+	case errors.Is(err, ErrNotProposed), errors.Is(err, ErrNotApplied), errors.Is(err, errYearInUse), errors.Is(err, errClassesInUse),
+		errors.Is(err, errStudentsInUse), errors.Is(err, errChoicesInUse):
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-	case errors.Is(err, ErrNotEditable), errors.Is(err, ErrInvalidOption), errors.Is(err, ErrUnknownRow):
+	case errors.Is(err, ErrNotEditable), errors.Is(err, ErrInvalidOption), errors.Is(err, ErrUnknownRow), errors.Is(err, ErrInvalidProposal):
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	default:
 		apierror.RespondInternal(c, err)

@@ -819,29 +819,41 @@ type Querier interface {
 	WfCreateAcademicYear(ctx context.Context, arg WfCreateAcademicYearParams) (uuid.UUID, error)
 	WfCreateClass(ctx context.Context, arg WfCreateClassParams) (uuid.UUID, error)
 	WfCreateGradeSection(ctx context.Context, arg WfCreateGradeSectionParams) (uuid.UUID, error)
+	WfCreateGuardian(ctx context.Context, arg WfCreateGuardianParams) (uuid.UUID, error)
+	WfCreateIntake(ctx context.Context, arg WfCreateIntakeParams) error
+	WfCreateIntakeStudent(ctx context.Context, arg WfCreateIntakeStudentParams) (uuid.UUID, error)
 	WfCreateTerm(ctx context.Context, arg WfCreateTermParams) error
 	WfCurrentTerm(ctx context.Context) (uuid.UUID, error)
 	WfDeleteAcademicYear(ctx context.Context, id uuid.UUID) error
 	WfDeleteEmptyClasses(ctx context.Context, ids []uuid.UUID) error
 	WfDeleteIntakes(ctx context.Context, ids []uuid.UUID) error
+	WfDeleteStudents(ctx context.Context, ids []uuid.UUID) error
+	WfDeleteUnlinkedGuardians(ctx context.Context, ids []uuid.UUID) error
 	// Classes RESTRICT their year, so they go first; the rest cascades from the year.
 	WfDeleteYearClasses(ctx context.Context, academicYearID uuid.UUID) error
+	WfExistingIndexNumbers(ctx context.Context, numbers []string) ([]string, error)
 	WfGetAcademicYear(ctx context.Context, id uuid.UUID) (WfGetAcademicYearRow, error)
 	// Grades whose curriculum has a real subject choice; their incoming students default to by_subject_choice.
 	WfGradesWithChoiceGroups(ctx context.Context) ([]uuid.UUID, error)
 	// Grades whose levels are tied to an A/L stream; their incoming students default to by_stream.
 	WfGradesWithStreamLevels(ctx context.Context) ([]uuid.UUID, error)
+	WfGuardiansByNIC(ctx context.Context, nics []string) ([]WfGuardiansByNICRow, error)
 	// Admitted students waiting for a class in the target year.
 	WfIntakeStudents(ctx context.Context, academicYearID uuid.UUID) ([]WfIntakeStudentsRow, error)
 	WfIntakesByIDs(ctx context.Context, ids []uuid.UUID) ([]WfIntakesByIDsRow, error)
 	// Each student's average percentage in the latest term of the year that has marks.
 	WfLatestAverages(ctx context.Context, arg WfLatestAveragesParams) ([]WfLatestAveragesRow, error)
+	// The house with the fewest active students, so imported students spread evenly.
+	WfLeastUsedHouse(ctx context.Context) (uuid.UUID, error)
+	WfLinkGuardian(ctx context.Context, arg WfLinkGuardianParams) error
 	// ---- Shared reads ----
 	WfListAcademicYears(ctx context.Context) ([]WfListAcademicYearsRow, error)
 	// ---- W2 leavers ----
 	WfListActiveStudentsInGrades(ctx context.Context, arg WfListActiveStudentsInGradesParams) ([]WfListActiveStudentsInGradesRow, error)
 	WfListGradeSections(ctx context.Context, academicYearID uuid.UUID) ([]WfListGradeSectionsRow, error)
 	WfListGrades(ctx context.Context) ([]WfListGradesRow, error)
+	// ---- W4 intake ----
+	WfListMediums(ctx context.Context) ([]WfListMediumsRow, error)
 	WfListTerms(ctx context.Context, academicYearID uuid.UUID) ([]WfListTermsRow, error)
 	WfListYearClasses(ctx context.Context, academicYearID uuid.UUID) ([]WfListYearClassesRow, error)
 	WfMarkStudentsLeft(ctx context.Context, arg WfMarkStudentsLeftParams) (int64, error)
@@ -851,11 +863,16 @@ type Querier interface {
 	WfPromotionStudents(ctx context.Context, academicYearID uuid.UUID) ([]WfPromotionStudentsRow, error)
 	WfRestoreIntake(ctx context.Context, arg WfRestoreIntakeParams) error
 	WfRestoreStudentsActive(ctx context.Context, ids []uuid.UUID) (int64, error)
+	WfSchoolType(ctx context.Context) (string, error)
 	WfSetCurrentTerm(ctx context.Context, id uuid.UUID) error
 	WfSetCurrentYear(ctx context.Context, id uuid.UUID) error
+	WfSetStudentUser(ctx context.Context, arg WfSetStudentUserParams) error
 	// Each student's optional subjects for the target year, and the stream of the level they are in.
 	// A group is a real choice when it offers more subjects than a student may take.
 	WfStudentChoices(ctx context.Context, arg WfStudentChoicesParams) ([]WfStudentChoicesRow, error)
+	// An imported student can no longer be removed once they have an account, a class, subjects or records.
+	WfStudentsInUse(ctx context.Context, ids []uuid.UUID) (bool, error)
+	WfStudentsWithoutAccount(ctx context.Context, numbers []string) ([]WfStudentsWithoutAccountRow, error)
 	// Seats already taken in target classes by students outside this promotion (for example placed by hand).
 	WfTargetOccupancy(ctx context.Context, arg WfTargetOccupancyParams) ([]WfTargetOccupancyRow, error)
 	WfUpsertPromotionPolicy(ctx context.Context, arg WfUpsertPromotionPolicyParams) error
