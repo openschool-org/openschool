@@ -37,7 +37,12 @@ export default function TimetableGrid({ periods, entryAt, editable, onOpenCell }
                 const e = entryAt(d.value, p.period_number!);
                 return (
                   <td key={d.value} onClick={() => editable && onOpenCell(d.value, p.period_number!)} className={`${editable ? "os-pointer" : "os-cursor-default"} os-min-w-8 os-align-top`}>
-                    {e?.subject_name ? (
+                    {e?.option_block_name ? (
+                      <div>
+                        <div className="os-fw-500">{e.option_block_name}</div>
+                        <div className="os-text-xs os-c-secondary">Option block</div>
+                      </div>
+                    ) : e?.subject_name ? (
                       <div>
                         <div className="os-fw-500">{e.subject_name}</div>
                         <div className="os-text-xs os-c-secondary">{e.teacher_name}</div>

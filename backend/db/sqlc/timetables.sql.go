@@ -237,7 +237,11 @@ const listPublishedTimetablesForTeacher = `-- name: ListPublishedTimetablesForTe
 SELECT DISTINCT t.id, t.academic_year_id, t.class_id, t.version, t.status, t.parent_timetable_id, t.created_by, t.submitted_at, t.submitted_by, t.reviewed_by, t.reviewed_at, t.review_comments, t.published_at, t.published_by, t.created_at, t.updated_at
 FROM timetables t
 INNER JOIN timetable_entries te ON te.timetable_id = t.id
-WHERE t.academic_year_id = $1 AND t.status = 'published' AND te.teacher_id = $2
+WHERE t.academic_year_id = $1 AND t.status = 'published'
+  AND (te.teacher_id = $2 OR EXISTS (
+      SELECT 1 FROM timetable_option_block_subjects bs
+      INNER JOIN class_subject_teachers cst ON cst.subject_id = bs.subject_id AND cst.class_id = t.class_id
+      WHERE bs.block_id = te.option_block_id AND cst.teacher_id = $2))
 `
 
 type ListPublishedTimetablesForTeacherParams struct {

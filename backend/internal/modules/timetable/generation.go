@@ -75,6 +75,8 @@ type generationStore interface {
 	labsForSubject(context.Context, uuid.UUID) ([]Classroom, error)
 	create(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, *uuid.UUID) (Timetable, error)
 	upsertGeneratedEntry(context.Context, uuid.UUID, int16, int16, uuid.UUID, uuid.UUID, *uuid.UUID) error
+	optionBlocks(context.Context, []uuid.UUID) ([]OptionBlock, error)
+	upsertBlockEntry(context.Context, uuid.UUID, int16, int16, uuid.UUID) error
 }
 
 type generationSlot struct{ Day, Period int16 }
@@ -154,13 +156,42 @@ func (s *generationService) generate(ctx context.Context, request GenerationRequ
 		classroom *uuid.UUID
 	}{}
 	required := map[uuid.UUID]int{}
+	gap := func(classID uuid.UUID, g GenerationGap) {
+		result.Classes[indexes[classID]].Gaps = append(result.Classes[indexes[classID]].Gaps, g)
+	}
+	loadUnavailable := func(teacherID uuid.UUID) error {
+		if _, loaded := teacherUnavailable[teacherID]; loaded {
+			return nil
+		}
+		blocked, err := s.store.availability(ctx, teacherID, request.AcademicYearID)
+		if err != nil {
+			return fmt.Errorf("failed to load teacher availability: %w", err)
+		}
+		teacherUnavailable[teacherID] = map[generationSlot]bool{}
+		for _, slot := range blocked {
+			teacherUnavailable[teacherID][generationSlot(slot)] = true
+		}
+		return nil
+	}
+	teachersByClass := map[uuid.UUID][]generationTeacherSubject{}
 	for _, class := range generating {
 		teachers, err := s.store.subjectTeachers(ctx, class.ID)
 		if err != nil {
 			return GenerationResult{}, err
 		}
+		teachersByClass[class.ID] = teachers
+	}
+	grid := generationGrid{slots: slots, teacherBusy: teacherBusy, teacherUnavailable: teacherUnavailable, classroomBusy: classroomBusy, classBusy: classBusy}
+	// Option blocks go first: they need the same free period in several classes at once.
+	blockPlacements := map[uuid.UUID][]blockPlacement{}
+	covered, err := s.placeOptionBlocks(ctx, generating, teachersByClass, grid, loadUnavailable, blockPlacements, required, gap)
+	if err != nil {
+		return GenerationResult{}, err
+	}
+	var unplaced []generationTask
+	for _, class := range generating {
 		teacherBySubject := map[uuid.UUID]generationTeacherSubject{}
-		for _, teacher := range teachers {
+		for _, teacher := range teachersByClass[class.ID] {
 			teacherBySubject[teacher.SubjectID] = teacher
 		}
 		reqs, err := s.store.requirementsForGrade(ctx, request.AcademicYearID, class.GradeID)
@@ -168,6 +199,9 @@ func (s *generationService) generate(ctx context.Context, request GenerationRequ
 			return GenerationResult{}, err
 		}
 		for _, req := range reqs {
+			if covered[class.ID][req.SubjectID] {
+				continue
+			}
 			teacher, ok := teacherBySubject[req.SubjectID]
 			if !ok && class.FormTeacherID != nil {
 				teacher = generationTeacherSubject{SubjectID: req.SubjectID, TeacherID: *class.FormTeacherID}
@@ -175,18 +209,11 @@ func (s *generationService) generate(ctx context.Context, request GenerationRequ
 				ok = true
 			}
 			if !ok {
-				result.Classes[indexes[class.ID]].Gaps = append(result.Classes[indexes[class.ID]].Gaps, GenerationGap{SubjectName: req.SubjectName, Reason: "no teacher assigned for this subject"})
+				gap(class.ID, GenerationGap{SubjectName: req.SubjectName, Reason: "no teacher assigned for this subject"})
 				continue
 			}
-			if _, loaded := teacherUnavailable[teacher.TeacherID]; !loaded {
-				blocked, err := s.store.availability(ctx, teacher.TeacherID, request.AcademicYearID)
-				if err != nil {
-					return GenerationResult{}, fmt.Errorf("failed to load teacher availability: %w", err)
-				}
-				teacherUnavailable[teacher.TeacherID] = map[generationSlot]bool{}
-				for _, slot := range blocked {
-					teacherUnavailable[teacher.TeacherID][generationSlot(slot)] = true
-				}
+			if err := loadUnavailable(teacher.TeacherID); err != nil {
+				return GenerationResult{}, err
 			}
 			for block := int32(0); block < req.DoubleBlocks; block++ {
 				task := generationTask{ClassID: class.ID, SubjectID: req.SubjectID, SubjectName: req.SubjectName, TeacherID: teacher.TeacherID, TeacherName: teacher.TeacherName, Lab: block*2 < req.LabPeriods, Double: true, HomeClassroomID: class.HomeClassroomID}
@@ -196,7 +223,7 @@ func (s *generationService) generate(ctx context.Context, request GenerationRequ
 					return GenerationResult{}, err
 				}
 				if !placed {
-					result.Classes[indexes[class.ID]].Gaps = append(result.Classes[indexes[class.ID]].Gaps, GenerationGap{SubjectName: task.SubjectName, TeacherName: task.TeacherName, Reason: "no available slot — the week is fully booked for this class/teacher"})
+					unplaced = append(unplaced, task)
 				}
 			}
 			for n := req.DoubleBlocks * 2; n < req.Periods; n++ {
@@ -207,9 +234,19 @@ func (s *generationService) generate(ctx context.Context, request GenerationRequ
 					return GenerationResult{}, err
 				}
 				if !placed {
-					result.Classes[indexes[class.ID]].Gaps = append(result.Classes[indexes[class.ID]].Gaps, GenerationGap{SubjectName: task.SubjectName, TeacherName: task.TeacherName, Reason: "no available slot — the week is fully booked for this class/teacher"})
+					unplaced = append(unplaced, task)
 				}
 			}
+		}
+	}
+	// Repair pass: a lesson that found no period may still fit by moving one of the teacher's other lessons.
+	for _, task := range unplaced {
+		fixed, err := s.repair(ctx, task, grid, placements)
+		if err != nil {
+			return GenerationResult{}, err
+		}
+		if !fixed {
+			gap(task.ClassID, unplacedGap(task))
 		}
 	}
 	for _, class := range generating {
@@ -218,6 +255,7 @@ func (s *generationService) generate(ctx context.Context, request GenerationRequ
 		for _, placement := range placements[class.ID] {
 			result.Classes[idx].Placed += len(placement.slots)
 		}
+		result.Classes[idx].Placed += len(blockPlacements[class.ID])
 		if result.Classes[idx].Placed == 0 {
 			continue
 		}
@@ -231,6 +269,11 @@ func (s *generationService) generate(ctx context.Context, request GenerationRequ
 				if err := s.store.upsertGeneratedEntry(ctx, draft.ID, slot.Day, slot.Period, placement.task.SubjectID, placement.task.TeacherID, placement.classroom); err != nil {
 					return GenerationResult{}, err
 				}
+			}
+		}
+		for _, bp := range blockPlacements[class.ID] {
+			if err := s.store.upsertBlockEntry(ctx, draft.ID, bp.Slot.Day, bp.Slot.Period, bp.BlockID); err != nil {
+				return GenerationResult{}, err
 			}
 		}
 	}

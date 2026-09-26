@@ -724,6 +724,15 @@ func (q *Queries) WfDeleteAcademicYear(ctx context.Context, id uuid.UUID) error 
 	return err
 }
 
+const wfDeleteDraftTimetables = `-- name: WfDeleteDraftTimetables :exec
+DELETE FROM timetables WHERE id = ANY($1::uuid[]) AND status = 'draft'
+`
+
+func (q *Queries) WfDeleteDraftTimetables(ctx context.Context, ids []uuid.UUID) error {
+	_, err := q.db.Exec(ctx, wfDeleteDraftTimetables, ids)
+	return err
+}
+
 const wfDeleteEmptyClasses = `-- name: WfDeleteEmptyClasses :exec
 DELETE FROM classes c WHERE c.id = ANY($1::uuid[]) AND NOT EXISTS (SELECT 1 FROM class_students cs WHERE cs.class_id = c.id)
 `
@@ -934,6 +943,40 @@ func (q *Queries) WfGradesWithStreamLevels(ctx context.Context) ([]uuid.UUID, er
 	return items, nil
 }
 
+const wfGroupClasses = `-- name: WfGroupClasses :many
+SELECT DISTINCT cs.class_id
+FROM student_subject_enrollments e
+JOIN class_students cs ON cs.student_id = e.student_id
+JOIN classes c ON c.id = cs.class_id AND c.academic_year_id = e.academic_year_id
+WHERE e.academic_year_id = $1::uuid AND e.group_id = $2::uuid
+`
+
+type WfGroupClassesParams struct {
+	Year    uuid.UUID `json:"year"`
+	GroupID uuid.UUID `json:"group_id"`
+}
+
+// Classes of the year holding at least one student enrolled in this selection group.
+func (q *Queries) WfGroupClasses(ctx context.Context, arg WfGroupClassesParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, wfGroupClasses, arg.Year, arg.GroupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var class_id uuid.UUID
+		if err := rows.Scan(&class_id); err != nil {
+			return nil, err
+		}
+		items = append(items, class_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const wfGuardiansByNIC = `-- name: WfGuardiansByNIC :many
 SELECT id, nic_number, full_name FROM guardians WHERE nic_number = ANY($1::text[])
 `
@@ -1107,6 +1150,37 @@ func (q *Queries) WfLatestAverages(ctx context.Context, arg WfLatestAveragesPara
 	for rows.Next() {
 		var i WfLatestAveragesRow
 		if err := rows.Scan(&i.StudentID, &i.Average); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const wfLatestTimetableStatus = `-- name: WfLatestTimetableStatus :many
+SELECT DISTINCT ON (class_id) class_id, status FROM timetables
+WHERE academic_year_id = $1 AND status <> 'archived'
+ORDER BY class_id, version DESC
+`
+
+type WfLatestTimetableStatusRow struct {
+	ClassID uuid.UUID `json:"class_id"`
+	Status  string    `json:"status"`
+}
+
+func (q *Queries) WfLatestTimetableStatus(ctx context.Context, academicYearID uuid.UUID) ([]WfLatestTimetableStatusRow, error) {
+	rows, err := q.db.Query(ctx, wfLatestTimetableStatus, academicYearID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WfLatestTimetableStatusRow{}
+	for rows.Next() {
+		var i WfLatestTimetableStatusRow
+		if err := rows.Scan(&i.ClassID, &i.Status); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1694,6 +1768,86 @@ func (q *Queries) WfSchoolType(ctx context.Context) (string, error) {
 	return school_type, err
 }
 
+const wfSectionClasses = `-- name: WfSectionClasses :many
+
+SELECT gsg.grade_section_id, c.id AS class_id, c.name AS class_name, c.grade_id, g.name AS grade_name, g.sort_order AS grade_order
+FROM classes c
+JOIN grades g ON g.id = c.grade_id
+JOIN grade_section_grades gsg ON gsg.grade_id = c.grade_id AND gsg.academic_year_id = c.academic_year_id
+WHERE c.academic_year_id = $1
+ORDER BY g.sort_order, c.name
+`
+
+type WfSectionClassesRow struct {
+	GradeSectionID uuid.UUID `json:"grade_section_id"`
+	ClassID        uuid.UUID `json:"class_id"`
+	ClassName      string    `json:"class_name"`
+	GradeID        uuid.UUID `json:"grade_id"`
+	GradeName      string    `json:"grade_name"`
+	GradeOrder     int32     `json:"grade_order"`
+}
+
+// ---- W7 timetable ----
+// Each class of the year with the grade section its grade belongs to.
+func (q *Queries) WfSectionClasses(ctx context.Context, academicYearID uuid.UUID) ([]WfSectionClassesRow, error) {
+	rows, err := q.db.Query(ctx, wfSectionClasses, academicYearID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WfSectionClassesRow{}
+	for rows.Next() {
+		var i WfSectionClassesRow
+		if err := rows.Scan(
+			&i.GradeSectionID,
+			&i.ClassID,
+			&i.ClassName,
+			&i.GradeID,
+			&i.GradeName,
+			&i.GradeOrder,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const wfSectionPeriodCounts = `-- name: WfSectionPeriodCounts :many
+SELECT gs.id AS grade_section_id, COUNT(tp.id) FILTER (WHERE tp.slot_type = 'period')::int AS periods
+FROM grade_sections gs LEFT JOIN timetable_periods tp ON tp.grade_section_id = gs.id
+WHERE gs.academic_year_id = $1
+GROUP BY gs.id
+`
+
+type WfSectionPeriodCountsRow struct {
+	GradeSectionID uuid.UUID `json:"grade_section_id"`
+	Periods        int32     `json:"periods"`
+}
+
+func (q *Queries) WfSectionPeriodCounts(ctx context.Context, academicYearID uuid.UUID) ([]WfSectionPeriodCountsRow, error) {
+	rows, err := q.db.Query(ctx, wfSectionPeriodCounts, academicYearID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WfSectionPeriodCountsRow{}
+	for rows.Next() {
+		var i WfSectionPeriodCountsRow
+		if err := rows.Scan(&i.GradeSectionID, &i.Periods); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const wfSetCurrentTerm = `-- name: WfSetCurrentTerm :exec
 UPDATE terms SET is_current = (id = $1) WHERE id = $1 OR is_current = TRUE
 `
@@ -1918,6 +2072,35 @@ func (q *Queries) WfSubjectHours(ctx context.Context, academicYearID uuid.UUID) 
 	return items, nil
 }
 
+const wfSubjectsMissingLabs = `-- name: WfSubjectsMissingLabs :many
+SELECT DISTINCT s.name FROM subject_period_requirements r
+JOIN subjects s ON s.id = r.subject_id
+WHERE r.academic_year_id = $1 AND r.lab_periods_per_week > 0
+  AND NOT EXISTS (SELECT 1 FROM classrooms cr WHERE cr.room_type = 'lab' AND cr.subject_id = r.subject_id)
+ORDER BY s.name
+`
+
+// Subjects that need lab periods in this year but have no lab room tagged for them.
+func (q *Queries) WfSubjectsMissingLabs(ctx context.Context, academicYearID uuid.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, wfSubjectsMissingLabs, academicYearID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		items = append(items, name)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const wfTargetOccupancy = `-- name: WfTargetOccupancy :many
 SELECT cs.class_id, COUNT(*)::int AS taken
 FROM class_students cs
@@ -1957,6 +2140,17 @@ func (q *Queries) WfTargetOccupancy(ctx context.Context, arg WfTargetOccupancyPa
 	return items, nil
 }
 
+const wfTeacherAvailabilityCount = `-- name: WfTeacherAvailabilityCount :one
+SELECT COUNT(DISTINCT teacher_id)::int FROM teacher_availability WHERE academic_year_id = $1
+`
+
+func (q *Queries) WfTeacherAvailabilityCount(ctx context.Context, academicYearID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, wfTeacherAvailabilityCount, academicYearID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const wfTeacherSubjects = `-- name: WfTeacherSubjects :many
 SELECT teacher_id, subject_id FROM teacher_subjects
 `
@@ -1979,6 +2173,17 @@ func (q *Queries) WfTeacherSubjects(ctx context.Context) ([]TeacherSubject, erro
 		return nil, err
 	}
 	return items, nil
+}
+
+const wfTimetablesPastDraft = `-- name: WfTimetablesPastDraft :one
+SELECT EXISTS (SELECT 1 FROM timetables WHERE id = ANY($1::uuid[]) AND status <> 'draft')::bool AS past_draft
+`
+
+func (q *Queries) WfTimetablesPastDraft(ctx context.Context, ids []uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, wfTimetablesPastDraft, ids)
+	var past_draft bool
+	err := row.Scan(&past_draft)
+	return past_draft, err
 }
 
 const wfUpsertPromotionPolicy = `-- name: WfUpsertPromotionPolicy :exec

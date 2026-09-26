@@ -111,7 +111,7 @@ func (e *Engine) Propose(ctx context.Context, key string, in Inputs, actor uuid.
 		return RunRecord{}, checks, ErrChecksFailed
 	}
 	trace := &Trace{}
-	proposal, scope, err := d.Propose(ctx, e.store, in, trace)
+	proposal, scope, err := d.Propose(withActor(ctx, actor), e.store, in, trace)
 	if err != nil {
 		return RunRecord{}, checks, err
 	}

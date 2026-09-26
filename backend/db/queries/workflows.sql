@@ -426,3 +426,50 @@ UPDATE classes SET form_teacher_id = sqlc.narg(teacher_id) WHERE id = sqlc.arg(c
 
 -- name: WfClassesHaveSubmittedTimetables :one
 SELECT EXISTS (SELECT 1 FROM timetables WHERE class_id = ANY(sqlc.arg(ids)::uuid[]) AND status <> 'draft')::bool AS has_timetables;
+
+-- ---- W7 timetable ----
+
+-- name: WfSectionClasses :many
+-- Each class of the year with the grade section its grade belongs to.
+SELECT gsg.grade_section_id, c.id AS class_id, c.name AS class_name, c.grade_id, g.name AS grade_name, g.sort_order AS grade_order
+FROM classes c
+JOIN grades g ON g.id = c.grade_id
+JOIN grade_section_grades gsg ON gsg.grade_id = c.grade_id AND gsg.academic_year_id = c.academic_year_id
+WHERE c.academic_year_id = $1
+ORDER BY g.sort_order, c.name;
+
+-- name: WfSectionPeriodCounts :many
+SELECT gs.id AS grade_section_id, COUNT(tp.id) FILTER (WHERE tp.slot_type = 'period')::int AS periods
+FROM grade_sections gs LEFT JOIN timetable_periods tp ON tp.grade_section_id = gs.id
+WHERE gs.academic_year_id = $1
+GROUP BY gs.id;
+
+-- name: WfSubjectsMissingLabs :many
+-- Subjects that need lab periods in this year but have no lab room tagged for them.
+SELECT DISTINCT s.name FROM subject_period_requirements r
+JOIN subjects s ON s.id = r.subject_id
+WHERE r.academic_year_id = $1 AND r.lab_periods_per_week > 0
+  AND NOT EXISTS (SELECT 1 FROM classrooms cr WHERE cr.room_type = 'lab' AND cr.subject_id = r.subject_id)
+ORDER BY s.name;
+
+-- name: WfTeacherAvailabilityCount :one
+SELECT COUNT(DISTINCT teacher_id)::int FROM teacher_availability WHERE academic_year_id = $1;
+
+-- name: WfLatestTimetableStatus :many
+SELECT DISTINCT ON (class_id) class_id, status FROM timetables
+WHERE academic_year_id = $1 AND status <> 'archived'
+ORDER BY class_id, version DESC;
+
+-- name: WfGroupClasses :many
+-- Classes of the year holding at least one student enrolled in this selection group.
+SELECT DISTINCT cs.class_id
+FROM student_subject_enrollments e
+JOIN class_students cs ON cs.student_id = e.student_id
+JOIN classes c ON c.id = cs.class_id AND c.academic_year_id = e.academic_year_id
+WHERE e.academic_year_id = sqlc.arg(year)::uuid AND e.group_id = sqlc.arg(group_id)::uuid;
+
+-- name: WfDeleteDraftTimetables :exec
+DELETE FROM timetables WHERE id = ANY(sqlc.arg(ids)::uuid[]) AND status = 'draft';
+
+-- name: WfTimetablesPastDraft :one
+SELECT EXISTS (SELECT 1 FROM timetables WHERE id = ANY(sqlc.arg(ids)::uuid[]) AND status <> 'draft')::bool AS past_draft;

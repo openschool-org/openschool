@@ -8,6 +8,7 @@ interface Entry {
   period_number: number;
   subject_name?: string | null;
   classroom_name?: string | null;
+  option_block_name?: string | null;
 }
 
 interface Props<T extends Entry> {
@@ -24,7 +25,7 @@ export default function TimetableByDay<T extends Entry>({ entries, middle, getRo
   const { t } = useT();
   const columns: GridColumn<T>[] = [
     { key: "period", header: t("table.period"), render: (e) => t("table.periodShort", { n: e.period_number }) },
-    { key: "subject", header: t("table.subject"), render: (e) => e.subject_name ?? <span className="os-table__muted">-</span> },
+    { key: "subject", header: t("table.subject"), render: (e) => e.subject_name ?? e.option_block_name ?? <span className="os-table__muted">-</span> },
     middle,
     { key: "room", header: t("table.classroom"), render: (e) => e.classroom_name ?? <span className="os-table__muted">-</span> },
   ];

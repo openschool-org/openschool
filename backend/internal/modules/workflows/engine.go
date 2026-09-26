@@ -157,6 +157,18 @@ type Definition interface {
 	Revert(ctx context.Context, tx *Store, snapshot json.RawMessage) error
 }
 
+type actorKey struct{}
+
+func withActor(ctx context.Context, actor uuid.UUID) context.Context {
+	return context.WithValue(ctx, actorKey{}, actor)
+}
+
+// actorFrom returns the person running the workflow, for proposals that need to attribute a dry run.
+func actorFrom(ctx context.Context) uuid.UUID {
+	id, _ := ctx.Value(actorKey{}).(uuid.UUID)
+	return id
+}
+
 // stepByKey returns the declared step so traces always match the catalogue.
 func stepByKey(d Definition, key string) StepInfo {
 	for _, s := range d.Steps() {

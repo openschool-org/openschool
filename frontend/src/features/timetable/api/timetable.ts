@@ -37,6 +37,9 @@ export interface TimetableEntry {
   teacher_name: string | null;
   classroom_id: string | null;
   classroom_name: string | null;
+  // An option block period: the class splits by subject, so there is no single subject or teacher.
+  option_block_id?: string | null;
+  option_block_name?: string | null;
 }
 
 export interface TimetableEntryInput {
