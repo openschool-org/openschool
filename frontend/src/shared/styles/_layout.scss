@@ -8,8 +8,43 @@
 }
 
 .os-skeleton-header {
+  display: flex;
+  align-items: center;
   height: 3rem;
+  gap: 0.75rem;
+  padding-right: 1rem;
   background-color: $os-accent-deeper;
+
+  &__menu { width: 3rem; height: 3rem; flex-shrink: 0; border-right: 1px solid rgba(255, 255, 255, 0.14); }
+  &__brand { display: flex; align-items: center; gap: 0.5rem; .cds--skeleton__text { width: 6rem; } }
+  &__logo { width: 1.25rem; height: 1.25rem; border-radius: 0.125rem; }
+  &__actions { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; .cds--skeleton__placeholder { width: 2.25rem; height: 2rem; } }
+}
+
+.os-skeleton-nav {
+  padding: 1rem;
+  background: var(--os-layer);
+
+  &__group {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid $os-border-subtle;
+    &:last-child { border-bottom: 0; }
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 2.5rem;
+    padding: 0.375rem 0;
+    .cds--skeleton__placeholder { width: 1rem; height: 1rem; flex-shrink: 0; }
+    .cds--skeleton__text { flex: 1; }
+  }
+}
+
+@media (max-width: 66rem) {
+  .os-skeleton-shell .os-layout__sidebar { display: none; }
+  .os-skeleton-shell .os-layout__content { margin-left: 0; }
 }
 
 .os-toast-stack {
@@ -35,6 +70,12 @@
   letter-spacing: 0.01em;
   transition: background-color 0.15s ease;
   &:hover { background-color: rgba(255, 255, 255, 0.08); }
+}
+
+.cds--header__menu-trigger {
+  width: 3rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+  &:hover { background: rgba(255, 255, 255, 0.1); }
 }
 
 .cds--header__global {
@@ -364,6 +405,16 @@
 
 @media (max-width: 42rem) {
   .os-page { padding: 1rem; }
+  .os-content-skeleton { padding: 1rem; }
+  .os-content-skeleton__header { flex-direction: column; }
+  .os-content-skeleton__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .os-content-skeleton__columns { display: block; }
+  .os-content-skeleton__panel { margin-bottom: 1rem; }
+  .os-dashboard-hero { align-items: flex-start; flex-direction: column; gap: 1rem; padding: 1.25rem; }
+  .os-dashboard-hero__aside { width: 100%; }
+  .os-dashboard-actions { margin-bottom: 1rem; }
+  .os-dashboard-action--link { margin-left: 0; }
+  .os-dashboard-lower-grid { display: block; }
   .os-shell-breadcrumb, .os-offline-banner { padding-left: 1rem; padding-right: 1rem; }
   .cds--header__global { padding-right: 0.25rem; gap: 0; }
   .os-header-brand__inner > span:last-child { display: none; }

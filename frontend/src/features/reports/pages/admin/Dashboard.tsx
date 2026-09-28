@@ -9,10 +9,12 @@ import { useAcademicYears } from "@/features/school/queries/useAcademicYears";
 import { useDailySessions } from "@/features/attendance/queries/useAttendance";
 import { useStaffAttendanceByDate } from "@/features/attendance/queries/useStaffAttendance";
 import type { DailySession } from "@/features/attendance/api/attendance";
-import { todayISODate, formatMonth } from "@/shared/lib/date";
-import { Calendar, UserMultiple, Education, Building, Book } from "@carbon/icons-react";
+import { todayISODate } from "@/shared/lib/date";
+import { Add, ArrowRight, Calendar, UserMultiple, Education, Building, Book } from "@carbon/icons-react";
+import { Link } from "react-router";
 import StatCard from "@/features/reports/components/dashboard/StatCard";
 import AttendanceByClassSection from "@/features/reports/components/dashboard/AttendanceByClassSection";
+import DashboardSnapshotSection from "@/features/reports/components/dashboard/DashboardSnapshotSection";
 import RecentActivitySection from "@/features/reports/components/dashboard/RecentActivitySection";
 import SetupChecklistCard from "@/features/reports/components/dashboard/SetupChecklistCard";
 import { useMemo } from "react";
@@ -39,7 +41,7 @@ export default function Dashboard() {
   const { data: todaySessions, isLoading: sessionsLoading } = useDailySessions(todayISODate());
   const { data: staffAttendance, isLoading: staffAttendanceLoading } = useStaffAttendanceByDate(todayISODate());
 
-  const title = school?.name ? `${school.name} - Admin Dashboard` : "Admin dashboard";
+  const title = school?.name ?? "Admin dashboard";
   const currentYear = years?.find((y) => y.is_current) ?? null;
 
   const dashboardLoading = analyticsLoading;
@@ -64,26 +66,18 @@ export default function Dashboard() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header os-wrap os-row-gap-3">
-        <div className="os-page__header-left">
+      <div className="os-dashboard-hero">
+        <div className="os-dashboard-hero__copy">
+          <p className="os-eyebrow">School overview</p>
           <h1 className="os-page__title">{title}</h1>
+          <p className="os-page__subtitle">A quick view of what is happening across your school today.</p>
         </div>
 
-        <div className="os-flex os-items-center os-gap-4">
+        <div className="os-dashboard-hero__aside">
           {currentYear && (
-            <div className="os-flex os-items-center os-gap-2 os-py-2 os-px-3h os-bg-accent-light os-rounded-full"
-            >
+            <div className="os-year-pill">
               <Calendar size={16} className="os-shrink-0" />
-              <span className="os-fw-600 os-text-sm os-c-primary">
-                {currentYear.label}
-              </span>
-              {currentYear.start_date && currentYear.end_date && (
-                <span className="os-text-xs os-c-secondary">
-                  {formatMonth(currentYear.start_date)}
-                  {" – "}
-                  {formatMonth(currentYear.end_date)}
-                </span>
-              )}
+              <span><strong>{currentYear.label}</strong><small>Current academic year</small></span>
             </div>
           )}
           {school?.logo_url && (
@@ -95,6 +89,13 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="os-dashboard-actions" aria-label="Quick actions">
+        <Link to="/students/new" className="os-dashboard-action os-dashboard-action--primary"><Add size={16} /> Add student</Link>
+        <Link to="/classes/new" className="os-dashboard-action"><Building size={16} /> Create class</Link>
+        <Link to="/attendance" className="os-dashboard-action"><Calendar size={16} /> Take attendance</Link>
+        <Link to="/analytics" className="os-dashboard-action os-dashboard-action--link">View analytics <ArrowRight size={16} /></Link>
+      </div>
+
       {!setupLoading && <SetupChecklistCard items={setupItems} />}
 
       <div className="os-stat-grid">
@@ -104,15 +105,22 @@ export default function Dashboard() {
         <StatCard label="Subjects" value={subjects?.length ?? 0} loading={subjectsLoading} Icon={Book} path="/subjects" />
       </div>
 
-      <AttendanceByClassSection
-        classes={classes}
-        loading={classAttendanceLoading}
-        sessionByClassId={sessionByClassId}
-        teachers={staffAttendance?.teachers}
-        teachersLoading={staffAttendanceLoading}
-      />
+      <div className="os-dashboard-lower-grid">
+        <AttendanceByClassSection
+          classes={classes}
+          loading={classAttendanceLoading}
+          sessionByClassId={sessionByClassId}
+        />
 
-      <RecentActivitySection items={recentActivity} loading={dashboardLoading} />
+        <DashboardSnapshotSection
+          teachers={staffAttendance?.teachers}
+          teachersLoading={staffAttendanceLoading}
+        />
+      </div>
+
+      <div className="os-dashboard-recent">
+        <RecentActivitySection items={recentActivity} loading={dashboardLoading} />
+      </div>
     </div>
   );
 }

@@ -17,7 +17,8 @@
 @forward "@carbon/react/scss/themes";
 @forward "@carbon/react/scss/theme";
 @use "@carbon/react/scss/reset";
-@forward "@carbon/react/scss/fonts";
+// IBM Plex is self-hosted in shared/styles/_fonts.scss. Carbon's font partial
+// references the full package font tree and adds unused font-face declarations.
 @forward "@carbon/react/scss/grid";
 @forward "@carbon/react/scss/layer";
 @forward "@carbon/react/scss/layout";

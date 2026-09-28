@@ -18,9 +18,7 @@
     letter-spacing: -0.04em;
     margin-bottom: 0.75rem;
     user-select: none;
-    background: linear-gradient(135deg, $os-accent-dark 0%, $os-accent 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: $os-accent-dark;
   }
 
   &__badge {
