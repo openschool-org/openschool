@@ -4,7 +4,7 @@ import { useRole } from "@/shared/auth/useRole";
 import { useProvisionUser } from "@/shared/auth/useProvisionUser";
 import ProtectedRoute from "@/shared/auth/ProtectedRoute";
 import ApiAuthBridge from "@/shared/auth/ApiAuthBridge";
-import SkeletonShell from "@/shared/ui/SkeletonShell";
+import { DelayedSkeletonShell } from "@/shared/ui/SkeletonShell";
 import { lazy as page } from "react";
 import { publicRoutes } from "@/app/routes/public.routes";
 import { adminRoutes } from "@/app/routes/admin.routes";
@@ -35,13 +35,19 @@ export default function App() {
   const { data: me, isLoading: meLoading } = useProvisionUser();
   const { role, loading } = useRole();
 
+  /*
+   * Public routes such as /signin are lazy-loaded too. Keep the root
+   * boundary visually empty while those routes load so an auth page never
+   * flashes the authenticated application shell. Protected-route loading
+   * and in-portal page loading have their own intentional fallbacks below.
+   */
   return (
-    <Suspense fallback={<SkeletonShell />}>
+    <Suspense fallback={null}>
       <ApiAuthBridge />
       <Routes>
         {publicRoutes()}
         {loading || meLoading ? (
-          <Route path="*" element={<SkeletonShell />} />
+          <Route path="*" element={<DelayedSkeletonShell />} />
         ) : me?.must_change_password ? (
           <Route path="*" element={<ProtectedRoute><PasswordInterstitial /></ProtectedRoute>} />
         ) : (

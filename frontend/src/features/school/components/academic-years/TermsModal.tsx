@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Checkmark, Edit } from "@carbon/icons-react";
+import { Calendar, Checkmark, Edit } from "@carbon/icons-react";
 import { Button, Tag, ComposedModal, ModalHeader, ModalBody, ModalFooter, SkeletonText } from "@carbon/react";
 import { useTerms, useCreateTerm, useUpdateTerm, useSetCurrentTerm, useDeleteTerm } from "@/features/school/queries/useTerms";
 import type { AcademicYear } from "@/features/school/api/academicYear";
@@ -55,36 +55,49 @@ export default function TermsModal({ year, onClose }: { year: AcademicYear; onCl
 
   return (
     <>
-      <ComposedModal open size="sm" onClose={onClose} aria-label={`Terms - ${year.label}`}>
+      <ComposedModal open size="md" onClose={onClose} aria-label={`Terms - ${year.label}`}>
         <ModalHeader title={`Terms - ${year.label}`} />
         <ModalBody>
+          <div className="os-terms-modal-intro">
+            <Calendar size={20} className="os-fill-accent" />
+            <p className="os-m-0 os-text-sm os-c-secondary">Organise this academic year into terms. Set one term as current for attendance, marks, and reports.</p>
+          </div>
           <MutationErrorNotification isError={createTerm.isError} error={createTerm.error} title="Could not create term" fallback="Please try again." />
           <MutationErrorNotification isError={updateTerm.isError} error={updateTerm.error} title="Could not update term" fallback="Please try again." />
           <MutationErrorNotification isError={deleteTerm.isError} error={deleteTerm.error} title="Could not delete term" fallback="Please try again." />
 
           {isLoading && <SkeletonText paragraph lineCount={3} />}
-          {!isLoading && terms?.length === 0 && <p className="os-text-md os-c-tertiary os-mb-5">No terms yet. A school year typically has three.</p>}
+          {!isLoading && terms?.length === 0 && <p className="os-terms-empty os-text-md os-c-tertiary os-mb-5">No terms yet. Add the first term below to get started.</p>}
           {!!terms?.length && (
-            <div className="os-mb-6">
+            <div className="os-term-list os-mb-6">
               {terms.map((t) => (
-                <div key={t.id} className="os-list-row os-list-row--compact os-gap-2h">
+                <div key={t.id} className={`os-term-card${t.is_current ? " is-current" : ""}`}>
+                  <div className="os-term-card__marker" aria-hidden="true"><Calendar size={16} /></div>
                   <div className="os-flex-1 os-min-w-0">
                     <p className="os-m-0 os-fw-500 os-text-md os-c-primary">{t.name}</p>
                     <p className="os-m-0 os-text-xs os-c-secondary">{formatDayMonthYear(t.start_date)} – {formatDayMonthYear(t.end_date)}</p>
                   </div>
-                  {t.is_current ? (
-                    <Tag type="teal" size="sm"><Checkmark size={12} className="os-mr-1" />Current</Tag>
-                  ) : (
-                    <Button kind="ghost" size="sm" onClick={() => setCurrentTerm.mutate(t.id)} disabled={setCurrentTerm.isPending}>Set current</Button>
-                  )}
-                  <Button hasIconOnly kind="ghost" size="sm" iconDescription="Edit term" renderIcon={Edit} onClick={() => startEdit(t)} />
-                  <RemoveIconButton label="Delete term" onClick={() => setToDelete(t)} />
+                  <div className="os-term-card__actions">
+                    {t.is_current ? (
+                      <Tag type="teal" size="sm"><Checkmark size={12} className="os-mr-1" />Current</Tag>
+                    ) : (
+                      <Button kind="ghost" size="sm" onClick={() => setCurrentTerm.mutate(t.id)} disabled={setCurrentTerm.isPending}>Set current</Button>
+                    )}
+                    <Button hasIconOnly kind="ghost" size="sm" iconDescription="Edit term" renderIcon={Edit} onClick={() => startEdit(t)} />
+                    <RemoveIconButton label="Delete term" onClick={() => setToDelete(t)} />
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
-          <TermForm form={form} onChange={setForm} touched={touched} onTouch={(f) => setTouched((t) => ({ ...t, [f]: true }))} editing={editing} isSaving={createTerm.isPending || updateTerm.isPending} onSubmit={submit} onCancelEdit={resetForm} />
+          <div className="os-term-form-panel">
+            <div className="os-term-form-panel__heading">
+              <h3 className="os-m-0 os-text-sm os-fw-600">{editing ? `Edit ${editing.name}` : "Add a term"}</h3>
+              {!editing && <span className="os-text-xs os-c-tertiary">Use clear dates so staff know the active period.</span>}
+            </div>
+            <TermForm form={form} onChange={setForm} touched={touched} onTouch={(f) => setTouched((t) => ({ ...t, [f]: true }))} editing={editing} isSaving={createTerm.isPending || updateTerm.isPending} onSubmit={submit} onCancelEdit={resetForm} />
+          </div>
         </ModalBody>
         <ModalFooter>
           <Button kind="secondary" onClick={onClose}>Close</Button>

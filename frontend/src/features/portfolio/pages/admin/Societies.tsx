@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Idea, Add, Edit } from "@carbon/icons-react";
-import { Button, Select, SelectItem, InlineNotification, SkeletonText } from "@carbon/react";
+import { Idea, Add, Edit, Checkmark, UserMultiple } from "@carbon/icons-react";
+import { Button, Select, SelectItem, InlineNotification, SkeletonText, Tag } from "@carbon/react";
 import { useCurrentAcademicYear, useAcademicYears } from "@/features/school/queries/useAcademicYears";
 import { useSocieties, useSocietyYears, useDeleteSociety } from "@/features/portfolio/queries/useSocieties";
 import EmptyState from "@/shared/ui/EmptyState";
@@ -108,6 +108,23 @@ export default function Societies() {
         </div>
       )}
 
+      <div className="os-society-summary os-mb-6">
+        <div className="os-society-summary__icon"><Idea size={22} /></div>
+        <div className="os-flex-1 os-min-w-0">
+          <p className="os-eyebrow">Society programme</p>
+          <h2 className="os-society-summary__title">{allYears?.find((y) => y.id === viewingYearId)?.label ?? "Academic year"}</h2>
+          <p className="os-m-0 os-text-sm os-c-secondary">{isArchive ? "Browsing a read-only archive" : "Manage clubs, leaders, and student participation"}</p>
+        </div>
+        <div className="os-society-summary__stat">
+          <strong>{societies?.length ?? 0}</strong>
+          <span>societies</span>
+        </div>
+        <Tag type={isArchive ? "cool-gray" : "teal"} size="md">
+          {!isArchive && <Checkmark size={14} className="os-mr-1" />}
+          {isArchive ? "Archive" : "Current year"}
+        </Tag>
+      </div>
+
       <MutationErrorNotification
         isError={deleteSociety.isError}
         error={deleteSociety.error}
@@ -117,7 +134,7 @@ export default function Societies() {
       />
 
       <div className="os-grid os-grid-cols-side-20 os-gap-6 os-items-grid-start">
-        <div className="os-section os-mt-0">
+        <div className="os-section os-mt-0 os-society-directory">
           {loading && (
             <div className="os-py-5 os-px-6">
               <SkeletonText width="60%" />
@@ -135,16 +152,20 @@ export default function Societies() {
                 onClick={() => setSelectedId(s.id)}
                 className={`${`os-list-row os-list-row--button${selected?.id === s.id ? " is-selected" : ""}`} os-block os-py-3h os-px-6`}
               >
-                <div className="os-fw-600 os-text-md os-c-primary">{s.name}</div>
-                <div className="os-text-xs os-c-tertiary">
-                  TIC: {s.teacher_name} · {s.member_count} member{s.member_count === 1 ? "" : "s"}
+                <div className="os-society-list-row">
+                  <span className="os-society-list-row__icon"><Idea size={16} /></span>
+                  <span className="os-flex-1 os-min-w-0">
+                    <span className="os-block os-fw-600 os-text-md os-c-primary os-truncate">{s.name}</span>
+                    <span className="os-block os-text-xs os-c-tertiary os-truncate">Teacher-in-Charge: {s.teacher_name}</span>
+                  </span>
+                  <Tag type="cool-gray" size="sm"><UserMultiple size={12} className="os-mr-1" />{s.member_count}</Tag>
                 </div>
               </button>
             ))}
         </div>
 
         {selected ? (
-          <div className="os-section os-mt-0">
+          <div className="os-section os-mt-0 os-society-detail">
             <div className="os-section__header">
               <h2 className="os-section__title os-flex os-items-center os-gap-2">
                 <Idea size={16} className="os-fill-accent" /> {selected.name}
@@ -164,9 +185,11 @@ export default function Societies() {
               )}
             </div>
             <div className="os-section__body">
-              <p className="os-mt-0 os-mx-0 os-mb-5 os-text-sm os-c-secondary">
-                Teacher-in-Charge: {selected.teacher_name}
-              </p>
+              <div className="os-society-detail__owner os-mb-5">
+                <div className="os-society-detail__owner-icon"><Idea size={18} /></div>
+                <div><p className="os-m-0 os-text-xs os-c-tertiary">Teacher-in-Charge</p><p className="os-mt-1 os-mb-0 os-text-md os-fw-500">{selected.teacher_name}</p></div>
+                <Tag type={isArchive ? "cool-gray" : "teal"} size="sm">{isArchive ? "Read only" : "Active"}</Tag>
+              </div>
               <SocietyRoster societyId={selected.id} readOnly={isArchive} />
             </div>
           </div>

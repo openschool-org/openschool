@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Add } from "@carbon/icons-react";
-import { Button } from "@carbon/react";
+import { Add, Calendar, Checkmark, Education } from "@carbon/icons-react";
+import { Button, Tag } from "@carbon/react";
 import {
   useAcademicYears,
   useCreateAcademicYear,
   useSetCurrentAcademicYear,
   useDeleteAcademicYear,
 } from "@/features/school/queries/useAcademicYears";
+import { useCurrentTerm } from "@/features/school/queries/useTerms";
 import type { AcademicYear } from "@/features/school/api/academicYear";
 import { isDateRangeInvalid } from "@/shared/lib/date";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
@@ -24,6 +25,7 @@ const EMPTY_FORM: YearForm = {
 
 export default function AcademicYears() {
   const { data: years, isLoading, isError, refetch } = useAcademicYears();
+  const { data: currentTerm } = useCurrentTerm();
   const createYear = useCreateAcademicYear();
   const setCurrent = useSetCurrentAcademicYear();
   const deleteYear = useDeleteAcademicYear();
@@ -77,6 +79,22 @@ export default function AcademicYears() {
         <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>
           New academic year
         </Button>
+      </div>
+
+      <div className="os-current-period os-mb-6">
+        <div className="os-current-period__icon"><Calendar size={22} /></div>
+        <div className="os-flex-1 os-min-w-0">
+          <p className="os-m-0 os-eyebrow">Active academic period</p>
+          <h2 className="os-current-period__title">{years?.find((year) => year.is_current)?.label ?? "No current year set"}</h2>
+          <p className="os-m-0 os-text-sm os-c-secondary">
+            {currentTerm ? `${currentTerm.name} is currently active` : "Set a current term to enable term-based school workflows."}
+          </p>
+        </div>
+        {currentTerm ? (
+          <Tag type="teal" size="md"><Checkmark size={14} className="os-mr-1" />{currentTerm.name}</Tag>
+        ) : (
+          <Tag type="cool-gray" size="md"><Education size={14} className="os-mr-1" />No current term</Tag>
+        )}
       </div>
 
       <AgentFindingsBanner />

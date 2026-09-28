@@ -7,7 +7,7 @@ import Breadcrumbs from "@/layouts/Breadcrumbs";
 import BottomTabBar from "@/layouts/BottomTabBar";
 import { matchNav, leafLabel } from "@/layouts/navMatch";
 import RouteErrorBoundary from "@/shared/ui/RouteErrorBoundary";
-import { ContentSkeleton } from "@/shared/ui/SkeletonShell";
+import { DelayedContentSkeleton } from "@/shared/ui/SkeletonShell";
 import ToastStack from "@/shared/ui/toast/ToastStack";
 import OfflineBanner from "@/shared/ui/OfflineBanner";
 import { PageTitleContext } from "@/shared/hooks/usePageTitle";
@@ -74,6 +74,7 @@ export default function PortalShell({ navGroups: rawGroups, showSearch = false, 
       <ToastStack />
       <Header aria-label="OpenSchool">
         <HeaderMenuButton
+          className="os-sidebar-toggle"
           aria-label={sidebarOpen ? t("shell.closeMenu") : t("shell.openMenu")}
           onClick={toggle}
           isActive={sidebarOpen}
@@ -115,7 +116,7 @@ export default function PortalShell({ navGroups: rawGroups, showSearch = false, 
           <OfflineBanner />
           {nested && active && pageLabel && <Breadcrumbs parent={active} current={pageLabel} />}
           <RouteErrorBoundary>
-            <Suspense fallback={<ContentSkeleton />}>
+            <Suspense fallback={<DelayedContentSkeleton />}>
               <Outlet />
             </Suspense>
           </RouteErrorBoundary>

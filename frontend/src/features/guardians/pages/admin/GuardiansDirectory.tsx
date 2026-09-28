@@ -141,7 +141,7 @@ export default function GuardiansDirectory() {
         </div>
 
         {selected ? (
-          <GuardianDetail guardian={selected} onDeleted={() => setSelectedId(null)} />
+          <GuardianDetail key={selected.id} guardian={selected} onDeleted={() => setSelectedId(null)} />
         ) : (
           <Tile className="os-section os-bg-layer os-mt-0 os-text-center os-py-12 os-px-6">
             <EmptyState title="Select a guardian" description="Choose a guardian from the directory list to view contact info and linked students." />
@@ -151,5 +151,4 @@ export default function GuardiansDirectory() {
     </div>
   );
 }
-
 
