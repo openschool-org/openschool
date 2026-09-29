@@ -105,6 +105,8 @@ export default function SchoolSetup() {
           <ClassesStep
             yearLabel={s.yearLabel}
             setYearLabel={s.setYearLabel}
+            classCapacity={s.classCapacity}
+            setClassCapacity={s.setClassCapacity}
             orderedSelectedGrades={s.orderedSelectedGrades}
             regularGradeNumbers={s.regularGradeNumbers}
             alGradeNumbers={s.alGradeNumbers}

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { EMAIL_RE } from "@/shared/lib/validation";
 import { isValidSriLankanPhone } from "@/shared/lib/phone";
 import type { HouseRow } from "@/features/school/components/setup/HousesStep";
-import { AL_GRADE_NUMBERS, AL_STREAM_DEFS, GRADE_MIN, GRADE_MAX, HOUSE_COLOR_PALETTE, SUGGESTED_MEDIUMS, type ALStreamKey, type AlStreamsState, type FacilityRoom } from "@/features/school/setupConstants";
+import { AL_GRADE_NUMBERS, AL_STREAM_DEFS, DEFAULT_CLASS_CAPACITY, GRADE_MIN, GRADE_MAX, HOUSE_COLOR_PALETTE, SUGGESTED_MEDIUMS, type ALStreamKey, type AlStreamsState, type FacilityRoom } from "@/features/school/setupConstants";
 
 // All form state for the onboarding wizard, so the page only handles step navigation.
 export function useSchoolSetupState() {
@@ -57,6 +57,7 @@ export function useSchoolSetupState() {
   const selectedMediumNames = mediumsSkipped ? [] : [...SUGGESTED_MEDIUMS.filter((m) => mediumChecks[m]), ...customMediums.filter((m) => m.trim())];
 
   const [yearLabel, setYearLabel] = useState(String(new Date().getFullYear()));
+  const [classCapacity, setClassCapacity] = useState(DEFAULT_CLASS_CAPACITY);
   const [sectionsPerGrade, setSectionsPerGrade] = useState<Record<number, number>>({});
   const [classesSkipped, setClassesSkipped] = useState(false);
   const [sectionMediums, setSectionMediums] = useState<Record<string, string>>({});
@@ -74,7 +75,7 @@ export function useSchoolSetupState() {
     regularGradeNumbers: orderedSelectedGrades.filter((n) => !AL_GRADE_NUMBERS.has(n)),
     alGradeNumbers: orderedSelectedGrades.filter((n) => AL_GRADE_NUMBERS.has(n)),
     mediumChecks, setMediumChecks, customMediums, setCustomMediums, mediumsSkipped, setMediumsSkipped, selectedMediumNames,
-    yearLabel, setYearLabel, sectionsPerGrade, setSectionsPerGrade, classesSkipped, setClassesSkipped, sectionMediums, setSectionMediums, alStreams, setAlStreams,
+    yearLabel, setYearLabel, classCapacity, setClassCapacity, sectionsPerGrade, setSectionsPerGrade, classesSkipped, setClassesSkipped, sectionMediums, setSectionMediums, alStreams, setAlStreams,
     facilityRooms, setFacilityRooms, roomsSkipped, setRoomsSkipped,
   };
 }

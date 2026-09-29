@@ -7,6 +7,8 @@ import { AL_STREAM_DEFS, type AlStreamsState } from "@/features/school/setupCons
 interface Props {
   yearLabel: string;
   setYearLabel: Dispatch<SetStateAction<string>>;
+  classCapacity: number;
+  setClassCapacity: Dispatch<SetStateAction<number>>;
   orderedSelectedGrades: number[];
   regularGradeNumbers: number[];
   alGradeNumbers: number[];
@@ -22,6 +24,8 @@ interface Props {
 export default function ClassesStep({
   yearLabel,
   setYearLabel,
+  classCapacity,
+  setClassCapacity,
   orderedSelectedGrades,
   regularGradeNumbers,
   alGradeNumbers,
@@ -47,6 +51,15 @@ export default function ClassesStep({
           placeholder="e.g. 2026"
           value={yearLabel}
           onChange={(e) => setYearLabel(e.target.value)}
+        />
+        <NumberInput
+          id="ss-class-capacity"
+          label="Capacity for every class"
+          helperText="Applies to all regular and A/L classes. Room capacities are configured separately."
+          min={1}
+          max={200}
+          value={classCapacity}
+          onChange={(_e, { value }) => setClassCapacity(value === "" ? 1 : Number(value))}
         />
       </div>
 
@@ -95,7 +108,7 @@ export default function ClassesStep({
                               id={`section-medium-${gradeNumber}-${i}`}
                               labelText={`Section ${gradeNumber}-${String.fromCharCode(65 + i)} medium`}
                               size="sm"
-                              value={sectionMediums[`${gradeNumber}-${i}`] ?? ""}
+                              value={sectionMediums[`${gradeNumber}-${i}`] ?? selectedMediumNames[0] ?? ""}
                               onChange={(e) => setSectionMediums((prev) => ({ ...prev, [`${gradeNumber}-${i}`]: e.target.value }))}
                             >
                               <SelectItem value="" text="No medium" />

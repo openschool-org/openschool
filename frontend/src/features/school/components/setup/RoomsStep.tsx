@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { Button, TextInput } from "@carbon/react";
+import { Button, NumberInput, TextInput } from "@carbon/react";
 import { Add, Building } from "@carbon/icons-react";
 import StepShell from "@/features/school/components/setup/StepShell";
 import RepeatableRow from "@/features/school/components/setup/RepeatableRow";
@@ -12,7 +12,7 @@ interface Props {
 
 export default function RoomsStep({ facilityRooms, setFacilityRooms }: Props) {
   const addFacility = (group: FacilityRoom["group"]) => {
-    setFacilityRooms((rooms) => [...rooms, { id: crypto.randomUUID(), group, name: "" }]);
+    setFacilityRooms((rooms) => [...rooms, { id: crypto.randomUUID(), group, name: "", capacity: "" }]);
   };
 
   return (
@@ -44,6 +44,16 @@ export default function RoomsStep({ facilityRooms, setFacilityRooms }: Props) {
                     size="md"
                     value={room.name}
                     onChange={(e) => setFacilityRooms((current) => current.map((item) => item.id === room.id ? { ...item, name: e.target.value } : item))}
+                  />
+                  <NumberInput
+                    id={`facility-capacity-${room.id}`}
+                    label="Capacity"
+                    helperText="Optional"
+                    min={1}
+                    max={2000}
+                    size="md"
+                    value={room.capacity}
+                    onChange={(_e, { value }) => setFacilityRooms((current) => current.map((item) => item.id === room.id ? { ...item, capacity: value === "" ? "" : Number(value) } : item))}
                   />
                 </RepeatableRow>
               ))}

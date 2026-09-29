@@ -127,10 +127,10 @@ func classText(v pgtype.Text) *string {
 	return &value
 }
 func mapClass(v db.Class) Class {
-	return Class{ID: v.ID, GradeID: v.GradeID, AcademicYearID: v.AcademicYearID, FormTeacherID: classUUID(v.FormTeacherID), StreamID: classUUID(v.StreamID), StreamGroupID: classUUID(v.StreamGroupID), Name: v.Name, CreatedAt: v.CreatedAt.Time.String(), GirlMonitorID: classUUID(v.GirlMonitorID), BoyMonitorID: classUUID(v.BoyMonitorID), MediumID: classUUID(v.MediumID), HomeClassroomID: classUUID(v.HomeClassroomID)}
+	return Class{ID: v.ID, GradeID: v.GradeID, AcademicYearID: v.AcademicYearID, FormTeacherID: classUUID(v.FormTeacherID), StreamID: classUUID(v.StreamID), StreamGroupID: classUUID(v.StreamGroupID), Name: v.Name, CreatedAt: v.CreatedAt.Time.String(), GirlMonitorID: classUUID(v.GirlMonitorID), BoyMonitorID: classUUID(v.BoyMonitorID), MediumID: classUUID(v.MediumID), HomeClassroomID: classUUID(v.HomeClassroomID), Capacity: v.Capacity}
 }
-func mapDetails(id, grade, year uuid.UUID, form, stream, streamGroup, girl, boy, medium, room pgtype.UUID, name string, created pgtype.Timestamptz, gradeName, yearLabel string, mediumName, roomName pgtype.Text) ClassDetails {
-	return ClassDetails{Class: Class{ID: id, GradeID: grade, AcademicYearID: year, FormTeacherID: classUUID(form), StreamID: classUUID(stream), StreamGroupID: classUUID(streamGroup), GirlMonitorID: classUUID(girl), BoyMonitorID: classUUID(boy), MediumID: classUUID(medium), HomeClassroomID: classUUID(room), Name: name, CreatedAt: created.Time.String()}, GradeName: gradeName, AcademicYearLabel: yearLabel, MediumName: classText(mediumName), HomeClassroomName: classText(roomName)}
+func mapDetails(id, grade, year uuid.UUID, form, stream, streamGroup, girl, boy, medium, room pgtype.UUID, capacity int32, name string, created pgtype.Timestamptz, gradeName, yearLabel string, mediumName, roomName pgtype.Text) ClassDetails {
+	return ClassDetails{Class: Class{ID: id, GradeID: grade, AcademicYearID: year, FormTeacherID: classUUID(form), StreamID: classUUID(stream), StreamGroupID: classUUID(streamGroup), GirlMonitorID: classUUID(girl), BoyMonitorID: classUUID(boy), MediumID: classUUID(medium), HomeClassroomID: classUUID(room), Capacity: capacity, Name: name, CreatedAt: created.Time.String()}, GradeName: gradeName, AcademicYearLabel: yearLabel, MediumName: classText(mediumName), HomeClassroomName: classText(roomName)}
 }
 func classUUIDParam(v *uuid.UUID) pgtype.UUID {
 	if v == nil {
@@ -154,7 +154,11 @@ func (r *classRepository) create(ctx context.Context, v createClassRequest) (Cla
 			return Class{}, err
 		}
 	}
-	row, err := q.CreateClass(ctx, db.CreateClassParams{GradeID: v.GradeID, AcademicYearID: v.AcademicYearID, Name: v.Name, FormTeacherID: classUUIDParam(v.FormTeacherID), StreamID: classUUIDParam(v.StreamID), StreamGroupID: classUUIDParam(v.StreamGroupID), MediumID: classUUIDParam(v.MediumID), HomeClassroomID: room})
+	capacity := int32(45)
+	if v.Capacity != nil {
+		capacity = *v.Capacity
+	}
+	row, err := q.CreateClass(ctx, db.CreateClassParams{GradeID: v.GradeID, AcademicYearID: v.AcademicYearID, Name: v.Name, FormTeacherID: classUUIDParam(v.FormTeacherID), StreamID: classUUIDParam(v.StreamID), StreamGroupID: classUUIDParam(v.StreamGroupID), MediumID: classUUIDParam(v.MediumID), HomeClassroomID: room, Capacity: capacity})
 	if err != nil {
 		return Class{}, err
 	}
@@ -203,7 +207,7 @@ func (r *classRepository) listCurrent(ctx context.Context) ([]ClassDetails, erro
 	}
 	out := make([]ClassDetails, len(rows))
 	for i, v := range rows {
-		out[i] = mapDetails(v.ID, v.GradeID, v.AcademicYearID, v.FormTeacherID, v.StreamID, v.StreamGroupID, v.GirlMonitorID, v.BoyMonitorID, v.MediumID, v.HomeClassroomID, v.Name, v.CreatedAt, v.GradeName, v.AcademicYearLabel, v.MediumName, v.HomeClassroomName)
+		out[i] = mapDetails(v.ID, v.GradeID, v.AcademicYearID, v.FormTeacherID, v.StreamID, v.StreamGroupID, v.GirlMonitorID, v.BoyMonitorID, v.MediumID, v.HomeClassroomID, v.Capacity, v.Name, v.CreatedAt, v.GradeName, v.AcademicYearLabel, v.MediumName, v.HomeClassroomName)
 	}
 	return out, nil
 }
@@ -214,7 +218,7 @@ func (r *classRepository) listByYear(ctx context.Context, id uuid.UUID) ([]Class
 	}
 	out := make([]ClassDetails, len(rows))
 	for i, v := range rows {
-		out[i] = mapDetails(v.ID, v.GradeID, v.AcademicYearID, v.FormTeacherID, v.StreamID, v.StreamGroupID, v.GirlMonitorID, v.BoyMonitorID, v.MediumID, v.HomeClassroomID, v.Name, v.CreatedAt, v.GradeName, v.AcademicYearLabel, v.MediumName, v.HomeClassroomName)
+		out[i] = mapDetails(v.ID, v.GradeID, v.AcademicYearID, v.FormTeacherID, v.StreamID, v.StreamGroupID, v.GirlMonitorID, v.BoyMonitorID, v.MediumID, v.HomeClassroomID, v.Capacity, v.Name, v.CreatedAt, v.GradeName, v.AcademicYearLabel, v.MediumName, v.HomeClassroomName)
 	}
 	return out, nil
 }

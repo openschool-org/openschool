@@ -2,16 +2,14 @@ import { useNavigate } from "react-router";
 import { Tabs, TabList, Tab, TabPanels, TabPanel } from "@carbon/react";
 import Timetables from "@/features/timetable/pages/admin/Timetables";
 import GenerateTimetable from "@/features/timetable/pages/admin/GenerateTimetable";
-import Classrooms from "@/features/timetable/pages/admin/Classrooms";
 import SubjectRequirements from "@/features/timetable/pages/admin/SubjectRequirements";
 import TimetableSettings from "@/features/timetable/pages/admin/TimetableSettings";
 
-export type TimetableHubTab = "timetables" | "generate" | "classrooms" | "requirements" | "settings";
+export type TimetableHubTab = "timetables" | "generate" | "requirements" | "settings";
 
 const TABS: { key: TimetableHubTab; label: string; path: string }[] = [
   { key: "timetables", label: "Timetables", path: "/timetables" },
   { key: "generate", label: "Generate", path: "/timetables/generate" },
-  { key: "classrooms", label: "Classrooms", path: "/classrooms" },
   { key: "requirements", label: "Requirements", path: "/subject-requirements" },
   { key: "settings", label: "Settings", path: "/timetable-settings" },
 ];
@@ -37,7 +35,6 @@ export default function TimetableHub({ tab }: { tab: TimetableHubTab }) {
         <TabPanels>
           <TabPanel className="os-py-4 os-px-0"><Timetables inline /></TabPanel>
           <TabPanel className="os-py-4 os-px-0"><GenerateTimetable inline /></TabPanel>
-          <TabPanel className="os-py-4 os-px-0"><Classrooms inline /></TabPanel>
           <TabPanel className="os-py-4 os-px-0"><SubjectRequirements inline /></TabPanel>
           <TabPanel className="os-py-4 os-px-0"><TimetableSettings inline /></TabPanel>
         </TabPanels>

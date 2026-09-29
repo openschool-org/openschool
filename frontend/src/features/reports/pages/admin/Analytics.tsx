@@ -1,4 +1,6 @@
-import { SkeletonText, Tabs, TabList, Tab, TabPanels, TabPanel } from "@carbon/react";
+/* eslint-disable max-lines */
+import { useMemo, useState } from "react";
+import { SkeletonText, Tabs, TabList, Tab, TabPanels, TabPanel, Button, Tag } from "@carbon/react";
 import { useDashboardAnalytics, useLeadershipAnalytics } from "@/features/reports/queries/useDashboardAnalytics";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import { formatShortDayMonth } from "@/shared/lib/date";
@@ -91,6 +93,8 @@ function StudentsPanel({ data }: { data: AnalyticsData }) {
     <div className="os-my-4 os-mx-0">
       <div className="os-stat-grid">
         <StatTile label="Total students" value={data.student.total} color={ACCENT} />
+        <StatTile label="Grades with students" value={data.student.by_grade.filter((row) => row.count > 0).length} color={CHART_BLUE} />
+        <StatTile label="Active classes" value={data.student.by_class.length} color={CHART_PURPLE} />
       </div>
 
       <div className="os-grid os-grid-cols-2 os-gap-6 os-mt-6">
@@ -114,19 +118,9 @@ function StudentsPanel({ data }: { data: AnalyticsData }) {
         </Section>
       </div>
 
-      <div className="os-grid os-grid-cols-2 os-gap-6 os-mt-6">
-        <Section title="Students by grade">
-          <BarList rows={data.student.by_grade.map((r: CountRow) => ({ label: r.label, value: r.count }))} />
-        </Section>
-        <Section title="Students by class">
-          <BarList
-            rows={data.student.by_class.map((r: CountRow) => ({ label: r.label, value: r.count }))}
-            color={CHART_BLUE}
-          />
-        </Section>
-      </div>
+      <StudentEnrollmentSection byGrade={data.student.by_grade} byClass={data.student.by_class} />
 
-      <div className="os-mt-6">
+      <div className="os-grid os-grid-cols-2 os-gap-6 os-mt-6">
         <Section title="Attendance trend (last 14 days)">
           <Sparkline
             points={trendPoints.map((p) => ({ label: p.label, value: p.pct }))}
@@ -136,7 +130,73 @@ function StudentsPanel({ data }: { data: AnalyticsData }) {
             emptyMessage="No attendance sessions in the last 14 days."
           />
         </Section>
+        <Section title="Enrolment insight">
+          <EnrollmentInsight byGrade={data.student.by_grade} byClass={data.student.by_class} />
+        </Section>
       </div>
+    </div>
+  );
+}
+
+function StudentEnrollmentSection({ byGrade, byClass }: { byGrade: CountRow[]; byClass: CountRow[] }) {
+  const firstGrade = byGrade.find((row) => row.count > 0)?.label ?? byGrade[0]?.label ?? "";
+  const [selectedGrade, setSelectedGrade] = useState(firstGrade);
+  const gradeRows = byGrade.map((row) => ({ label: row.label, value: row.count }));
+  const classRows = useMemo(() => {
+    const prefix = `${selectedGrade} `;
+    return byClass
+      .filter((row) => row.label.startsWith(prefix))
+      .map((row) => ({ label: row.label.slice(prefix.length), value: row.count }));
+  }, [byClass, selectedGrade]);
+  const selectedCount = byGrade.find((row) => row.label === selectedGrade)?.count ?? 0;
+
+  return (
+    <Section title="Student enrolment by grade and class">
+      <div className="os-grid os-grid-cols-2 os-gap-6">
+        <div>
+          <div className="os-flex os-items-center os-justify-between os-mb-3">
+            <p className="os-m-0 os-text-xs os-fw-600 os-uppercase os-tracking-wide os-c-secondary">Grades</p>
+            <span className="os-text-xs os-c-tertiary">Select a grade</span>
+          </div>
+          <div className="os-flex os-col os-gap-1h" role="tablist" aria-label="Student counts by grade">
+            {gradeRows.map((row) => (
+              <Button
+                key={row.label}
+                kind={selectedGrade === row.label ? "tertiary" : "ghost"}
+                size="sm"
+                className="os-justify-start os-w-full"
+                onClick={() => setSelectedGrade(row.label)}
+                role="tab"
+                aria-selected={selectedGrade === row.label}
+              >
+                <span className="os-flex os-justify-between os-w-full os-text-left">
+                  <span>{row.label}</span>
+                  <strong>{row.value}</strong>
+                </span>
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="os-flex os-items-center os-justify-between os-mb-3">
+            <p className="os-m-0 os-text-xs os-fw-600 os-uppercase os-tracking-wide os-c-secondary">Classes in {selectedGrade || "selected grade"}</p>
+            <Tag type="blue" size="sm">{selectedCount} students</Tag>
+          </div>
+          <BarList rows={classRows} color={CHART_BLUE} />
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+function EnrollmentInsight({ byGrade, byClass }: { byGrade: CountRow[]; byClass: CountRow[] }) {
+  const largestGrade = byGrade.reduce<CountRow | null>((largest, row) => (!largest || row.count > largest.count ? row : largest), null);
+  const largestClass = byClass.reduce<CountRow | null>((largest, row) => (!largest || row.count > largest.count ? row : largest), null);
+  if (!largestGrade && !largestClass) return <p className="os-m-0 os-text-sm os-c-tertiary">No enrolment data yet.</p>;
+  return (
+    <div className="os-flex os-col os-gap-4">
+      {largestGrade && <div><p className="os-m-0 os-text-xs os-c-secondary">Largest grade</p><p className="os-m-0 os-text-lg os-fw-600">{largestGrade.label} · {largestGrade.count} students</p></div>}
+      {largestClass && <div><p className="os-m-0 os-text-xs os-c-secondary">Largest class</p><p className="os-m-0 os-text-lg os-fw-600">{largestClass.label} · {largestClass.count} students</p></div>}
     </div>
   );
 }

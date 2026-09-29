@@ -26,6 +26,7 @@ type Class struct {
 	BoyMonitorID    *uuid.UUID `json:"boy_monitor_id"`
 	MediumID        *uuid.UUID `json:"medium_id"`
 	HomeClassroomID *uuid.UUID `json:"home_classroom_id"`
+	Capacity        int32      `json:"capacity"`
 	Name            string     `json:"name"`
 	CreatedAt       string     `json:"created_at"`
 }
@@ -52,6 +53,7 @@ type createClassRequest struct {
 	StreamGroupID   *uuid.UUID `json:"stream_group_id"`
 	MediumID        *uuid.UUID `json:"medium_id"`
 	HomeClassroomID *uuid.UUID `json:"home_classroom_id"`
+	Capacity        *int32     `json:"capacity"`
 }
 type updateClassRequest struct {
 	Name            string     `json:"name" binding:"required"`
@@ -92,6 +94,9 @@ type classStore interface {
 type classService struct{ store classStore }
 
 func (s *classService) create(c context.Context, r createClassRequest) (Class, error) {
+	if r.Capacity != nil && *r.Capacity <= 0 {
+		return Class{}, errors.New("capacity must be greater than zero")
+	}
 	return s.store.create(c, r)
 }
 func (s *classService) get(c context.Context, id uuid.UUID) (Class, error) { return s.store.get(c, id) }

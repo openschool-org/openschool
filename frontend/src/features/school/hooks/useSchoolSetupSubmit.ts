@@ -30,7 +30,9 @@ interface Input {
   mediumsSkipped: boolean;
   mediumChecks: Record<string, boolean>;
   customMediums: string[];
+  selectedMediumNames: string[];
   yearLabel: string;
+  classCapacity: number;
   sectionsPerGrade: Record<number, number>;
   sectionMediums: Record<string, string>;
   alStreams: AlStreamsState;
@@ -75,7 +77,9 @@ export function useSchoolSetupSubmit(input: Input) {
       mediumsSkipped,
       mediumChecks,
       customMediums,
+      selectedMediumNames,
       yearLabel,
+      classCapacity,
       sectionsPerGrade,
       sectionMediums,
       alStreams,
@@ -176,12 +180,13 @@ export function useSchoolSetupSubmit(input: Input) {
             const count = sectionsPerGrade[gradeNumber] ?? 1;
             for (let i = 0; i < count; i++) {
               const section = String.fromCharCode(65 + i);
-              const mediumName = sectionMediums[`${gradeNumber}-${i}`];
+              const mediumName = sectionMediums[`${gradeNumber}-${i}`] || selectedMediumNames[0];
               await createClass.mutateAsync({
                 grade_id: grade.id,
                 academic_year_id: year.id,
                 name: `${gradeNumber}-${section}`,
                 medium_id: (mediumName && mediumIdByName.get(mediumName)) || null,
+                capacity: classCapacity,
               });
             }
           }
@@ -217,6 +222,8 @@ export function useSchoolSetupSubmit(input: Input) {
                     stream_id: streamIdByName.get(def.streamName)!,
                     stream_group_id: def.groupName ? groupIdByKey.get(def.key) ?? null : null,
                     name: `${gradeNumber}-${code}${i + 1}`,
+                    medium_id: (selectedMediumNames[0] && mediumIdByName.get(selectedMediumNames[0])) || null,
+                    capacity: classCapacity,
                   });
                 }
               }
@@ -228,9 +235,16 @@ export function useSchoolSetupSubmit(input: Input) {
 
       if (!progress.rooms) {
         if (!skipRooms) {
-          const names = facilityRooms.map((room) => room.name.trim()).filter(Boolean);
-          for (const name of names) {
-            await createClassroom.mutateAsync({ name, room_type: "eca" });
+          const namedRooms = facilityRooms.filter((room) => room.name.trim());
+          for (const room of namedRooms) {
+            await createClassroom.mutateAsync({
+              name: room.name.trim(),
+              // Keep the setup category with the room so Resources can show
+              // libraries, IT labs, halls, and other facilities distinctly.
+              code: room.group,
+              room_type: "eca",
+              capacity: room.capacity === "" ? undefined : room.capacity,
+            });
           }
         }
         progress.rooms = true;

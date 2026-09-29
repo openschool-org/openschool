@@ -39,9 +39,10 @@ INSERT INTO classes (
     stream_group_id,
     name,
     medium_id,
-    home_classroom_id
+    home_classroom_id,
+    capacity
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
 RETURNING *;
 

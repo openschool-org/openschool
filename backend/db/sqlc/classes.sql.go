@@ -107,9 +107,10 @@ INSERT INTO classes (
     stream_group_id,
     name,
     medium_id,
-    home_classroom_id
+    home_classroom_id,
+    capacity
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
 RETURNING id, grade_id, academic_year_id, form_teacher_id, stream_id, stream_group_id, name, created_at, girl_monitor_id, boy_monitor_id, medium_id, home_classroom_id, capacity
 `
@@ -123,6 +124,7 @@ type CreateClassParams struct {
 	Name            string      `json:"name"`
 	MediumID        pgtype.UUID `json:"medium_id"`
 	HomeClassroomID pgtype.UUID `json:"home_classroom_id"`
+	Capacity        int32       `json:"capacity"`
 }
 
 func (q *Queries) CreateClass(ctx context.Context, arg CreateClassParams) (Class, error) {
@@ -135,6 +137,7 @@ func (q *Queries) CreateClass(ctx context.Context, arg CreateClassParams) (Class
 		arg.Name,
 		arg.MediumID,
 		arg.HomeClassroomID,
+		arg.Capacity,
 	)
 	var i Class
 	err := row.Scan(

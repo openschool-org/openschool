@@ -37,6 +37,7 @@ export const GRADE_MAX = 13;
 export const STEPS = ["School", "Houses", "Grades", "Mediums", "Classes", "Rooms", "Done"] as const;
 export const HOUSE_COLOR_PALETTE = ["#0f62fe", "#da1e28", "#24a148", "#f1c21b", "#8a3ffc", "#ff832b"];
 export const SUGGESTED_MEDIUMS = ["Sinhala", "Tamil", "English"];
+export const DEFAULT_CLASS_CAPACITY = 45;
 
 // Special rooms created as "eca" during setup; an admin can retag them as subject Labs later.
 export type FacilityGroupKey =
@@ -59,6 +60,7 @@ export interface FacilityRoom {
   id: string;
   group: FacilityGroupKey;
   name: string;
+  capacity: number | "";
 }
 
 // Each group can contain any number of separately named facilities.
