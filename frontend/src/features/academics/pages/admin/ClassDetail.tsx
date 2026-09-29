@@ -13,6 +13,8 @@ import ErrorMessage from "@/shared/ui/ErrorMessage";
 import ProfileBanner from "@/shared/ui/ProfileBanner";
 import SectionCard from "@/shared/ui/SectionCard";
 import InfoRow from "@/shared/ui/InfoRow";
+import MediumTag from "@/shared/ui/MediumTag";
+import StreamTag from "@/shared/ui/StreamTag";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
 
 // "10A" reads as "Grade 10-A" in the banner.
@@ -51,8 +53,8 @@ export default function ClassDetail() {
         meta={meta}
         actions={(
           <>
-          {names.stream && <Tag type="blue" size="sm">{names.stream}</Tag>}
-          {names.medium && <Tag type="purple" size="sm">{names.medium}</Tag>}
+          {names.stream && <StreamTag name={names.stream} />}
+          {names.medium && <MediumTag name={names.medium} />}
           {names.homeClassroom && <Tag type="teal" size="sm">{names.homeClassroom}</Tag>}
           <Button renderIcon={Edit} kind="ghost" size="sm" onClick={m.openEdit}>Edit</Button>
           <Button renderIcon={UserMultiple} kind="ghost" size="sm" onClick={m.openTeacher}>

@@ -82,7 +82,7 @@ export default function Dashboard() {
           {school?.logo_url && (
             <img
               src={school.logo_url}
-              alt={school.name ?? "School logo"} className="os-w-3 os-h-3 os-object-contain os-shrink-0"
+              alt={school.name ?? "School logo"} className="os-dashboard-hero__logo os-object-contain os-shrink-0"
             />
           )}
         </div>
@@ -113,7 +113,8 @@ export default function Dashboard() {
 
         <DashboardSnapshotSection
           teachers={staffAttendance?.teachers}
-          teachersLoading={staffAttendanceLoading}
+          nonAcademicStaff={staffAttendance?.non_academic_staff}
+          staffLoading={staffAttendanceLoading}
         />
       </div>
 

@@ -119,11 +119,18 @@ export function useSchoolSetupSubmit(input: Input) {
         progress.houses = true;
       }
 
+      const setupGradeNumbers = new Set(orderedSelectedGrades);
+      if (setupGradeNumbers.has(12) || setupGradeNumbers.has(13)) {
+        setupGradeNumbers.add(12);
+        setupGradeNumbers.add(13);
+      }
+      const normalizedSelectedGrades = [...setupGradeNumbers].sort((a, b) => a - b);
+
       if (!progress.grades) {
         const created: Grade[] = [];
-        for (let i = 0; i < orderedSelectedGrades.length; i++) {
+        for (let i = 0; i < normalizedSelectedGrades.length; i++) {
           const g = await createGrade.mutateAsync({
-            name: `Grade ${orderedSelectedGrades[i]}`,
+            name: `Grade ${normalizedSelectedGrades[i]}`,
             sort_order: i,
           });
           created.push(g);

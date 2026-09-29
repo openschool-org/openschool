@@ -10,36 +10,35 @@ export interface SetupChecklistItem {
 
 export default function SetupChecklistCard({ items }: { items: SetupChecklistItem[] }) {
   const doneCount = items.filter((i) => i.done).length;
+  const nextItem = items.find((item) => !item.done);
+  const progress = Math.round((doneCount / items.length) * 100);
   if (doneCount === items.length) return null;
 
-
   return (
-    <div className="os-section os-mb-6">
-      <div className="os-section__header">
-        <h2 className="os-section__title">Finish setting up</h2>
-        <span className="os-section__meta">{doneCount} of {items.length} done</span>
+    <div className="os-setup-checklist os-mb-6">
+      <div className="os-setup-checklist__header">
+        <div className="os-setup-checklist__heading">
+          <div className="os-setup-checklist__icon"><CheckmarkFilled size={20} /></div>
+          <div>
+            <p className="os-eyebrow">Getting started</p>
+            <h2>Finish setting up</h2>
+            <p>Complete these essentials to get your school ready for daily use.</p>
+          </div>
+        </div>
+        <div className="os-setup-checklist__progress-label"><strong>{progress}%</strong><span>{doneCount} of {items.length} complete</span></div>
       </div>
-      <div className="os-p-4">
-        <div className="os-mb-4">
-          <ProgressBar value={doneCount} max={items.length} label="Setup progress" />
-        </div>
-        <div>
-          {items.map((item) => (
-            <Link
-              key={item.label}
-              to={item.path}
-              className={`os-list-row os-list-row--button${item.done ? " os-c-tertiary" : ""}`}
-            >
-              {item.done ? (
-                <CheckmarkFilled size={16} className="os-fill-success os-shrink-0" />
-              ) : (
-                <CircleOutline size={16} className="os-fill-border-subtle os-shrink-0" />
-              )}
-              <span className="os-flex-1 os-text-sm">{item.label}</span>
-              {!item.done && <ChevronRight size={16} className="os-c-tertiary os-shrink-0" />}
-            </Link>
-          ))}
-        </div>
+      <div className="os-setup-checklist__bar"><ProgressBar value={doneCount} max={items.length} label="Setup progress" /></div>
+      {nextItem && <p className="os-setup-checklist__next">Next up: <Link to={nextItem.path}>{nextItem.label}</Link></p>}
+      <div className="os-setup-checklist__items">
+        {items.map((item) => (
+          <Link key={item.label} to={item.path} className={`os-setup-checklist__item${item.done ? " is-complete" : ""}`}>
+            <span className="os-setup-checklist__status">
+              {item.done ? <CheckmarkFilled size={16} /> : <CircleOutline size={16} />}
+            </span>
+            <span className="os-setup-checklist__item-label">{item.label}</span>
+            {!item.done && <ChevronRight size={16} className="os-setup-checklist__arrow" />}
+          </Link>
+        ))}
       </div>
     </div>
   );
