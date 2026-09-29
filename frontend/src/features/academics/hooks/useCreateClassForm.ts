@@ -15,6 +15,7 @@ const EMPTY_CLASS_FORM = {
   form_teacher_id: "",
   medium_id: "",
   home_classroom_id: "",
+  capacity: "45",
 };
 
 export type ClassForm = typeof EMPTY_CLASS_FORM;
@@ -52,6 +53,7 @@ export function useCreateClassForm(preselectedGradeId: string, onSuccess?: () =>
         form_teacher_id: form.form_teacher_id || null,
         medium_id: form.medium_id || null,
         home_classroom_id: effectiveHomeClassroomId || null,
+        capacity: form.capacity.trim() ? Number(form.capacity) : undefined,
       },
       { onSuccess: () => { if (onSuccess) onSuccess(); else navigate("/classes"); } },
     );

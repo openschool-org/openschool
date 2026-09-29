@@ -22,7 +22,7 @@ export default function CreateSubjectModal({ open, subjects, onClose }: Props) {
   const duplicateCode = subjects.some((subject) => subject.code.trim().toLowerCase() === code.trim().toLowerCase());
   const nameInvalid = touched.name && !name.trim();
   const codeInvalid = touched.code && !code.trim();
-  const isValid = !!name.trim() && !!code.trim() && !duplicateName && !duplicateCode && maxMarks > 0;
+  const isValid = !!name.trim() && !!code.trim() && !duplicateName && !duplicateCode && Number.isFinite(maxMarks) && maxMarks > 0 && maxMarks <= 999.99;
 
   const reset = () => {
     setName("");
@@ -95,7 +95,7 @@ export default function CreateSubjectModal({ open, subjects, onClose }: Props) {
           id="create-subject-max-marks"
           label="Max marks"
           min={1}
-          max={1000}
+          max={999.99}
           value={maxMarks}
           onChange={(_event, { value }) => setMaxMarks(Number(value ?? 100))}
           helperText="The maximum marks a student can receive for this subject."

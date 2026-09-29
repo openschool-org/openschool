@@ -162,7 +162,7 @@ export default function Classes() {
         />
       )}
 
-      <ClassFormModal open={classModalGradeId !== null} gradeId={classModalGradeId ?? ""} onClose={() => setClassModalGradeId(null)} />
+      {classModalGradeId !== null && <ClassFormModal key={classModalGradeId} open gradeId={classModalGradeId} onClose={() => setClassModalGradeId(null)} />}
 
       <EditClassModal
         open={!!classToEdit}

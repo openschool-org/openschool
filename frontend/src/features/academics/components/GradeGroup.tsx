@@ -41,7 +41,7 @@ interface Props {
 export default function GradeGroup(p: Props) {
   const { grade, index, isLast, busy, classes } = p;
   const warning = gradeNameWarning(grade.name, p.from, p.to);
-  const isALGrade = /(?:grade\s*)?(?:12|13)\b/i.test(grade.name.trim());
+  const isALGrade = /^(?:grade\s*)?(?:12|13)\b/i.test(grade.name.trim());
 
   const columns: GridColumn<ClassWithDetails>[] = [
     { key: "name", header: "Class", render: (c) => <Link to={`/classes/${c.id}`} className="os-table__link">{c.name}</Link> },

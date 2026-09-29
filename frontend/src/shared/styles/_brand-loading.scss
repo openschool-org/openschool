@@ -33,6 +33,13 @@
 
 }
 
+// Portal content already occupies the viewport; do not add another full
+// viewport to the page when a nested route is loading.
+.os-layout__content .os-brand-loader {
+  height: 100%;
+  min-height: 100%;
+}
+
 @keyframes os-loader-rotate {
   0% { transform: rotate(0deg) scale(1); }
   25% { transform: rotate(360deg) scale(1.08); }

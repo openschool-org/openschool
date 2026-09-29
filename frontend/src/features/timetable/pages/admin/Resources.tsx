@@ -6,6 +6,9 @@ import type { Classroom, ClassroomType } from "@/features/timetable/api/classroo
 import ClassroomFormModal from "@/features/timetable/components/ClassroomFormModal";
 import { EMPTY_CLASSROOM_FORM, isLabMissingSubject, type ClassroomForm } from "@/features/timetable/lib/classroomForm";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
+import BackfillHomeroomsButton from "@/features/timetable/components/BackfillHomeroomsButton";
+import LoadingSpinner from "@/shared/ui/LoadingSpinner";
+import ErrorMessage from "@/shared/ui/ErrorMessage";
 
 const RESOURCE_TYPES = [
   { key: "regular", label: "Homerooms & classrooms", icon: Home },
@@ -76,17 +79,18 @@ function ResourceMap({ resources }: { resources: Classroom[] }) {
           </div>
           <p>Automatically arranged from this school’s configured rooms and facilities.</p>
         </div>
-        <div className="os-flex os-items-center os-gap-3">
+      <div className="os-flex os-items-center os-gap-3">
+          <BackfillHomeroomsButton size="sm" />
           <Information size={20} className="os-c-secondary" aria-label="This is a visual overview, not a geographic floor plan" />
           <Button renderIcon={Add} size="sm" kind="primary" onClick={openCreate}>Add resource</Button>
         </div>
       </div>
 
-      <div className="os-resource-map__filters" role="tablist" aria-label="Resource map zones">
-        <button type="button" className={activeZone === "all" ? "is-active" : ""} onClick={() => setActiveZone("all")}>All resources <span>{resources.length}</span></button>
+      <div className="os-resource-map__filters" role="group" aria-label="Resource map zones">
+        <button type="button" aria-pressed={activeZone === "all"} className={activeZone === "all" ? "is-active" : ""} onClick={() => setActiveZone("all")}>All resources <span>{resources.length}</span></button>
         {ZONES.map((zone) => {
           const count = resources.filter((resource) => resource.room_type === zone.key).length;
-          return <button key={zone.key} type="button" className={activeZone === zone.key ? "is-active" : ""} onClick={() => setActiveZone(zone.key)}>{zone.label} <span>{count}</span></button>;
+          return <button key={zone.key} type="button" aria-pressed={activeZone === zone.key} className={activeZone === zone.key ? "is-active" : ""} onClick={() => setActiveZone(zone.key)}>{zone.label} <span>{count}</span></button>;
         })}
       </div>
 
@@ -123,7 +127,7 @@ function ResourceMap({ resources }: { resources: Classroom[] }) {
 }
 
 export default function Resources() {
-  const { data: classrooms } = useClassrooms();
+  const { data: classrooms, isLoading, isError, refetch } = useClassrooms();
 
   return (
     <div className="os-page">
@@ -134,19 +138,22 @@ export default function Resources() {
         </div>
       </div>
 
-      <div className="os-grid os-grid-cols-3 os-gap-4 os-mb-6">
-        {RESOURCE_TYPES.map(({ key, label, icon: Icon }) => (
-          <div key={key} className="os-bg-layer os-border os-p-5">
-            <div className="os-flex os-items-center os-gap-2 os-mb-3">
-              <Icon size={20} className="os-fill-accent" />
-              <span className="os-text-sm os-fw-600 os-c-secondary">{label}</span>
-            </div>
-            <strong className="os-text-4xl os-fw-300 os-c-primary">{classrooms?.filter((room) => room.room_type === key).length ?? 0}</strong>
+      {isLoading ? <LoadingSpinner label="Loading school resources…" /> : isError ? <ErrorMessage message="Could not load school resources." onRetry={refetch} /> : (
+        <>
+          <div className="os-grid os-grid-cols-3 os-gap-4 os-mb-6">
+            {RESOURCE_TYPES.map(({ key, label, icon: Icon }) => (
+              <div key={key} className="os-bg-layer os-border os-p-5">
+                <div className="os-flex os-items-center os-gap-2 os-mb-3">
+                  <Icon size={20} className="os-fill-accent" />
+                  <span className="os-text-sm os-fw-600 os-c-secondary">{label}</span>
+                </div>
+                <strong className="os-text-4xl os-fw-300 os-c-primary">{classrooms?.filter((room) => room.room_type === key).length ?? 0}</strong>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-
-      <ResourceMap resources={classrooms ?? []} />
+          <ResourceMap resources={classrooms ?? []} />
+        </>
+      )}
     </div>
   );
 }

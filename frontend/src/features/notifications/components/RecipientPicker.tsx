@@ -26,9 +26,11 @@ const RULE_TYPES: { value: RecipientRuleType; label: string }[] = [
 export default function RecipientPicker({
   onAdd,
   canBroadcastEveryone,
+  disabled = false,
 }: {
   onAdd: (rule: RecipientRule) => void;
   canBroadcastEveryone: boolean;
+  disabled?: boolean;
 }) {
   const { data: currentYear } = useCurrentAcademicYear();
   const { data: grades } = useGrades();
@@ -99,6 +101,7 @@ export default function RecipientPicker({
         items={availableRuleTypes}
         itemToString={(item) => (item as (typeof RULE_TYPES)[number])?.label ?? ""}
         selectedItem={availableRuleTypes.find((r) => r.value === ruleType)}
+        disabled={disabled}
         onChange={({ selectedItem }) => {
           setRuleType((selectedItem as (typeof RULE_TYPES)[number] | null)?.value ?? ruleType);
           reset();
@@ -115,6 +118,7 @@ export default function RecipientPicker({
           getId={(g) => g.id}
           itemToString={(g) => g.name}
           placeholder="Search grades…"
+          disabled={disabled}
         />
       )}
       {ruleType === "class" && (
@@ -127,6 +131,7 @@ export default function RecipientPicker({
           getId={(c) => c.id}
           itemToString={(c) => `${c.grade_name} - ${c.name}`}
           placeholder="Search classes…"
+          disabled={disabled}
         />
       )}
       {ruleType === "grade_section" && (
@@ -139,6 +144,7 @@ export default function RecipientPicker({
           getId={(s) => s.id}
           itemToString={(s) => s.name}
           placeholder="Search grade sections…"
+          disabled={disabled}
         />
       )}
       {ruleType === "subject" && (
@@ -152,6 +158,7 @@ export default function RecipientPicker({
             getId={(s) => s.id}
             itemToString={(s) => s.name}
             placeholder="Search subjects…"
+            disabled={disabled}
           />
           <Dropdown
             id="rule-subject-audience"
@@ -161,6 +168,7 @@ export default function RecipientPicker({
             itemToString={(item) => (item === "teachers" ? "Teachers of this subject" : "Students taking this subject")}
             selectedItem={subjectAudience}
             onChange={({ selectedItem }) => setSubjectAudience((selectedItem as "students" | "teachers") ?? "students")}
+            disabled={disabled}
           />
         </>
       )}
@@ -175,6 +183,7 @@ export default function RecipientPicker({
           getId={(s) => s.id}
           itemToString={(s) => `${s.full_name} - ${s.index_number}`}
           placeholder="Search students…"
+          disabled={disabled}
         />
       )}
       {ruleType === "guardian" && (
@@ -188,6 +197,7 @@ export default function RecipientPicker({
           getId={(g) => g.id}
           itemToString={(g) => `${g.full_name} - ${g.phone}`}
           placeholder="Search guardians…"
+          disabled={disabled}
         />
       )}
       {ruleType === "teacher" && (
@@ -201,10 +211,11 @@ export default function RecipientPicker({
           getId={(t) => t.id}
           itemToString={(t) => `${t.full_name} - ${t.employee_number}`}
           placeholder="Search teachers…"
+          disabled={disabled}
         />
       )}
 
-      <Button kind="ghost" size="sm" renderIcon={Add} onClick={handleAdd} disabled={ruleType !== "everyone" && !selectedId}>
+      <Button kind="ghost" size="sm" renderIcon={Add} onClick={handleAdd} disabled={disabled || (ruleType !== "everyone" && !selectedId)}>
         Add recipient
       </Button>
     </div>

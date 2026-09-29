@@ -41,7 +41,7 @@ export default function Dashboard() {
   const { data: subjects, isLoading: subjectsLoading } = useSubjects();
   const { data: years } = useAcademicYears();
   const currentYear = years?.find((y) => y.is_current) ?? null;
-  const { data: terms, isLoading: termsLoading } = useTerms(currentYear?.id);
+  const { data: terms, isLoading: termsLoading, isError: termsError } = useTerms(currentYear?.id);
   const { data: todaySessions, isLoading: sessionsLoading } = useDailySessions(todayISODate());
   const { data: staffAttendance, isLoading: staffAttendanceLoading } = useStaffAttendanceByDate(todayISODate());
 
@@ -57,7 +57,7 @@ export default function Dashboard() {
   const setupLoading = classesLoading || gradesLoading || subjectsLoading || teachersLoading || studentsLoading || termsLoading;
   const setupItems = [
     { label: "Set a current academic year", done: !!currentYear, path: "/academic-years" },
-    { label: "Set up terms", done: !!currentYear && (terms?.length ?? 0) > 0, path: "/academic-years" },
+    { label: "Set up terms", done: !!currentYear && !termsError && (terms?.length ?? 0) > 0, path: "/academic-years" },
     { label: "Add a grade", done: (grades?.length ?? 0) > 0, path: "/classes" },
     { label: "Add a subject", done: (subjects?.length ?? 0) > 0, path: "/subjects" },
     { label: "Add a teacher", done: teacherCount > 0, path: "/teachers" },

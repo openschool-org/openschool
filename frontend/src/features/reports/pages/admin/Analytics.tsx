@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SkeletonText, Tabs, TabList, Tab, TabPanels, TabPanel, Button, Tag } from "@carbon/react";
 import { useDashboardAnalytics, useLeadershipAnalytics } from "@/features/reports/queries/useDashboardAnalytics";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
@@ -141,6 +141,9 @@ function StudentsPanel({ data }: { data: AnalyticsData }) {
 function StudentEnrollmentSection({ byGrade, byClass }: { byGrade: CountRow[]; byClass: CountRow[] }) {
   const firstGrade = byGrade.find((row) => row.count > 0)?.label ?? byGrade[0]?.label ?? "";
   const [selectedGrade, setSelectedGrade] = useState(firstGrade);
+  useEffect(() => {
+    if (!byGrade.some((row) => row.label === selectedGrade)) setSelectedGrade(firstGrade);
+  }, [byGrade, firstGrade, selectedGrade]);
   const gradeRows = byGrade.map((row) => ({ label: row.label, value: row.count }));
   const classRows = useMemo(() => {
     const prefix = `${selectedGrade} `;
@@ -158,7 +161,7 @@ function StudentEnrollmentSection({ byGrade, byClass }: { byGrade: CountRow[]; b
             <p className="os-m-0 os-text-xs os-fw-600 os-uppercase os-tracking-wide os-c-secondary">Grades</p>
             <span className="os-text-xs os-c-tertiary">Select a grade</span>
           </div>
-          <div className="os-flex os-col os-gap-1h" role="tablist" aria-label="Student counts by grade">
+          <div className="os-flex os-col os-gap-1h" aria-label="Student counts by grade">
             {gradeRows.map((row) => (
               <Button
                 key={row.label}
@@ -166,8 +169,7 @@ function StudentEnrollmentSection({ byGrade, byClass }: { byGrade: CountRow[]; b
                 size="sm"
                 className="os-justify-start os-w-full"
                 onClick={() => setSelectedGrade(row.label)}
-                role="tab"
-                aria-selected={selectedGrade === row.label}
+                aria-pressed={selectedGrade === row.label}
               >
                 <span className="os-flex os-justify-between os-w-full os-text-left">
                   <span>{row.label}</span>

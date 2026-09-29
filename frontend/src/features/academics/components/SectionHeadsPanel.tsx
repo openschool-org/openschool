@@ -76,7 +76,7 @@ export default function SectionHeadsPanel() {
         <div className="os-p-6"><ErrorMessage message="Could not load section heads." onRetry={refetch} /></div>
       ) : (classesQuery.isLoading || streamsQuery.isLoading) && rows.length === 0 ? (
         <div className="os-py-2"><ListRowSkeleton trailingWidth="12rem" /></div>
-      ) : (classesQuery.isError || streamsQuery.isError) && !classesQuery.data && !streamsQuery.data ? (
+      ) : (classesQuery.isError && !classesQuery.data) || (streamsQuery.isError && !streamsQuery.data) ? (
         <div className="os-p-6"><ErrorMessage message="Could not load classes and streams." onRetry={() => { void classesQuery.refetch(); void streamsQuery.refetch(); }} /></div>
       ) : rows.length === 0 ? (
         <EmptyState title="No classes yet" description="Section heads are derived from the grades and streams your classes actually use." />

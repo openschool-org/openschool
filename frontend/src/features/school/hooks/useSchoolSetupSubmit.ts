@@ -124,7 +124,9 @@ export function useSchoolSetupSubmit(input: Input) {
       }
 
       const setupGradeNumbers = new Set(orderedSelectedGrades);
-      if (setupGradeNumbers.has(12) || setupGradeNumbers.has(13)) {
+      const rangeIncludes12 = school.grade_from !== "" && school.grade_to !== "" && Number(school.grade_from) <= 12 && Number(school.grade_to) >= 12;
+      const rangeIncludes13 = school.grade_from !== "" && school.grade_to !== "" && Number(school.grade_from) <= 13 && Number(school.grade_to) >= 13;
+      if ((setupGradeNumbers.has(12) || setupGradeNumbers.has(13)) && rangeIncludes12 && rangeIncludes13) {
         setupGradeNumbers.add(12);
         setupGradeNumbers.add(13);
       }

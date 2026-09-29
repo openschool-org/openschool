@@ -52,7 +52,7 @@ export default function AgentFindingsBanner() {
                       {finding.count && <Tag type="gray" size="sm">{finding.count} classes</Tag>}
                     </summary>
                     <div className="os-agent-finding__list">
-                      {finding.items.map((item) => <span key={item}>{item}</span>)}
+                      {finding.items.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}
                     </div>
                   </details>
                 )}

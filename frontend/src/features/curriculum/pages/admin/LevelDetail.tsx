@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { Add, ArrowLeft } from "@carbon/icons-react";
 import { Button, InlineNotification } from "@carbon/react";
 import {
@@ -17,11 +17,13 @@ import type { CurriculumTreeGroup, GroupSubject } from "@/features/curriculum/ap
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
+import ConfirmActionModal from "@/shared/ui/ConfirmActionModal";
 import GroupsList from "@/features/curriculum/components/GroupsList";
 import GroupFormModal, { type GroupForm } from "@/features/curriculum/components/GroupFormModal";
 import AddSubjectModal, { type SubjectForm } from "@/features/curriculum/components/AddSubjectModal";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
 import InfoTip from "@/shared/ui/InfoTip";
+import { useUnsavedChangesGuard } from "@/shared/hooks/useUnsavedChangesGuard";
 
 const EMPTY_GROUP: GroupForm = { label: "", min_select: 1, max_select: 1, sort_order: 0 };
 const EMPTY_SUBJECT: SubjectForm = {
@@ -33,6 +35,7 @@ const EMPTY_SUBJECT: SubjectForm = {
 
 export default function LevelDetail() {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
 
   const { data: tree, isLoading, isError, refetch } = useLevelTree(id);
   usePageTitle(tree?.level.label);
@@ -61,6 +64,7 @@ export default function LevelDetail() {
   const [subjectsDirty, setSubjectsDirty] = useState(false);
   const [savingSubjects, setSavingSubjects] = useState(false);
   const [subjectsSaveError, setSubjectsSaveError] = useState(false);
+  const unsavedGuard = useUnsavedChangesGuard(subjectsDirty);
 
   const draftTree = useMemo(
     () => tree ? { ...tree, groups: tree.groups.map((group) => ({ ...group, subjects: subjectChanges[group.id] ?? group.subjects })) } : null,
@@ -215,7 +219,7 @@ export default function LevelDetail() {
           </div>
         </div>
         <div className="os-flex os-gap-2">
-          <Button renderIcon={ArrowLeft} kind="ghost" size="md" as={Link} to="/curriculum">
+          <Button renderIcon={ArrowLeft} kind="ghost" size="md" onClick={() => unsavedGuard.guard(() => navigate("/curriculum"))}>
             Back
           </Button>
           <Button renderIcon={Add} kind="primary" size="md" onClick={openCreateGroup}>
@@ -284,7 +288,7 @@ export default function LevelDetail() {
         onAdd={handleAddSubject}
       />
 
-      <ConfirmDeleteModal
+      <ConfirmActionModal
         open={!!toRemoveSubject}
         title="Remove subject from group"
         description={
@@ -294,9 +298,8 @@ export default function LevelDetail() {
             the catalogue.
           </>
         }
-        subject="Subject"
-        successVerb="removed"
-        mutation={removeSubject}
+        confirmLabel="Remove from group"
+        danger
         onClose={() => setToRemoveSubject(null)}
         onConfirm={handleRemoveSubject}
       />
@@ -314,6 +317,16 @@ export default function LevelDetail() {
         mutation={deleteGroup}
         onClose={() => setToDeleteGroup(null)}
         onConfirm={handleDeleteGroup}
+      />
+
+      <ConfirmActionModal
+        open={unsavedGuard.modalOpen}
+        title="Leave with unsaved subject changes?"
+        description="Your staged subject changes will be lost if you leave this page before saving them."
+        confirmLabel="Leave page"
+        danger
+        onClose={unsavedGuard.cancelLeave}
+        onConfirm={unsavedGuard.confirmLeave}
       />
     </div>
   );

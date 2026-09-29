@@ -62,6 +62,9 @@ export default function SchoolSetup() {
         break;
       case CLASSES_STEP:
         if (!skip && !s.yearLabel.trim()) return setError("An academic year label is required.");
+        if (!skip && (!Number.isFinite(s.classCapacity) || s.classCapacity < 1 || s.classCapacity > 200)) {
+          return setError("Class capacity must be a number between 1 and 200.");
+        }
         s.setClassesSkipped(skip);
         break;
       default:

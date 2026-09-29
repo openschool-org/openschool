@@ -52,8 +52,8 @@ export default function AddSubjectModal({
       onSubmit={onAdd}
       isPending={addSubject.isPending}
       submitDisabled={!subjectForm.subject_id}
-      submitLabel="Save subject"
-      pendingLabel="Saving subject…"
+      submitLabel="Add to group"
+      pendingLabel="Adding…"
       isError={addSubject.isError}
       error={addSubject.error}
       errorFallback="Failed to add subject"
