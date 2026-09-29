@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useUpdateStudent, useDeleteStudent } from "@/features/students/queries/useStudents";
 import type { StudentWithClass } from "@/features/students/api/student";
@@ -24,12 +24,14 @@ export function useStudentProfileEditor(id: string, student: StudentWithClass | 
   const deleteStudent = useDeleteStudent();
   const [editing, setEditing] = useState(startEditing);
   const [form, setForm] = useState<StudentProfileForm>(EMPTY);
-  const [loadedFor, setLoadedFor] = useState<string | null>(null);
+  const loadedFor = useRef<string | null>(null);
 
-  if (student && loadedFor !== student.id) {
-    setForm(studentToForm(student));
-    setLoadedFor(student.id);
-  }
+  useEffect(() => {
+    if (student && loadedFor.current !== student.id) {
+      setForm(studentToForm(student));
+      loadedFor.current = student.id;
+    }
+  }, [student]);
 
   const trimOrUndefined = (v: string) => v.trim() || undefined;
   const hasUnsaved = editing && !!student && JSON.stringify(form) !== JSON.stringify(studentToForm(student));

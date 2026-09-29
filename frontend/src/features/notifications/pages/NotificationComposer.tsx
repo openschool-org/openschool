@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, TextInput, TextArea, Dropdown, Tag, InlineNotification } from "@carbon/react";
+import { Button, TextInput, TextArea, Dropdown, Tag, InlineNotification, ComposedModal, ModalBody, ModalHeader } from "@carbon/react";
 import { Send, Save } from "@carbon/icons-react";
 import {
   useDraftNotifications,
@@ -20,6 +20,7 @@ import NotificationHistory from "@/features/notifications/components/Notificatio
 import DraftRow from "@/features/notifications/components/DraftRow";
 
 export default function NotificationComposer() {
+  const [composeOpen, setComposeOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [category, setCategory] = useState<NotificationCategory>("general");
@@ -55,7 +56,7 @@ export default function NotificationComposer() {
         save_as_draft: saveAsDraft,
         recipient_rules: rules,
       },
-      { onSuccess: () => resetForm() },
+      { onSuccess: () => { resetForm(); setComposeOpen(false); } },
     );
   };
 
@@ -73,6 +74,9 @@ export default function NotificationComposer() {
             )}
           </p>
         </div>
+        <Button renderIcon={Send} kind="primary" onClick={() => setComposeOpen(true)}>
+          Notify
+        </Button>
       </div>
 
       {create.isError && (
@@ -94,8 +98,9 @@ export default function NotificationComposer() {
         />
       )}
 
-      <div className="os-grid os-grid-cols-2-1 os-gap-6 os-items-grid-start">
-        {/* Compose */}
+      <ComposedModal open={composeOpen} size="lg" onClose={() => setComposeOpen(false)} aria-label="Compose notification">
+        <ModalHeader title="Compose notification" />
+        <ModalBody>
         <div className="os-section">
           <div className="os-section__header">
             <h2 className="os-section__title">Compose</h2>
@@ -158,22 +163,17 @@ export default function NotificationComposer() {
             </div>
           </div>
         </div>
+        </ModalBody>
+      </ComposedModal>
 
-        {/* Sidebar */}
-        <div>
-          {drafts && drafts.length > 0 && (
-            <div className="os-section">
-              <div className="os-section__header">
-                <h2 className="os-section__title">Drafts</h2>
-              </div>
-              {drafts.map((d) => (
-                <DraftRow key={d.id} draft={d} />
-              ))}
-            </div>
-          )}
-
+      {drafts && drafts.length > 0 && (
+        <div className="os-section os-mb-6">
+          <div className="os-section__header">
+            <h2 className="os-section__title">Drafts</h2>
+          </div>
+          {drafts.map((d) => <DraftRow key={d.id} draft={d} />)}
         </div>
-      </div>
+      )}
 
       <div className="os-mt-6">
         <NotificationHistory />

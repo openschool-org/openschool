@@ -122,7 +122,7 @@ $colors: ("primary": var(--os-text-primary), "secondary": var(--os-text-secondar
   .os-fill-#{$k} { fill: $v; }
 }
 .os-fill-none { fill: none; }
-$bgs: ("layer": var(--os-layer), "layer-hover": var(--os-layer-hover), "accent": var(--os-accent), "accent-light": var(--os-accent-light),
+$bgs: ("layer": var(--os-layer), "layer-hover": var(--os-layer-hover), "accent": var(--os-accent), "accent-dark": var(--os-accent-dark), "accent-light": var(--os-accent-light),
        "border-subtle": var(--os-border-subtle), "border-strong": var(--os-border-strong), "danger": var(--os-danger),
        "success": var(--os-success), "warning": var(--os-warning), "transparent": transparent);
 @each $k, $v in $bgs { .os-bg-#{$k} { background: $v; } }

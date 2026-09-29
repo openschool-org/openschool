@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useNavigate, useLocation } from "react-router";
 import { Button } from "@carbon/react";
 import { ArrowLeft, TrashCan, Edit, Save } from "@carbon/icons-react";
@@ -64,12 +64,14 @@ export default function TeacherDetail() {
     title: "" as TeacherTitle | "",
     gender: "" as "" | "male" | "female",
   });
+  const loadedFor = useRef<string | null>(null);
 
-  const [loadedFor, setLoadedFor] = useState<string | null>(null);
-  if (teacher && loadedFor !== teacher.id) {
-    setForm(teacherToForm(teacher));
-    setLoadedFor(teacher.id);
-  }
+  useEffect(() => {
+    if (teacher && loadedFor.current !== teacher.id) {
+      setForm(teacherToForm(teacher));
+      loadedFor.current = teacher.id;
+    }
+  }, [teacher]);
 
   const handleDelete = () => {
     deleteTeacher.mutate(id);

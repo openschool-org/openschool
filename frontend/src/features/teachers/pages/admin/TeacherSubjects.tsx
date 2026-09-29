@@ -1,25 +1,25 @@
 import { useState } from "react";
-import { Search, Tag, SkeletonText, Pagination } from "@carbon/react";
+import { Tag, SkeletonText, Pagination, Button, IconButton } from "@carbon/react";
+import { Add, Close } from "@carbon/icons-react";
 import { useTeachers, useTeacherSubjects, useAssignTeacherSubject, useRemoveTeacherSubject } from "@/features/teachers/queries/useTeachers";
 import { useSubjects } from "@/features/curriculum/queries/useSubjects";
 import { useDebounced } from "@/shared/hooks/useDebounced";
-import EntityCombobox from "@/shared/ui/EntityCombobox";
 import type { Teacher, TeacherSubject } from "@/features/teachers/api/teacher";
 import type { Subject } from "@/features/curriculum/api/subject";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
+import AssignTeacherSubjectModal from "@/features/teachers/components/AssignTeacherSubjectModal";
+import FilterBar from "@/shared/ui/FilterBar";
+import SectionCard from "@/shared/ui/SectionCard";
+import Avatar from "@/shared/ui/Avatar";
 
 function TeacherSubjectRow({ teacher, allSubjects }: { teacher: Teacher; allSubjects: Subject[] }) {
   const { data: assignedSubjects, isLoading, isError } = useTeacherSubjects(teacher.id);
   const assignMutation = useAssignTeacherSubject(teacher.id);
   const removeMutation = useRemoveTeacherSubject(teacher.id);
   const [subjectToRemove, setSubjectToRemove] = useState<TeacherSubject | null>(null);
-
-  const handleAssign = (subjectId: string) => {
-    if (!subjectId) return;
-    assignMutation.mutate(subjectId);
-  };
+  const [assignOpen, setAssignOpen] = useState(false);
 
   const confirmRemove = () => {
     if (!subjectToRemove) return;
@@ -31,7 +31,12 @@ function TeacherSubjectRow({ teacher, allSubjects }: { teacher: Teacher; allSubj
 
   return (
     <tr>
-      <td className="os-fw-500">{teacher.full_name}</td>
+      <td>
+        <div className="os-flex os-items-center os-gap-2">
+          <Avatar name={teacher.full_name} size="sm" />
+          <span className="os-fw-500">{teacher.full_name}</span>
+        </div>
+      </td>
       <td className="os-table__mono">{teacher.employee_number}</td>
       <td>
         {isLoading ? (
@@ -41,33 +46,30 @@ function TeacherSubjectRow({ teacher, allSubjects }: { teacher: Teacher; allSubj
         ) : !assignedSubjects || assignedSubjects.length === 0 ? (
           <span className="os-text-md os-c-tertiary">No subjects assigned</span>
         ) : (
-          <div className="os-flex os-wrap os-gap-1">
+          <div className="os-flex os-items-center os-wrap os-gap-2">
             {assignedSubjects.map((s) => (
-              <Tag
-                key={s.id}
-                type="blue"
-                size="sm"
-                title="Click to remove"
-                onClick={() => setSubjectToRemove(s)} className="os-pointer"
-              >
-                {s.name} &times;
-              </Tag>
+              <div key={s.id} className="os-flex os-items-center os-gap-1">
+                <Tag type="blue" size="sm">{s.name}</Tag>
+                <IconButton
+                  label={`Remove ${s.name}`}
+                  kind="ghost"
+                  size="sm"
+                  onClick={() => setSubjectToRemove(s)}
+                >
+                  <Close size={14} />
+                </IconButton>
+              </div>
             ))}
           </div>
         )}
       </td>
-      <td className="os-min-w-12">
-        <EntityCombobox
-          id={`assign-subject-${teacher.id}`}
-          items={assignableSubjects}
-          selectedId=""
-          onSelect={handleAssign}
-          getId={(s) => s.id}
-          itemToString={(s) => `${s.name} (${s.code})`}
-          labelText=""
-          ariaLabel={`Assign subject to ${teacher.full_name}`}
-          placeholder="Assign subject…"
-        />
+      <td>
+        <Button kind="ghost" size="sm" renderIcon={Add} onClick={() => setAssignOpen(true)} disabled={assignableSubjects.length === 0}>
+          Assign subject
+        </Button>
+        {assignableSubjects.length === 0 && !isLoading && !isError && (
+          <p className="os-m-0 os-mt-1 os-text-xs os-c-tertiary">All subjects assigned</p>
+        )}
         {assignMutation.isError && (
           <div className="os-c-danger os-text-xs os-mt-1">
             Failed to assign
@@ -95,6 +97,13 @@ function TeacherSubjectRow({ teacher, allSubjects }: { teacher: Teacher; allSubj
         onClose={() => setSubjectToRemove(null)}
         onConfirm={confirmRemove}
       />
+      <AssignTeacherSubjectModal
+        open={assignOpen}
+        teacher={teacher}
+        subjects={assignableSubjects}
+        mutation={assignMutation}
+        onClose={() => setAssignOpen(false)}
+      />
     </tr>
   );
 }
@@ -114,6 +123,12 @@ export default function TeacherSubjects() {
     search: debouncedSearch,
   });
   const teachers = teacherPage?.items ?? [];
+  const normalizedSearch = searchQuery.trim().toLocaleLowerCase();
+  const visibleTeachers = normalizedSearch
+    ? teachers.filter((teacher) =>
+      `${teacher.full_name} ${teacher.employee_number}`.toLocaleLowerCase().includes(normalizedSearch),
+    )
+    : teachers;
   const totalItems = teacherPage?.total ?? 0;
   const { data: subjects, isLoading: loadingSubjects, isError: subjectsError, refetch: refetchSubjects } = useSubjects();
 
@@ -138,24 +153,30 @@ export default function TeacherSubjects() {
         </div>
       </div>
 
-      <div className="os-mb-5 os-max-w-24">
-        <Search
-          id="teacher-search"
-          placeholder="Search teachers by name or employee number…"
-          labelText="Search"
-          value={searchQuery}
-          onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-        />
-      </div>
+      <FilterBar
+        search={{
+          value: searchQuery,
+          onChange: (value) => { setSearchQuery(value); setPage(1); },
+          placeholder: "Search teachers by name or employee number…",
+        }}
+      />
 
-      <div className="os-section">
+      <SectionCard
+        title="Teacher qualifications"
+        meta={!loadingTeachers && (
+          <span className="os-section__meta">
+            {normalizedSearch ? `${visibleTeachers.length} matching` : `${totalItems} teachers`}
+          </span>
+        )}
+        flush
+      >
         <table className="os-table">
           <thead>
             <tr>
               <th>Teacher</th>
               <th>Employee #</th>
-              <th>Assigned subjects (click to remove)</th>
-              <th>Assign subject</th>
+              <th>Assigned subjects</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -165,14 +186,14 @@ export default function TeacherSubjects() {
                   <SkeletonText width="8rem" />
                 </td>
               </tr>
-            ) : teachers.length === 0 ? (
+            ) : visibleTeachers.length === 0 ? (
               <tr>
                 <td colSpan={4} className="os-text-center os-c-tertiary os-p-8">
                   No teachers found matching your search.
                 </td>
               </tr>
             ) : (
-              teachers.map((t) => (
+              visibleTeachers.map((t) => (
                 <TeacherSubjectRow key={t.id} teacher={t} allSubjects={subjects ?? []} />
               ))
             )}
@@ -189,7 +210,7 @@ export default function TeacherSubjects() {
             size="sm"
           />
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 }

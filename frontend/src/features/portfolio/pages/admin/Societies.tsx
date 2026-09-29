@@ -119,9 +119,9 @@ export default function Societies() {
           <strong>{societies?.length ?? 0}</strong>
           <span>societies</span>
         </div>
-        <Tag type={isArchive ? "cool-gray" : "teal"} size="md">
-          {!isArchive && <Checkmark size={14} className="os-mr-1" />}
-          {isArchive ? "Archive" : "Current year"}
+        <Tag type={isArchive || !currentYear ? "cool-gray" : "teal"} size="md">
+          {!isArchive && currentYear && <Checkmark size={14} className="os-mr-1" />}
+          {isArchive ? "Archive" : currentYear ? "Current year" : "No current year set"}
         </Tag>
       </div>
 

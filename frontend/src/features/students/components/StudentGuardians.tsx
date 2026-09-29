@@ -13,12 +13,15 @@ import AddGuardianModal from "@/features/students/components/AddGuardianModal";
 import ProvisionLoginModal from "@/features/students/components/ProvisionLoginModal";
 import GuardianRow from "@/features/students/components/GuardianRow";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import SectionCard from "@/shared/ui/SectionCard";
+import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
+import ErrorMessage from "@/shared/ui/ErrorMessage";
 
 // A student can have at most 2 guardians on file.
 const MAX_GUARDIANS = 2;
 
 export default function StudentGuardians({ studentId }: { studentId: string }) {
-  const { data: guardians, isLoading } = useGuardiansByStudent(studentId);
+  const { data: guardians, isLoading, isError, refetch } = useGuardiansByStudent(studentId);
   const unlinkGuardian = useUnlinkGuardian(studentId);
   const setPrimary = useSetPrimaryGuardian(studentId);
 
@@ -29,20 +32,20 @@ export default function StudentGuardians({ studentId }: { studentId: string }) {
   const atMax = (guardians?.length ?? 0) >= MAX_GUARDIANS;
 
   return (
-    <div className="os-section">
-      <div className="os-section__header">
-        <h2 className="os-section__title">Guardians</h2>
+    <SectionCard
+      title="Guardians"
+      meta={
         <Button
           renderIcon={Add}
           kind="ghost"
           size="sm"
           onClick={() => setAddOpen(true)}
-          disabled={atMax}
+          disabled={isLoading || isError || atMax}
         >
           Add guardian
         </Button>
-      </div>
-      <div className="os-section__body">
+      }
+    >
         <MutationErrorNotification
           isError={setPrimary.isError}
           error={setPrimary.error}
@@ -63,14 +66,18 @@ export default function StudentGuardians({ studentId }: { studentId: string }) {
           </p>
         )}
 
-        {!isLoading && guardians?.length === 0 && (
+        {isLoading && <ListRowSkeleton leadingWidth="2.25rem" titleWidth="45%" subtitleWidth="30%" trailingWidth="5rem" />}
+
+        {isError && <ErrorMessage message="Could not load guardians." onRetry={refetch} />}
+
+        {!isLoading && !isError && guardians?.length === 0 && (
           <EmptyState
             title="No guardians yet"
             description="Every student needs at least one guardian on file."
           />
         )}
 
-        {!isLoading && guardians && guardians.length > 0 && (
+        {!isLoading && !isError && guardians && guardians.length > 0 && (
           <div className="os-grid os-gap-3">
             {guardians.map((g) => (
               <GuardianRow
@@ -84,8 +91,6 @@ export default function StudentGuardians({ studentId }: { studentId: string }) {
             ))}
           </div>
         )}
-      </div>
-
       {addOpen && (
         <AddGuardianModal
           studentId={studentId}
@@ -118,6 +123,6 @@ export default function StudentGuardians({ studentId }: { studentId: string }) {
           if (toUnlink) unlinkGuardian.mutate(toUnlink.id);
         }}
       />
-    </div>
+    </SectionCard>
   );
 }

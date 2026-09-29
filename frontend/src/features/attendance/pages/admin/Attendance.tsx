@@ -6,7 +6,7 @@ import { useDailySessions, useDeleteSession, useCreateSession } from "@/features
 import { useCurrentClasses } from "@/features/academics/queries/useClasses";
 import { useRole } from "@/shared/auth/useRole";
 import type { DailySession } from "@/features/attendance/api/attendance";
-import { todayISODate, isLockedAfter24Hours, formatLongDate } from "@/shared/lib/date";
+import { todayISODate, isLockedAfter24Hours, formatDate } from "@/shared/lib/date";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 import StatCardSkeleton from "@/shared/ui/StatCardSkeleton";
@@ -104,7 +104,7 @@ export default function Attendance() {
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">Attendance</h1>
-          <p className="os-page__subtitle">{formatLongDate(date)}</p>
+          <p className="os-page__subtitle">{formatDate(date)}</p>
         </div>
         <div className="os-min-w-12">
           <DateField value={date} onChange={(ymd) => {

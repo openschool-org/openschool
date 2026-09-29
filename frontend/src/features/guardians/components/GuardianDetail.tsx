@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Locked, UserMultiple, Edit, TrashCan, Phone, Email, Notification } from "@carbon/icons-react";
 import { Tag, SkeletonText, Button, Pagination } from "@carbon/react";
@@ -20,6 +20,14 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [notificationPage, setNotificationPage] = useState(1);
+
+  useEffect(() => {
+    const lastPage = Math.max(1, Math.ceil((notifications?.length ?? 0) / NOTIFICATIONS_PAGE_SIZE));
+    const timer = window.setTimeout(() => {
+      setNotificationPage((page) => Math.min(page, lastPage));
+    });
+    return () => window.clearTimeout(timer);
+  }, [notifications?.length]);
 
   const hasStudents = (students?.length ?? 0) > 0;
   // Blocks delete while the linked-students query is still loading, so a fast double-click can't slip past the "still linked" check.

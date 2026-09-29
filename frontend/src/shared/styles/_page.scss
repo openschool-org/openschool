@@ -238,7 +238,7 @@
   .os-skeleton-chart__bar { width: 10%; min-height: 2rem; border-radius: 0.125rem 0.125rem 0 0; }
   .os-skeleton-chart__legend { display: flex; justify-content: space-between; padding-top: 0.75rem; }
 
-  .os-skeleton-table { padding-top: 1rem; }
+  .os-skeleton-table { padding-top: 1rem; overflow-x: auto; }
   .os-skeleton-table__header, .os-skeleton-table__row { display: grid; grid-template-columns: 1.5fr 1fr 1fr 2rem; align-items: center; gap: 1rem; min-height: 2.75rem; border-bottom: 1px solid var(--os-border-subtle); }
   .os-skeleton-table__header { min-height: 2rem; }
   .os-skeleton-table__status { width: 1.75rem; height: 1.25rem; }

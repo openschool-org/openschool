@@ -34,6 +34,7 @@ export default function StudentDetail() {
   const unsavedGuard = useUnsavedChangesGuard(editor.hasUnsaved);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
+  const [activeTab, setActiveTab] = useState(0);
 
   if (isLoading) return <LoadingSpinner />;
   if (isError || !student) {
@@ -52,25 +53,27 @@ export default function StudentDetail() {
         name={student.full_name}
         meta={student.index_number + (student.class_name ? ` · ${student.class_name}` : "")}
         actions={
-          editor.editing ? (
+          activeTab === 0 && editor.editing ? (
             <>
               <Button kind="secondary" size="sm" onClick={() => unsavedGuard.guard(editor.cancel)} disabled={pending}>Cancel</Button>
               <Button renderIcon={Save} kind="primary" size="sm" onClick={() => setConfirmSave(true)} disabled={!editor.isValid || pending}>
                 {pending ? "Saving…" : "Save changes"}
               </Button>
             </>
-          ) : (
+          ) : activeTab === 0 ? (
             <>
               <Button renderIcon={Edit} kind="ghost" size="sm" onClick={editor.startEdit}>Edit</Button>
               <Button renderIcon={TrashCan} kind="danger--ghost" size="sm" onClick={() => setConfirmDelete(true)}>Delete</Button>
               <Button renderIcon={ArrowLeft} kind="secondary" size="sm" as={Link} to="/students">Back</Button>
             </>
+          ) : (
+            <Button renderIcon={ArrowLeft} kind="secondary" size="sm" as={Link} to="/students">Back</Button>
           )
         }
       />
 
       <div className="os-py-6 os-px-8">
-        <Tabs>
+        <Tabs selectedIndex={activeTab} onChange={({ selectedIndex }) => setActiveTab(selectedIndex)}>
           <TabList aria-label="Student sections">
             <Tab>Profile</Tab>
             <Tab>Guardians</Tab>

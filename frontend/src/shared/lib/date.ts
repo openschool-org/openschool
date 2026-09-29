@@ -64,12 +64,16 @@ function toDate(input: DateInput): Date | null {
 
 export function formatDate(input: DateInput): string {
   const d = toDate(input);
-  return d ? d.toLocaleDateString(locale) : "-";
+  return d ? toYmd(d) : "-";
+}
+
+export function formatISODate(input: DateInput): string {
+  return formatDate(input);
 }
 
 export function formatDateTime(input: DateInput): string {
   const d = toDate(input);
-  return d ? d.toLocaleString(locale) : "-";
+  return d ? `${toYmd(d)} ${d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}` : "-";
 }
 
 export function formatMonth(input: DateInput): string {

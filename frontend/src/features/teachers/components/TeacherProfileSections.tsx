@@ -5,8 +5,9 @@ import type { House } from "@/features/school/api/house";
 import { TITLES, EMPLOYMENT_STATUSES } from "@/features/teachers/constants";
 import TeacherSubjectsSection from "@/features/teachers/components/TeacherSubjectsSection";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
-import { formatDate } from "@/shared/lib/date";
+import { formatISODate } from "@/shared/lib/date";
 import InfoTip from "@/shared/ui/InfoTip";
+import SectionCard from "@/shared/ui/SectionCard";
 
 export type TeacherProfileForm = {
   given_name: string;
@@ -46,11 +47,7 @@ export default function TeacherProfileSections(p: Props) {
 
   return (
     <>
-      <div className="os-section">
-        <div className="os-section__header">
-          <h2 className="os-section__title">Profile</h2>
-        </div>
-        <div className="os-section__body">
+      <SectionCard title="Profile">
           <MutationErrorNotification isError={!!p.updateError} error={null} fallback={p.updateError ?? ""} />
           <div className="os-grid os-grid-cols-2 os-gap-5">
             <Select id="title" labelText="Title" value={form.title} disabled={!editing} onChange={(e) => p.onTitleChange(e.target.value as TeacherTitle | "")}>
@@ -67,19 +64,14 @@ export default function TeacherProfileSections(p: Props) {
             <TextInput id="email" labelText="Email" value={teacher.email ?? "-"} readOnly />
             <TextInput {...field("phone", "Phone", "phone_number")} />
             <TextInput {...field("nic-number", "NIC number", "nic_number")} />
-            <TextInput id="joined-date" labelText="Joined date" value={teacher.joined_date ?? "-"} readOnly />
-            <TextInput id="created-at" labelText="Created" value={formatDate(teacher.created_at)} readOnly />
+            <TextInput id="joined-date" labelText="Joined date" value={formatISODate(teacher.joined_date)} readOnly />
+            <TextInput id="created-at" labelText="Created" value={formatISODate(teacher.created_at)} readOnly />
           </div>
-        </div>
-      </div>
+      </SectionCard>
 
       <TeacherSubjectsSection subjects={p.subjects} editing={editing} assignSubject={p.assignSubject} removeSubject={p.removeSubject} />
 
-      <div className="os-section">
-        <div className="os-section__header">
-          <h2 className="os-section__title">House</h2>
-        </div>
-        <div className="os-section__body">
+      <SectionCard title="House">
           {currentHouse && (
             <div className="os-flex os-items-center os-gap-2 os-mb-3">
               <span className="os-dot os-w-3q os-h-3q" style={{ backgroundColor: currentHouse.color }} />
@@ -97,14 +89,9 @@ export default function TeacherProfileSections(p: Props) {
             <SelectItem value="" text="No house" />
             {p.houses?.map((h) => <SelectItem key={h.id} value={h.id} text={h.name} />)}
           </Select>
-        </div>
-      </div>
+      </SectionCard>
 
-      <div className="os-section">
-        <div className="os-section__header">
-          <h2 className="os-section__title">Employment status</h2>
-        </div>
-        <div className="os-section__body">
+      <SectionCard title="Employment status">
           <Select
             id="teacher-employment-status"
             labelText="Status"
@@ -115,8 +102,7 @@ export default function TeacherProfileSections(p: Props) {
           >
             {EMPLOYMENT_STATUSES.map((s) => <SelectItem key={s.value} value={s.value} text={s.label} />)}
           </Select>
-        </div>
-      </div>
+      </SectionCard>
     </>
   );
 }

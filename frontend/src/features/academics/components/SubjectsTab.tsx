@@ -7,7 +7,7 @@ import { usePublishedTimetableForClass } from "@/features/timetable/queries/useT
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import DataGrid from "@/shared/ui/DataGrid";
 import EmptyState from "@/shared/ui/EmptyState";
-import SectionHeader from "@/shared/ui/SectionHeader";
+import SectionCard from "@/shared/ui/SectionCard";
 import AssignClassSubjectTeacherModal from "@/features/academics/components/AssignClassSubjectTeacherModal";
 
 export default function SubjectsTab({ classId, academicYearId }: { classId: string; academicYearId: string }) {
@@ -26,17 +26,16 @@ export default function SubjectsTab({ classId, academicYearId }: { classId: stri
 
   return (
     <div className="os-mt-4">
-      <div className="os-section">
-        <SectionHeader
-          title="Subjects & teachers"
-          meta={
-            <Button renderIcon={UserFollow} size="sm" onClick={() => setModalOpen(true)}>
-              Assign subject teacher
-            </Button>
-          }
-        />
-
-        <div className="os-section__body os-p-0">
+      <SectionCard
+        flush
+        title="Subjects & teachers"
+        meta={
+          <Button renderIcon={UserFollow} size="sm" onClick={() => setModalOpen(true)}>
+            Assign subject teacher
+          </Button>
+        }
+      >
+        <div>
           {!assignments || assignments.length === 0 ? (
             <div className="os-p-8">
               <EmptyState
@@ -58,7 +57,7 @@ export default function SubjectsTab({ classId, academicYearId }: { classId: stri
             />
           )}
         </div>
-      </div>
+      </SectionCard>
 
       <AssignClassSubjectTeacherModal
         open={modalOpen}

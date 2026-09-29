@@ -18,6 +18,7 @@ import { useGrades } from "@/features/academics/queries/useGrades";
 import { useHouses } from "@/features/school/queries/useHouses";
 import { useCurrentClasses } from "@/features/academics/queries/useClasses";
 import type { Student } from "@/features/students/api/student";
+import Avatar from "@/shared/ui/Avatar";
 
 const FILTER_LABELS: Record<string, string> = {
   query: "Search",
@@ -78,7 +79,12 @@ export default function Students() {
     {
       key: "full_name",
       header: "Full name",
-      render: (s) => <Link to={`/students/${s.id}`} className="os-table__link">{s.full_name}</Link>,
+      render: (s) => (
+        <div className="os-flex os-items-center os-gap-2">
+          <Avatar name={s.full_name} size="sm" />
+          <Link to={`/students/${s.id}`} className="os-table__link">{s.full_name}</Link>
+        </div>
+      ),
     },
     { key: "class_name", header: "Class", render: (s) => <span className="os-table__muted">{s.class_name ?? "-"}</span> },
     { key: "house_name", header: "House", render: (s) => <span className="os-table__muted">{s.house_name ?? "-"}</span> },

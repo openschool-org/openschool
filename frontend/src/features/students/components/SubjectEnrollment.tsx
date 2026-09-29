@@ -2,6 +2,7 @@ import { Button, Select, SelectItem, Checkbox, Tag, InlineNotification, InlineLo
 import { Save } from "@carbon/icons-react";
 import { useEnrollmentPicker, isCompulsory } from "@/features/students/hooks/useEnrollmentPicker";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import SectionCard from "@/shared/ui/SectionCard";
 
 const pickRule = (min: number, max: number) => (min === max ? `Pick exactly ${min}` : `Pick ${min}–${max}`);
 
@@ -10,11 +11,7 @@ export default function SubjectEnrollment({ studentId }: { studentId: string }) 
   const validationErrors = p.submit.data && !p.submit.data.valid ? (p.submit.data.errors ?? []) : [];
 
   return (
-    <div className="os-section">
-      <div className="os-section__header">
-        <h2 className="os-section__title">Subject enrolment</h2>
-      </div>
-      <div className="os-section__body">
+    <SectionCard title="Subject enrolment">
         {!p.academicYearId ? (
           <InlineNotification kind="info" title="No current academic year" subtitle="Set a current academic year before assigning subjects." lowContrast hideCloseButton className="os-max-w-full" />
         ) : (
@@ -70,7 +67,6 @@ export default function SubjectEnrollment({ studentId }: { studentId: string }) 
             )}
           </>
         )}
-      </div>
-    </div>
+    </SectionCard>
   );
 }

@@ -1,10 +1,11 @@
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Routes, Route } from "react-router";
 import { useRole } from "@/shared/auth/useRole";
 import { useProvisionUser } from "@/shared/auth/useProvisionUser";
 import ProtectedRoute from "@/shared/auth/ProtectedRoute";
 import ApiAuthBridge from "@/shared/auth/ApiAuthBridge";
 import { DelayedSkeletonShell } from "@/shared/ui/SkeletonShell";
+import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import { lazy as page } from "react";
 import { publicRoutes } from "@/app/routes/public.routes";
 import { adminRoutes } from "@/app/routes/admin.routes";
@@ -14,6 +15,17 @@ import { parentRoutes } from "@/app/routes/parent.routes";
 
 const PasswordInterstitial = page(() => import("@/features/auth/pages/PasswordInterstitial"));
 const AccessRestricted = page(() => import("@/app/pages/AccessRestricted"));
+
+function DelayedLoadingFallback() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setVisible(true), 180);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return visible ? <LoadingSpinner /> : null;
+}
 
 // One route tree per role; the role comes from the JWT, not the URL.
 function roleRoutes(role: string | null) {
@@ -37,12 +49,12 @@ export default function App() {
 
   /*
    * Public routes such as /signin are lazy-loaded too. Keep the root
-   * boundary visually empty while those routes load so an auth page never
-   * flashes the authenticated application shell. Protected-route loading
+   * boundary independent from the authenticated application shell while
+   * delaying its neutral loading indicator to avoid brief-load flashes. Protected-route loading
    * and in-portal page loading have their own intentional fallbacks below.
    */
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<DelayedLoadingFallback />}>
       <ApiAuthBridge />
       <Routes>
         {publicRoutes()}

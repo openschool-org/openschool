@@ -16,10 +16,14 @@ import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import RemoveIconButton from "@/shared/ui/RemoveIconButton";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import DateField from "@/shared/ui/DateField";
+import SectionCard from "@/shared/ui/SectionCard";
+import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
+import ErrorMessage from "@/shared/ui/ErrorMessage";
+import { formatISODate } from "@/shared/lib/date";
 
 export default function StudentDisciplinary({ studentId }: { studentId: string }) {
   const { data: currentYear } = useCurrentAcademicYear();
-  const { data: records, isLoading } = useDisciplinaryRecords(studentId);
+  const { data: records, isLoading, isError, refetch } = useDisciplinaryRecords(studentId);
   const createRecord = useCreateDisciplinaryRecord(studentId);
   const deleteRecord = useDeleteDisciplinaryRecord(studentId);
 
@@ -44,11 +48,7 @@ export default function StudentDisciplinary({ studentId }: { studentId: string }
   };
 
   return (
-    <div className="os-section os-mt-4">
-      <div className="os-section__header">
-        <h2 className="os-section__title">Disciplinary records</h2>
-      </div>
-      <div className="os-section__body">
+    <SectionCard title="Disciplinary records" className="os-mt-4">
         <MutationErrorNotification
           isError={createRecord.isError}
           error={createRecord.error}
@@ -70,14 +70,16 @@ export default function StudentDisciplinary({ studentId }: { studentId: string }
           <Button renderIcon={Add} kind="primary" size="md" onClick={handleAdd} disabled={!description.trim() || !severity || createRecord.isPending}>Add</Button>
         </div>
 
-        {!isLoading && (records?.length ?? 0) === 0 && <EmptyState title="No disciplinary records" description="Nothing on file for this student." />}
+        {isLoading && <ListRowSkeleton leadingWidth={null} titleWidth="35%" subtitleWidth="70%" trailingWidth="2rem" />}
+        {isError && <ErrorMessage message="Could not load disciplinary records." onRetry={refetch} />}
+        {!isLoading && !isError && (records?.length ?? 0) === 0 && <EmptyState title="No disciplinary records" description="Nothing on file for this student." />}
 
-        {records?.map((r) => (
+        {!isLoading && !isError && records?.map((r) => (
           <div key={r.id} className="os-list-row os-justify-between os-items-start">
             <div>
               <div className="os-flex os-items-center os-gap-2 os-mb-1">
                 <Tag size="sm" type={SEVERITY_TAG[r.severity]}>{r.severity}</Tag>
-                <span className="os-text-xs os-c-tertiary">{r.incident_date}</span>
+                <span className="os-text-xs os-c-tertiary">{formatISODate(r.incident_date)}</span>
               </div>
               <p className="os-m-0 os-text-md">{r.description}</p>
               {r.action_taken && <p className="os-mt-1 os-mx-0 os-mb-0 os-text-sm os-c-secondary">Action: {r.action_taken}</p>}
@@ -85,8 +87,6 @@ export default function StudentDisciplinary({ studentId }: { studentId: string }
             <RemoveIconButton label="Delete" onClick={() => setPendingDeleteId(r.id)} />
           </div>
         ))}
-      </div>
-
       <ConfirmDeleteModal
         open={pendingDeleteId !== null}
         title="Delete disciplinary record"
@@ -98,6 +98,6 @@ export default function StudentDisciplinary({ studentId }: { studentId: string }
           if (pendingDeleteId) deleteRecord.mutate(pendingDeleteId);
         }}
       />
-    </div>
+    </SectionCard>
   );
 }

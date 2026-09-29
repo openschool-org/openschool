@@ -15,6 +15,7 @@ import AgentFindingsBanner from "@/features/notifications/components/AgentFindin
 import YearsList from "@/features/school/components/academic-years/YearsList";
 import CreateYearModal, { type YearForm, type YearFormTouched } from "@/features/school/components/academic-years/CreateYearModal";
 import TermsModal from "@/features/school/components/academic-years/TermsModal";
+import { isNotFoundError } from "@/shared/api/errors";
 
 const EMPTY_FORM: YearForm = {
   label: "",
@@ -25,7 +26,12 @@ const EMPTY_FORM: YearForm = {
 
 export default function AcademicYears() {
   const { data: years, isLoading, isError, refetch } = useAcademicYears();
-  const { data: currentTerm } = useCurrentTerm();
+  const {
+    data: currentTerm,
+    isLoading: currentTermLoading,
+    isError: currentTermError,
+    error: currentTermQueryError,
+  } = useCurrentTerm();
   const createYear = useCreateAcademicYear();
   const setCurrent = useSetCurrentAcademicYear();
   const deleteYear = useDeleteAcademicYear();
@@ -44,6 +50,22 @@ export default function AcademicYears() {
   };
 
   const dateRangeInvalid = isDateRangeInvalid(form.start_date, form.end_date);
+  const currentYear = years?.find((year) => year.is_current);
+  const currentYearTitle = isLoading
+    ? "Loading academic year…"
+    : isError
+      ? "Academic year unavailable"
+      : currentYear?.label ?? "No current year set";
+  const currentTermIsMissing = currentTermError && isNotFoundError(currentTermQueryError);
+  const currentTermStatus = currentTerm
+    ? `${currentTerm.name} is currently active`
+    : currentTermLoading
+      ? "Loading current term…"
+      : currentTermIsMissing
+        ? "No current term set."
+        : currentTermError
+          ? "Could not load the current term."
+          : "Set a current term to enable term-based school workflows.";
 
   const isValid =
     form.label.trim().length > 0 && !!form.start_date && !!form.end_date && !dateRangeInvalid;
@@ -85,13 +107,17 @@ export default function AcademicYears() {
         <div className="os-current-period__icon"><Calendar size={22} /></div>
         <div className="os-flex-1 os-min-w-0">
           <p className="os-m-0 os-eyebrow">Active academic period</p>
-          <h2 className="os-current-period__title">{years?.find((year) => year.is_current)?.label ?? "No current year set"}</h2>
+          <h2 className="os-current-period__title">{currentYearTitle}</h2>
           <p className="os-m-0 os-text-sm os-c-secondary">
-            {currentTerm ? `${currentTerm.name} is currently active` : "Set a current term to enable term-based school workflows."}
+            {currentTermStatus}
           </p>
         </div>
         {currentTerm ? (
           <Tag type="teal" size="md"><Checkmark size={14} className="os-mr-1" />{currentTerm.name}</Tag>
+        ) : currentTermLoading ? (
+          <Tag type="cool-gray" size="md">Loading term…</Tag>
+        ) : currentTermError && !currentTermIsMissing ? (
+          <Tag type="red" size="md">Term unavailable</Tag>
         ) : (
           <Tag type="cool-gray" size="md"><Education size={14} className="os-mr-1" />No current term</Tag>
         )}

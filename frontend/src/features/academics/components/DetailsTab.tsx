@@ -3,7 +3,7 @@ import type { useClass } from "@/features/academics/queries/useClasses";
 import type { Teacher } from "@/features/teachers/api/teacher";
 import type { Student } from "@/features/students/api/student";
 import Avatar from "@/shared/ui/Avatar";
-import SectionHeader from "@/shared/ui/SectionHeader";
+import SectionCard from "@/shared/ui/SectionCard";
 
 interface Props {
   cls: NonNullable<ReturnType<typeof useClass>["data"]>;
@@ -32,8 +32,7 @@ export default function DetailsTab({
 }: Props) {
   return (
     <>
-      <div className="os-section os-mt-4">
-        <SectionHeader title="Class information" />
+      <SectionCard title="Class information" className="os-mt-4">
         <div className="os-kv-grid">
           {[
             ["Class name", cls.name],
@@ -52,11 +51,10 @@ export default function DetailsTab({
             </div>
           ))}
         </div>
-      </div>
+      </SectionCard>
 
-      <div className="os-section">
-        <SectionHeader title="Class teacher" />
-        <div className="os-section__body">
+      <SectionCard title="Class teacher">
+        <div>
           {formTeacher ? (
             <Link
               to={`/teachers/${formTeacher.id}`} className="os-flex os-items-center os-gap-3 os-no-underline"
@@ -76,7 +74,7 @@ export default function DetailsTab({
             </span>
           )}
         </div>
-      </div>
+      </SectionCard>
     </>
   );
 }

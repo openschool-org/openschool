@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import { UserFollow } from "@carbon/icons-react";
-import { Button } from "@carbon/react";
+import { Button, Tag } from "@carbon/react";
 import { useCurrentClasses, useStreams } from "@/features/academics/queries/useClasses";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useTeacher, useTeachers } from "@/features/teachers/queries/useTeachers";
@@ -11,6 +10,10 @@ import EmptyState from "@/shared/ui/EmptyState";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import SectionCard from "@/shared/ui/SectionCard";
+import Avatar from "@/shared/ui/Avatar";
+import ErrorMessage from "@/shared/ui/ErrorMessage";
+import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
 
 interface Row {
   key: string;
@@ -47,7 +50,7 @@ export default function SectionHeadsPanel() {
   const [teacherSearch, setTeacherSearch] = useState("");
   const { data: teacherPage } = useTeachers({ limit: 25, search: teacherSearch });
   const teachers = teacherPage?.items;
-  const { data: sectionHeads } = useSectionHeads(currentYear?.id ?? "");
+  const { data: sectionHeads, isLoading, isError, refetch } = useSectionHeads(currentYear?.id ?? "");
   const assign = useAssignSectionHead();
   const remove = useRemoveSectionHead();
   const rows = useSectionHeadRows();
@@ -56,14 +59,18 @@ export default function SectionHeadsPanel() {
   const headFor = (row: Row) => sectionHeads?.find((sh) => sh.grade_id === row.gradeId && sh.stream_id === row.streamId);
 
   return (
-    <div className="os-section">
-      <div className="os-section__header">
-        <h2 className="os-section__title">Section heads (teachers in charge)</h2>
-        {currentYear && <span className="os-text-xs os-c-tertiary">{currentYear.label}</span>}
-      </div>
+    <SectionCard
+      title="Section heads"
+      meta={currentYear ? <span className="os-section__meta">{currentYear.label}</span> : undefined}
+      flush
+    >
 
       {!currentYear ? (
         <EmptyState title="No current academic year" description="Set an academic year as current before assigning section heads." />
+      ) : isLoading ? (
+        <div className="os-py-2"><ListRowSkeleton trailingWidth="12rem" /></div>
+      ) : isError ? (
+        <div className="os-p-6"><ErrorMessage message="Could not load section heads." onRetry={refetch} /></div>
       ) : rows.length === 0 ? (
         <EmptyState title="No classes yet" description="Section heads are derived from the grades and streams your classes actually use." />
       ) : (
@@ -99,7 +106,7 @@ export default function SectionHeadsPanel() {
         onClose={() => setToRemove(null)}
         onConfirm={() => toRemove && currentYear && remove.mutate({ id: toRemove.id, academicYearId: currentYear.id })}
       />
-    </div>
+    </SectionCard>
   );
 }
 
@@ -127,10 +134,13 @@ function SectionHeadRow({ row, head, teachers, onSearch, onAssign, onRemoveClick
 
   return (
     <div className="os-list-row os-py-3 os-px-6">
-      <UserFollow size={16} className="os-fill-tertiary os-shrink-0" />
+      <Avatar name={`${row.gradeName} ${row.streamName ?? ""}`} size="sm" />
       <div className="os-flex-1 os-min-w-0">
         <p className="os-m-0 os-text-md os-fw-500 os-c-primary">{row.gradeName}{row.streamName ? ` - ${row.streamName}` : ""}</p>
-        {head && <p className="os-m-0 os-text-xs os-c-secondary">Current: {head.teacher_name}</p>}
+        <div className="os-flex os-items-center os-gap-2 os-mt-1">
+          <Tag type={head ? "green" : "gray"} size="sm">{head ? "Assigned" : "Vacant"}</Tag>
+          {head && <span className="os-text-xs os-c-secondary">{head.teacher_name}</span>}
+        </div>
       </div>
       <div className="os-w-16">
         <EntityCombobox

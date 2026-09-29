@@ -9,7 +9,7 @@ import DataGrid from "@/shared/ui/DataGrid";
 import { capitalize } from "@/shared/lib/text";
 import EmptyState from "@/shared/ui/EmptyState";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
-import SectionHeader from "@/shared/ui/SectionHeader";
+import SectionCard from "@/shared/ui/SectionCard";
 
 interface Props {
   cls: NonNullable<ReturnType<typeof useClass>["data"]>;
@@ -29,15 +29,16 @@ export default function StudentsTab({
   onRequestUnenroll,
 }: Props) {
   return (
-    <div className="os-section os-mt-4">
-      <SectionHeader
-        title="Enrolled students"
-        meta={
-          <Button renderIcon={Add} kind="ghost" size="sm" onClick={onOpenEnrol}>
-            Enrol
-          </Button>
-        }
-      />
+    <SectionCard
+      className="os-mt-4"
+      flush
+      title="Enrolled students"
+      meta={
+        <Button renderIcon={Add} kind="ghost" size="sm" onClick={onOpenEnrol}>
+          Enrol
+        </Button>
+      }
+    >
 
       <MutationErrorNotification
         isError={unenrollStudent.isError}
@@ -89,6 +90,6 @@ export default function StudentsTab({
         <UserMultiple size={14} className="os-fill-tertiary" />
         {students?.length ?? 0} enrolled
       </div>
-    </div>
+    </SectionCard>
   );
 }

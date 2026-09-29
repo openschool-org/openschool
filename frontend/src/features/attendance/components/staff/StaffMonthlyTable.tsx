@@ -5,6 +5,7 @@ import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
 import DataGrid from "@/shared/ui/DataGrid";
 import ListState from "@/shared/ui/ListState";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
+import Avatar from "@/shared/ui/Avatar";
 
 interface Props {
   year: number;
@@ -46,7 +47,7 @@ export default function StaffMonthlyTable({ year, month, kind, search }: Props) 
             },
           }}
           columns={[
-            { key: "name", header: "Name", render: (r) => <span className="os-fw-500">{r.full_name}</span> },
+            { key: "name", header: "Name", render: (r) => <span className="os-flex os-items-center os-gap-2"><Avatar name={r.full_name} size="sm" /><span className="os-fw-500">{r.full_name}</span></span> },
             { key: "present", header: "Present", align: "end", render: (r) => r.present_count },
             { key: "late", header: "Late", align: "end", render: (r) => r.late_count },
             { key: "absent", header: "Absent", align: "end", render: (r) => r.absent_count },

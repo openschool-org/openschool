@@ -3,16 +3,21 @@ import { Add } from "@carbon/icons-react";
 import { Button, SkeletonText, Tag, TextInput } from "@carbon/react";
 import { useStreamGroups, useCreateStreamGroup } from "@/features/academics/queries/useClasses";
 import type { Stream } from "@/features/academics/api/stream";
+import FormModal from "@/shared/ui/FormModal";
 
-// Sub-groups under one A/L stream, with an inline add box.
+// Sub-groups under one A/L stream. Creation stays in a focused modal so cards remain scannable.
 export default function StreamGroups({ stream }: { stream: Stream }) {
   const { data: groups, isLoading } = useStreamGroups(stream.id);
   const createGroup = useCreateStreamGroup();
+  const [createOpen, setCreateOpen] = useState(false);
   const [name, setName] = useState("");
 
   const add = () => {
     if (!name.trim()) return;
-    createGroup.mutate({ streamId: stream.id, data: { name: name.trim() } }, { onSuccess: () => setName("") });
+    createGroup.mutate(
+      { streamId: stream.id, data: { name: name.trim() } },
+      { onSuccess: () => { setName(""); setCreateOpen(false); } },
+    );
   };
 
   return (
@@ -26,10 +31,31 @@ export default function StreamGroups({ stream }: { stream: Stream }) {
           <span className="os-text-xs os-c-tertiary">No sub-groups</span>
         )}
       </div>
-      <div className="os-flex os-gap-2 os-items-end">
-        <TextInput id={`new-group-${stream.id}`} labelText="New group name" hideLabel placeholder="e.g. Physical Science" size="sm" value={name} onChange={(e) => setName(e.target.value)} className="os-max-w-14" />
-        <Button kind="ghost" size="sm" renderIcon={Add} disabled={!name.trim() || createGroup.isPending} onClick={add}>Add group</Button>
-      </div>
+      <Button kind="ghost" size="sm" renderIcon={Add} onClick={() => setCreateOpen(true)}>
+        Add subgroup
+      </Button>
+
+      <FormModal
+        open={createOpen}
+        title={`For ${stream.name}, add a subgroup`}
+        onClose={() => { setCreateOpen(false); setName(""); createGroup.reset(); }}
+        onSubmit={add}
+        isPending={createGroup.isPending}
+        submitDisabled={!name.trim()}
+        submitLabel="Add subgroup"
+        pendingLabel="Adding…"
+        isError={createGroup.isError}
+        error={createGroup.error}
+        errorFallback="Could not add this subgroup. Please try again."
+      >
+        <TextInput
+          id={`new-group-${stream.id}`}
+          labelText="Subgroup name"
+          placeholder="e.g. Physical Science"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </FormModal>
     </div>
   );
 }

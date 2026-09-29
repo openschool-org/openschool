@@ -419,7 +419,7 @@
   .os-current-period { align-items: flex-start; flex-wrap: wrap; padding: 1rem; }
   .os-current-period .cds--tag { margin-left: 3.75rem; }
   .os-term-card { align-items: flex-start; flex-wrap: wrap; }
-  .os-term-card__actions { width: 100%; margin-left: 2.75rem; }
+  .os-term-card__actions { width: calc(100% - 2.75rem); margin-left: 2.75rem; }
   .os-term-form-panel__heading { align-items: flex-start; flex-direction: column; }
   .os-guardian-contact-grid { grid-template-columns: 1fr; }
   .os-content-skeleton { padding: 1rem; }
