@@ -3,7 +3,7 @@ import { Tab, TabList, Tabs, Tag, Toggle } from "@carbon/react";
 import type { StaffKind } from "@/features/attendance/api/staffAttendance";
 import StaffRosterTable from "@/features/attendance/components/staff/StaffRosterTable";
 import StaffMonthlyTable from "@/features/attendance/components/staff/StaffMonthlyTable";
-import { todayISODate, formatLongDate } from "@/shared/lib/date";
+import { todayISODate, formatDate } from "@/shared/lib/date";
 import { useDebounced } from "@/shared/hooks/useDebounced";
 import FilterBar from "@/shared/ui/FilterBar";
 import DateField from "@/shared/ui/DateField";
@@ -23,6 +23,12 @@ export default function StaffAttendance() {
   const kind = KINDS[kindIndex].value;
 
   const [year, month] = date.split("-").map(Number);
+  const activeView = showMonthly ? "Monthly summary" : "Daily attendance";
+
+  const changeView = (monthly: boolean) => {
+    setShowMonthly(monthly);
+    if (monthly) setDate(`${date.slice(0, 7)}-01`);
+  };
 
   return (
     <div className="os-page">
@@ -34,16 +40,16 @@ export default function StaffAttendance() {
       </div>
 
       <div className="os-flex os-items-center os-gap-6 os-mb-6 os-wrap">
-        <DateField value={date} onChange={(ymd) => ymd && setDate(ymd)} id="staff-attendance-date" labelText={showMonthly ? "Month (any day)" : "Date"} />
+        <DateField value={date} onChange={(ymd) => ymd && setDate(ymd)} id="staff-attendance-date" labelText={showMonthly ? "Month" : "Date"} />
         <Toggle
           id="staff-attendance-view-toggle"
-          labelText="View"
-          labelA="Daily"
+          labelText="Attendance view"
+          labelA="Daily attendance"
           labelB="Monthly summary"
           toggled={showMonthly}
-          onToggle={(checked) => setShowMonthly(checked)}
+          onToggle={changeView}
         />
-        {!showMonthly && <Tag type="gray">{formatLongDate(date)}</Tag>}
+        <Tag type="blue">{activeView}{!showMonthly && ` · ${formatDate(date)}`}</Tag>
       </div>
 
       <Tabs selectedIndex={kindIndex} onChange={({ selectedIndex }) => setKindIndex(selectedIndex)}>

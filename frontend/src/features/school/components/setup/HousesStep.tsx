@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import { useState } from "react";
 import { Button, TextInput } from "@carbon/react";
 import { Home, Add } from "@carbon/icons-react";
 import StepShell from "@/features/school/components/setup/StepShell";
@@ -11,12 +12,25 @@ export interface HouseRow {
   color: string;
 }
 
+function generateHouseCode(name: string): string {
+  const words = name
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.replace(/[^\p{L}\p{N}]/gu, ""))
+    .filter(Boolean);
+  if (words.length === 0) return "";
+  if (words.length > 1) return words.map((word) => word[0]).join("").slice(0, 3).toUpperCase();
+  return words[0].slice(0, 2).toUpperCase();
+}
+
 interface Props {
   houses: HouseRow[];
   setHouses: Dispatch<SetStateAction<HouseRow[]>>;
+  validationAttempted: boolean;
 }
 
-export default function HousesStep({ houses, setHouses }: Props) {
+export default function HousesStep({ houses, setHouses, validationAttempted }: Props) {
+  const [touched, setTouched] = useState<Record<number, boolean>>({});
   return (
     <StepShell icon={Home} title="Houses" subtitle="Optional - students and staff are auto-assigned to whichever house has the fewest members.">
       {houses.map((h, i) => (
@@ -28,18 +42,31 @@ export default function HousesStep({ houses, setHouses }: Props) {
             size="md"
             value={h.name}
             onChange={(e) =>
-              setHouses((hs) => hs.map((row, idx) => (idx === i ? { ...row, name: e.target.value } : row)))
+              setHouses((hs) => hs.map((row, idx) => {
+                if (idx !== i) return row;
+                const generatedCode = generateHouseCode(row.name);
+                const shouldGenerateCode = !row.code.trim() || row.code === generatedCode;
+                return {
+                  ...row,
+                  name: e.target.value,
+                  code: shouldGenerateCode ? generateHouseCode(e.target.value) : row.code,
+                };
+              }))
             }
           />
           <TextInput
             id={`house-code-${i}`}
-            labelText="Code (optional)"
+            labelText="Code"
             placeholder="e.g. VJ"
+            helperText={h.name.trim() ? "Generated from the name; you can edit it." : "Enter a name to generate a code."}
             size="md"
             value={h.code}
+            invalid={(validationAttempted || !!touched[i]) && !!h.name.trim() && !h.code.trim()}
+            invalidText="A code is required for this house."
             onChange={(e) =>
               setHouses((hs) => hs.map((row, idx) => (idx === i ? { ...row, code: e.target.value } : row)))
             }
+            onBlur={() => setTouched((fields) => ({ ...fields, [i]: true }))}
           />
           <div>
             <label htmlFor={`house-color-${i}`} className="os-text-xs os-block os-mb-1">

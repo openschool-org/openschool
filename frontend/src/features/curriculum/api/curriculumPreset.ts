@@ -6,6 +6,7 @@ export interface CurriculumPresetSummary {
   levels_created: number;
   groups_created: number;
   links_created: number;
+  grades_covered: number[] | null;
   grades_skipped: number[] | null;
 }
 

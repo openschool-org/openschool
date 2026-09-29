@@ -335,9 +335,9 @@ func (r *Repository) monthly(ctx context.Context, from, to time.Time, q StaffRos
 	return page, nil
 }
 
-func (r *Repository) markUnmarkedPresent(ctx context.Context, date time.Time, kind StaffKind, markedBy uuid.UUID) (int64, error) {
+func (r *Repository) markUnmarkedAbsent(ctx context.Context, date time.Time, kind StaffKind, markedBy uuid.UUID) (int64, error) {
 	if kind == StaffKindTeacher {
-		return r.queries.MarkUnmarkedTeachersPresent(ctx, db.MarkUnmarkedTeachersPresentParams{Date: dateValue(date), MarkedBy: markedBy})
+		return r.queries.MarkUnmarkedTeachersAbsent(ctx, db.MarkUnmarkedTeachersAbsentParams{Date: dateValue(date), MarkedBy: markedBy})
 	}
-	return r.queries.MarkUnmarkedNonAcademicStaffPresent(ctx, db.MarkUnmarkedNonAcademicStaffPresentParams{Date: dateValue(date), MarkedBy: markedBy})
+	return r.queries.MarkUnmarkedNonAcademicStaffAbsent(ctx, db.MarkUnmarkedNonAcademicStaffAbsentParams{Date: dateValue(date), MarkedBy: markedBy})
 }

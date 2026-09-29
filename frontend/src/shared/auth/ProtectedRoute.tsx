@@ -2,7 +2,7 @@ import { useThunderID } from "@thunderid/react";
 import { Navigate, useLocation } from "react-router";
 import { IDLE_TIMEOUT_MS, useIdleLogout } from "@/shared/auth/useIdleLogout";
 import IdleWarningModal from "@/shared/auth/IdleWarningModal";
-import SkeletonShell from "@/shared/ui/SkeletonShell";
+import { DelayedSkeletonShell } from "@/shared/ui/SkeletonShell";
 
 export default function ProtectedRoute({
   children,
@@ -17,7 +17,7 @@ export default function ProtectedRoute({
   const location = useLocation();
   const { warning, staySignedIn, signOutNow } = useIdleLogout(idleTimeoutMs);
 
-  if (isLoading) return <SkeletonShell />;
+  if (isLoading) return <DelayedSkeletonShell />;
 
   if (!isSignedIn) {
     return <Navigate to="/signin" replace state={{ from: location }} />;

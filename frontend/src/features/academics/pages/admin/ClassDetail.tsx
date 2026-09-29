@@ -10,8 +10,11 @@ import SubjectsTab from "@/features/academics/components/SubjectsTab";
 import ClassMarks from "@/features/marks/components/ClassMarks";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
-import SectionHeader from "@/shared/ui/SectionHeader";
+import ProfileBanner from "@/shared/ui/ProfileBanner";
+import SectionCard from "@/shared/ui/SectionCard";
 import InfoRow from "@/shared/ui/InfoRow";
+import MediumTag from "@/shared/ui/MediumTag";
+import StreamTag from "@/shared/ui/StreamTag";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
 
 // "10A" reads as "Grade 10-A" in the banner.
@@ -45,15 +48,13 @@ export default function ClassDetail() {
 
   return (
     <div className="os-bg-layer-hover os-min-h-content">
-      <div className="os-profile__banner">
-        <div className="os-profile__avatar">{cls.name}</div>
-        <div className="os-flex-1">
-          <p className="os-profile__name">Grade {formatClassLabel(cls.name)}</p>
-          <p className="os-profile__meta">{meta}</p>
-        </div>
-        <div className="os-profile__actions">
-          {names.stream && <Tag type="blue" size="sm">{names.stream}</Tag>}
-          {names.medium && <Tag type="purple" size="sm">{names.medium}</Tag>}
+      <ProfileBanner
+        name={`Grade ${formatClassLabel(cls.name)}`}
+        meta={meta}
+        actions={(
+          <>
+          {names.stream && <StreamTag name={names.stream} />}
+          {names.medium && <MediumTag name={names.medium} />}
           {names.homeClassroom && <Tag type="teal" size="sm">{names.homeClassroom}</Tag>}
           <Button renderIcon={Edit} kind="ghost" size="sm" onClick={m.openEdit}>Edit</Button>
           <Button renderIcon={UserMultiple} kind="ghost" size="sm" onClick={m.openTeacher}>
@@ -63,8 +64,9 @@ export default function ClassDetail() {
             {girlMonitor || boyMonitor ? "Change monitors" : "Assign monitors"}
           </Button>
           <Button renderIcon={ArrowLeft} kind="secondary" size="sm" as={Link} to="/classes">Back</Button>
-        </div>
-      </div>
+          </>
+        )}
+      />
 
       <div className="os-py-6 os-px-8">
         <div className="os-grid os-grid-cols-2-1 os-gap-6 os-items-grid-start">
@@ -125,9 +127,8 @@ export default function ClassDetail() {
           </div>
 
           <div>
-            <div className="os-section">
-              <SectionHeader title="Quick info" />
-              <div className="os-section__body os-py-3 os-px-6">
+            <SectionCard title="Quick info" className="os-mb-4">
+              <div className="os-py-3">
                 <InfoRow label="Grade" value={names.grade ?? "-"} />
                 <InfoRow label="Stream" value={names.stream ?? "None"} />
                 <InfoRow label="Medium" value={names.medium ?? "Not designated"} />
@@ -135,10 +136,9 @@ export default function ClassDetail() {
                 <InfoRow label="Enrolled" value={students?.length ?? 0} />
                 <InfoRow label="Academic year" value={names.academicYear ?? "-"} divider={false} />
               </div>
-            </div>
-            <div className="os-section">
-              <SectionHeader title="Attendance summary" />
-              <div className="os-section__body os-py-3 os-px-6">
+            </SectionCard>
+            <SectionCard title="Attendance summary">
+              <div className="os-py-3">
                 <InfoRow label="Total sessions" value={sessions?.length ?? 0} bold divider={false} />
                 <div className="os-mt-2">
                   <Button kind="ghost" size="sm" onClick={m.openNewSession} className="os-c-accent os-p-0">
@@ -147,7 +147,7 @@ export default function ClassDetail() {
                   </Button>
                 </div>
               </div>
-            </div>
+            </SectionCard>
           </div>
         </div>
       </div>

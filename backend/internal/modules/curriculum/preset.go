@@ -60,6 +60,37 @@ func (s *PresetService) run(ctx context.Context, dryRun bool) (summary PresetSum
 			gradeByNumber[n] = grade
 		}
 	}
+
+	// The school may offer only part of Grades 1-13. Build the preset plan
+	// from the grades that actually exist instead of creating the complete
+	// national catalogue for grades the school does not have.
+	allPlans := buildPresetLevels()
+	activePlans := make([]presetLevel, 0, len(allPlans))
+	requiredSubjectCodes := map[string]bool{}
+	covered := map[int]bool{}
+	skipped := map[int]bool{}
+	for _, plan := range allPlans {
+		if _, ok := gradeByNumber[plan.GradeNumber]; !ok {
+			skipped[plan.GradeNumber] = true
+			continue
+		}
+		covered[plan.GradeNumber] = true
+		activePlans = append(activePlans, plan)
+		for _, group := range plan.Groups {
+			for _, code := range group.SubjectCodes {
+				requiredSubjectCodes[code] = true
+			}
+		}
+	}
+	for n := range skipped {
+		summary.GradesSkipped = append(summary.GradesSkipped, n)
+	}
+	for n := range covered {
+		summary.GradesCovered = append(summary.GradesCovered, n)
+	}
+	sort.Ints(summary.GradesSkipped)
+	sort.Ints(summary.GradesCovered)
+
 	existing, err := s.store.listPresetSubjects(ctx)
 	if err != nil {
 		return summary, fmt.Errorf("failed to list subjects: %w", err)
@@ -70,6 +101,9 @@ func (s *PresetService) run(ctx context.Context, dryRun bool) (summary PresetSum
 	}
 	needsCreate := map[string]bool{}
 	for _, subject := range presetSubjects {
+		if !requiredSubjectCodes[subject.Code] {
+			continue
+		}
 		if _, ok := subjectByCode[subject.Code]; ok {
 			continue
 		}
@@ -99,15 +133,9 @@ func (s *PresetService) run(ctx context.Context, dryRun bool) (summary PresetSum
 		for _, level := range levels {
 			levelByLabel[level.Label] = level
 		}
-		covered, skipped := map[int]bool{}, map[int]bool{}
 		sortOrder := int32(0)
-		for _, plan := range buildPresetLevels() {
-			grade, ok := gradeByNumber[plan.GradeNumber]
-			if !ok {
-				skipped[plan.GradeNumber] = true
-				continue
-			}
-			covered[plan.GradeNumber] = true
+		for _, plan := range activePlans {
+			grade := gradeByNumber[plan.GradeNumber]
 			label := fmt.Sprintf("Grade %d%s", plan.GradeNumber, plan.LabelSuffix)
 			level, existed := levelByLabel[label]
 			if !existed {
@@ -184,14 +212,6 @@ func (s *PresetService) run(ctx context.Context, dryRun bool) (summary PresetSum
 				summary.Levels = append(summary.Levels, preview)
 			}
 		}
-		for n := range skipped {
-			summary.GradesSkipped = append(summary.GradesSkipped, n)
-		}
-		for n := range covered {
-			summary.GradesCovered = append(summary.GradesCovered, n)
-		}
-		sort.Ints(summary.GradesSkipped)
-		sort.Ints(summary.GradesCovered)
 		return nil
 	})
 	return summary, err

@@ -150,11 +150,11 @@ export default function CurriculumPanel() {
       {runPreset.isSuccess && (
         <InlineNotification
           kind="success"
-          title="Curriculum preset loaded"
-          subtitle={`Created ${runPreset.data.subjects_created} subjects, ${runPreset.data.levels_created} levels, ${runPreset.data.groups_created} selection groups, and ${runPreset.data.links_created} subject links.${
-            runPreset.data.grades_skipped?.length
-              ? ` Skipped grade(s) ${runPreset.data.grades_skipped.join(", ")} - no matching grade in this school.`
-              : ""
+          title="Curriculum synced"
+          subtitle={`${runPreset.data.subjects_created} subjects, ${runPreset.data.levels_created} levels, ${runPreset.data.groups_created} selection groups, and ${runPreset.data.links_created} subject links added for the grades currently configured in this school.${
+            runPreset.data.grades_covered?.length
+              ? ` Checked Grade(s) ${runPreset.data.grades_covered.join(", ")}.`
+              : " No configured grades matched the preset."
           }`}
           lowContrast
           onClose={() => runPreset.reset()} className="os-mb-6 os-max-w-full"

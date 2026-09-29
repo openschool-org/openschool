@@ -1,7 +1,8 @@
+/* eslint-disable max-lines */
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { Add, ArrowLeft } from "@carbon/icons-react";
-import { Button } from "@carbon/react";
+import { Button, InlineNotification } from "@carbon/react";
 import {
   useLevelTree,
   useMediums,
@@ -16,11 +17,13 @@ import type { CurriculumTreeGroup, GroupSubject } from "@/features/curriculum/ap
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
+import ConfirmActionModal from "@/shared/ui/ConfirmActionModal";
 import GroupsList from "@/features/curriculum/components/GroupsList";
 import GroupFormModal, { type GroupForm } from "@/features/curriculum/components/GroupFormModal";
 import AddSubjectModal, { type SubjectForm } from "@/features/curriculum/components/AddSubjectModal";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
 import InfoTip from "@/shared/ui/InfoTip";
+import { useUnsavedChangesGuard } from "@/shared/hooks/useUnsavedChangesGuard";
 
 const EMPTY_GROUP: GroupForm = { label: "", min_select: 1, max_select: 1, sort_order: 0 };
 const EMPTY_SUBJECT: SubjectForm = {
@@ -32,6 +35,7 @@ const EMPTY_SUBJECT: SubjectForm = {
 
 export default function LevelDetail() {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
 
   const { data: tree, isLoading, isError, refetch } = useLevelTree(id);
   usePageTitle(tree?.level.label);
@@ -56,13 +60,23 @@ export default function LevelDetail() {
     group: CurriculumTreeGroup;
     subject: GroupSubject;
   } | null>(null);
+  const [subjectChanges, setSubjectChanges] = useState<Record<string, GroupSubject[]>>({});
+  const [subjectsDirty, setSubjectsDirty] = useState(false);
+  const [savingSubjects, setSavingSubjects] = useState(false);
+  const [subjectsSaveError, setSubjectsSaveError] = useState(false);
+  const unsavedGuard = useUnsavedChangesGuard(subjectsDirty);
+
+  const draftTree = useMemo(
+    () => tree ? { ...tree, groups: tree.groups.map((group) => ({ ...group, subjects: subjectChanges[group.id] ?? group.subjects })) } : null,
+    [tree, subjectChanges],
+  );
 
   // subjects not already in the group being edited
   const available = useMemo(() => {
     if (!subjects || !subjectModalGroup) return [];
-    const taken = new Set(subjectModalGroup.subjects.map((s) => s.subject_id));
+    const taken = new Set((subjectChanges[subjectModalGroup.id] ?? subjectModalGroup.subjects).map((s) => s.subject_id));
     return subjects.filter((s) => !taken.has(s.id));
-  }, [subjects, subjectModalGroup]);
+  }, [subjects, subjectModalGroup, subjectChanges]);
 
   const openCreateGroup = () => {
     createGroup.reset();
@@ -108,26 +122,76 @@ export default function LevelDetail() {
 
   const handleAddSubject = () => {
     if (!subjectModalGroup) return;
-    addSubject.mutate(
-      {
-        groupId: subjectModalGroup.id,
-        data: {
-          subject_id: subjectForm.subject_id,
-          medium_id: subjectForm.medium_id || undefined,
-          prerequisite_note: subjectForm.prerequisite_note.trim() || undefined,
-          sort_order: subjectForm.sort_order,
-        },
-      },
-      { onSuccess: () => setSubjectModalGroup(null) },
-    );
+    const subject = subjects?.find((item) => item.id === subjectForm.subject_id);
+    if (!subject) return;
+    const current = subjectChanges[subjectModalGroup.id] ?? subjectModalGroup.subjects;
+    if (current.some((item) => item.subject_id === subject.id)) return;
+    const medium = mediums?.find((item) => item.id === subjectForm.medium_id);
+    const staged: GroupSubject = {
+      subject_id: subject.id,
+      subject_name: subject.name,
+      subject_code: subject.code,
+      subject_type: subject.type,
+      medium_id: medium?.id ?? null,
+      medium_name: medium?.name ?? null,
+      prerequisite_note: subjectForm.prerequisite_note.trim() || null,
+      sort_order: subjectForm.sort_order,
+    };
+    setSubjectChanges((draft) => ({ ...draft, [subjectModalGroup.id]: [...current, staged] }));
+    setSubjectsDirty(true);
+    setSubjectsSaveError(false);
+    setSubjectModalGroup(null);
   };
 
   const handleRemoveSubject = () => {
     if (!toRemoveSubject) return;
-    removeSubject.mutate({
-      groupId: toRemoveSubject.group.id,
-      subjectId: toRemoveSubject.subject.subject_id,
-    });
+    const { group, subject } = toRemoveSubject;
+    setSubjectChanges((draft) => ({
+      ...draft,
+      [group.id]: (draft[group.id] ?? group.subjects).filter((item) => item.subject_id !== subject.subject_id),
+    }));
+    setSubjectsDirty(true);
+    setSubjectsSaveError(false);
+    setToRemoveSubject(null);
+  };
+
+  const saveSubjects = async () => {
+    if (!tree) return;
+    setSavingSubjects(true);
+    setSubjectsSaveError(false);
+    try {
+      for (const group of tree.groups) {
+        const original = group.subjects;
+        const next = subjectChanges[group.id] ?? original;
+        const nextIds = new Set(next.map((subject) => subject.subject_id));
+        const originalIds = new Set(original.map((subject) => subject.subject_id));
+
+        for (const subject of original) {
+          if (!nextIds.has(subject.subject_id)) {
+            await removeSubject.mutateAsync({ groupId: group.id, subjectId: subject.subject_id });
+          }
+        }
+        for (const subject of next) {
+          if (!originalIds.has(subject.subject_id)) {
+            await addSubject.mutateAsync({
+              groupId: group.id,
+              data: {
+                subject_id: subject.subject_id,
+                medium_id: subject.medium_id ?? undefined,
+                prerequisite_note: subject.prerequisite_note ?? undefined,
+                sort_order: subject.sort_order,
+              },
+            });
+          }
+        }
+      }
+      setSubjectsDirty(false);
+      setSubjectChanges({});
+    } catch {
+      setSubjectsSaveError(true);
+    } finally {
+      setSavingSubjects(false);
+    }
   };
 
   const handleDeleteGroup = () => {
@@ -155,17 +219,41 @@ export default function LevelDetail() {
           </div>
         </div>
         <div className="os-flex os-gap-2">
-          <Button renderIcon={ArrowLeft} kind="ghost" size="md" as={Link} to="/curriculum">
+          <Button renderIcon={ArrowLeft} kind="ghost" size="md" onClick={() => unsavedGuard.guard(() => navigate("/curriculum"))}>
             Back
           </Button>
           <Button renderIcon={Add} kind="primary" size="md" onClick={openCreateGroup}>
             New group
           </Button>
+          <Button kind="primary" size="md" disabled={!subjectsDirty || savingSubjects} onClick={() => void saveSubjects()}>
+            {savingSubjects ? "Saving subjects…" : "Save subjects"}
+          </Button>
         </div>
       </div>
 
+      {subjectsDirty && (
+        <InlineNotification
+          kind="info"
+          title="Unsaved subject changes"
+          subtitle="Add or remove subjects from the groups below, then save them together."
+          lowContrast
+          hideCloseButton
+          className="os-mb-4"
+        />
+      )}
+      {subjectsSaveError && (
+        <InlineNotification
+          kind="error"
+          title="Could not save subjects"
+          subtitle="Some changes may not have been saved. Review the groups and try again."
+          lowContrast
+          onClose={() => setSubjectsSaveError(false)}
+          className="os-mb-4"
+        />
+      )}
+
       <GroupsList
-        tree={tree}
+        tree={draftTree!}
         deleteGroup={deleteGroup}
         removeSubject={removeSubject}
         onOpenCreateGroup={openCreateGroup}
@@ -200,7 +288,7 @@ export default function LevelDetail() {
         onAdd={handleAddSubject}
       />
 
-      <ConfirmDeleteModal
+      <ConfirmActionModal
         open={!!toRemoveSubject}
         title="Remove subject from group"
         description={
@@ -210,9 +298,8 @@ export default function LevelDetail() {
             the catalogue.
           </>
         }
-        subject="Subject"
-        successVerb="removed"
-        mutation={removeSubject}
+        confirmLabel="Remove from group"
+        danger
         onClose={() => setToRemoveSubject(null)}
         onConfirm={handleRemoveSubject}
       />
@@ -230,6 +317,16 @@ export default function LevelDetail() {
         mutation={deleteGroup}
         onClose={() => setToDeleteGroup(null)}
         onConfirm={handleDeleteGroup}
+      />
+
+      <ConfirmActionModal
+        open={unsavedGuard.modalOpen}
+        title="Leave with unsaved subject changes?"
+        description="Your staged subject changes will be lost if you leave this page before saving them."
+        confirmLabel="Leave page"
+        danger
+        onClose={unsavedGuard.cancelLeave}
+        onConfirm={unsavedGuard.confirmLeave}
       />
     </div>
   );

@@ -52,7 +52,7 @@ export default function AddSubjectModal({
       onSubmit={onAdd}
       isPending={addSubject.isPending}
       submitDisabled={!subjectForm.subject_id}
-      submitLabel="Add"
+      submitLabel="Add to group"
       pendingLabel="Adding…"
       isError={addSubject.isError}
       error={addSubject.error}

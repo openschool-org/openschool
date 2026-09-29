@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { Trophy, Add } from "@carbon/icons-react";
-import { Button, Select, SelectItem, InlineNotification, SkeletonText } from "@carbon/react";
+import { Button, Select, SelectItem, InlineNotification } from "@carbon/react";
 import { useCurrentAcademicYear, useAcademicYears } from "@/features/school/queries/useAcademicYears";
 import { usePrefects, useRemovePrefect, usePrefectYears } from "@/features/portfolio/queries/usePrefects";
 import AppointPrefectModal from "@/features/portfolio/components/AppointPrefectModal";
@@ -12,7 +12,9 @@ import ErrorMessage from "@/shared/ui/ErrorMessage";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import RemoveIconButton from "@/shared/ui/RemoveIconButton";
-import SectionHeader from "@/shared/ui/SectionHeader";
+import SectionCard from "@/shared/ui/SectionCard";
+import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
+import Avatar from "@/shared/ui/Avatar";
 
 export default function Prefects() {
   const { data: currentYear, isLoading: yearLoading } = useCurrentAcademicYear();
@@ -58,21 +60,23 @@ export default function Prefects() {
       {isError && <div className="os-mb-6"><ErrorMessage message="Could not load prefects." onRetry={refetch} /></div>}
       <MutationErrorNotification isError={removePrefect.isError} error={removePrefect.error} title="Could not remove appointment" fallback="Please try again." onClose={() => removePrefect.reset()} />
 
-      {PREFECT_RANKS.map(({ value, label }) => {
+      {!isError && PREFECT_RANKS.map(({ value, label }) => {
         const rows = (prefects ?? []).filter((p) => p.rank === value);
         return (
-          <div className="os-section" key={value}>
-            <SectionHeader
-              title={<span className="os-flex os-items-center os-gap-2"><Trophy size={16} className="os-fill-accent" /> {label}</span>}
-              meta={<span className="os-section__meta">{rows.length}</span>}
-            />
+        <SectionCard
+          key={value}
+          title={<span className="os-flex os-items-center os-gap-2"><Trophy size={16} className="os-fill-accent" /> {label}</span>}
+          meta={<span className="os-section__meta">{rows.length}</span>}
+          flush
+        >
             {loading ? (
-              <div className="os-py-5 os-px-6"><SkeletonText width="40%" /></div>
+              <ListRowSkeleton leadingWidth="2.25rem" titleWidth="45%" subtitleWidth="30%" trailingWidth={null} />
             ) : rows.length === 0 ? (
               <EmptyState title={`No ${label.toLowerCase()} yet`} description="Appoint a student to this rank." />
             ) : (
               rows.map((p) => (
                 <div key={p.id} className="os-list-row os-py-3 os-px-6">
+                  <Avatar name={p.student_name} size="sm" />
                   <div className="os-flex-1 os-min-w-0">
                     <Link to={`/students/${p.student_id}`} className="os-table__link os-text-md os-fw-500">{p.student_name}</Link>
                     <p className="os-mt-h os-mx-0 os-mb-0 os-text-xs os-c-secondary">{[p.grade_name, p.student_index].filter(Boolean).join(" · ")}</p>
@@ -81,7 +85,7 @@ export default function Prefects() {
                 </div>
               ))
             )}
-          </div>
+        </SectionCard>
         );
       })}
 

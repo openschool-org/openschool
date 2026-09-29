@@ -1,41 +1,58 @@
 import { useState } from "react";
-import { Link } from "react-router";
 import { Add } from "@carbon/icons-react";
-import { Accordion, Button, InlineNotification } from "@carbon/react";
+import { Button, InlineNotification } from "@carbon/react";
 import type { Grade } from "@/features/academics/api/grade";
 import type { ClassWithDetails } from "@/features/academics/api/class";
 import { useGradesPage } from "@/features/academics/hooks/useGradesPage";
 import GradeGroup, { GradeGroupSkeleton } from "@/features/academics/components/GradeGroup";
 import GradeFormModal from "@/features/academics/components/GradeFormModal";
+import ClassFormModal from "@/features/academics/components/ClassFormModal";
+import EditClassModal from "@/features/academics/components/EditClassModal";
+import { useUpdateClass } from "@/features/academics/queries/useClasses";
+import { useMediums } from "@/features/curriculum/queries/useCurriculum";
+import { useClassrooms } from "@/features/timetable/queries/useClassrooms";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import EmptyState from "@/shared/ui/EmptyState";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
-import SectionHeader from "@/shared/ui/SectionHeader";
+import SectionCard from "@/shared/ui/SectionCard";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import AgentFindingsBanner from "@/features/notifications/components/AgentFindingsBanner";
-
-
 export default function Classes() {
   const page = useGradesPage();
   const { orderedGrades, classesByGrade, mutations, form } = page;
   const { createGrade, updateGrade, deleteGrade, reorder, deleteClass } = mutations;
   const [gradeToDelete, setGradeToDelete] = useState<Grade | null>(null);
   const [classToDelete, setClassToDelete] = useState<ClassWithDetails | null>(null);
-  const [openGrades, setOpenGrades] = useState<Set<string>>(new Set());
-
-  const toggleOpen = (id: string) =>
-    setOpenGrades((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const [classModalGradeId, setClassModalGradeId] = useState<string | null>(null);
+  const [classToEdit, setClassToEdit] = useState<ClassWithDetails | null>(null);
+  const [nameEdit, setNameEdit] = useState("");
+  const [mediumEdit, setMediumEdit] = useState("");
+  const [homeClassroomEdit, setHomeClassroomEdit] = useState("");
+  const updateClass = useUpdateClass(classToEdit?.id ?? "");
+  const { data: mediums } = useMediums();
+  const { data: classrooms } = useClassrooms();
 
   const busy = reorder.isPending;
   const isLoading = page.grades.isLoading || page.classes.isLoading;
   const isError = page.grades.isError || page.classes.isError;
   const isEdit = form.gradeModal === "edit";
   const saving = isEdit ? updateGrade : createGrade;
+  const openEditClass = (cls: ClassWithDetails) => {
+    updateClass.reset();
+    setClassToEdit(cls);
+    setNameEdit(cls.name);
+    setMediumEdit(cls.medium_id ?? "");
+    setHomeClassroomEdit(cls.home_classroom_id ?? "");
+  };
+  const closeEditClass = () => setClassToEdit(null);
+  const saveClass = () => {
+    const name = nameEdit.trim();
+    if (!name || !classToEdit) return;
+    updateClass.mutate(
+      { name, form_teacher_id: classToEdit.form_teacher_id, medium_id: mediumEdit || null, home_classroom_id: homeClassroomEdit || null },
+      { onSuccess: closeEditClass },
+    );
+  };
 
   return (
     <div className="os-page">
@@ -46,17 +63,17 @@ export default function Classes() {
         </div>
         <div className="os-flex os-gap-3">
           <Button renderIcon={Add} kind="secondary" size="md" onClick={page.openCreateGrade}>Add grade</Button>
-          <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/classes/new">Add class</Button>
+          <Button renderIcon={Add} kind="primary" size="md" onClick={() => setClassModalGradeId("")}>Add class</Button>
         </div>
       </div>
 
       <AgentFindingsBanner />
 
-      <div className="os-section">
-        <SectionHeader
-          title="Grades"
-          meta={!isLoading && !isError && <span className="os-section__meta">{orderedGrades.length} {orderedGrades.length === 1 ? "grade" : "grades"}</span>}
-        />
+      <SectionCard
+        title="Grade catalogue"
+        meta={!isLoading && !isError && <span className="os-section__meta">{orderedGrades.length} {orderedGrades.length === 1 ? "grade" : "grades"}</span>}
+        flush
+      >
 
         {(deleteGrade.isError || deleteClass.isError || reorder.isError) && (
           <div className="os-pt-4 os-px-6 os-pb-0">
@@ -103,8 +120,7 @@ export default function Classes() {
         )}
 
         {!isLoading && orderedGrades.length > 0 && (
-          <div className={`os-py-4 os-px-6${busy ? " os-opacity-60" : ""}`}>
-            <Accordion align="start">
+          <div className={`os-flex os-col os-gap-4 os-py-4 os-px-6${busy ? " os-opacity-60" : ""}`}>
               {orderedGrades.map((g, i) => (
                 <GradeGroup
                   key={g.id}
@@ -115,21 +131,21 @@ export default function Classes() {
                   to={page.range.to}
                   busy={busy}
                   classes={classesByGrade.get(g.id) ?? []}
-                  open={openGrades.has(g.id)}
-                  onToggleOpen={() => toggleOpen(g.id)}
                   onMoveUp={() => page.move(i, -1)}
                   onMoveDown={() => page.move(i, 1)}
                   onEditGrade={() => page.openEditGrade(g)}
                   onDeleteGrade={() => setGradeToDelete(g)}
                   onDeleteClass={setClassToDelete}
+                  onAddClass={setClassModalGradeId}
+                  onEditClass={openEditClass}
                   streamName={page.streamName}
+                  streamGroupName={page.streamGroupName}
                   teacherName={page.teacherName}
                 />
               ))}
-            </Accordion>
           </div>
         )}
-      </div>
+      </SectionCard>
 
       {form.gradeModal && (
         <GradeFormModal
@@ -145,6 +161,23 @@ export default function Classes() {
           error={saving.error}
         />
       )}
+
+      {classModalGradeId !== null && <ClassFormModal key={classModalGradeId} open gradeId={classModalGradeId} onClose={() => setClassModalGradeId(null)} />}
+
+      <EditClassModal
+        open={!!classToEdit}
+        nameEdit={nameEdit}
+        onNameEditChange={setNameEdit}
+        mediumEdit={mediumEdit}
+        onMediumEditChange={setMediumEdit}
+        mediums={mediums}
+        homeClassroomEdit={homeClassroomEdit}
+        onHomeClassroomEditChange={setHomeClassroomEdit}
+        classrooms={classrooms}
+        updateClass={updateClass}
+        onClose={closeEditClass}
+        onSave={saveClass}
+      />
 
       <ConfirmDeleteModal
         open={!!gradeToDelete}

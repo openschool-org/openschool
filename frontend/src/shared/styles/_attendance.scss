@@ -303,48 +303,6 @@
   }
 }
 
-.thunderid-dialog__overlay {
-  background-color: rgba(22, 22, 22, 0.5) !important;
-  z-index: 9999 !important;
-}
-
-.thunderid-dialog__content:has(.thunderid-user-profile) {
-  border-radius: 0px !important;
-  background-color: #ffffff !important;
-  border: 1px solid $os-border-subtle !important;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15) !important;
-  font-family: 'IBM Plex Sans', sans-serif !important;
-  z-index: 10000 !important;
-  scrollbar-width: thin;
-  scrollbar-color: $os-border-strong transparent;
-}
-
-.thunderid-dialog__header {
-  border-bottom: none !important;
-  padding: 1.5rem 2rem 0.5rem !important;
-  
-  .thunderid-dialog__title {
-    font-size: 1.25rem !important;
-    font-weight: 400 !important;
-    color: $os-text-primary !important;
-    font-family: 'IBM Plex Sans', sans-serif !important;
-  }
-}
-
-.thunderid-dialog__content .thunderid-user-profile {
-  padding: 1rem 2rem 2rem !important;
-  
-  input, select, textarea {
-    border-radius: 0px !important;
-    font-family: 'IBM Plex Sans', sans-serif !important;
-  }
-
-  button {
-    border-radius: 0px !important;
-    font-family: 'IBM Plex Sans', sans-serif !important;
-  }
-}
-
 // Staff attendance status buttons: 44px targets on phones.
 .os-staff-status { min-height: 2rem; }
 @media (max-width: 42rem) {

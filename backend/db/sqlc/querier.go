@@ -695,9 +695,9 @@ type Querier interface {
 	MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error)
 	MarkNotificationRecipientRead(ctx context.Context, arg MarkNotificationRecipientReadParams) error
 	MarkNotificationSent(ctx context.Context, id uuid.UUID) (Notification, error)
-	MarkUnmarkedNonAcademicStaffPresent(ctx context.Context, arg MarkUnmarkedNonAcademicStaffPresentParams) (int64, error)
-	// Present for every active teacher with no record that day; existing marks are left alone.
-	MarkUnmarkedTeachersPresent(ctx context.Context, arg MarkUnmarkedTeachersPresentParams) (int64, error)
+	MarkUnmarkedNonAcademicStaffAbsent(ctx context.Context, arg MarkUnmarkedNonAcademicStaffAbsentParams) (int64, error)
+	// Absent for every active teacher with no record that day; existing marks are left alone.
+	MarkUnmarkedTeachersAbsent(ctx context.Context, arg MarkUnmarkedTeachersAbsentParams) (int64, error)
 	MarkWorkflowRunApplied(ctx context.Context, arg MarkWorkflowRunAppliedParams) error
 	MarkWorkflowRunFailed(ctx context.Context, arg MarkWorkflowRunFailedParams) error
 	MarkWorkflowRunState(ctx context.Context, arg MarkWorkflowRunStateParams) error

@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useCurrentClasses, useDeleteClass, useStreams } from "@/features/academics/queries/useClasses";
+import { streamApi } from "@/features/academics/api/stream";
+import { streamKeys } from "@/features/academics/keys";
 import { useGrades, useCreateGrade, useUpdateGrade, useDeleteGrade, useReorderGrades } from "@/features/academics/queries/useGrades";
 import { teacherDetailOptions } from "@/features/teachers/queries/useTeachers";
 import { useSchool } from "@/features/school/queries/useSchool";
@@ -12,6 +14,12 @@ export function useGradesPage() {
   const grades = useGrades();
   const classes = useCurrentClasses();
   const { data: streams } = useStreams();
+  const streamGroupQueries = useQueries({
+    queries: (streams ?? []).map((stream) => ({
+      queryKey: streamKeys.groups(stream.id),
+      queryFn: () => streamApi.listGroups(stream.id),
+    })),
+  });
   const { data: school } = useSchool();
 
   // teacherName below is a name-lookup by id (each class's form_teacher_id),
@@ -28,6 +36,11 @@ export function useGradesPage() {
     teacherQueries.forEach((q, i) => { if (q.data) map.set(formTeacherIds[i], q.data.full_name); });
     return map;
   }, [teacherQueries, formTeacherIds]);
+  const streamGroupNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    streamGroupQueries.forEach((query) => query.data?.forEach((group) => map.set(group.id, group.name)));
+    return map;
+  }, [streamGroupQueries]);
 
   const createGrade = useCreateGrade();
   const updateGrade = useUpdateGrade();
@@ -100,6 +113,7 @@ export function useGradesPage() {
     needsRenumber: orderedGrades.some((g, i) => g.sort_order !== i),
     range: { from: school?.grade_from ?? null, to: school?.grade_to ?? null },
     streamName: (id: string | null) => (id ? (streams?.find((s) => s.id === id)?.name ?? null) : null),
+    streamGroupName: (id: string | null) => (id ? (streamGroupNameById.get(id) ?? null) : null),
     teacherName: (id: string | null) => (id ? (teacherNameById.get(id) ?? null) : null),
     mutations: { createGrade, updateGrade, deleteGrade, reorder, deleteClass },
     form: { gradeModal, gradeName, gradeNameTouched, setGradeName, setGradeNameTouched, closeModal: () => setGradeModal(null) },

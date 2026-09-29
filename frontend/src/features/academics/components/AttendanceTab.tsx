@@ -9,6 +9,7 @@ import DataGrid from "@/shared/ui/DataGrid";
 import EmptyState from "@/shared/ui/EmptyState";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import DateField from "@/shared/ui/DateField";
+import SectionCard from "@/shared/ui/SectionCard";
 
 interface Props {
   sessions: ReturnType<typeof useClassSessions>["data"];
@@ -38,9 +39,11 @@ export default function AttendanceTab({
   );
 
   return (
-    <div className="os-section os-mt-4">
-      <div className="os-section__header os-wrap os-row-gap-3">
-        <h2 className="os-section__title">Attendance sessions</h2>
+    <SectionCard
+      title="Attendance sessions"
+      className="os-mt-4"
+      flush
+      meta={(
         <div className="os-flex os-items-center os-gap-3 os-wrap">
           <div className="os-session-date-filter os-shrink-0">
             <DateField value={sessionDateFilter} onChange={(ymd) => {
@@ -60,7 +63,8 @@ export default function AttendanceTab({
             New session
           </Button>
         </div>
-      </div>
+      )}
+    >
 
       <MutationErrorNotification
         isError={createSession.isError}
@@ -117,6 +121,6 @@ export default function AttendanceTab({
           }
         />
       )}
-    </div>
+    </SectionCard>
   );
 }

@@ -62,7 +62,9 @@ export default function EntityCombobox<T>({
       selectedItem={selectedItem}
       onChange={({ selectedItem }) => onSelect(selectedItem ? getId(selectedItem) : "")}
       onInputChange={onSearch ? setInputValue : undefined}
-      shouldFilterItem={onSearch ? () => true : undefined}
+      shouldFilterItem={onSearch
+        ? () => true
+        : ({ item, inputValue }) => itemToString(item as T).toLocaleLowerCase().includes((inputValue ?? "").trim().toLocaleLowerCase())}
       titleText={labelText}
       aria-label={labelText ? undefined : ariaLabel}
       placeholder={placeholder ?? "Search by name or ID…"}

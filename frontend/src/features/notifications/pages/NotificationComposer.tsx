@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Button, TextInput, TextArea, Dropdown, Tag, InlineNotification } from "@carbon/react";
+import { useRef, useState } from "react";
+import { Button, TextInput, TextArea, Dropdown, Tag, InlineNotification, ComposedModal, ModalBody, ModalHeader } from "@carbon/react";
 import { Send, Save } from "@carbon/icons-react";
 import {
   useDraftNotifications,
@@ -20,11 +20,13 @@ import NotificationHistory from "@/features/notifications/components/Notificatio
 import DraftRow from "@/features/notifications/components/DraftRow";
 
 export default function NotificationComposer() {
+  const [composeOpen, setComposeOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [category, setCategory] = useState<NotificationCategory>("general");
   const [priority, setPriority] = useState<NotificationPriority>("normal");
   const [rules, setRules] = useState<RecipientRule[]>([]);
+  const composeSession = useRef(0);
 
   const { role } = useRole();
   const { data: myPosition } = useMyPosition(role === "teacher");
@@ -46,6 +48,7 @@ export default function NotificationComposer() {
   };
 
   const handleSubmit = (saveAsDraft: boolean) => {
+    const submittedSession = composeSession.current;
     create.mutate(
       {
         title: title.trim(),
@@ -55,8 +58,23 @@ export default function NotificationComposer() {
         save_as_draft: saveAsDraft,
         recipient_rules: rules,
       },
-      { onSuccess: () => resetForm() },
+      { onSuccess: () => {
+        if (composeSession.current !== submittedSession) return;
+        resetForm();
+        setComposeOpen(false);
+      } },
     );
+  };
+
+  const openComposer = () => {
+    composeSession.current += 1;
+    create.reset();
+    setComposeOpen(true);
+  };
+  const closeComposer = () => {
+    if (create.isPending) return;
+    composeSession.current += 1;
+    setComposeOpen(false);
   };
 
   const removeRule = (index: number) => setRules((r) => r.filter((_, i) => i !== index));
@@ -73,17 +91,11 @@ export default function NotificationComposer() {
             )}
           </p>
         </div>
+        <Button renderIcon={Send} kind="primary" onClick={openComposer}>
+          Notify
+        </Button>
       </div>
 
-      {create.isError && (
-        <InlineNotification
-          kind="error"
-          title="Could not send notification"
-          subtitle={getErrorMessage(create.error)}
-          lowContrast
-          onClose={() => create.reset()} className="os-mb-6 os-max-w-full"
-        />
-      )}
       {create.isSuccess && (
         <InlineNotification
           kind="success"
@@ -94,15 +106,17 @@ export default function NotificationComposer() {
         />
       )}
 
-      <div className="os-grid os-grid-cols-2-1 os-gap-6 os-items-grid-start">
-        {/* Compose */}
+      <ComposedModal open={composeOpen} size="lg" onClose={closeComposer} aria-label="Compose notification">
+        <ModalHeader title="Compose notification" />
+        <ModalBody>
+        {create.isError && <InlineNotification kind="error" title="Could not send notification" subtitle={getErrorMessage(create.error)} lowContrast onClose={() => create.reset()} className="os-mb-6 os-max-w-full" />}
         <div className="os-section">
           <div className="os-section__header">
             <h2 className="os-section__title">Compose</h2>
           </div>
           <div className="os-section__body os-flex os-col os-gap-6">
-            <TextInput id="notification-title" labelText="Title" placeholder="e.g. Term Test Timetable Released" value={title} onChange={(e) => setTitle(e.target.value)} />
-            <TextArea id="notification-message" labelText="Message" placeholder="Type your message here…" rows={5} value={message} onChange={(e) => setMessage(e.target.value)} />
+            <TextInput id="notification-title" labelText="Title" placeholder="e.g. Term Test Timetable Released" value={title} onChange={(e) => setTitle(e.target.value)} disabled={create.isPending} />
+            <TextArea id="notification-message" labelText="Message" placeholder="Type your message here…" rows={5} value={message} onChange={(e) => setMessage(e.target.value)} disabled={create.isPending} />
 
             <div className="os-grid os-grid-cols-2 os-gap-4">
               <Dropdown
@@ -113,6 +127,7 @@ export default function NotificationComposer() {
                 itemToString={(item) => (item as (typeof CATEGORIES)[number])?.label ?? ""}
                 selectedItem={CATEGORIES.find((c) => c.value === category)}
                 onChange={({ selectedItem }) => setCategory((selectedItem as (typeof CATEGORIES)[number]).value)}
+                disabled={create.isPending}
               />
               <div>
                 <p className="os-text-xs os-fw-600 os-mb-2 os-c-secondary">Priority</p>
@@ -120,7 +135,7 @@ export default function NotificationComposer() {
                   {PRIORITIES.map((p) => (
                     <button
                       key={p.value}
-                      onClick={() => setPriority(p.value)} className={`os-pill${priority === p.value ? " is-active" : ""}`}
+                      onClick={() => setPriority(p.value)} disabled={create.isPending} aria-pressed={priority === p.value} className={`os-pill${priority === p.value ? " is-active" : ""}`}
                     >
                       {p.label}
                     </button>
@@ -136,7 +151,7 @@ export default function NotificationComposer() {
               {rules.length > 0 && (
                 <div className="os-flex os-wrap os-gap-1h os-mb-3">
                   {rules.map((rule, i) => (
-                    <Tag key={ruleKey(rule)} type="teal" size="sm" filter onClose={() => removeRule(i)}>
+                      <Tag key={ruleKey(rule)} type="teal" size="sm" filter disabled={create.isPending} onClose={() => removeRule(i)}>
                       {rule.label ?? rule.type}
                     </Tag>
                   ))}
@@ -145,6 +160,7 @@ export default function NotificationComposer() {
               <RecipientPicker
                 onAdd={(rule) => setRules((r) => (r.some((x) => ruleKey(x) === ruleKey(rule)) ? r : [...r, rule]))}
                 canBroadcastEveryone={canBroadcastEveryone}
+                disabled={create.isPending}
               />
             </div>
 
@@ -158,22 +174,17 @@ export default function NotificationComposer() {
             </div>
           </div>
         </div>
+        </ModalBody>
+      </ComposedModal>
 
-        {/* Sidebar */}
-        <div>
-          {drafts && drafts.length > 0 && (
-            <div className="os-section">
-              <div className="os-section__header">
-                <h2 className="os-section__title">Drafts</h2>
-              </div>
-              {drafts.map((d) => (
-                <DraftRow key={d.id} draft={d} />
-              ))}
-            </div>
-          )}
-
+      {drafts && drafts.length > 0 && (
+        <div className="os-section os-mb-6">
+          <div className="os-section__header">
+            <h2 className="os-section__title">Drafts</h2>
+          </div>
+          {drafts.map((d) => <DraftRow key={d.id} draft={d} />)}
         </div>
-      </div>
+      )}
 
       <div className="os-mt-6">
         <NotificationHistory />

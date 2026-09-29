@@ -15,6 +15,8 @@ import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import AgentFindingsBanner from "@/features/notifications/components/AgentFindingsBanner";
 import { useListFilters } from "@/shared/hooks/useListFilters";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
+import Avatar from "@/shared/ui/Avatar";
+import { formatDateOnly } from "@/shared/lib/date";
 
 const STATUS_TAG: Record<string, "green" | "red" | "magenta"> = { active: "green", resigned: "red", transferred: "magenta" };
 const FILTER_LABELS: Record<string, string> = { query: "Search", status: "Status" };
@@ -42,9 +44,18 @@ export default function Teachers() {
 
   const columns: GridColumn<Teacher>[] = [
     { key: "employee_number", header: "Employee no.", render: (t) => <span className="os-table__mono">{t.employee_number}</span> },
-    { key: "full_name", header: "Full name", render: (t) => <Link to={`/teachers/${t.id}`} className="os-table__link">{t.full_name}</Link> },
+    {
+      key: "full_name",
+      header: "Full name",
+      render: (t) => (
+        <div className="os-flex os-items-center os-gap-2">
+          <Avatar name={t.full_name} size="sm" />
+          <Link to={`/teachers/${t.id}`} className="os-table__link">{t.full_name}</Link>
+        </div>
+      ),
+    },
     { key: "phone", header: "Phone", render: (t) => <span className="os-table__muted">{t.phone ?? "-"}</span> },
-    { key: "joined_date", header: "Joined date", render: (t) => <span className="os-table__muted">{t.joined_date ?? "-"}</span> },
+    { key: "joined_date", header: "Joined date", render: (t) => <span className="os-table__muted">{formatDateOnly(t.joined_date)}</span> },
     {
       key: "status",
       header: "Status",

@@ -30,10 +30,14 @@ export const ADMIN_NAV: NavGroup[] = [
     ],
   },
   {
-    label: "Timetable",
+    label: "School resources",
     items: [
-      { path: "/timetables", label: "Timetable", Icon: Table },
+      { path: "/resources", label: "Resources & facilities", Icon: Building },
     ],
+  },
+  {
+    label: "Timetable",
+    items: [{ path: "/timetables", label: "Timetable", Icon: Table }],
   },
   {
     label: "Operations",
@@ -53,7 +57,7 @@ export const ADMIN_NAV: NavGroup[] = [
 export const ADMIN_ALIASES: Record<string, string> = {
   "/promotion": "/year-end",
   "/timetables/generate": "/timetables",
-  "/classrooms": "/timetables",
+  "/classrooms": "/resources",
   "/subject-requirements": "/timetables",
   "/timetable-settings": "/timetables",
   "/grade-sections": "/timetables",

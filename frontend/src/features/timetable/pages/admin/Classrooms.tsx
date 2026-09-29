@@ -13,8 +13,24 @@ import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import InfoTip from "@/shared/ui/InfoTip";
 import BackfillHomeroomsButton from "@/features/timetable/components/BackfillHomeroomsButton";
 
-const TYPE_LABEL: Record<ClassroomType, string> = { regular: "Regular", lab: "Lab", eca: "ECA" };
+const TYPE_LABEL: Record<ClassroomType, string> = { regular: "Homeroom", lab: "Subject lab", eca: "Facility" };
 const TYPE_TAG: Record<ClassroomType, "gray" | "purple" | "teal"> = { regular: "gray", lab: "purple", eca: "teal" };
+const FACILITY_LABEL: Record<string, string> = {
+  library: "Library",
+  scienceLab: "Science lab",
+  itLab: "IT lab",
+  technicalLab: "Technical lab",
+  homeEconomicsLab: "Home economics lab",
+  languageLab: "Language lab",
+  artRoom: "Art room",
+  musicRoom: "Music room",
+  danceRoom: "Dancing room",
+  dramaRoom: "Drama room",
+  auditorium: "Auditorium / hall",
+  medicalRoom: "Medical / sick room",
+  counselingRoom: "Counseling room",
+  staffRoom: "Staff room",
+};
 
 export default function Classrooms({ inline = false }: { inline?: boolean }) {
   const { data: classrooms, isLoading, isError, refetch } = useClassrooms();
@@ -46,7 +62,9 @@ export default function Classrooms({ inline = false }: { inline?: boolean }) {
     if (!form.name.trim() || isLabMissingSubject(form)) return;
     const data = {
       name: form.name.trim(),
-      code: form.code.trim() || undefined,
+      // Preserve setup's internal facility category when editing; new rooms
+      // do not expose or require a separate code.
+      code: editing ? form.code.trim() || undefined : undefined,
       capacity: form.capacity.trim() ? Number(form.capacity) : null,
       room_type: form.room_type,
       subject_id: form.room_type === "lab" ? form.subject_id : null,
@@ -58,7 +76,7 @@ export default function Classrooms({ inline = false }: { inline?: boolean }) {
 
   const columns: GridColumn<Classroom>[] = [
     { key: "name", header: "Name", render: (c) => c.name },
-    { key: "code", header: "Code", render: (c) => c.code || <span className="os-table__muted">-</span> },
+    { key: "category", header: "Category", render: (c) => c.room_type === "eca" && c.code ? FACILITY_LABEL[c.code] ?? c.code : <span className="os-table__muted">-</span> },
     { key: "capacity", header: "Capacity", render: (c) => c.capacity ?? <span className="os-table__muted">-</span> },
     { key: "type", header: "Type", render: (c) => <Tag type={TYPE_TAG[c.room_type]} size="sm">{TYPE_LABEL[c.room_type]}{c.room_type === "lab" && c.subject_name ? ` - ${c.subject_name}` : ""}</Tag> },
     {

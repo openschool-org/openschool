@@ -1,8 +1,10 @@
-import { TextInput, TextArea, Select, SelectItem, RadioButtonGroup, RadioButton, InlineNotification, Tag } from "@carbon/react";
+import { TextInput, TextArea, Select, SelectItem, RadioButtonGroup, RadioButton, Tag } from "@carbon/react";
 import type { StudentWithClass, StudentEnrollmentStatus } from "@/features/students/api/student";
 import type { House } from "@/features/school/api/house";
 import type { UseMutationResult } from "@tanstack/react-query";
 import InfoTip from "@/shared/ui/InfoTip";
+import SectionCard from "@/shared/ui/SectionCard";
+import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 
 type Gender = "" | "male" | "female";
 
@@ -46,20 +48,8 @@ export default function StudentProfileTab({
 
   return (
     <>
-      <div className="os-section os-mt-4">
-        <div className="os-section__header">
-          <h2 className="os-section__title">Profile</h2>
-        </div>
-        <div className="os-section__body">
-          {updateError && (
-            <InlineNotification
-              kind="error"
-              title="Error"
-              subtitle={updateError}
-              lowContrast
-              hideCloseButton className="os-mb-4 os-max-w-full"
-            />
-          )}
+      <SectionCard title="Profile" className="os-mt-4">
+          <MutationErrorNotification isError={!!updateError} error={null} title="Could not update student" fallback={updateError ?? "Please try again."} />
           <div className="os-grid os-grid-cols-2 os-gap-5">
             <TextInput
               id="given-name"
@@ -127,14 +117,9 @@ export default function StudentProfileTab({
               />
             </div>
           </div>
-        </div>
-      </div>
+      </SectionCard>
 
-      <div className="os-section">
-        <div className="os-section__header">
-          <h2 className="os-section__title">Current class</h2>
-        </div>
-        <div className="os-section__body">
+      <SectionCard title="Current class">
           {student.class_name ? (
             <div className="os-flex os-gap-2 os-wrap">
               <Tag type="blue" size="sm">
@@ -154,14 +139,9 @@ export default function StudentProfileTab({
           ) : (
             <span className="os-text-md os-c-tertiary">Not enrolled in a class.</span>
           )}
-        </div>
-      </div>
+      </SectionCard>
 
-      <div className="os-section">
-        <div className="os-section__header">
-          <h2 className="os-section__title">House</h2>
-        </div>
-        <div className="os-section__body">
+      <SectionCard title="House">
           {currentHouse && (
             <div className="os-flex os-items-center os-gap-2 os-mb-3">
               <span className="os-inline-block os-w-3q os-h-3q os-rounded-full" style={{ backgroundColor: currentHouse.color }}
@@ -182,14 +162,9 @@ export default function StudentProfileTab({
               <SelectItem key={h.id} value={h.id} text={h.name} />
             ))}
           </Select>
-        </div>
-      </div>
+      </SectionCard>
 
-      <div className="os-section">
-        <div className="os-section__header">
-          <h2 className="os-section__title">Enrolment status</h2>
-        </div>
-        <div className="os-section__body">
+      <SectionCard title="Enrolment status">
           <Select
             id="student-enrollment-status"
             labelText="Status"
@@ -202,8 +177,7 @@ export default function StudentProfileTab({
               <SelectItem key={s.value} value={s.value} text={s.label} />
             ))}
           </Select>
-        </div>
-      </div>
+      </SectionCard>
     </>
   );
 }

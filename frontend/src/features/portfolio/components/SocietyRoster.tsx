@@ -76,7 +76,7 @@ export default function SocietyRoster({ societyId, readOnly }: Props) {
   }
 
   return (
-    <div>
+    <div className="os-society-roster">
       <div className="os-flex os-justify-end os-mb-4">
         {!readOnly && (
           <Button renderIcon={Add} kind="primary" size="sm" onClick={openAssign}>
@@ -108,7 +108,7 @@ export default function SocietyRoster({ societyId, readOnly }: Props) {
                 <span className="os-text-xs os-c-tertiary">{byRole(value).length}</span>
               </div>
               {byRole(value).map((m) => (
-                <div key={m.id} className="os-list-row os-list-row--compact">
+                <div key={m.id} className="os-list-row os-list-row--compact os-society-member-row">
                   <div className="os-flex-1 os-min-w-0">
                     <Link to={`/students/${m.student_id}`} className="os-table__link os-text-md os-fw-500">
                       {m.student_name}

@@ -98,7 +98,7 @@ export function useAttendanceMarking(sessionId: string, records: AttendanceRecor
     // Clicking the active status again clears it.
     mark: (studentId: string, status: NonNullable<Status>) =>
       setStatuses((prev) => ({ ...prev, [studentId]: prev[studentId] === status ? null : status })),
-    markAll: (status: NonNullable<Status>) => setStatuses(Object.fromEntries((students ?? []).map((s) => [s.id, status]))),
+    markAll: (status: NonNullable<Status>) => setStatuses((prev) => Object.fromEntries((students ?? []).map((s) => [s.id, prev[s.id] ?? status]))),
     clearAll: () => setStatuses({}),
     setNote: (studentId: string, value: string) => setNotes((prev) => ({ ...prev, [studentId]: value })),
     clearDraft: () => removeDraft(sessionId),

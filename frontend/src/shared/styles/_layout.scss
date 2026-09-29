@@ -75,8 +75,14 @@
 .cds--header__menu-trigger {
   width: 3rem;
   border-right: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent !important;
+  color: #ffffff !important;
   &:hover { background: rgba(255, 255, 255, 0.1); }
+  &:focus { background: rgba(255, 255, 255, 0.14) !important; }
+  svg { fill: #ffffff !important; }
 }
+
+.os-sidebar-toggle { background: transparent !important; }
 
 .cds--header__global {
   display: flex;
@@ -137,6 +143,12 @@
   width: min(60rem, calc(100vw - 3rem)) !important;
   max-width: none !important;
   max-height: min(44rem, calc(100vh - 3rem)) !important;
+  padding: 0 !important;
+  border: 1px solid $os-border-subtle !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.16) !important;
+  font-family: 'IBM Plex Sans', sans-serif !important;
 
   scrollbar-width: thin;
   scrollbar-color: $os-border-strong transparent;
@@ -153,6 +165,47 @@
   }
   &::-webkit-scrollbar-thumb:hover {
     background-color: $os-text-disabled;
+  }
+}
+
+.thunderid-dialog__overlay {
+  background-color: rgba(22, 22, 22, 0.5) !important;
+  z-index: 9999 !important;
+}
+
+.thunderid-dialog__header {
+  padding: 1.5rem 2rem 1rem !important;
+  border-bottom: 1px solid $os-border-subtle !important;
+
+  .thunderid-dialog__title {
+    color: $os-text-primary !important;
+    font-family: 'IBM Plex Sans', sans-serif !important;
+    font-size: 1.25rem !important;
+    font-weight: 400 !important;
+    line-height: 1.4 !important;
+  }
+}
+
+.thunderid-dialog__content .thunderid-user-profile {
+  padding: 1.5rem 2rem 2rem !important;
+  color: $os-text-primary !important;
+  font-family: 'IBM Plex Sans', sans-serif !important;
+
+  input, select, textarea {
+    min-height: 2.5rem;
+    border: 0;
+    border-bottom: 1px solid $os-border-strong;
+    border-radius: 0 !important;
+    background: $os-layer-hover;
+    font-family: 'IBM Plex Sans', sans-serif !important;
+
+    &:focus { outline: 2px solid $os-accent; outline-offset: -2px; }
+  }
+
+  button {
+    min-height: 2.5rem;
+    border-radius: 0 !important;
+    font-family: 'IBM Plex Sans', sans-serif !important;
   }
 }
 
@@ -252,7 +305,7 @@
   &__content {
     flex: 1;
     margin-left: $os-sidebar-w;
-    background-color: #F8FAFC;
+    background-color: var(--os-canvas);
     min-height: calc(100vh - 3rem);
     min-width: 0;
     transition: margin-left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -266,7 +319,7 @@
 // Teacher Layout
 .os-teacher-content {
   padding-top: 3rem;
-  background-color: #F8FAFC;
+  background-color: var(--os-canvas);
   min-height: 100vh;
 }
 
@@ -405,11 +458,23 @@
 
 @media (max-width: 42rem) {
   .os-page { padding: 1rem; }
+  .os-society-summary { align-items: flex-start; flex-wrap: wrap; padding: 1rem; }
+  .os-society-summary__stat { margin-left: 3.75rem; }
+  .os-society-summary > .cds--tag { margin-left: auto; }
+  .os-society-detail__owner { align-items: flex-start; flex-wrap: wrap; }
+  .os-society-detail__owner .cds--tag { margin-left: 3rem; }
+  .os-current-period { align-items: flex-start; flex-wrap: wrap; padding: 1rem; }
+  .os-current-period .cds--tag { margin-left: 3.75rem; }
+  .os-term-card { align-items: flex-start; flex-wrap: wrap; }
+  .os-term-card__actions { width: calc(100% - 2.75rem); margin-left: 2.75rem; }
+  .os-term-form-panel__heading { align-items: flex-start; flex-direction: column; }
+  .os-guardian-contact-grid { grid-template-columns: 1fr; }
   .os-content-skeleton { padding: 1rem; }
-  .os-content-skeleton__header { flex-direction: column; }
+  .os-content-skeleton__intro { flex-direction: column; padding: 1.25rem; }
+  .os-content-skeleton__actions { width: 100%; .os-skeleton__button { flex: 1; } }
   .os-content-skeleton__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .os-content-skeleton__columns { display: block; }
-  .os-content-skeleton__panel { margin-bottom: 1rem; }
+  .os-content-skeleton__grid { display: block; }
+  .os-skeleton-panel { margin-bottom: 1rem; }
   .os-dashboard-hero { align-items: flex-start; flex-direction: column; gap: 1rem; padding: 1.25rem; }
   .os-dashboard-hero__aside { width: 100%; }
   .os-dashboard-actions { margin-bottom: 1rem; }

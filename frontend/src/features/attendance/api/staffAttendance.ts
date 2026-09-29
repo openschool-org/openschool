@@ -83,7 +83,7 @@ export const staffAttendanceApi = {
       .then((r) => r.data),
 
   // Marks everyone of the kind without a record that day as present; existing marks are kept.
-  markUnmarked: (date: string, kind: StaffKind) =>
+  markUnmarkedAbsent: (date: string, kind: StaffKind) =>
     api.post<{ marked: number }>("/staff-attendance/mark-unmarked", { date: new Date(date).toISOString(), kind }).then((r) => r.data),
 
   teacherHistory: (teacherId: string, year: number, month: number) =>

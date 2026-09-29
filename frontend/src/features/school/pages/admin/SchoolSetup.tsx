@@ -25,6 +25,7 @@ export default function SchoolSetup() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [housesValidationAttempted, setHousesValidationAttempted] = useState(false);
   const { data: existingSchool, isLoading: schoolCheckLoading } = useSchool();
   const s = useSchoolSetupState();
   const { submitting, submitError, submitted, submitAll } = useSchoolSetupSubmit(s);
@@ -47,6 +48,10 @@ export default function SchoolSetup() {
         if (!reveal(() => s.setSchoolTouched(true)) || !s.schoolValid) return;
         break;
       case 1:
+        if (!skip) setHousesValidationAttempted(true);
+        if (!skip && s.houses.some((house) => house.name.trim() && !house.code.trim())) {
+          return setError("Every house with a name must have a code.");
+        }
         s.setHousesSkipped(skip);
         break;
       case 2:
@@ -57,6 +62,9 @@ export default function SchoolSetup() {
         break;
       case CLASSES_STEP:
         if (!skip && !s.yearLabel.trim()) return setError("An academic year label is required.");
+        if (!skip && (!Number.isFinite(s.classCapacity) || s.classCapacity < 1 || s.classCapacity > 200)) {
+          return setError("Class capacity must be a number between 1 and 200.");
+        }
         s.setClassesSkipped(skip);
         break;
       default:
@@ -72,9 +80,19 @@ export default function SchoolSetup() {
 
   return (
     <div className="os-school-setup-page">
-      <img src="/favicon.webp" alt="OpenSchool" width={32} height={32} className="os-school-setup-corner-logo" />
+      <header className="os-school-setup-brand">
+        <img src="/favicon.webp" alt="" width={36} height={36} />
+        <div>
+          <p className="os-school-setup-brand__name">Open<span>School</span></p>
+          <p className="os-school-setup-brand__context">School onboarding</p>
+        </div>
+      </header>
       <div className="os-school-setup-card">
-        <h1 className="os-school-setup-title">School onboarding</h1>
+        <div className="os-school-setup-heading">
+          <p className="os-school-setup-eyebrow">Let’s get your school ready</p>
+          <h1>Set up your school</h1>
+          <p>Complete these steps to create the structure OpenSchool will use for your school day to day.</p>
+        </div>
         <CustomStepper currentIndex={step} steps={STEPS} />
 
         {error && <InlineNotification kind="error" title="Could not continue" subtitle={error} hideCloseButton lowContrast className="os-school-setup-error" />}
@@ -83,13 +101,15 @@ export default function SchoolSetup() {
 
         <div ref={summaryRef} onChange={recheck}>
         {step === 0 && <SchoolStep school={s.school} setSchool={s.setSchool} schoolTouched={s.schoolTouched} gradeRangeInvalid={s.gradeRangeInvalid} />}
-        {step === 1 && <HousesStep houses={s.houses} setHouses={s.setHouses} />}
+        {step === 1 && <HousesStep houses={s.houses} setHouses={s.setHouses} validationAttempted={housesValidationAttempted} />}
         {step === 2 && <GradesStep gradeRangeStart={s.gradeRangeStart} gradeRangeEnd={s.gradeRangeEnd} selectedGrades={s.selectedGrades} setSelectedGrades={s.setSelectedGrades} />}
         {step === 3 && <MediumsStep mediumChecks={s.mediumChecks} setMediumChecks={s.setMediumChecks} customMediums={s.customMediums} setCustomMediums={s.setCustomMediums} />}
         {step === CLASSES_STEP && (
           <ClassesStep
             yearLabel={s.yearLabel}
             setYearLabel={s.setYearLabel}
+            classCapacity={s.classCapacity}
+            setClassCapacity={s.setClassCapacity}
             orderedSelectedGrades={s.orderedSelectedGrades}
             regularGradeNumbers={s.regularGradeNumbers}
             alGradeNumbers={s.alGradeNumbers}
@@ -102,7 +122,7 @@ export default function SchoolSetup() {
             setAlStreams={s.setAlStreams}
           />
         )}
-        {step === ROOMS_STEP && <RoomsStep roomChecks={s.roomChecks} setRoomChecks={s.setRoomChecks} customRooms={s.customRooms} setCustomRooms={s.setCustomRooms} />}
+        {step === ROOMS_STEP && <RoomsStep facilityRooms={s.facilityRooms} setFacilityRooms={s.setFacilityRooms} />}
         </div>
         {step === DONE_STEP && <DoneStep submitting={submitting} submitError={submitError} submitted={submitted} onRetry={() => submitAll()} onGoToDashboard={() => navigate("/")} />}
 

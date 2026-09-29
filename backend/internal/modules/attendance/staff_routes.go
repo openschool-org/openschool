@@ -220,7 +220,7 @@ func (h *staffHandler) markUnmarked(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
 		return
 	}
-	n, err := h.service.MarkUnmarkedPresent(c, req, markedBy)
+	n, err := h.service.MarkUnmarkedAbsent(c, req, markedBy)
 	if err != nil {
 		apierror.RespondInternal(c, err)
 		return

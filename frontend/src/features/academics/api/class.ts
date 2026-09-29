@@ -12,6 +12,7 @@ export interface ClassWithDetails {
   boy_monitor_id: string | null;
   medium_id: string | null;
   home_classroom_id: string | null;
+  capacity: number;
   name: string;
   created_at: string | null;
   grade_name: string;
@@ -51,6 +52,7 @@ export interface CreateClassRequest {
   stream_group_id?: string | null;
   medium_id?: string | null;
   home_classroom_id?: string | null;
+  capacity?: number;
 }
 
 export interface SubjectTeacher {

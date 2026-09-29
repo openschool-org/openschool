@@ -64,12 +64,26 @@ function toDate(input: DateInput): Date | null {
 
 export function formatDate(input: DateInput): string {
   const d = toDate(input);
-  return d ? d.toLocaleDateString(locale) : "-";
+  return d ? toYmd(d) : "-";
+}
+
+export function formatISODate(input: DateInput): string {
+  return formatDate(input);
+}
+
+// PostgreSQL DATE values must not be shifted through the browser timezone.
+// Preserve the calendar date even when an API serializes it with a midnight time.
+export function formatDateOnly(input: DateInput): string {
+  if (typeof input === "string") {
+    const match = DATE_ONLY.exec(input.slice(0, 10));
+    if (match) return match[0];
+  }
+  return formatDate(input);
 }
 
 export function formatDateTime(input: DateInput): string {
   const d = toDate(input);
-  return d ? d.toLocaleString(locale) : "-";
+  return d ? `${toYmd(d)} ${d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}` : "-";
 }
 
 export function formatMonth(input: DateInput): string {

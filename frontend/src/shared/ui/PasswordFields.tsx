@@ -1,5 +1,6 @@
 import { PasswordInput } from "@carbon/react";
 import { validateNewPassword } from "@/shared/auth/password";
+import PasswordRequirements from "@/shared/ui/PasswordRequirements";
 
 interface Props {
   idPrefix: string;
@@ -29,6 +30,7 @@ export default function PasswordFields({ idPrefix, password, confirm, onPassword
         invalid={!!confirmError}
         invalidText={confirmError}
       />
+      <PasswordRequirements password={password} confirm={confirm} />
     </div>
   );
 }

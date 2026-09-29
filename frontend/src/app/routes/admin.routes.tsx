@@ -39,6 +39,7 @@ const GradeSections = page(() => import("@/features/timetable/pages/admin/GradeS
 const YearEnd = page(() => import("@/features/workflows/pages/admin/YearEnd"));
 const WorkflowPage = page(() => import("@/features/workflows/pages/admin/WorkflowPage"));
 const TimetableHub = page(() => import("@/features/timetable/pages/admin/TimetableHub"));
+const Resources = page(() => import("@/features/timetable/pages/admin/Resources"));
 const TimetableEditor = page(() => import("@/features/timetable/pages/admin/TimetableEditor"));
 const NotificationComposer = page(() => import("@/features/notifications/pages/NotificationComposer"));
 const NotificationCenter = page(() => import("@/features/notifications/pages/NotificationCenter"));
@@ -87,7 +88,9 @@ export function adminRoutes() {
       <Route path="/timetables/generate" element={<TimetableHub tab="generate" />} />
       <Route path="/timetables/:id" element={<TimetableEditor />} />
       <Route path="/grade-sections" element={<GradeSections />} />
-      <Route path="/classrooms" element={<TimetableHub tab="classrooms" />} />
+      {/* Kept as a compatibility redirect for saved bookmarks and old links. */}
+      <Route path="/classrooms" element={<Navigate to="/resources" replace />} />
+      <Route path="/resources" element={<Resources />} />
       <Route path="/subject-requirements" element={<TimetableHub tab="requirements" />} />
       <Route path="/timetable-settings" element={<TimetableHub tab="settings" />} />
       <Route path="*" element={<NotFound />} />

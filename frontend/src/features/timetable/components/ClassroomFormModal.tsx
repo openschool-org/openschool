@@ -22,7 +22,6 @@ export default function ClassroomFormModal({ editing, form, onChange, isPending,
     <FormModal open title={editing ? "Edit classroom" : "New classroom"} onClose={onClose} onSubmit={onSubmit} isPending={isPending} submitDisabled={!form.name.trim() || labMissingSubject} isError={isError} error={error} errorFallback="Failed to save classroom">
       <div className="os-grid os-gap-4">
         <TextInput id="classroom-name" labelText="Room name" placeholder="e.g. Room 8A, Science Lab 1" value={form.name} onChange={(e) => onChange({ ...form, name: e.target.value })} />
-        <TextInput id="classroom-code" labelText="Code (optional)" value={form.code} onChange={(e) => onChange({ ...form, code: e.target.value })} />
         <NumberInput id="classroom-capacity" label="Capacity (optional)" min={0} value={form.capacity} onChange={(_e, { value }) => onChange({ ...form, capacity: value != null ? String(value) : "" })} />
         <Select id="classroom-type" labelText="Type" value={form.room_type} onChange={(e) => onChange({ ...form, room_type: e.target.value as ClassroomType, subject_id: e.target.value === "lab" ? form.subject_id : "" })}>
           <SelectItem value="regular" text="Regular (homeroom)" />

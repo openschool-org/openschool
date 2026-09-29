@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Button, Tag, InlineNotification, TextInput } from "@carbon/react";
+import { Button, Tag, InlineNotification, TextInput, Pagination } from "@carbon/react";
 import { ArrowLeft, Save, Search, UserMultiple, Warning } from "@carbon/icons-react";
 import { getErrorMessage } from "@/shared/api/errors";
 import { isLockedAfter24Hours } from "@/shared/lib/date";
@@ -18,6 +18,7 @@ import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
 import UnsavedChangesModal from "@/shared/ui/UnsavedChangesModal";
+import ConfirmActionModal from "@/shared/ui/ConfirmActionModal";
 import { useToast } from "@/shared/ui/toast/useToast";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
 
@@ -43,6 +44,9 @@ export default function AttendanceMark() {
   const unsavedGuard = useUnsavedChangesGuard(marking.hasUnsaved);
 
   const [search, setSearch] = useState("");
+  const [studentPage, setStudentPage] = useState(1);
+  const [studentPageSize, setStudentPageSize] = useState(50);
+  const [bulkStatus, setBulkStatus] = useState<"absent" | null>(null);
   const [reason, setReason] = useState("");
 
   const isAdmin = role === "admin";
@@ -54,9 +58,13 @@ export default function AttendanceMark() {
   const teacherName = takenByTeacher?.full_name;
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
+    const q = search.trim().toLowerCase();
     return (students ?? []).filter((s) => s.full_name.toLowerCase().includes(q) || s.index_number.toLowerCase().includes(q));
   }, [students, search]);
+  const visibleStudents = useMemo(
+    () => filtered.slice((studentPage - 1) * studentPageSize, studentPage * studentPageSize),
+    [filtered, studentPage, studentPageSize],
+  );
 
   const save = () => {
     markAttendance.mutate(
@@ -104,14 +112,14 @@ export default function AttendanceMark() {
           <div className="os-flex os-items-center os-gap-3 os-py-3h os-px-6 os-border-b os-wrap">
             <div className="os-search os-max-w-px-280">
               <Search size={16} className="os-search__icon" />
-              <input className="os-search__input" placeholder="Search student…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              <input className="os-search__input" placeholder="Search student by name or index…" value={search} onChange={(e) => { setSearch(e.target.value); setStudentPage(1); }} />
             </div>
             <div className="os-flex-1" />
             {!readOnly && (
               <>
-                <span className="os-text-xs os-c-secondary os-nowrap">Mark all:</span>
-                <button className="os-quick-mark os-quick-mark--present" onClick={() => marking.markAll("present")}>✓ Present</button>
-                <button className="os-quick-mark os-quick-mark--absent" onClick={() => marking.markAll("absent")}>✕ Absent</button>
+                <button className="os-quick-mark os-quick-mark--absent" onClick={() => setBulkStatus("absent")}>
+                  Mark all {marking.summary.unmarked} not marked as absent
+                </button>
                 <button className="os-quick-mark os-quick-mark--clear" onClick={marking.clearAll}>Clear</button>
               </>
             )}
@@ -132,11 +140,11 @@ export default function AttendanceMark() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((student, idx) => (
+                  {visibleStudents.map((student, idx) => (
                     <StudentAttendanceRow
                       key={student.id}
                       student={student}
-                      idx={idx}
+                      idx={(studentPage - 1) * studentPageSize + idx}
                       status={marking.statuses[student.id] ?? null}
                       note={marking.notes[student.id] ?? ""}
                       readOnly={readOnly}
@@ -146,6 +154,19 @@ export default function AttendanceMark() {
                   ))}
                 </tbody>
               </table>
+              {filtered.length > 0 && (
+                <Pagination
+                  totalItems={filtered.length}
+                  page={studentPage}
+                  pageSize={studentPageSize}
+                  pageSizes={[25, 50, 100]}
+                  onChange={({ page, pageSize }) => {
+                    setStudentPage(pageSize === studentPageSize ? page : 1);
+                    setStudentPageSize(pageSize);
+                  }}
+                  size="sm"
+                />
+              )}
               {filtered.length === 0 && (
                 <div className="os-placeholder">
                   <UserMultiple size={32} />
@@ -179,6 +200,15 @@ export default function AttendanceMark() {
         )}
       </div>
 
+      <ConfirmActionModal
+        open={!!bulkStatus}
+        title={`Mark unmarked students as ${bulkStatus ?? ""}`}
+        description={`This will mark all ${marking.summary.unmarked} currently unmarked students as ${bulkStatus ?? ""}. Existing attendance marks will not change.`}
+        confirmLabel={`Mark as ${bulkStatus ?? ""}`}
+        danger={bulkStatus === "absent"}
+        onClose={() => setBulkStatus(null)}
+        onConfirm={() => { if (bulkStatus) marking.markAll(bulkStatus); setBulkStatus(null); }}
+      />
       <UnsavedChangesModal open={unsavedGuard.modalOpen} onStay={unsavedGuard.cancelLeave} onLeave={unsavedGuard.confirmLeave} />
     </div>
   );

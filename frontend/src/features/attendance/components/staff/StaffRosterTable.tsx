@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { Button, Pagination, Tag } from "@carbon/react";
-import { CheckmarkOutline } from "@carbon/icons-react";
-import { useStaffRoster, useMarkStaffAttendance, useMarkUnmarkedPresent } from "@/features/attendance/queries/useStaffAttendance";
+import { CloseFilled } from "@carbon/icons-react";
+import { useStaffRoster, useMarkStaffAttendance, useMarkUnmarkedAbsent } from "@/features/attendance/queries/useStaffAttendance";
 import type { StaffAttendanceStatus, StaffKind } from "@/features/attendance/api/staffAttendance";
 import StaffStatusButton from "@/features/attendance/components/staff/StaffStatusButton";
 import { STAFF_STATUSES } from "@/shared/lib/constants/attendance";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
 import { useToast } from "@/shared/ui/toast/useToast";
+import ConfirmActionModal from "@/shared/ui/ConfirmActionModal";
 import ListState from "@/shared/ui/ListState";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
+import Avatar from "@/shared/ui/Avatar";
 
 interface Props {
   date: string;
@@ -25,7 +27,8 @@ export default function StaffRosterTable({ date, kind, search }: Props) {
   const params = { kind, search, limit: pageSize, offset: (page - 1) * pageSize };
   const { data, isLoading, isError, refetch } = useStaffRoster(date, params);
   const mark = useMarkStaffAttendance();
-  const markUnmarked = useMarkUnmarkedPresent();
+  const markUnmarked = useMarkUnmarkedAbsent();
+  const [confirmBulkAbsent, setConfirmBulkAbsent] = useState(false);
   const noun = (n: number) => (kind === "teacher" ? (n === 1 ? "teacher" : "teachers") : n === 1 ? "staff member" : "staff members");
 
   const onMark = (staffId: string, status: StaffAttendanceStatus) => {
@@ -43,7 +46,7 @@ export default function StaffRosterTable({ date, kind, search }: Props) {
     markUnmarked.mutate(
       { date, kind },
       {
-        onSuccess: ({ marked }) => showToast({ kind: "success", title: `Marked ${marked} ${noun(marked)} present` }),
+        onSuccess: ({ marked }) => showToast({ kind: "success", title: `Marked ${marked} ${noun(marked)} absent` }),
         onError: () => showToast({ kind: "error", title: "Could not mark attendance", subtitle: "Please try again." }),
       },
     );
@@ -64,8 +67,8 @@ export default function StaffRosterTable({ date, kind, search }: Props) {
             </>
           )}
         </div>
-        <Button kind="primary" size="sm" renderIcon={CheckmarkOutline} onClick={onMarkUnmarked} disabled={!totals?.unmarked || markUnmarked.isPending}>
-          {markUnmarked.isPending ? "Marking…" : `Mark all ${totals?.unmarked ?? 0} not marked as present`}
+      <Button kind="danger--tertiary" size="sm" renderIcon={CloseFilled} onClick={() => setConfirmBulkAbsent(true)} disabled={!totals?.unmarked || markUnmarked.isPending}>
+          {markUnmarked.isPending ? "Marking…" : "Mark all unmarked as absent"}
         </Button>
       </div>
 
@@ -89,7 +92,12 @@ export default function StaffRosterTable({ date, kind, search }: Props) {
           <tbody>
             {data?.items.map((row) => (
               <tr key={row.staff_id}>
-                <td data-label="Name" className="os-fw-500">{row.full_name}</td>
+                <td data-label="Name">
+                  <div className="os-flex os-items-center os-gap-2">
+                    <Avatar name={row.full_name} size="sm" />
+                    <span className="os-fw-500">{row.full_name}</span>
+                  </div>
+                </td>
                 <td data-label="Employee no." className="os-table__mono">{row.employee_number}</td>
                 <td data-label="Attendance">
                   <div className={`os-flex os-gap-1h os-wrap ${markingId === row.staff_id ? "os-opacity-50" : ""}`}>
@@ -116,6 +124,16 @@ export default function StaffRosterTable({ date, kind, search }: Props) {
           }}
         />
       )}
+      <ConfirmActionModal
+        open={confirmBulkAbsent}
+        title="Mark unmarked staff as absent"
+        description={`This will mark every active ${noun(2)} with no attendance record for this date as absent, including people outside the current search. Existing attendance marks will not change.`}
+        confirmLabel="Mark as absent"
+        danger
+        pending={markUnmarked.isPending}
+        onClose={() => setConfirmBulkAbsent(false)}
+        onConfirm={() => { onMarkUnmarked(); setConfirmBulkAbsent(false); }}
+      />
     </div>
   );
 }

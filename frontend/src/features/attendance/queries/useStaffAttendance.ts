@@ -23,10 +23,10 @@ export const useStaffMonthly = (year: number, month: number, params: StaffRoster
     placeholderData: keepPreviousData,
   });
 
-export const useMarkUnmarkedPresent = () => {
+export const useMarkUnmarkedAbsent = () => {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ date, kind }: { date: string; kind: StaffKind }) => staffAttendanceApi.markUnmarked(date, kind),
+    mutationFn: ({ date, kind }: { date: string; kind: StaffKind }) => staffAttendanceApi.markUnmarkedAbsent(date, kind),
     onSuccess: () => invalidate(staffAttendanceKeys.all),
   });
 };

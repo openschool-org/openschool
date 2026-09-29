@@ -15,13 +15,14 @@ const EMPTY_CLASS_FORM = {
   form_teacher_id: "",
   medium_id: "",
   home_classroom_id: "",
+  capacity: "45",
 };
 
 export type ClassForm = typeof EMPTY_CLASS_FORM;
 type Touched = Partial<Record<"grade" | "name" | "year", boolean>>;
 
 // Form state and validation; the backend links or creates the homeroom when none is chosen.
-export function useCreateClassForm(preselectedGradeId: string) {
+export function useCreateClassForm(preselectedGradeId: string, onSuccess?: () => void) {
   const navigate = useNavigate();
   const { data: years } = useAcademicYears();
   const { data: classrooms } = useClassrooms();
@@ -52,8 +53,9 @@ export function useCreateClassForm(preselectedGradeId: string) {
         form_teacher_id: form.form_teacher_id || null,
         medium_id: form.medium_id || null,
         home_classroom_id: effectiveHomeClassroomId || null,
+        capacity: form.capacity.trim() ? Number(form.capacity) : undefined,
       },
-      { onSuccess: () => navigate("/classes") },
+      { onSuccess: () => { if (onSuccess) onSuccess(); else navigate("/classes"); } },
     );
   };
 

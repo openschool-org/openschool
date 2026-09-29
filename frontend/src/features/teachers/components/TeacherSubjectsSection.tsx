@@ -4,6 +4,7 @@ import { Book } from "@carbon/icons-react";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { TeacherSubject } from "@/features/teachers/api/teacher";
 import { useSubjects } from "@/features/curriculum/queries/useSubjects";
+import SectionCard from "@/shared/ui/SectionCard";
 
 interface Props {
   subjects: TeacherSubject[] | undefined;
@@ -20,12 +21,7 @@ export default function TeacherSubjectsSection({ subjects, editing, assignSubjec
   const available = allSubjects?.filter((s) => !assignedIds.has(s.id)) ?? [];
 
   return (
-    <div className="os-section">
-      <div className="os-section__header">
-        <h2 className="os-section__title">Subjects</h2>
-        <span className="os-text-xs os-c-tertiary">{subjects?.length ?? 0} assigned</span>
-      </div>
-      <div className="os-section__body">
+    <SectionCard title="Subjects" meta={<span className="os-text-xs os-c-tertiary">{subjects?.length ?? 0} assigned</span>}>
         <div className={`os-flex os-gap-2 os-wrap ${editing ? "os-mb-4" : "os-mb-0"}`}>
           {subjects?.length ? (
             subjects.map((s) =>
@@ -58,7 +54,6 @@ export default function TeacherSubjectsSection({ subjects, editing, assignSubjec
             </Button>
           </div>
         )}
-      </div>
-    </div>
+    </SectionCard>
   );
 }
