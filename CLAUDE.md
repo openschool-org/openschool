@@ -14,8 +14,6 @@ For anything beyond a quick fix, read further before making changes:
 - [`docs/FEATURES.md`](docs/FEATURES.md) - current feature list by module
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - component layout, full data model, external interfaces
 - [`docs/adr/`](docs/adr/) - *why* behind non-obvious decisions (e.g. why positions aren't ThunderID roles, why the current-academic-year invariant exists) - check here before "fixing" something that looks wrong but is deliberate
-- [`docs/finfix/SonarQube_Findings.md`](docs/finfix/SonarQube_Findings.md) - known bugs and code-quality findings with severity
-- [`docs/finfix/UX_REVIEW_PLAYBOOK.md`](docs/finfix/UX_REVIEW_PLAYBOOK.md) - UX findings, prioritised backlog and copy rules (draft, awaiting approval)
 
 ## Backend
 

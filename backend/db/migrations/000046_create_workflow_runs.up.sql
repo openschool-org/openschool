@@ -1,4 +1,4 @@
--- Year-end workflows (docs/finfix/AUTOMATION_AND_FIXES_PLAN.md, Part B): each run is a
+-- Year-end workflows: each run is a
 -- deterministic proposal a person reviews, edits and applies. snapshot holds what apply
 -- changed so a run can be reverted; trace records every step and the tool it used.
 CREATE TABLE workflow_runs (

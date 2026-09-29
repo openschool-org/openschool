@@ -6,10 +6,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// referenceDataMaxAgeSeconds is how long a client may cache rarely-changing
-// reference data (subjects) before revalidating (section 5).
-const referenceDataMaxAgeSeconds = 300
-
 // RegisterSubjectRoutes mounts the subject vertical slice.
 func RegisterSubjectRoutes(admin, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
 	handler := newSubjectHandler(newSubjectRepository(pool))
