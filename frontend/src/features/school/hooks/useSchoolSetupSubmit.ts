@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { useRef, useState } from "react";
 import { useCreateSchool } from "@/features/school/queries/useSchool";
 import { useCreateHouse } from "@/features/school/queries/useHouses";
@@ -8,7 +9,7 @@ import { useCreateMedium } from "@/features/curriculum/queries/useCurriculum";
 import { useCreateClassroom } from "@/features/timetable/queries/useClassrooms";
 import { getErrorMessage } from "@/shared/api/errors";
 import type { Grade } from "@/features/academics/api/grade";
-import { AL_STREAM_DEFS, AL_GRADE_NUMBERS, SUGGESTED_MEDIUMS, type ALStreamKey, type AlStreamsState, type SchoolFormState, type FacilityRoom } from "@/features/school/setupConstants";
+import { AL_STREAM_DEFS, AL_GRADE_NUMBERS, SUGGESTED_MEDIUMS, type ALStreamKey, type AlStreamsByGradeState, type SchoolFormState, type FacilityRoom } from "@/features/school/setupConstants";
 import type { HouseRow } from "@/features/school/components/setup/HousesStep";
 
 // Tracks which submission phases already succeeded, so Retry after a mid-sequence failure resumes instead of duplicating them.
@@ -35,7 +36,7 @@ interface Input {
   classCapacity: number;
   sectionsPerGrade: Record<number, number>;
   sectionMediums: Record<string, string>;
-  alStreams: AlStreamsState;
+  alStreams: AlStreamsByGradeState;
   classesSkipped: boolean;
   roomsSkipped: boolean;
   facilityRooms: FacilityRoom[];
@@ -58,6 +59,7 @@ export function useSchoolSetupSubmit(input: Input) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const lastSetupRequestAt = useRef(0);
   const progressRef = useRef<SubmitProgress>({
     school: false,
     houses: false,
@@ -66,6 +68,25 @@ export function useSchoolSetupSubmit(input: Input) {
     classes: false,
     rooms: false,
   });
+
+  // Keep the long setup sequence below the API-wide token bucket. This also
+  // retries a short-lived 429 so later streams are not skipped in large setups.
+  const setupRequest = async <T,>(operation: () => Promise<T>): Promise<T> => {
+    const interval = 40;
+    const wait = Math.max(0, interval - (Date.now() - lastSetupRequestAt.current));
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    lastSetupRequestAt.current = Date.now();
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await operation();
+      } catch (error) {
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (status !== 429 || attempt >= 3) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+        lastSetupRequestAt.current = Date.now();
+      }
+    }
+  };
 
   // skipRoomsOverride bypasses the Rooms step's stale roomsSkipped state, whose setState hasn't applied yet when it triggers submit.
   const submitAll = async (skipRoomsOverride?: boolean) => {
@@ -183,42 +204,45 @@ export function useSchoolSetupSubmit(input: Input) {
             for (let i = 0; i < count; i++) {
               const section = String.fromCharCode(65 + i);
               const mediumName = sectionMediums[`${gradeNumber}-${i}`] || selectedMediumNames[0];
-              await createClass.mutateAsync({
+              await setupRequest(() => createClass.mutateAsync({
                 grade_id: grade.id,
                 academic_year_id: year.id,
                 name: `${gradeNumber}-${section}`,
                 medium_id: (mediumName && mediumIdByName.get(mediumName)) || null,
                 capacity: classCapacity,
-              });
+              }));
             }
           }
 
           if (alGrades.length > 0) {
-            const enabledDefs = AL_STREAM_DEFS.filter((d) => alStreams[d.key].enabled);
+            const enabledDefs = AL_STREAM_DEFS.filter((d) => alGrades.some((grade) => alStreams[gradeNumberOf(grade)]?.[d.key]?.enabled));
             const streamIdByName = new Map<string, string>();
             const groupIdByKey = new Map<ALStreamKey, string>();
 
             for (const def of enabledDefs) {
               if (!streamIdByName.has(def.streamName)) {
-                const stream = await createStream.mutateAsync({ name: def.streamName });
+                const stream = await setupRequest(() => createStream.mutateAsync({ name: def.streamName }));
                 streamIdByName.set(def.streamName, stream.id);
               }
               if (def.groupName) {
-                const group = await createStreamGroup.mutateAsync({
+                const groupName = def.groupName;
+                const group = await setupRequest(() => createStreamGroup.mutateAsync({
                   streamId: streamIdByName.get(def.streamName)!,
-                  data: { name: def.groupName },
-                });
+                  data: { name: groupName },
+                }));
                 groupIdByKey.set(def.key, group.id);
               }
             }
 
             for (const grade of alGrades) {
               const gradeNumber = gradeNumberOf(grade);
+              const gradeStreams = alStreams[gradeNumber] ?? {};
               for (const def of enabledDefs) {
-                const config = alStreams[def.key];
+                const config = gradeStreams[def.key];
+                if (!config?.enabled) continue;
                 const code = config.code.trim() || def.defaultCode;
                 for (let i = 0; i < config.sections; i++) {
-                  await createClass.mutateAsync({
+                  await setupRequest(() => createClass.mutateAsync({
                     grade_id: grade.id,
                     academic_year_id: year.id,
                     stream_id: streamIdByName.get(def.streamName)!,
@@ -226,7 +250,7 @@ export function useSchoolSetupSubmit(input: Input) {
                     name: `${gradeNumber}-${code}${i + 1}`,
                     medium_id: (selectedMediumNames[0] && mediumIdByName.get(selectedMediumNames[0])) || null,
                     capacity: classCapacity,
-                  });
+                  }));
                 }
               }
             }
@@ -239,14 +263,14 @@ export function useSchoolSetupSubmit(input: Input) {
         if (!skipRooms) {
           const namedRooms = facilityRooms.filter((room) => room.name.trim());
           for (const room of namedRooms) {
-            await createClassroom.mutateAsync({
+            await setupRequest(() => createClassroom.mutateAsync({
               name: room.name.trim(),
               // Keep the setup category with the room so Resources can show
               // libraries, IT labs, halls, and other facilities distinctly.
               code: room.group,
               room_type: "eca",
               capacity: room.capacity === "" ? undefined : room.capacity,
-            });
+            }));
           }
         }
         progress.rooms = true;

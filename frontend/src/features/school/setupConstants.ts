@@ -9,6 +9,7 @@ export interface ALStreamDef {
 }
 
 export type AlStreamsState = Record<ALStreamKey, { enabled: boolean; code: string; sections: number }>;
+export type AlStreamsByGradeState = Record<number, AlStreamsState>;
 
 export interface SchoolFormState {
   name: string;
@@ -30,6 +31,9 @@ export const AL_STREAM_DEFS: ALStreamDef[] = [
 ];
 
 export const AL_GRADE_NUMBERS = new Set([12, 13]);
+
+export const createDefaultAlStreams = (): AlStreamsState =>
+  Object.fromEntries(AL_STREAM_DEFS.map((d) => [d.key, { enabled: true, code: d.defaultCode, sections: 1 }])) as AlStreamsState;
 
 export const GRADE_MIN = 1;
 export const GRADE_MAX = 13;

@@ -18,10 +18,10 @@ const RESOURCE_TYPES = [
 
 type ZoneKey = ClassroomType | "all";
 
-const ZONES: { key: ZoneKey; label: string; description: string }[] = [
-  { key: "regular", label: "Learning block", description: "Homerooms and everyday teaching spaces" },
-  { key: "lab", label: "Practical learning", description: "Subject labs used for practical lessons" },
-  { key: "eca", label: "Shared facilities", description: "Libraries, halls, arts, sports and support spaces" },
+const ZONES: { key: ZoneKey; label: string; description: string; icon: typeof Home }[] = [
+  { key: "regular", label: "Learning block", description: "Homerooms and everyday teaching spaces", icon: Home },
+  { key: "lab", label: "Practical learning", description: "Subject labs used for practical lessons", icon: Education },
+  { key: "eca", label: "Shared facilities", description: "Libraries, halls, arts, sports and support spaces", icon: Music },
 ];
 
 const FACILITY_LABEL: Record<string, string> = {
@@ -31,10 +31,21 @@ const FACILITY_LABEL: Record<string, string> = {
   auditorium: "Auditorium / hall", medicalRoom: "Medical / sick room", counselingRoom: "Counseling room", staffRoom: "Staff room",
 };
 
+const FACILITY_LAB_GROUPS = new Set(["scienceLab", "itLab", "technicalLab", "homeEconomicsLab", "languageLab"]);
+
+function resourceType(resource: Classroom): ClassroomType {
+  if (resource.room_type === "eca" && resource.code && FACILITY_LAB_GROUPS.has(resource.code)) return "lab";
+  return resource.room_type;
+}
+
 function resourceMeta(resource: Classroom) {
   if (resource.room_type === "regular") return "Homeroom";
   if (resource.room_type === "lab") return resource.subject_name ? `${resource.subject_name} lab` : "Subject lab";
   return resource.code ? FACILITY_LABEL[resource.code] ?? resource.code : "Facility";
+}
+
+function resourceCapacity(resource: Classroom) {
+  return resource.capacity == null ? "Capacity not set" : `${resource.capacity} places`;
 }
 
 function ResourceMap({ resources }: { resources: Classroom[] }) {
@@ -47,7 +58,7 @@ function ResourceMap({ resources }: { resources: Classroom[] }) {
   const updateResource = useUpdateClassroom();
   const deleteResource = useDeleteClassroom();
   const saving = editing ? updateResource : createResource;
-  const visible = useMemo(() => activeZone === "all" ? resources : resources.filter((resource) => resource.room_type === activeZone), [activeZone, resources]);
+  const visible = useMemo(() => activeZone === "all" ? resources : resources.filter((resource) => resourceType(resource) === activeZone), [activeZone, resources]);
 
   const openCreate = () => {
     createResource.reset();
@@ -89,7 +100,7 @@ function ResourceMap({ resources }: { resources: Classroom[] }) {
       <div className="os-resource-map__filters" role="group" aria-label="Resource map zones">
         <button type="button" aria-pressed={activeZone === "all"} className={activeZone === "all" ? "is-active" : ""} onClick={() => setActiveZone("all")}>All resources <span>{resources.length}</span></button>
         {ZONES.map((zone) => {
-          const count = resources.filter((resource) => resource.room_type === zone.key).length;
+          const count = resources.filter((resource) => resourceType(resource) === zone.key).length;
           return <button key={zone.key} type="button" aria-pressed={activeZone === zone.key} className={activeZone === zone.key ? "is-active" : ""} onClick={() => setActiveZone(zone.key)}>{zone.label} <span>{count}</span></button>;
         })}
       </div>
@@ -97,21 +108,29 @@ function ResourceMap({ resources }: { resources: Classroom[] }) {
       <div className="os-resource-map__canvas">
         <div className="os-resource-map__zones">
           {ZONES.filter((zone) => activeZone === "all" || activeZone === zone.key).map((zone) => {
-            const zoneResources = visible.filter((resource) => resource.room_type === zone.key);
+            const zoneResources = visible.filter((resource) => resourceType(resource) === zone.key);
+            const ZoneIcon = zone.icon;
             return (
               <div key={zone.key} className={`os-resource-map__zone os-resource-map__zone--${zone.key}`}>
-                <div className="os-resource-map__zone-heading"><div><h3>{zone.label}</h3><p>{zone.description}</p></div><strong>{zoneResources.length}</strong></div>
+                <div className="os-resource-map__zone-heading">
+                  <div className="os-resource-map__zone-title">
+                    <span className="os-resource-map__zone-icon" aria-hidden="true"><ZoneIcon size={20} /></span>
+                    <div><h3>{zone.label}</h3><p>{zone.description}</p></div>
+                  </div>
+                  <span className="os-resource-map__zone-count" aria-label={`${zoneResources.length} resources`}>{zoneResources.length}</span>
+                </div>
                 <div className="os-resource-map__rooms">
                   {zoneResources.length === 0 ? <span className="os-resource-map__empty">No resources configured</span> : zoneResources.map((resource) => (
-                    <div key={resource.id} className="os-resource-map__room">
+                    <article key={resource.id} className="os-resource-map__room">
                       <div className="os-resource-map__room-select">
-                        <span>{resource.name}</span><small>{resourceMeta(resource)}</small>
+                        <div className="os-resource-map__room-name"><span title={resource.name}>{resource.name}</span><Tag type="gray" size="sm">{resourceMeta(resource)}</Tag></div>
+                        <small>{resourceCapacity(resource)}</small>
                       </div>
                       <div className="os-resource-map__room-actions">
                         <IconButton label={`Edit ${resource.name}`} kind="ghost" size="sm" onClick={() => openEdit(resource)}><Edit size={16} /></IconButton>
                         <IconButton label={`Delete ${resource.name}`} kind="ghost" size="sm" onClick={() => setToDelete(resource)}><TrashCan size={16} /></IconButton>
                       </div>
-                    </div>
+                    </article>
                   ))}
                 </div>
               </div>
@@ -147,7 +166,7 @@ export default function Resources() {
                   <Icon size={20} className="os-fill-accent" />
                   <span className="os-text-sm os-fw-600 os-c-secondary">{label}</span>
                 </div>
-                <strong className="os-text-4xl os-fw-300 os-c-primary">{classrooms?.filter((room) => room.room_type === key).length ?? 0}</strong>
+                <strong className="os-text-4xl os-fw-300 os-c-primary">{classrooms?.filter((room) => resourceType(room) === key).length ?? 0}</strong>
               </div>
             ))}
           </div>

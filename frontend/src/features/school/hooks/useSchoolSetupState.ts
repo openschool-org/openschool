@@ -2,7 +2,7 @@ import { useState } from "react";
 import { EMAIL_RE } from "@/shared/lib/validation";
 import { isValidSriLankanPhone } from "@/shared/lib/phone";
 import type { HouseRow } from "@/features/school/components/setup/HousesStep";
-import { AL_GRADE_NUMBERS, AL_STREAM_DEFS, DEFAULT_CLASS_CAPACITY, GRADE_MIN, GRADE_MAX, HOUSE_COLOR_PALETTE, SUGGESTED_MEDIUMS, type ALStreamKey, type AlStreamsState, type FacilityRoom } from "@/features/school/setupConstants";
+import { AL_GRADE_NUMBERS, createDefaultAlStreams, DEFAULT_CLASS_CAPACITY, GRADE_MIN, GRADE_MAX, HOUSE_COLOR_PALETTE, SUGGESTED_MEDIUMS, type AlStreamsByGradeState, type FacilityRoom } from "@/features/school/setupConstants";
 
 // All form state for the onboarding wizard, so the page only handles step navigation.
 export function useSchoolSetupState() {
@@ -61,9 +61,7 @@ export function useSchoolSetupState() {
   const [sectionsPerGrade, setSectionsPerGrade] = useState<Record<number, number>>({});
   const [classesSkipped, setClassesSkipped] = useState(false);
   const [sectionMediums, setSectionMediums] = useState<Record<string, string>>({});
-  const [alStreams, setAlStreams] = useState<AlStreamsState>(
-    () => Object.fromEntries(AL_STREAM_DEFS.map((d) => [d.key, { enabled: true, code: d.defaultCode, sections: 1 }])) as Record<ALStreamKey, { enabled: boolean; code: string; sections: number }>,
-  );
+  const [alStreams, setAlStreams] = useState<AlStreamsByGradeState>(() => ({ 12: createDefaultAlStreams(), 13: createDefaultAlStreams() }));
 
   const [facilityRooms, setFacilityRooms] = useState<FacilityRoom[]>([]);
   const [roomsSkipped, setRoomsSkipped] = useState(false);

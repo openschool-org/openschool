@@ -14,6 +14,19 @@ import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import { useListFilters } from "@/shared/hooks/useListFilters";
 
+type SubjectTagType = "blue" | "cyan" | "teal" | "purple" | "magenta" | "green" | "gray";
+
+function subjectTypeTag(type: string): SubjectTagType {
+  const value = type.trim().toLowerCase();
+  if (value.includes("core") || value.includes("compulsory")) return "blue";
+  if (value.includes("language")) return "purple";
+  if (value.includes("aesthetic") || value.includes("art") || value.includes("music")) return "magenta";
+  if (value.includes("practical") || value.includes("technical")) return "teal";
+  if (value.includes("elective")) return "cyan";
+  if (value.includes("religion") || value.includes("ethic")) return "green";
+  return "gray";
+}
+
 export default function SubjectsPanel() {
   const { data: subjects, isLoading, isError, refetch } = useSubjects();
   const updateSubject = useUpdateSubject();
@@ -51,7 +64,7 @@ export default function SubjectsPanel() {
   const columns: GridColumn<Subject>[] = [
     { key: "code", header: "Code", render: (s) => <span className="os-table__mono">{s.code}</span> },
     { key: "name", header: "Subject", render: (s) => s.name },
-    { key: "type", header: "Type", render: (s) => (s.type ? <Tag type="blue" size="sm">{s.type}</Tag> : <span className="os-table__muted">-</span>) },
+    { key: "type", header: "Type", render: (s) => (s.type ? <Tag type={subjectTypeTag(s.type)} size="sm">{s.type}</Tag> : <span className="os-table__muted">-</span>) },
     { key: "max", header: "Max marks", render: (s) => s.max_marks },
     {
       key: "actions",

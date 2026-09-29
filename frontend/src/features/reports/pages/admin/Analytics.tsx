@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { SkeletonText, Tabs, TabList, Tab, TabPanels, TabPanel, Button, Tag } from "@carbon/react";
 import { useDashboardAnalytics, useLeadershipAnalytics } from "@/features/reports/queries/useDashboardAnalytics";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
@@ -141,17 +141,15 @@ function StudentsPanel({ data }: { data: AnalyticsData }) {
 function StudentEnrollmentSection({ byGrade, byClass }: { byGrade: CountRow[]; byClass: CountRow[] }) {
   const firstGrade = byGrade.find((row) => row.count > 0)?.label ?? byGrade[0]?.label ?? "";
   const [selectedGrade, setSelectedGrade] = useState(firstGrade);
-  useEffect(() => {
-    if (!byGrade.some((row) => row.label === selectedGrade)) setSelectedGrade(firstGrade);
-  }, [byGrade, firstGrade, selectedGrade]);
+  const effectiveSelectedGrade = byGrade.some((row) => row.label === selectedGrade) ? selectedGrade : firstGrade;
   const gradeRows = byGrade.map((row) => ({ label: row.label, value: row.count }));
   const classRows = useMemo(() => {
-    const prefix = `${selectedGrade} `;
+    const prefix = `${effectiveSelectedGrade} `;
     return byClass
       .filter((row) => row.label.startsWith(prefix))
       .map((row) => ({ label: row.label.slice(prefix.length), value: row.count }));
-  }, [byClass, selectedGrade]);
-  const selectedCount = byGrade.find((row) => row.label === selectedGrade)?.count ?? 0;
+  }, [byClass, effectiveSelectedGrade]);
+  const selectedCount = byGrade.find((row) => row.label === effectiveSelectedGrade)?.count ?? 0;
 
   return (
     <Section title="Student enrolment by grade and class">
@@ -181,7 +179,7 @@ function StudentEnrollmentSection({ byGrade, byClass }: { byGrade: CountRow[]; b
         </div>
         <div>
           <div className="os-flex os-items-center os-justify-between os-mb-3">
-            <p className="os-m-0 os-text-xs os-fw-600 os-uppercase os-tracking-wide os-c-secondary">Classes in {selectedGrade || "selected grade"}</p>
+            <p className="os-m-0 os-text-xs os-fw-600 os-uppercase os-tracking-wide os-c-secondary">Classes in {effectiveSelectedGrade || "selected grade"}</p>
             <Tag type="blue" size="sm">{selectedCount} students</Tag>
           </div>
           <BarList rows={classRows} color={CHART_BLUE} />

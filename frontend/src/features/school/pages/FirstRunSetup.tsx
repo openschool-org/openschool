@@ -10,6 +10,7 @@ import { validateNewPassword } from "@/shared/auth/password";
 import CustomStepper from "@/features/school/components/setup/CustomStepper";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import ErrorSummary from "@/shared/ui/ErrorSummary";
+import PasswordRequirements from "@/shared/ui/PasswordRequirements";
 import { useErrorSummary } from "@/shared/hooks/useErrorSummary";
 
 const STEPS = [
@@ -135,20 +136,7 @@ export default function FirstRunSetup() {
                 <PasswordInput {...input("password", "Password", { autoComplete: "new-password" })} />
                 <PasswordInput {...input("confirmPassword", "Confirm password", { autoComplete: "new-password" })} />
               </div>
-              {(form.password || form.confirmPassword) && (
-                <div className="os-password-guidance" aria-live="polite">
-                  <div className="os-password-guidance__title"><Information size={16} /> Password requirements</div>
-                  <div className="os-password-guidance__checks">
-                    <span className={pw.criteria.minLength ? "is-valid" : "is-invalid"}><CheckmarkFilled size={16} /> At least 10 characters</span>
-                    <span className={pw.criteria.uppercase ? "is-valid" : "is-invalid"}><CheckmarkFilled size={16} /> One uppercase letter</span>
-                    <span className={pw.criteria.lowercase ? "is-valid" : "is-invalid"}><CheckmarkFilled size={16} /> One lowercase letter</span>
-                    <span className={pw.criteria.number ? "is-valid" : "is-invalid"}><CheckmarkFilled size={16} /> One number</span>
-                    <span className={pw.criteria.special ? "is-valid" : "is-invalid"}><CheckmarkFilled size={16} /> One special character</span>
-                    <span className={pw.criteria.notCommon ? "is-valid" : "is-invalid"}><CheckmarkFilled size={16} /> No simple patterns, like 123456</span>
-                    <span className={pw.criteria.minLength && form.confirmPassword === form.password ? "is-valid" : "is-invalid"}><CheckmarkFilled size={16} /> Passwords match</span>
-                  </div>
-                </div>
-              )}
+              <PasswordRequirements password={form.password} confirm={form.confirmPassword} />
             </div>
 
             <div className="os-setup-form__footer">

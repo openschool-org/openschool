@@ -2,7 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { Checkbox, NumberInput, Select, SelectItem, TextInput } from "@carbon/react";
 import { Building, Information } from "@carbon/icons-react";
 import StepShell from "@/features/school/components/setup/StepShell";
-import { AL_STREAM_DEFS, type AlStreamsState } from "@/features/school/setupConstants";
+import { AL_STREAM_DEFS, type AlStreamsByGradeState } from "@/features/school/setupConstants";
 
 interface Props {
   yearLabel: string;
@@ -17,8 +17,8 @@ interface Props {
   selectedMediumNames: string[];
   sectionMediums: Record<string, string>;
   setSectionMediums: Dispatch<SetStateAction<Record<string, string>>>;
-  alStreams: AlStreamsState;
-  setAlStreams: Dispatch<SetStateAction<AlStreamsState>>;
+  alStreams: AlStreamsByGradeState;
+  setAlStreams: Dispatch<SetStateAction<AlStreamsByGradeState>>;
 }
 
 export default function ClassesStep({
@@ -124,56 +124,59 @@ export default function ClassesStep({
             </section>
           )}
 
-          {alGradeNumbers.length > 0 && (
-            <section className="os-class-section" aria-labelledby="al-streams-title">
-              <div className="os-class-section__heading">
-                <div>
-                  <h3 id="al-streams-title">A/L streams</h3>
-                  <p>Applied to {alGradeNumbers.map((n) => `Grade ${n}`).join(" and ")}. Enable the streams your school offers.</p>
+          {alGradeNumbers.map((gradeNumber) => {
+            const gradeStreams = alStreams[gradeNumber];
+            return (
+              <section key={gradeNumber} className="os-class-section" aria-labelledby={`al-streams-title-${gradeNumber}`}>
+                <div className="os-class-section__heading">
+                  <div>
+                    <h3 id={`al-streams-title-${gradeNumber}`}>Grade {gradeNumber} A/L streams</h3>
+                    <p>Configure Grade {gradeNumber} independently. These settings do not change Grade {gradeNumber === 12 ? 13 : 12}.</p>
+                  </div>
                 </div>
-              </div>
-              <p className="os-class-section__hint">Set a short code and section count for each enabled stream.</p>
-              <div className="os-al-stream-list">
-                {AL_STREAM_DEFS.map((def) => {
-                  const cfg = alStreams[def.key];
-                  return (
-                    <div key={def.key} className={`os-al-stream-row ${cfg.enabled ? "" : "is-disabled"}`}>
-                      <div className="os-al-stream-row__name">
-                        <Checkbox
-                          id={`al-${def.key}`}
-                          labelText={def.label}
-                          checked={cfg.enabled}
-                          onChange={(_e, { checked }) => setAlStreams((prev) => ({ ...prev, [def.key]: { ...prev[def.key], enabled: checked } }))}
+                <p className="os-class-section__hint">Enable the streams and set a code and section count for this grade.</p>
+                <div className="os-al-stream-list">
+                  {AL_STREAM_DEFS.map((def) => {
+                    const cfg = gradeStreams[def.key];
+                    return (
+                      <div key={def.key} className={`os-al-stream-row ${cfg.enabled ? "" : "is-disabled"}`}>
+                        <div className="os-al-stream-row__name">
+                          <Checkbox
+                            id={`al-${gradeNumber}-${def.key}`}
+                            labelText={def.label}
+                            checked={cfg.enabled}
+                            onChange={(_e, { checked }) => setAlStreams((prev) => ({ ...prev, [gradeNumber]: { ...prev[gradeNumber], [def.key]: { ...prev[gradeNumber][def.key], enabled: checked } } }))}
+                          />
+                        </div>
+                        <TextInput
+                          id={`al-code-${gradeNumber}-${def.key}`}
+                          labelText="Stream code"
+                          size="sm"
+                          maxLength={3}
+                          disabled={!cfg.enabled}
+                          value={cfg.code}
+                          onChange={(e) => setAlStreams((prev) => ({ ...prev, [gradeNumber]: { ...prev[gradeNumber], [def.key]: { ...prev[gradeNumber][def.key], code: e.target.value } } }))}
+                        />
+                        <NumberInput
+                          id={`al-sections-${gradeNumber}-${def.key}`}
+                          label="Sections"
+                          size="sm"
+                          min={0}
+                          max={10}
+                          disabled={!cfg.enabled}
+                          value={cfg.sections}
+                          onChange={(_e, { value }) => setAlStreams((prev) => ({ ...prev, [gradeNumber]: { ...prev[gradeNumber], [def.key]: { ...prev[gradeNumber][def.key], sections: value === "" ? 0 : Number(value) } } }))}
                         />
                       </div>
-                      <TextInput
-                        id={`al-code-${def.key}`}
-                        labelText="Stream code"
-                        size="sm"
-                        maxLength={3}
-                        disabled={!cfg.enabled}
-                        value={cfg.code}
-                        onChange={(e) => setAlStreams((prev) => ({ ...prev, [def.key]: { ...prev[def.key], code: e.target.value } }))}
-                      />
-                      <NumberInput
-                        id={`al-sections-${def.key}`}
-                        label="Sections"
-                        size="sm"
-                        min={0}
-                        max={10}
-                        disabled={!cfg.enabled}
-                        value={cfg.sections}
-                        onChange={(_e, { value }) => setAlStreams((prev) => ({ ...prev, [def.key]: { ...prev[def.key], sections: value === "" ? 0 : Number(value) } }))}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="os-class-section__hint os-class-section__hint--example">
-                Example: Physical Science with code “M” and 2 sections creates {alGradeNumbers.map((n) => `${n}-M1, ${n}-M2`).join(", ")}.
-              </p>
-            </section>
-          )}
+                    );
+                  })}
+                </div>
+                <p className="os-class-section__hint os-class-section__hint--example">
+                  Example: Physical Science with code “M” and 2 sections creates Grade {gradeNumber}-M1 and Grade {gradeNumber}-M2.
+                </p>
+              </section>
+            );
+          })}
         </>
       )}
     </StepShell>
