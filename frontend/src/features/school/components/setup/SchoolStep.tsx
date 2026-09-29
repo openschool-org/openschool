@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import { useState } from "react";
 import { TextInput, NumberInput, Select, SelectItem } from "@carbon/react";
 import { Enterprise } from "@carbon/icons-react";
 import LogoUpload from "@/features/school/components/LogoUpload";
@@ -15,6 +16,11 @@ interface Props {
 }
 
 export default function SchoolStep({ school, setSchool, schoolTouched, gradeRangeInvalid }: Props) {
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const showError = (field: string) => schoolTouched || !!touched[field];
+  const gradeFromInvalid = school.grade_from === "" || Number(school.grade_from) < GRADE_MIN || Number(school.grade_from) > GRADE_MAX;
+  const gradeToInvalid = school.grade_to === "" || Number(school.grade_to) < GRADE_MIN || Number(school.grade_to) > GRADE_MAX;
+
   return (
     <StepShell icon={Enterprise} title="School details" subtitle="The basics - you can fill in the rest later from Settings.">
       <div className="os-school-details-form">
@@ -24,26 +30,38 @@ export default function SchoolStep({ school, setSchool, schoolTouched, gradeRang
           placeholder="e.g. Royal College"
           value={school.name}
           onChange={(e) => setSchool((s) => ({ ...s, name: e.target.value }))}
-          invalid={schoolTouched && !school.name.trim()}
+          onBlur={() => setTouched((fields) => ({ ...fields, name: true }))}
+          invalid={showError("name") && !school.name.trim()}
           invalidText="School name is required."
+          autoComplete="organization"
         />
         <div className="os-school-details-form__two-column">
           <TextInput
             id="ss-phone"
-            labelText="Phone"
-            value={school.phone}
-            onChange={(e) => setSchool((s) => ({ ...s, phone: e.target.value }))}
-            invalid={schoolTouched && (!school.phone.trim() || !isValidSriLankanPhone(school.phone))}
-            invalidText={school.phone.trim() ? PHONE_INVALID_TEXT : "Phone number is required."}
-          />
+          labelText="Phone"
+          placeholder="0778449056 or 0112123123"
+          helperText="Use a 10-digit Sri Lankan mobile or landline number."
+          type="tel"
+          inputMode="tel"
+          value={school.phone}
+          onChange={(e) => setSchool((s) => ({ ...s, phone: e.target.value }))}
+          onBlur={() => setTouched((fields) => ({ ...fields, phone: true }))}
+          invalid={showError("phone") && (!school.phone.trim() || !isValidSriLankanPhone(school.phone))}
+          invalidText={school.phone.trim() ? PHONE_INVALID_TEXT : "Phone number is required."}
+          autoComplete="tel"
+        />
           <TextInput
             id="ss-email"
-            labelText="Email"
-            type="email"
-            value={school.email}
-            onChange={(e) => setSchool((s) => ({ ...s, email: e.target.value }))}
-            invalid={schoolTouched && !EMAIL_RE.test(school.email.trim())}
-            invalidText="Enter a valid email address."
+          labelText="Email"
+          type="email"
+          placeholder="office@yourschool.lk"
+          helperText="Enter a valid school email address."
+          value={school.email}
+          onChange={(e) => setSchool((s) => ({ ...s, email: e.target.value }))}
+          onBlur={() => setTouched((fields) => ({ ...fields, email: true }))}
+          invalid={showError("email") && !EMAIL_RE.test(school.email.trim())}
+          invalidText="Enter a valid email address."
+          autoComplete="email"
           />
         </div>
         <TextInput
@@ -51,8 +69,10 @@ export default function SchoolStep({ school, setSchool, schoolTouched, gradeRang
           labelText="Address"
           value={school.address}
           onChange={(e) => setSchool((s) => ({ ...s, address: e.target.value }))}
-          invalid={schoolTouched && !school.address.trim()}
+          onBlur={() => setTouched((fields) => ({ ...fields, address: true }))}
+          invalid={showError("address") && !school.address.trim()}
           invalidText="Address is required."
+          autoComplete="street-address"
         />
         <LogoUpload
           value={school.logo_url}
@@ -78,22 +98,26 @@ export default function SchoolStep({ school, setSchool, schoolTouched, gradeRang
             label="Lowest grade"
             min={GRADE_MIN}
             max={GRADE_MAX}
+            invalid={showError("grade_from") && (gradeFromInvalid || gradeRangeInvalid)}
+            invalidText={gradeFromInvalid ? `Enter a grade from ${GRADE_MIN} to ${GRADE_MAX}.` : "Must be ≤ highest grade."}
             value={school.grade_from}
             onChange={(_e, { value }) =>
               setSchool((s) => ({ ...s, grade_from: value === "" ? "" : Number(value) }))
             }
+            onBlur={() => setTouched((fields) => ({ ...fields, grade_from: true }))}
           />
           <NumberInput
             id="ss-grade-to"
             label="Highest grade"
             min={GRADE_MIN}
             max={GRADE_MAX}
-            invalid={gradeRangeInvalid}
-            invalidText="Must be ≥ lowest grade."
+            invalid={showError("grade_to") && (gradeToInvalid || gradeRangeInvalid)}
+            invalidText={gradeToInvalid ? `Enter a grade from ${GRADE_MIN} to ${GRADE_MAX}.` : "Must be ≥ lowest grade."}
             value={school.grade_to}
             onChange={(_e, { value }) =>
               setSchool((s) => ({ ...s, grade_to: value === "" ? "" : Number(value) }))
             }
+            onBlur={() => setTouched((fields) => ({ ...fields, grade_to: true }))}
           />
         </div>
       </div>

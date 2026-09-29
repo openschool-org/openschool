@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Navigate } from "react-router";
 import { SignInButton } from "@thunderid/react";
-import { Button, TextInput, PasswordInput, Stack } from "@carbon/react";
-import { CheckmarkFilled } from "@carbon/icons-react";
+import { Button, TextInput, PasswordInput, InlineLoading } from "@carbon/react";
+import { CheckmarkFilled, Information, UserMultiple } from "@carbon/icons-react";
 import { useSetupStatus, useRegisterAdmin } from "@/features/school/queries/useSetup";
 import { EMAIL_RE } from "@/shared/lib/validation";
 import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "@/shared/lib/phone";
@@ -27,7 +27,7 @@ export default function FirstRunSetup() {
   const [form, setForm] = useState(EMPTY);
   const [touched, setTouched] = useState<Partial<Record<Field, boolean>>>({});
   const [done, setDone] = useState(false);
-  const { ref: summaryRef, errors: summaryErrors, reveal, recheck } = useErrorSummary();
+  const { ref: summaryRef, errors: summaryErrors, reveal, recheck } = useErrorSummary<HTMLFormElement>();
 
   if (statusLoading) return <div className="os-full-height" />;
   if (!done && status && !status.needs_setup) return <Navigate to="/signin" replace />;
@@ -77,7 +77,7 @@ export default function FirstRunSetup() {
 
   if (done) {
     return (
-      <div className="os-signin-wrapper">
+      <div className="os-setup-wrapper">
         <div className="os-setup-card os-setup-card--success">
           <div className="os-setup-success-icon"><CheckmarkFilled size={28} /></div>
           <h1 className="os-setup-card__title">Admin account created</h1>
@@ -102,37 +102,58 @@ export default function FirstRunSetup() {
           <CustomStepper currentIndex={0} steps={STEPS} />
 
           <div className="os-setup-card__heading">
-            <h2 id="setup-title">Create your admin account</h2>
-            <p>Start with the account you'll use to configure and run your school. <strong>This can only be done once.</strong></p>
+            <p className="os-setup-eyebrow">Welcome to OpenSchool</p>
+            <h1 id="setup-title">Create your admin account</h1>
+            <p>Set up the account you’ll use to configure and run your school. <strong>This can only be done once.</strong></p>
           </div>
 
           <MutationErrorNotification isError={registerAdmin.isError} error={registerAdmin.error} title="Could not register admin" fallback="Something went wrong. Please try again." className="os-setup-card__error" />
 
           <ErrorSummary errors={summaryErrors} />
 
-          <Stack gap={3} className="os-setup-form" ref={summaryRef} onChange={recheck}>
+          <form className="os-setup-form" ref={summaryRef} onChange={recheck} onSubmit={(event) => { event.preventDefault(); submit(); }} noValidate>
             <div className="os-setup-form__section">
-              <div className="os-setup-form__section-heading"><h3>Personal details</h3></div>
+              <div className="os-setup-form__section-heading">
+                <span className="os-setup-form__section-icon"><UserMultiple size={20} /></span>
+                <div><h2>Personal details</h2><p>Tell us who will manage this OpenSchool instance.</p></div>
+              </div>
               <div className="os-setup-name-grid">
-                <TextInput {...input("givenName", "First name")} />
-                <TextInput {...input("familyName", "Last name")} />
-                <TextInput {...input("phone", "Phone number (optional)")} />
-                <TextInput {...input("email", "Email", { type: "email" })} />
-                <TextInput {...input("username", "Username (sign-in name)")} />
+                <TextInput {...input("givenName", "First name", { autoComplete: "given-name" })} />
+                <TextInput {...input("familyName", "Last name", { autoComplete: "family-name" })} />
+                <TextInput {...input("email", "Email", { type: "email", autoComplete: "email", helperText: "Used for account recovery." })} />
+                <TextInput {...input("username", "Username", { autoComplete: "username", helperText: "Your sign-in name." })} />
+                <TextInput {...input("phone", "Phone number (optional)", { type: "tel", autoComplete: "tel", helperText: "Sri Lankan number, for example 0771234567." })} />
               </div>
             </div>
 
             <div className="os-setup-form__section">
-              <div className="os-setup-form__section-heading"><h3>Secure your account</h3></div>
-              <div className="os-setup-security-grid">
-                <PasswordInput {...input("password", "Password", { helperText: "At least 10 characters." })} />
-                <PasswordInput {...input("confirmPassword", "Confirm password")} />
+              <div className="os-setup-form__section-heading">
+                <span className="os-setup-form__section-icon"><Information size={20} /></span>
+                <div><h2>Secure your account</h2><p>Choose a strong password that only you know.</p></div>
               </div>
+              <div className="os-setup-security-grid">
+                <PasswordInput {...input("password", "Password", { autoComplete: "new-password" })} />
+                <PasswordInput {...input("confirmPassword", "Confirm password", { autoComplete: "new-password" })} />
+              </div>
+              {(form.password || form.confirmPassword) && (
+                <div className="os-password-guidance" aria-live="polite">
+                  <div className="os-password-guidance__title"><Information size={16} /> Password requirements</div>
+                  <div className="os-password-guidance__checks">
+                    <span className={pw.criteria.minLength ? "is-valid" : "is-invalid"}><CheckmarkFilled size={16} /> At least 10 characters</span>
+                    <span className={pw.criteria.uppercase ? "is-valid" : "is-invalid"}><CheckmarkFilled size={16} /> One uppercase letter</span>
+                    <span className={pw.criteria.lowercase ? "is-valid" : "is-invalid"}><CheckmarkFilled size={16} /> One lowercase letter</span>
+                    <span className={pw.criteria.number ? "is-valid" : "is-invalid"}><CheckmarkFilled size={16} /> One number</span>
+                    <span className={pw.criteria.special ? "is-valid" : "is-invalid"}><CheckmarkFilled size={16} /> One special character</span>
+                    <span className={pw.criteria.notCommon ? "is-valid" : "is-invalid"}><CheckmarkFilled size={16} /> No simple patterns, like 123456</span>
+                    <span className={pw.criteria.minLength && form.confirmPassword === form.password ? "is-valid" : "is-invalid"}><CheckmarkFilled size={16} /> Passwords match</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="os-setup-form__footer">
-              <Button onClick={submit} disabled={registerAdmin.isPending} className="os-full-width-btn">
-                {registerAdmin.isPending ? "Creating admin account…" : "Create admin account"}
+              <Button type="submit" disabled={registerAdmin.isPending} className="os-full-width-btn">
+                {registerAdmin.isPending ? <InlineLoading description="Creating admin account…" /> : "Create admin account"}
               </Button>
               <div className="os-setup-signin-link">
                 Already set up an admin account?{" "}
@@ -145,7 +166,7 @@ export default function FirstRunSetup() {
                 </SignInButton>
               </div>
             </div>
-          </Stack>
+          </form>
         </section>
       </div>
     </div>

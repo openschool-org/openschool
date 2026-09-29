@@ -2,7 +2,7 @@ import { useState } from "react";
 import { EMAIL_RE } from "@/shared/lib/validation";
 import { isValidSriLankanPhone } from "@/shared/lib/phone";
 import type { HouseRow } from "@/features/school/components/setup/HousesStep";
-import { AL_GRADE_NUMBERS, AL_STREAM_DEFS, GRADE_MIN, GRADE_MAX, HOUSE_COLOR_PALETTE, SUGGESTED_MEDIUMS, type ALStreamKey, type AlStreamsState } from "@/features/school/setupConstants";
+import { AL_GRADE_NUMBERS, AL_STREAM_DEFS, GRADE_MIN, GRADE_MAX, HOUSE_COLOR_PALETTE, SUGGESTED_MEDIUMS, type ALStreamKey, type AlStreamsState, type FacilityRoom } from "@/features/school/setupConstants";
 
 // All form state for the onboarding wizard, so the page only handles step navigation.
 export function useSchoolSetupState() {
@@ -18,7 +18,13 @@ export function useSchoolSetupState() {
   });
   const [schoolTouched, setSchoolTouched] = useState(false);
 
-  const gradeRangeInvalid = school.grade_from !== "" && school.grade_to !== "" && Number(school.grade_to) < Number(school.grade_from);
+  const gradeValuesInvalid =
+    school.grade_from === "" || school.grade_to === "" ||
+    Number(school.grade_from) < GRADE_MIN || Number(school.grade_from) > GRADE_MAX ||
+    Number(school.grade_to) < GRADE_MIN || Number(school.grade_to) > GRADE_MAX;
+  const gradeRangeInvalid = gradeValuesInvalid || (
+    school.grade_from !== "" && school.grade_to !== "" && Number(school.grade_to) < Number(school.grade_from)
+  );
   const schoolValid =
     school.name.trim().length > 0 &&
     isValidSriLankanPhone(school.phone) &&
@@ -58,8 +64,7 @@ export function useSchoolSetupState() {
     () => Object.fromEntries(AL_STREAM_DEFS.map((d) => [d.key, { enabled: true, code: d.defaultCode, sections: 1 }])) as Record<ALStreamKey, { enabled: boolean; code: string; sections: number }>,
   );
 
-  const [roomChecks, setRoomChecks] = useState<Record<string, boolean>>({});
-  const [customRooms, setCustomRooms] = useState<string[]>([]);
+  const [facilityRooms, setFacilityRooms] = useState<FacilityRoom[]>([]);
   const [roomsSkipped, setRoomsSkipped] = useState(false);
 
   return {
@@ -70,6 +75,6 @@ export function useSchoolSetupState() {
     alGradeNumbers: orderedSelectedGrades.filter((n) => AL_GRADE_NUMBERS.has(n)),
     mediumChecks, setMediumChecks, customMediums, setCustomMediums, mediumsSkipped, setMediumsSkipped, selectedMediumNames,
     yearLabel, setYearLabel, sectionsPerGrade, setSectionsPerGrade, classesSkipped, setClassesSkipped, sectionMediums, setSectionMediums, alStreams, setAlStreams,
-    roomChecks, setRoomChecks, customRooms, setCustomRooms, roomsSkipped, setRoomsSkipped,
+    facilityRooms, setFacilityRooms, roomsSkipped, setRoomsSkipped,
   };
 }

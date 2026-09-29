@@ -8,7 +8,7 @@ import { useCreateMedium } from "@/features/curriculum/queries/useCurriculum";
 import { useCreateClassroom } from "@/features/timetable/queries/useClassrooms";
 import { getErrorMessage } from "@/shared/api/errors";
 import type { Grade } from "@/features/academics/api/grade";
-import { AL_STREAM_DEFS, AL_GRADE_NUMBERS, SUGGESTED_MEDIUMS, SUGGESTED_ROOMS, type ALStreamKey, type AlStreamsState, type SchoolFormState } from "@/features/school/setupConstants";
+import { AL_STREAM_DEFS, AL_GRADE_NUMBERS, SUGGESTED_MEDIUMS, type ALStreamKey, type AlStreamsState, type SchoolFormState, type FacilityRoom } from "@/features/school/setupConstants";
 import type { HouseRow } from "@/features/school/components/setup/HousesStep";
 
 // Tracks which submission phases already succeeded, so Retry after a mid-sequence failure resumes instead of duplicating them.
@@ -36,8 +36,7 @@ interface Input {
   alStreams: AlStreamsState;
   classesSkipped: boolean;
   roomsSkipped: boolean;
-  roomChecks: Record<string, boolean>;
-  customRooms: string[];
+  facilityRooms: FacilityRoom[];
 }
 
 // Grades here are always named "Grade N" (see the createGrade call below), so this recovers N.
@@ -82,8 +81,7 @@ export function useSchoolSetupSubmit(input: Input) {
       alStreams,
       classesSkipped,
       roomsSkipped,
-      roomChecks,
-      customRooms,
+      facilityRooms,
     } = input;
     const now = new Date();
     const skipClasses = classesSkipped;
@@ -223,10 +221,7 @@ export function useSchoolSetupSubmit(input: Input) {
 
       if (!progress.rooms) {
         if (!skipRooms) {
-          const names = [
-            ...SUGGESTED_ROOMS.filter((r) => roomChecks[r]),
-            ...customRooms.map((r) => r.trim()).filter(Boolean),
-          ];
+          const names = facilityRooms.map((room) => room.name.trim()).filter(Boolean);
           for (const name of names) {
             await createClassroom.mutateAsync({ name, room_type: "eca" });
           }

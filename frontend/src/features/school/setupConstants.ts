@@ -39,4 +39,42 @@ export const HOUSE_COLOR_PALETTE = ["#0f62fe", "#da1e28", "#24a148", "#f1c21b", 
 export const SUGGESTED_MEDIUMS = ["Sinhala", "Tamil", "English"];
 
 // Special rooms created as "eca" during setup; an admin can retag them as subject Labs later.
-export const SUGGESTED_ROOMS = ["Library", "Music Room", "IT Room", "Science Lab", "Auditorium"];
+export type FacilityGroupKey =
+  | "library"
+  | "scienceLab"
+  | "itLab"
+  | "technicalLab"
+  | "homeEconomicsLab"
+  | "languageLab"
+  | "artRoom"
+  | "musicRoom"
+  | "danceRoom"
+  | "dramaRoom"
+  | "auditorium"
+  | "medicalRoom"
+  | "counselingRoom"
+  | "staffRoom";
+
+export interface FacilityRoom {
+  id: string;
+  group: FacilityGroupKey;
+  name: string;
+}
+
+// Each group can contain any number of separately named facilities.
+export const FACILITY_GROUPS: ReadonlyArray<{ key: FacilityGroupKey; label: string; addLabel: string; placeholder: string; help: string }> = [
+  { key: "library", label: "Libraries", addLabel: "Add library", placeholder: "e.g. Main Library", help: "Add multiple libraries with their own names." },
+  { key: "scienceLab", label: "Science labs", addLabel: "Add science lab", placeholder: "e.g. Chemistry Lab", help: "Add labs such as Physics, Chemistry, or Biology." },
+  { key: "itLab", label: "IT labs", addLabel: "Add IT lab", placeholder: "e.g. Computer Lab 1", help: "Add multiple computer or technology labs." },
+  { key: "technicalLab", label: "Technical labs", addLabel: "Add technical lab", placeholder: "e.g. Technical Studies Lab", help: "For practical technology, engineering, or vocational work." },
+  { key: "homeEconomicsLab", label: "Home economics labs", addLabel: "Add home economics lab", placeholder: "e.g. Home Economics Room", help: "For cooking, sewing, and domestic science practicals." },
+  { key: "languageLab", label: "Language labs", addLabel: "Add language lab", placeholder: "e.g. English Language Lab", help: "For Sinhala, Tamil, English, and other language practice." },
+  { key: "artRoom", label: "Art rooms", addLabel: "Add art room", placeholder: "e.g. Visual Arts Room", help: "For art, craft, and aesthetic studies." },
+  { key: "musicRoom", label: "Music rooms", addLabel: "Add music room", placeholder: "e.g. Primary Music Room", help: "Add separate rooms for different music programmes." },
+  { key: "danceRoom", label: "Dancing rooms", addLabel: "Add dancing room", placeholder: "e.g. Kandyan Dancing Room", help: "For dancing, movement, and traditional dance practice." },
+  { key: "dramaRoom", label: "Drama rooms", addLabel: "Add drama room", placeholder: "e.g. Drama Practice Room", help: "For drama, theatre, and performance rehearsals." },
+  { key: "auditorium", label: "Auditoriums and halls", addLabel: "Add auditorium", placeholder: "e.g. Main Hall", help: "For assemblies, ceremonies, performances, and examinations." },
+  { key: "medicalRoom", label: "Medical / sick rooms", addLabel: "Add medical room", placeholder: "e.g. School Sick Room", help: "For first aid and student health support." },
+  { key: "counselingRoom", label: "Counseling rooms", addLabel: "Add counseling room", placeholder: "e.g. Student Counseling Room", help: "For student counseling and welfare services." },
+  { key: "staffRoom", label: "Staff rooms", addLabel: "Add staff room", placeholder: "e.g. Teachers’ Staff Room", help: "Add separate staff rooms when departments use different spaces." },
+];

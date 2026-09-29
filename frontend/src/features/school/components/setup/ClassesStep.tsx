@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
-import { TextInput, NumberInput, Select, SelectItem, Checkbox } from "@carbon/react";
-import { Building } from "@carbon/icons-react";
+import { Checkbox, NumberInput, Select, SelectItem, TextInput } from "@carbon/react";
+import { Building, Information } from "@carbon/icons-react";
 import StepShell from "@/features/school/components/setup/StepShell";
 import { AL_STREAM_DEFS, type AlStreamsState } from "@/features/school/setupConstants";
 
@@ -37,102 +37,110 @@ export default function ClassesStep({
     <StepShell
       icon={Building}
       title="Classes"
-      subtitle="Sections are auto-named (10-A, 10-B, …); Grade 12/13 use A/L streams instead (12-M1, 12-C1, …)."
+      subtitle="Set the academic year, section counts, and A/L streams. OpenSchool will create the class names for you."
     >
-      <TextInput
-        id="ss-year-label"
-        labelText="Academic year label"
-        value={yearLabel}
-        onChange={(e) => setYearLabel(e.target.value)} className="os-mb-5"
-      />
+      <div className="os-class-year-field">
+        <TextInput
+          id="ss-year-label"
+          labelText="Academic year label"
+          helperText="This label is used for the classes created in this setup."
+          placeholder="e.g. 2026"
+          value={yearLabel}
+          onChange={(e) => setYearLabel(e.target.value)}
+        />
+      </div>
+
       {orderedSelectedGrades.length === 0 ? (
-        <p className="os-text-md os-c-tertiary">
-          No grades were selected in the previous step, so there's nothing to add classes to yet.
-        </p>
+        <div className="os-class-empty-state">
+          <Information size={20} />
+          <p>No grades were selected in the previous step, so there is nothing to add classes to yet.</p>
+        </div>
       ) : (
         <>
           {regularGradeNumbers.length > 0 && (
-            <div className={`os-grid os-gap-3 ${alGradeNumbers.length > 0 ? "os-mb-7" : "os-mb-0"}`}>
-              {regularGradeNumbers.map((gradeNumber) => {
-                const count = sectionsPerGrade[gradeNumber] ?? 1;
-                return (
-                  <div key={gradeNumber} className="os-py-2 os-px-0 os-border-layer-hover-b">
-                    <div className="os-flex os-items-center os-gap-4">
-                      <span className="os-flex-1 os-text-md os-fw-500 os-c-primary">Grade {gradeNumber}</span>
-                      <NumberInput
-                        id={`sections-${gradeNumber}`}
-                        label="Sections"
-                        size="sm"
-                        min={0}
-                        max={10}
-                        value={count}
-                        onChange={(_e, { value }) =>
-                          setSectionsPerGrade((prev) => ({ ...prev, [gradeNumber]: value === "" ? 0 : Number(value) }))
-                        }
-                      />
-                    </div>
-                    {selectedMediumNames.length > 0 && count > 0 && (
-                      <div className="os-flex os-wrap os-gap-2 os-mt-2">
-                        {Array.from({ length: count }).map((_, i) => (
-                          <Select
-                            key={i}
-                            id={`section-medium-${gradeNumber}-${i}`}
-                            labelText={`${gradeNumber}-${String.fromCharCode(65 + i)}`}
-                            size="sm" className="os-min-w-9"
-                            value={sectionMediums[`${gradeNumber}-${i}`] ?? ""}
-                            onChange={(e) =>
-                              setSectionMediums((prev) => ({ ...prev, [`${gradeNumber}-${i}`]: e.target.value }))
-                            }
-                          >
-                            <SelectItem value="" text="No medium" />
-                            {selectedMediumNames.map((m) => (
-                              <SelectItem key={m} value={m} text={m} />
-                            ))}
-                          </Select>
-                        ))}
+            <section className={`os-class-section ${alGradeNumbers.length > 0 ? "os-mb-7" : ""}`} aria-labelledby="regular-classes-title">
+              <div className="os-class-section__heading">
+                <div>
+                  <h3 id="regular-classes-title">Regular grades</h3>
+                  <p>Choose the number of sections for each grade and assign a medium where needed.</p>
+                </div>
+              </div>
+              <div className="os-class-grade-list">
+                {regularGradeNumbers.map((gradeNumber) => {
+                  const count = sectionsPerGrade[gradeNumber] ?? 1;
+                  return (
+                    <div key={gradeNumber} className="os-class-grade-row">
+                      <div className="os-class-grade-row__topline">
+                        <div>
+                          <h4>Grade {gradeNumber}</h4>
+                          <p>{count > 0 ? `${count} section${count === 1 ? "" : "s"} will be created` : "No sections will be created"}</p>
+                        </div>
+                        <NumberInput
+                          id={`sections-${gradeNumber}`}
+                          label={`Sections for Grade ${gradeNumber}`}
+                          size="sm"
+                          min={0}
+                          max={10}
+                          value={count}
+                          onChange={(_e, { value }) =>
+                            setSectionsPerGrade((prev) => ({ ...prev, [gradeNumber]: value === "" ? 0 : Number(value) }))
+                          }
+                        />
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                      {selectedMediumNames.length > 0 && count > 0 && (
+                        <div className="os-class-medium-grid">
+                          {Array.from({ length: count }).map((_, i) => (
+                            <Select
+                              key={i}
+                              id={`section-medium-${gradeNumber}-${i}`}
+                              labelText={`Section ${gradeNumber}-${String.fromCharCode(65 + i)} medium`}
+                              size="sm"
+                              value={sectionMediums[`${gradeNumber}-${i}`] ?? ""}
+                              onChange={(e) => setSectionMediums((prev) => ({ ...prev, [`${gradeNumber}-${i}`]: e.target.value }))}
+                            >
+                              <SelectItem value="" text="No medium" />
+                              {selectedMediumNames.map((medium) => <SelectItem key={medium} value={medium} text={medium} />)}
+                            </Select>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
           )}
 
           {alGradeNumbers.length > 0 && (
-            <div>
-              <p className="os-mt-0 os-mx-0 os-mb-1 os-text-sm os-fw-600 os-c-primary">
-                A/L Streams - {alGradeNumbers.map((n) => `Grade ${n}`).join(" & ")}
-              </p>
-              <p className="os-mt-0 os-mx-0 os-mb-3h os-text-xs os-c-tertiary">
-                Applied to both A/L grades. Uncheck streams your school doesn't offer, and adjust the code and
-                section count for each.
-              </p>
-              <div className="os-grid os-gap-2">
+            <section className="os-class-section" aria-labelledby="al-streams-title">
+              <div className="os-class-section__heading">
+                <div>
+                  <h3 id="al-streams-title">A/L streams</h3>
+                  <p>Applied to {alGradeNumbers.map((n) => `Grade ${n}`).join(" and ")}. Enable the streams your school offers.</p>
+                </div>
+              </div>
+              <p className="os-class-section__hint">Set a short code and section count for each enabled stream.</p>
+              <div className="os-al-stream-list">
                 {AL_STREAM_DEFS.map((def) => {
                   const cfg = alStreams[def.key];
                   return (
-                    <div
-                      key={def.key} className={`os-flex os-items-center os-gap-3 os-py-2 os-px-1 os-border-layer-hover-b ${cfg.enabled ? "" : "os-opacity-50"}`}
-                    >
-                      <Checkbox
-                        id={`al-${def.key}`}
-                        labelText={def.label}
-                        checked={cfg.enabled}
-                        onChange={(_e, { checked }) =>
-                          setAlStreams((prev) => ({ ...prev, [def.key]: { ...prev[def.key], enabled: checked } }))
-                        }
-                      />
-                      <div className="os-flex-1" />
+                    <div key={def.key} className={`os-al-stream-row ${cfg.enabled ? "" : "is-disabled"}`}>
+                      <div className="os-al-stream-row__name">
+                        <Checkbox
+                          id={`al-${def.key}`}
+                          labelText={def.label}
+                          checked={cfg.enabled}
+                          onChange={(_e, { checked }) => setAlStreams((prev) => ({ ...prev, [def.key]: { ...prev[def.key], enabled: checked } }))}
+                        />
+                      </div>
                       <TextInput
                         id={`al-code-${def.key}`}
-                        labelText="Code"
+                        labelText="Stream code"
                         size="sm"
                         maxLength={3}
                         disabled={!cfg.enabled}
-                        value={cfg.code} className="os-w-5"
-                        onChange={(e) =>
-                          setAlStreams((prev) => ({ ...prev, [def.key]: { ...prev[def.key], code: e.target.value } }))
-                        }
+                        value={cfg.code}
+                        onChange={(e) => setAlStreams((prev) => ({ ...prev, [def.key]: { ...prev[def.key], code: e.target.value } }))}
                       />
                       <NumberInput
                         id={`al-sections-${def.key}`}
@@ -142,22 +150,16 @@ export default function ClassesStep({
                         max={10}
                         disabled={!cfg.enabled}
                         value={cfg.sections}
-                        onChange={(_e, { value }) =>
-                          setAlStreams((prev) => ({
-                            ...prev,
-                            [def.key]: { ...prev[def.key], sections: value === "" ? 0 : Number(value) },
-                          }))
-                        }
+                        onChange={(_e, { value }) => setAlStreams((prev) => ({ ...prev, [def.key]: { ...prev[def.key], sections: value === "" ? 0 : Number(value) } }))}
                       />
                     </div>
                   );
                 })}
               </div>
-              <p className="os-mt-3 os-mx-0 os-mb-0 os-text-xs os-c-tertiary">
-                Example: Physical Science with code "M" and 2 sections creates{" "}
-                {alGradeNumbers.map((n) => `${n}-M1, ${n}-M2`).join(", ")}.
+              <p className="os-class-section__hint os-class-section__hint--example">
+                Example: Physical Science with code “M” and 2 sections creates {alGradeNumbers.map((n) => `${n}-M1, ${n}-M2`).join(", ")}.
               </p>
-            </div>
+            </section>
           )}
         </>
       )}

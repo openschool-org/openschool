@@ -1,49 +1,56 @@
 import type { Dispatch, SetStateAction } from "react";
-import { Button, Checkbox, TextInput } from "@carbon/react";
-import { Building, Add } from "@carbon/icons-react";
+import { Button, TextInput } from "@carbon/react";
+import { Add, Building } from "@carbon/icons-react";
 import StepShell from "@/features/school/components/setup/StepShell";
 import RepeatableRow from "@/features/school/components/setup/RepeatableRow";
-import { SUGGESTED_ROOMS } from "@/features/school/setupConstants";
+import { FACILITY_GROUPS, type FacilityRoom } from "@/features/school/setupConstants";
 
 interface Props {
-  roomChecks: Record<string, boolean>;
-  setRoomChecks: Dispatch<SetStateAction<Record<string, boolean>>>;
-  customRooms: string[];
-  setCustomRooms: Dispatch<SetStateAction<string[]>>;
+  facilityRooms: FacilityRoom[];
+  setFacilityRooms: Dispatch<SetStateAction<FacilityRoom[]>>;
 }
 
-export default function RoomsStep({ roomChecks, setRoomChecks, customRooms, setCustomRooms }: Props) {
+export default function RoomsStep({ facilityRooms, setFacilityRooms }: Props) {
+  const addFacility = (group: FacilityRoom["group"]) => {
+    setFacilityRooms((rooms) => [...rooms, { id: crypto.randomUUID(), group, name: "" }]);
+  };
+
   return (
     <StepShell
       icon={Building}
       title="Rooms & facilities"
-      subtitle="Optional - special-purpose rooms beyond regular classrooms (a class's own homeroom is set later, per class). You can re-type any of these as a subject-tagged Lab afterward, once subjects are set up."
+      subtitle="Optional - add as many named libraries, labs, music rooms, or auditoriums as your school needs."
     >
-      <div className="os-flex os-col os-gap-3 os-mb-4">
-        {SUGGESTED_ROOMS.map((r) => (
-          <Checkbox
-            key={r}
-            id={`room-${r}`}
-            labelText={r}
-            checked={!!roomChecks[r]}
-            onChange={(_e, { checked }) => setRoomChecks((prev) => ({ ...prev, [r]: checked }))}
-          />
-        ))}
+      <div className="os-facility-groups">
+        {FACILITY_GROUPS.map((group) => {
+          const rooms = facilityRooms.filter((room) => room.group === group.key);
+          return (
+            <section key={group.key} className="os-facility-group" aria-labelledby={`facility-${group.key}`}>
+              <div className="os-facility-group__header">
+                <div>
+                  <h3 id={`facility-${group.key}`}>{group.label}</h3>
+                  <p>{group.help}</p>
+                </div>
+                <Button kind="ghost" size="sm" renderIcon={Add} onClick={() => addFacility(group.key)}>
+                  {group.addLabel}
+                </Button>
+              </div>
+              {rooms.map((room) => (
+                <RepeatableRow key={room.id} onRemove={() => setFacilityRooms((current) => current.filter((item) => item.id !== room.id))}>
+                  <TextInput
+                    id={`facility-${room.id}`}
+                    labelText="Facility name"
+                    placeholder={group.placeholder}
+                    size="md"
+                    value={room.name}
+                    onChange={(e) => setFacilityRooms((current) => current.map((item) => item.id === room.id ? { ...item, name: e.target.value } : item))}
+                  />
+                </RepeatableRow>
+              ))}
+            </section>
+          );
+        })}
       </div>
-      {customRooms.map((r, i) => (
-        <RepeatableRow key={i} onRemove={() => setCustomRooms((rs) => rs.filter((_, idx) => idx !== i))}>
-          <TextInput
-            id={`custom-room-${i}`}
-            labelText="Room name"
-            size="md"
-            value={r}
-            onChange={(e) => setCustomRooms((rs) => rs.map((row, idx) => (idx === i ? e.target.value : row)))}
-          />
-        </RepeatableRow>
-      ))}
-      <Button kind="ghost" size="sm" renderIcon={Add} onClick={() => setCustomRooms((rs) => [...rs, ""])}>
-        Add another room
-      </Button>
     </StepShell>
   );
 }
