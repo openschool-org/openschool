@@ -47,7 +47,7 @@ type staffStore interface {
 	nonAcademicHistory(context.Context, uuid.UUID, time.Time, time.Time) ([]StaffRecord, error)
 	roster(context.Context, time.Time, StaffRosterQuery) (StaffRosterPage, error)
 	monthly(context.Context, time.Time, time.Time, StaffRosterQuery) (StaffMonthlyPage, error)
-	markUnmarkedPresent(context.Context, time.Time, StaffKind, uuid.UUID) (int64, error)
+	markUnmarkedAbsent(context.Context, time.Time, StaffKind, uuid.UUID) (int64, error)
 }
 
 type StaffHistoryReader interface {
@@ -136,9 +136,9 @@ func (s *StaffService) Monthly(ctx context.Context, from, to time.Time, q StaffR
 	return s.store.monthly(ctx, from, to, q)
 }
 
-// MarkUnmarkedPresent marks everyone of the kind with no record that day as present, so the clerk only fixes exceptions.
-func (s *StaffService) MarkUnmarkedPresent(ctx context.Context, req MarkUnmarkedRequest, markedBy uuid.UUID) (int64, error) {
-	return s.store.markUnmarkedPresent(ctx, req.Date, req.Kind, markedBy)
+// MarkUnmarkedAbsent marks everyone of the kind with no record that day as absent without changing existing marks.
+func (s *StaffService) MarkUnmarkedAbsent(ctx context.Context, req MarkUnmarkedRequest, markedBy uuid.UUID) (int64, error) {
+	return s.store.markUnmarkedAbsent(ctx, req.Date, req.Kind, markedBy)
 }
 
 func (r staffDirectoryRow) toRow() StaffAttendanceRow {

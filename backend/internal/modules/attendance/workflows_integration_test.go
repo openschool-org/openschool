@@ -204,7 +204,7 @@ func TestStaffAttendanceRosterPagingWithPostgres(t *testing.T) {
 		t.Fatalf("mark unmarked: code=%d body=%s", bulk.Code, bulk.Body.String())
 	}
 	after := performAttendanceRequest(t, router, http.MethodGet, "/staff-attendance/roster?date=2026-09-16&kind=teacher", nil)
-	if !bytes.Contains(after.Body.Bytes(), []byte(`"present":3`)) || !bytes.Contains(after.Body.Bytes(), []byte(`"absent":1`)) || !bytes.Contains(after.Body.Bytes(), []byte(`"unmarked":0`)) {
+	if !bytes.Contains(after.Body.Bytes(), []byte(`"present":0`)) || !bytes.Contains(after.Body.Bytes(), []byte(`"absent":4`)) || !bytes.Contains(after.Body.Bytes(), []byte(`"unmarked":0`)) {
 		t.Fatalf("roster after bulk: body=%s", after.Body.String())
 	}
 

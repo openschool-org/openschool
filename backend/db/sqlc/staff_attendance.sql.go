@@ -378,43 +378,43 @@ func (q *Queries) ListTeacherAttendanceHistory(ctx context.Context, arg ListTeac
 	return items, nil
 }
 
-const markUnmarkedNonAcademicStaffPresent = `-- name: MarkUnmarkedNonAcademicStaffPresent :execrows
+const markUnmarkedNonAcademicStaffAbsent = `-- name: MarkUnmarkedNonAcademicStaffAbsent :execrows
 INSERT INTO staff_attendance_records (non_academic_staff_id, date, status, marked_by)
-SELECT nas.id, $1::date, 'present', $2::uuid
+SELECT nas.id, $1::date, 'absent', $2::uuid
 FROM non_academic_staff nas
 WHERE nas.employment_status = 'active'
 ON CONFLICT (non_academic_staff_id, date) WHERE non_academic_staff_id IS NOT NULL DO NOTHING
 `
 
-type MarkUnmarkedNonAcademicStaffPresentParams struct {
+type MarkUnmarkedNonAcademicStaffAbsentParams struct {
 	Date     pgtype.Date `json:"date"`
 	MarkedBy uuid.UUID   `json:"marked_by"`
 }
 
-func (q *Queries) MarkUnmarkedNonAcademicStaffPresent(ctx context.Context, arg MarkUnmarkedNonAcademicStaffPresentParams) (int64, error) {
-	result, err := q.db.Exec(ctx, markUnmarkedNonAcademicStaffPresent, arg.Date, arg.MarkedBy)
+func (q *Queries) MarkUnmarkedNonAcademicStaffAbsent(ctx context.Context, arg MarkUnmarkedNonAcademicStaffAbsentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markUnmarkedNonAcademicStaffAbsent, arg.Date, arg.MarkedBy)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
 }
 
-const markUnmarkedTeachersPresent = `-- name: MarkUnmarkedTeachersPresent :execrows
+const markUnmarkedTeachersAbsent = `-- name: MarkUnmarkedTeachersAbsent :execrows
 INSERT INTO staff_attendance_records (teacher_id, date, status, marked_by)
-SELECT tp.id, $1::date, 'present', $2::uuid
+SELECT tp.id, $1::date, 'absent', $2::uuid
 FROM teacher_profiles tp
 WHERE tp.employment_status = 'active'
 ON CONFLICT (teacher_id, date) WHERE teacher_id IS NOT NULL DO NOTHING
 `
 
-type MarkUnmarkedTeachersPresentParams struct {
+type MarkUnmarkedTeachersAbsentParams struct {
 	Date     pgtype.Date `json:"date"`
 	MarkedBy uuid.UUID   `json:"marked_by"`
 }
 
-// Present for every active teacher with no record that day; existing marks are left alone.
-func (q *Queries) MarkUnmarkedTeachersPresent(ctx context.Context, arg MarkUnmarkedTeachersPresentParams) (int64, error) {
-	result, err := q.db.Exec(ctx, markUnmarkedTeachersPresent, arg.Date, arg.MarkedBy)
+// Absent for every active teacher with no record that day; existing marks are left alone.
+func (q *Queries) MarkUnmarkedTeachersAbsent(ctx context.Context, arg MarkUnmarkedTeachersAbsentParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markUnmarkedTeachersAbsent, arg.Date, arg.MarkedBy)
 	if err != nil {
 		return 0, err
 	}

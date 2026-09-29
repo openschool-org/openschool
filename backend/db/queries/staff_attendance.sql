@@ -144,17 +144,17 @@ GROUP BY p.id, p.full_name, p.employee_number
 ORDER BY p.full_name ASC, p.id ASC
 LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int;
 
--- name: MarkUnmarkedTeachersPresent :execrows
--- Present for every active teacher with no record that day; existing marks are left alone.
+-- name: MarkUnmarkedTeachersAbsent :execrows
+-- Absent for every active teacher with no record that day; existing marks are left alone.
 INSERT INTO staff_attendance_records (teacher_id, date, status, marked_by)
-SELECT tp.id, sqlc.arg(date)::date, 'present', sqlc.arg(marked_by)::uuid
+SELECT tp.id, sqlc.arg(date)::date, 'absent', sqlc.arg(marked_by)::uuid
 FROM teacher_profiles tp
 WHERE tp.employment_status = 'active'
 ON CONFLICT (teacher_id, date) WHERE teacher_id IS NOT NULL DO NOTHING;
 
--- name: MarkUnmarkedNonAcademicStaffPresent :execrows
+-- name: MarkUnmarkedNonAcademicStaffAbsent :execrows
 INSERT INTO staff_attendance_records (non_academic_staff_id, date, status, marked_by)
-SELECT nas.id, sqlc.arg(date)::date, 'present', sqlc.arg(marked_by)::uuid
+SELECT nas.id, sqlc.arg(date)::date, 'absent', sqlc.arg(marked_by)::uuid
 FROM non_academic_staff nas
 WHERE nas.employment_status = 'active'
 ON CONFLICT (non_academic_staff_id, date) WHERE non_academic_staff_id IS NOT NULL DO NOTHING;
