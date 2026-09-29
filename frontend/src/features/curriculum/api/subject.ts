@@ -17,6 +17,9 @@ export interface CreateSubjectRequest {
 }
 
 export const subjectApi = {
+  // The API endpoint is intentionally not HTTP-cached because subjects are
+  // mutable catalogue data and can be created by the curriculum preset.
+  // Keep this request header-free so it remains a simple CORS request.
   list: () => api.get<Subject[]>("/subjects").then((r) => r.data),
 
   get: (id: string) => api.get<Subject>(`/subjects/${id}`).then((r) => r.data),

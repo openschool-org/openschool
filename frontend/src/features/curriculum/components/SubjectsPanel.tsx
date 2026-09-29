@@ -1,16 +1,17 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
 import { Add, Edit, TrashCan } from "@carbon/icons-react";
 import { Button, IconButton, Tag } from "@carbon/react";
 import { useSubjects, useUpdateSubject, useDeleteSubject } from "@/features/curriculum/queries/useSubjects";
 import type { Subject } from "@/features/curriculum/api/subject";
 import EditSubjectModal, { type SubjectForm } from "@/features/curriculum/components/EditSubjectModal";
+import CreateSubjectModal from "@/features/curriculum/components/CreateSubjectModal";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 import FilterBar from "@/shared/ui/FilterBar";
 import ListState from "@/shared/ui/ListState";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import ErrorMessage from "@/shared/ui/ErrorMessage";
 import { useListFilters } from "@/shared/hooks/useListFilters";
 
 export default function SubjectsPanel() {
@@ -23,6 +24,7 @@ export default function SubjectsPanel() {
   const [form, setForm] = useState<SubjectForm>({ name: "", code: "", type: "", max_marks: 100 });
   const [touched, setTouched] = useState<{ name?: boolean; code?: boolean }>({});
   const [toDelete, setToDelete] = useState<Subject | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase();
@@ -68,28 +70,34 @@ export default function SubjectsPanel() {
     <div>
       <div className="os-flex os-items-center os-justify-between os-gap-4 os-wrap os-my-4">
         <p className="os-m-0 os-text-sm os-c-secondary">The school's subject catalogue. Offer a subject to students by adding it to a selection group under the curriculum tab.</p>
-        <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/subjects/new">Add subject</Button>
+        <Button renderIcon={Add} kind="primary" size="md" onClick={() => setCreateOpen(true)}>Add subject</Button>
       </div>
 
       <div className="os-section">
         <FilterBar search={{ value: filters.query, onChange: (v) => set("query", v), placeholder: "Search by name, code or type…" }} />
         <MutationErrorNotification isError={deleteSubject.isError} error={deleteSubject.error} title="Could not delete subject" fallback="The subject may be in use by a class or curriculum group." onClose={() => deleteSubject.reset()} className="os-section__notice" />
-        <ListState
+        {isError ? (
+          <div className="os-p-5">
+            <ErrorMessage message="Failed to load subjects" onRetry={refetch} />
+          </div>
+        ) : <ListState
           isLoading={isLoading}
-          isError={isError}
+          isError={false}
           isEmpty={filtered.length === 0}
           errorMessage="Failed to load subjects"
           onRetry={refetch}
           skeleton={<TableSkeleton headers={columns.map((c) => c.header)} />}
           empty={{
             title: searching ? "No subjects found" : "No subjects yet",
-            description: searching ? `No subject matches "${debouncedSearch}".` : "Add the subjects your school teaches to get started.",
-            action: searching ? undefined : <Button renderIcon={Add} kind="primary" as={Link} to="/subjects/new">Add subject</Button>,
+            description: searching ? `No subject matches "${debouncedSearch}".` : "Add the subjects your school teaches before configuring curriculum groups.",
+            action: searching ? undefined : <Button renderIcon={Add} kind="primary" onClick={() => setCreateOpen(true)}>Add subject</Button>,
           }}
         >
           <DataGrid rows={filtered} columns={columns} getRowId={(s) => s.id} countLabel={(shown, total) => `Showing ${shown} of ${total} subjects`} />
-        </ListState>
+        </ListState>}
       </div>
+
+      <CreateSubjectModal open={createOpen} subjects={subjects ?? []} onClose={() => setCreateOpen(false)} />
 
       {editing && (
         <EditSubjectModal form={form} onChange={setForm} touched={touched} onTouch={(f) => setTouched((t) => ({ ...t, [f]: true }))} isPending={updateSubject.isPending} isError={updateSubject.isError} error={updateSubject.error} onClose={() => setEditing(null)} onSubmit={update} />

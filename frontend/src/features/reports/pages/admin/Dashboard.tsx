@@ -6,6 +6,7 @@ import { useCurrentClasses } from "@/features/academics/queries/useClasses";
 import { useGrades } from "@/features/academics/queries/useGrades";
 import { useSubjects } from "@/features/curriculum/queries/useSubjects";
 import { useAcademicYears } from "@/features/school/queries/useAcademicYears";
+import { useTerms } from "@/features/school/queries/useTerms";
 import { useDailySessions } from "@/features/attendance/queries/useAttendance";
 import { useStaffAttendanceByDate } from "@/features/attendance/queries/useStaffAttendance";
 import type { DailySession } from "@/features/attendance/api/attendance";
@@ -39,12 +40,12 @@ export default function Dashboard() {
   const { data: grades, isLoading: gradesLoading } = useGrades();
   const { data: subjects, isLoading: subjectsLoading } = useSubjects();
   const { data: years } = useAcademicYears();
+  const currentYear = years?.find((y) => y.is_current) ?? null;
+  const { data: terms, isLoading: termsLoading } = useTerms(currentYear?.id);
   const { data: todaySessions, isLoading: sessionsLoading } = useDailySessions(todayISODate());
   const { data: staffAttendance, isLoading: staffAttendanceLoading } = useStaffAttendanceByDate(todayISODate());
 
   const title = school?.name ?? "Admin dashboard";
-  const currentYear = years?.find((y) => y.is_current) ?? null;
-
   const sessionByClassId = useMemo(() => {
     const map = new Map<string, DailySession>();
     for (const s of todaySessions ?? []) map.set(s.class_id, s);
@@ -53,9 +54,10 @@ export default function Dashboard() {
 
   const classAttendanceLoading = classesLoading || sessionsLoading;
 
-  const setupLoading = classesLoading || gradesLoading || subjectsLoading || teachersLoading || studentsLoading;
+  const setupLoading = classesLoading || gradesLoading || subjectsLoading || teachersLoading || studentsLoading || termsLoading;
   const setupItems = [
     { label: "Set a current academic year", done: !!currentYear, path: "/academic-years" },
+    { label: "Set up terms", done: !!currentYear && (terms?.length ?? 0) > 0, path: "/academic-years" },
     { label: "Add a grade", done: (grades?.length ?? 0) > 0, path: "/classes" },
     { label: "Add a subject", done: (subjects?.length ?? 0) > 0, path: "/subjects" },
     { label: "Add a teacher", done: teacherCount > 0, path: "/teachers" },

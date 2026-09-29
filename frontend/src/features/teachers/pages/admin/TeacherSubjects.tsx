@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Tag, SkeletonText, Pagination, Button, IconButton } from "@carbon/react";
+import { Tag, SkeletonText, Pagination, Button, IconButton, InlineNotification } from "@carbon/react";
 import { Add, Close } from "@carbon/icons-react";
+import { Link } from "react-router";
 import { useTeachers, useTeacherSubjects, useAssignTeacherSubject, useRemoveTeacherSubject } from "@/features/teachers/queries/useTeachers";
 import { useSubjects } from "@/features/curriculum/queries/useSubjects";
 import { useDebounced } from "@/shared/hooks/useDebounced";
@@ -140,10 +141,6 @@ export default function TeacherSubjects() {
     return <ErrorMessage message="Could not load teachers." onRetry={refetchTeachers} />;
   }
 
-  if (subjectsError) {
-    return <ErrorMessage message="Could not load subjects." onRetry={refetchSubjects} />;
-  }
-
   return (
     <div className="os-page">
       <div className="os-page__header">
@@ -152,6 +149,30 @@ export default function TeacherSubjects() {
           <p className="os-page__subtitle">Subjects each teacher is qualified to teach.</p>
         </div>
       </div>
+
+      {subjectsError ? (
+        <div className="os-flex os-items-start os-gap-3 os-mb-6">
+          <InlineNotification
+            kind="error"
+            title="Could not load the subject catalogue"
+            subtitle="Teacher records are still available below. Retry the catalogue, or open Subjects & curriculum to configure and save subjects first."
+            lowContrast
+            className="os-flex-1 os-m-0"
+          />
+          <Button kind="ghost" size="sm" onClick={() => refetchSubjects()}>Retry</Button>
+        </div>
+      ) : subjects && subjects.length === 0 ? (
+        <div className="os-flex os-items-start os-gap-3 os-mb-6">
+          <InlineNotification
+            kind="info"
+            title="Add subjects before assigning teachers"
+            subtitle="Open Subjects & curriculum, configure the relevant grade groups, and save the subjects. They will then be available here for teacher assignments."
+            lowContrast
+            className="os-flex-1 os-m-0"
+          />
+          <Button kind="ghost" size="sm" as={Link} to="/subjects">Open Subjects & curriculum</Button>
+        </div>
+      ) : null}
 
       <FilterBar
         search={{
