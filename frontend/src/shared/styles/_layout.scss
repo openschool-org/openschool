@@ -143,6 +143,12 @@
   width: min(60rem, calc(100vw - 3rem)) !important;
   max-width: none !important;
   max-height: min(44rem, calc(100vh - 3rem)) !important;
+  padding: 0 !important;
+  border: 1px solid $os-border-subtle !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.16) !important;
+  font-family: 'IBM Plex Sans', sans-serif !important;
 
   scrollbar-width: thin;
   scrollbar-color: $os-border-strong transparent;
@@ -159,6 +165,47 @@
   }
   &::-webkit-scrollbar-thumb:hover {
     background-color: $os-text-disabled;
+  }
+}
+
+.thunderid-dialog__overlay {
+  background-color: rgba(22, 22, 22, 0.5) !important;
+  z-index: 9999 !important;
+}
+
+.thunderid-dialog__header {
+  padding: 1.5rem 2rem 1rem !important;
+  border-bottom: 1px solid $os-border-subtle !important;
+
+  .thunderid-dialog__title {
+    color: $os-text-primary !important;
+    font-family: 'IBM Plex Sans', sans-serif !important;
+    font-size: 1.25rem !important;
+    font-weight: 400 !important;
+    line-height: 1.4 !important;
+  }
+}
+
+.thunderid-dialog__content .thunderid-user-profile {
+  padding: 1.5rem 2rem 2rem !important;
+  color: $os-text-primary !important;
+  font-family: 'IBM Plex Sans', sans-serif !important;
+
+  input, select, textarea {
+    min-height: 2.5rem;
+    border: 0;
+    border-bottom: 1px solid $os-border-strong;
+    border-radius: 0 !important;
+    background: $os-layer-hover;
+    font-family: 'IBM Plex Sans', sans-serif !important;
+
+    &:focus { outline: 2px solid $os-accent; outline-offset: -2px; }
+  }
+
+  button {
+    min-height: 2.5rem;
+    border-radius: 0 !important;
+    font-family: 'IBM Plex Sans', sans-serif !important;
   }
 }
 
@@ -258,7 +305,7 @@
   &__content {
     flex: 1;
     margin-left: $os-sidebar-w;
-    background-color: #F8FAFC;
+    background-color: var(--os-canvas);
     min-height: calc(100vh - 3rem);
     min-width: 0;
     transition: margin-left 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -272,7 +319,7 @@
 // Teacher Layout
 .os-teacher-content {
   padding-top: 3rem;
-  background-color: #F8FAFC;
+  background-color: var(--os-canvas);
   min-height: 100vh;
 }
 

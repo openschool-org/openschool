@@ -1,49 +1,54 @@
 // Design Tokens
-// Harmonized Ocean Teal Palette (built around #007D9C)
+// OpenSchool palette: the product accent stays #007D9C; supporting colours
+// follow IBM Carbon's neutral and support colour roles.
 $os-accent:        #007D9C;
 $os-accent-dark:   #005F77;
 $os-accent-deeper: #004B5E;
 $os-accent-mid:    #1CB3D6;
 $os-accent-light:  #E6F7FA;
 $os-accent-border: #9DE5F3;
-$os-brand-orange:  #00A3C4;
+$os-brand-orange:  $os-accent;
 $os-sidebar-w:     15rem;
 
-$os-chart-purple:  #6941C6;
+$os-canvas:        #F4F4F4; // Carbon gray 10
+$os-layer:         #FFFFFF; // Carbon white
+$os-layer-selected: #E0E0E0; // Carbon gray 20
+
+$os-chart-purple:  #8A3FFC; // Carbon purple 60
 $os-chart-blue:    #0F62FE;
 $os-chart-pink:    #D02670;
 $os-chart-teal:    #009D9A;
 $os-chart-orange:  #FF832B;
 $os-chart-yellow:  #F1C21B;
 $os-chart-magenta: #8A3FFC;
-$os-accent-muted:  #406AAF;
+$os-accent-muted:  #0043CE; // Carbon blue 70
 
-$os-text-primary:   #002731;
-$os-text-secondary: #334D57;
-$os-text-tertiary:  #617B85;
-$os-text-disabled:  #94A8B0;
+$os-text-primary:   #161616; // Carbon gray 100
+$os-text-secondary: #393939; // Carbon gray 90
+$os-text-tertiary:  #525252; // Carbon gray 80
+$os-text-disabled:  #8D8D8D; // Carbon gray 50
 
-$os-border-subtle:  #E1EFF3;
-$os-border-strong:  #C4DCE3;
-$os-layer-hover:    #F0F8FA;
+$os-border-subtle:  #E0E0E0; // Carbon gray 20
+$os-border-strong:  #C6C6C6; // Carbon gray 30
+$os-layer-hover:    #F4F4F4; // Carbon gray 10
 
-$os-danger:       #D92D20;
-$os-success:      #079455;
-$os-warning:      #DC6803;
-$os-warning-text: #B54708;
+$os-danger:       #DA1E28; // Carbon red 60
+$os-success:      #198038; // Carbon green 60
+$os-warning:      #F1C21B; // Carbon yellow 30
+$os-warning-text: #161616;
 
-$os-status-present-bg:     #ECFDF3;
+$os-status-present-bg:     #DEFBE6; // Carbon green 10
 $os-status-present-border: $os-success;
-$os-status-present-text:   #027A48;
-$os-status-absent-bg:      #FEF3F2;
+$os-status-present-text:   #044317; // Carbon green 100
+$os-status-absent-bg:      #FFF1F1; // Carbon red 10
 $os-status-absent-border:  $os-danger;
-$os-status-absent-text:    #B42318;
-$os-status-late-bg:        #FEF0C7;
+$os-status-absent-text:    #750E13; // Carbon red 100
+$os-status-late-bg:        #FFF8E1;
 $os-status-late-border:    $os-warning;
-$os-status-late-text:      #B54708;
-$os-status-excused-bg:     #F4F3FF;
+$os-status-late-text:      #161616;
+$os-status-excused-bg:     #F6F2FF; // Carbon purple 10
 $os-status-excused-border: $os-chart-purple;
-$os-status-excused-text:   #53389E;
+$os-status-excused-text:   #31135E; // Carbon purple 100
 
 :root {
   --os-accent: #{$os-accent};
@@ -59,13 +64,15 @@ $os-status-excused-text:   #53389E;
   --os-chart-magenta: #{$os-chart-magenta};
   --os-accent-muted: #{$os-accent-muted};
   --os-accent-deeper: #{$os-accent-deeper};
+  --os-canvas: #{$os-canvas};
   --os-text-primary: #{$os-text-primary};
   --os-text-secondary: #{$os-text-secondary};
   --os-text-tertiary: #{$os-text-tertiary};
   --os-text-disabled: #{$os-text-disabled};
   --os-border-subtle: #{$os-border-subtle};
   --os-border-strong: #{$os-border-strong};
-  --os-layer: #ffffff;
+  --os-layer: #{$os-layer};
+  --os-layer-selected: #{$os-layer-selected};
   --os-layer-hover: #{$os-layer-hover};
   --os-danger: #{$os-danger};
   --os-success: #{$os-success};

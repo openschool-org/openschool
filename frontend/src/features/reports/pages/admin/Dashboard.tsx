@@ -11,6 +11,7 @@ import { useStaffAttendanceByDate } from "@/features/attendance/queries/useStaff
 import type { DailySession } from "@/features/attendance/api/attendance";
 import { todayISODate } from "@/shared/lib/date";
 import { Add, ArrowRight, Calendar, UserMultiple, Education, Building, Book } from "@carbon/icons-react";
+import { Button } from "@carbon/react";
 import { Link } from "react-router";
 import StatCard from "@/features/reports/components/dashboard/StatCard";
 import AttendanceByClassSection from "@/features/reports/components/dashboard/AttendanceByClassSection";
@@ -33,7 +34,7 @@ export default function Dashboard() {
   // latter could miss a recently enrolled student/teacher once more than
   // one page of records exists.
   const { data: analytics, isLoading: analyticsLoading } = useDashboardAnalytics();
-  const recentActivity = useMemo(() => analytics?.school.recent_activity ?? [], [analytics]);
+  const recentActivity = analytics?.school.recent_activity ?? [];
   const { data: classes, isLoading: classesLoading } = useCurrentClasses();
   const { data: grades, isLoading: gradesLoading } = useGrades();
   const { data: subjects, isLoading: subjectsLoading } = useSubjects();
@@ -43,8 +44,6 @@ export default function Dashboard() {
 
   const title = school?.name ?? "Admin dashboard";
   const currentYear = years?.find((y) => y.is_current) ?? null;
-
-  const dashboardLoading = analyticsLoading;
 
   const sessionByClassId = useMemo(() => {
     const map = new Map<string, DailySession>();
@@ -90,10 +89,10 @@ export default function Dashboard() {
       </div>
 
       <div className="os-dashboard-actions" aria-label="Quick actions">
-        <Link to="/students/new" className="os-dashboard-action os-dashboard-action--primary"><Add size={16} /> Add student</Link>
-        <Link to="/classes/new" className="os-dashboard-action"><Building size={16} /> Create class</Link>
-        <Link to="/attendance" className="os-dashboard-action"><Calendar size={16} /> Take attendance</Link>
-        <Link to="/analytics" className="os-dashboard-action os-dashboard-action--link">View analytics <ArrowRight size={16} /></Link>
+        <Button as={Link} to="/students/new" kind="primary" size="md" renderIcon={Add}>Add student</Button>
+        <Button as={Link} to="/classes/new" kind="tertiary" size="md" renderIcon={Building}>Create class</Button>
+        <Button as={Link} to="/attendance" kind="tertiary" size="md" renderIcon={Calendar}>Take attendance</Button>
+        <Button as={Link} to="/analytics" kind="ghost" size="md" renderIcon={ArrowRight}>View analytics</Button>
       </div>
 
       {!setupLoading && <SetupChecklistCard items={setupItems} />}
@@ -119,7 +118,7 @@ export default function Dashboard() {
       </div>
 
       <div className="os-dashboard-recent">
-        <RecentActivitySection items={recentActivity} loading={dashboardLoading} />
+        <RecentActivitySection items={recentActivity} loading={analyticsLoading} />
       </div>
     </div>
   );
