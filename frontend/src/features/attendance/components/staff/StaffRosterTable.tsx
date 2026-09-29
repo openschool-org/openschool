@@ -46,7 +46,7 @@ export default function StaffRosterTable({ date, kind, search }: Props) {
     markUnmarked.mutate(
       { date, kind },
       {
-        onSuccess: ({ marked }) => showToast({ kind: "success", title: `Marked ${marked} ${noun(marked)} present` }),
+        onSuccess: ({ marked }) => showToast({ kind: "success", title: `Marked ${marked} ${noun(marked)} absent` }),
         onError: () => showToast({ kind: "error", title: "Could not mark attendance", subtitle: "Please try again." }),
       },
     );
@@ -68,7 +68,7 @@ export default function StaffRosterTable({ date, kind, search }: Props) {
           )}
         </div>
       <Button kind="danger--tertiary" size="sm" renderIcon={CloseFilled} onClick={() => setConfirmBulkAbsent(true)} disabled={!totals?.unmarked || markUnmarked.isPending}>
-          {markUnmarked.isPending ? "Marking…" : `Mark all ${totals?.unmarked ?? 0} not marked as absent`}
+          {markUnmarked.isPending ? "Marking…" : "Mark all unmarked as absent"}
         </Button>
       </div>
 
@@ -127,7 +127,7 @@ export default function StaffRosterTable({ date, kind, search }: Props) {
       <ConfirmActionModal
         open={confirmBulkAbsent}
         title="Mark unmarked staff as absent"
-        description={`This will mark all ${totals?.unmarked ?? 0} currently unmarked ${noun(totals?.unmarked ?? 0)} as absent. Existing attendance marks will not change.`}
+        description={`This will mark every active ${noun(2)} with no attendance record for this date as absent, including people outside the current search. Existing attendance marks will not change.`}
         confirmLabel="Mark as absent"
         danger
         pending={markUnmarked.isPending}

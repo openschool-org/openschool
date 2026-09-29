@@ -81,7 +81,7 @@ export default function StudentProgressReports({ studentId }: { studentId: strin
           <EmptyState title="No progress reports yet" description="Add a term-by-term narrative report for this student." />
         )}
 
-        {orderedReports.map((r) => (
+        {!isLoading && !isError && orderedReports.map((r) => (
           <div key={r.id} className="os-list-row os-justify-between os-items-start">
             <div>
               <div className="os-flex os-items-center os-gap-2">

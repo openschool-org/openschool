@@ -16,7 +16,7 @@ import AgentFindingsBanner from "@/features/notifications/components/AgentFindin
 import { useListFilters } from "@/shared/hooks/useListFilters";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
 import Avatar from "@/shared/ui/Avatar";
-import { formatISODate } from "@/shared/lib/date";
+import { formatDateOnly } from "@/shared/lib/date";
 
 const STATUS_TAG: Record<string, "green" | "red" | "magenta"> = { active: "green", resigned: "red", transferred: "magenta" };
 const FILTER_LABELS: Record<string, string> = { query: "Search", status: "Status" };
@@ -55,7 +55,7 @@ export default function Teachers() {
       ),
     },
     { key: "phone", header: "Phone", render: (t) => <span className="os-table__muted">{t.phone ?? "-"}</span> },
-    { key: "joined_date", header: "Joined date", render: (t) => <span className="os-table__muted">{formatISODate(t.joined_date)}</span> },
+    { key: "joined_date", header: "Joined date", render: (t) => <span className="os-table__muted">{formatDateOnly(t.joined_date)}</span> },
     {
       key: "status",
       header: "Status",

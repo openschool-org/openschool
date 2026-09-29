@@ -5,7 +5,7 @@ import type { House } from "@/features/school/api/house";
 import { TITLES, EMPLOYMENT_STATUSES } from "@/features/teachers/constants";
 import TeacherSubjectsSection from "@/features/teachers/components/TeacherSubjectsSection";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
-import { formatISODate } from "@/shared/lib/date";
+import { formatDateOnly, formatISODate } from "@/shared/lib/date";
 import InfoTip from "@/shared/ui/InfoTip";
 import SectionCard from "@/shared/ui/SectionCard";
 
@@ -64,7 +64,7 @@ export default function TeacherProfileSections(p: Props) {
             <TextInput id="email" labelText="Email" value={teacher.email ?? "-"} readOnly />
             <TextInput {...field("phone", "Phone", "phone_number")} />
             <TextInput {...field("nic-number", "NIC number", "nic_number")} />
-            <TextInput id="joined-date" labelText="Joined date" value={formatISODate(teacher.joined_date)} readOnly />
+            <TextInput id="joined-date" labelText="Joined date" value={formatDateOnly(teacher.joined_date)} readOnly />
             <TextInput id="created-at" labelText="Created" value={formatISODate(teacher.created_at)} readOnly />
           </div>
       </SectionCard>

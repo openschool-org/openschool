@@ -69,7 +69,7 @@ function TeacherSubjectRow({ teacher, allSubjects }: { teacher: Teacher; allSubj
           Assign subject
         </Button>
         {assignableSubjects.length === 0 && !isLoading && !isError && (
-          <p className="os-m-0 os-mt-1 os-text-xs os-c-tertiary">All subjects assigned</p>
+          <p role="status" className="os-m-0 os-mt-1 os-text-xs os-c-tertiary">All subjects assigned</p>
         )}
         {assignMutation.isError && (
           <div className="os-c-danger os-text-xs os-mt-1">
@@ -125,11 +125,9 @@ export default function TeacherSubjects() {
   });
   const teachers = teacherPage?.items ?? [];
   const normalizedSearch = searchQuery.trim().toLocaleLowerCase();
-  const visibleTeachers = normalizedSearch
-    ? teachers.filter((teacher) =>
-      `${teacher.full_name} ${teacher.employee_number}`.toLocaleLowerCase().includes(normalizedSearch),
-    )
-    : teachers;
+  // Search is server-side. Keep the retained page visible while the debounced
+  // request is in flight instead of filtering stale results with the new term.
+  const visibleTeachers = teachers;
   const totalItems = teacherPage?.total ?? 0;
   const { data: subjects, isLoading: loadingSubjects, isError: subjectsError, refetch: refetchSubjects } = useSubjects();
 
@@ -186,7 +184,7 @@ export default function TeacherSubjects() {
         title="Teacher qualifications"
         meta={!loadingTeachers && (
           <span className="os-section__meta">
-            {normalizedSearch ? `${visibleTeachers.length} matching` : `${totalItems} teachers`}
+            {normalizedSearch ? `${totalItems} matching` : `${totalItems} teachers`}
           </span>
         )}
         flush

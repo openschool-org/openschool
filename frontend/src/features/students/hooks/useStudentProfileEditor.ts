@@ -25,12 +25,26 @@ export function useStudentProfileEditor(id: string, student: StudentWithClass | 
   const [editing, setEditing] = useState(startEditing);
   const [form, setForm] = useState<StudentProfileForm>(EMPTY);
   const loadedFor = useRef<string | null>(null);
+  const editedFields = useRef<Set<keyof StudentProfileForm>>(new Set());
 
   useEffect(() => {
-    if (student && loadedFor.current !== student.id) {
-      setForm(studentToForm(student));
+    if (!student) return;
+    const next = studentToForm(student);
+    if (loadedFor.current !== student.id) {
+      setForm(next);
+      editedFields.current.clear();
       loadedFor.current = student.id;
+      return;
     }
+    // Refresh server-owned fields without overwriting anything the user has
+    // changed locally while the profile query was being refreshed.
+    setForm((current) => {
+      const merged = { ...current };
+      (Object.keys(next) as (keyof StudentProfileForm)[]).forEach((field) => {
+        if (!editedFields.current.has(field)) Object.assign(merged, { [field]: next[field] });
+      });
+      return merged;
+    });
   }, [student]);
 
   const trimOrUndefined = (v: string) => v.trim() || undefined;
@@ -42,11 +56,15 @@ export function useStudentProfileEditor(id: string, student: StudentWithClass | 
     startEdit: () => setEditing(true),
     cancel: () => {
       if (student) setForm(studentToForm(student));
+      editedFields.current.clear();
       updateStudent.reset();
       setEditing(false);
     },
     form,
-    change: (field: keyof StudentProfileForm, value: string) => setForm((f) => ({ ...f, [field]: value })),
+    change: (field: keyof StudentProfileForm, value: string) => {
+      editedFields.current.add(field);
+      setForm((f) => ({ ...f, [field]: value }));
+    },
     isValid: !!form.given_name.trim() && !!form.family_name.trim(),
     updateStudent,
     updateError: updateStudent.isError ? getErrorMessage(updateStudent.error, "Failed to update student") : null,
@@ -64,7 +82,7 @@ export function useStudentProfileEditor(id: string, student: StudentWithClass | 
             gender: form.gender || undefined,
           },
         },
-        { onSuccess: () => { setEditing(false); onDone(); } },
+        { onSuccess: () => { editedFields.current.clear(); setEditing(false); onDone(); } },
       ),
     deleteStudent,
     remove: () => deleteStudent.mutate(id),

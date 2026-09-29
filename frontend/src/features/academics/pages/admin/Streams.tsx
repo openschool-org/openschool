@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Layers, Add } from "@carbon/icons-react";
-import { Button, TextInput } from "@carbon/react";
+import { Button, TextInput, InlineNotification } from "@carbon/react";
 import { useStreams, useCreateStream } from "@/features/academics/queries/useClasses";
 import StreamGroups from "@/features/academics/components/StreamGroups";
 import SectionHeadsPanel from "@/features/academics/components/SectionHeadsPanel";
@@ -34,9 +34,10 @@ export default function Streams() {
 
       <AgentFindingsBanner />
 
-      <SectionCard title="Streams" meta={!isLoading && !isError && <span className="os-section__meta">{streams?.length ?? 0} configured</span>} flush>
+      <SectionCard title="Streams" meta={!isLoading && <span className="os-section__meta">{streams?.length ?? 0} configured</span>} flush>
         {isLoading && <div className="os-py-4 os-px-6"><ListRowSkeleton trailingWidth={null} /></div>}
-        {isError && <ErrorMessage message="Could not load streams." onRetry={refetch} />}
+        {isError && streams && streams.length > 0 && <div className="os-flex os-items-center os-gap-2 os-px-6 os-py-3"><InlineNotification kind="error" lowContrast hideCloseButton title="Could not refresh streams" subtitle="Showing the last available stream cards." className="os-flex-1 os-m-0" /><Button kind="ghost" size="sm" onClick={() => void refetch()}>Retry</Button></div>}
+        {isError && !streams?.length && <ErrorMessage message="Could not load streams." onRetry={refetch} />}
         {!isLoading && !isError && !streams?.length && (
           <EmptyState
             title="No streams yet"
@@ -44,7 +45,7 @@ export default function Streams() {
             action={<Button renderIcon={Add} kind="primary" onClick={() => setCreateOpen(true)}>New stream</Button>}
           />
         )}
-        {!isLoading && !isError && streams && streams.length > 0 && (
+        {!isLoading && streams && streams.length > 0 && (
           <div className="os-grid os-grid-auto-280 os-gap-4 os-p-6">
             {streams.map((s) => (
               <div key={s.id} className="os-border os-rounded-md os-bg-layer os-p-5">

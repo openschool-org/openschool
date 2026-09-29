@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, Tag } from "@carbon/react";
+import { Button, Tag, InlineNotification } from "@carbon/react";
 import { useCurrentClasses, useStreams } from "@/features/academics/queries/useClasses";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useTeacher, useTeachers } from "@/features/teachers/queries/useTeachers";
@@ -25,9 +25,11 @@ interface Row {
 
 // One row per grade, or per stream in a grade that has streamed classes.
 function useSectionHeadRows() {
-  const { data: classes } = useCurrentClasses();
-  const { data: streams } = useStreams();
-  return useMemo(() => {
+  const classesQuery = useCurrentClasses();
+  const streamsQuery = useStreams();
+  const rows = useMemo(() => {
+    const classes = classesQuery.data;
+    const streams = streamsQuery.data;
     const byGrade = new Map<string, { gradeName: string; streamIds: Map<string, string> }>();
     for (const c of classes ?? []) {
       if (!byGrade.has(c.grade_id)) byGrade.set(c.grade_id, { gradeName: c.grade_name, streamIds: new Map() });
@@ -39,7 +41,8 @@ function useSectionHeadRows() {
       else for (const [streamId, streamName] of streamIds) rows.push({ key: `${gradeId}-${streamId}`, gradeId, gradeName, streamId, streamName });
     }
     return rows.sort((a, b) => a.gradeName.localeCompare(b.gradeName) || (a.streamName ?? "").localeCompare(b.streamName ?? ""));
-  }, [classes, streams]);
+  }, [classesQuery.data, streamsQuery.data]);
+  return { rows, classesQuery, streamsQuery };
 }
 
 export default function SectionHeadsPanel() {
@@ -53,7 +56,7 @@ export default function SectionHeadsPanel() {
   const { data: sectionHeads, isLoading, isError, refetch } = useSectionHeads(currentYear?.id ?? "");
   const assign = useAssignSectionHead();
   const remove = useRemoveSectionHead();
-  const rows = useSectionHeadRows();
+  const { rows, classesQuery, streamsQuery } = useSectionHeadRows();
   const [toRemove, setToRemove] = useState<SectionHead | null>(null);
 
   const headFor = (row: Row) => sectionHeads?.find((sh) => sh.grade_id === row.gradeId && sh.stream_id === row.streamId);
@@ -69,23 +72,35 @@ export default function SectionHeadsPanel() {
         <EmptyState title="No current academic year" description="Set an academic year as current before assigning section heads." />
       ) : isLoading ? (
         <div className="os-py-2"><ListRowSkeleton trailingWidth="12rem" /></div>
-      ) : isError ? (
+      ) : isError && !sectionHeads ? (
         <div className="os-p-6"><ErrorMessage message="Could not load section heads." onRetry={refetch} /></div>
+      ) : (classesQuery.isLoading || streamsQuery.isLoading) && rows.length === 0 ? (
+        <div className="os-py-2"><ListRowSkeleton trailingWidth="12rem" /></div>
+      ) : (classesQuery.isError || streamsQuery.isError) && !classesQuery.data && !streamsQuery.data ? (
+        <div className="os-p-6"><ErrorMessage message="Could not load classes and streams." onRetry={() => { void classesQuery.refetch(); void streamsQuery.refetch(); }} /></div>
       ) : rows.length === 0 ? (
         <EmptyState title="No classes yet" description="Section heads are derived from the grades and streams your classes actually use." />
       ) : (
-        rows.map((row) => (
-          <SectionHeadRow
-            key={row.key}
-            row={row}
-            head={headFor(row)}
-            teachers={teachers ?? []}
-            onSearch={setTeacherSearch}
-            onAssign={(teacher_id) => assign.mutate({ academic_year_id: currentYear.id, grade_id: row.gradeId, stream_id: row.streamId, teacher_id })}
-            onRemoveClick={setToRemove}
-            removeDisabled={remove.isPending}
-          />
-        ))
+        <>
+          {(classesQuery.isError || streamsQuery.isError || isError) && (
+            <div className="os-flex os-items-center os-gap-2 os-px-6 os-py-3">
+              <InlineNotification kind="error" lowContrast hideCloseButton title="Some section-head data could not refresh" subtitle="Showing the last available rows. Retry to get the latest classes, streams, or assignments." className="os-flex-1 os-m-0" />
+              <Button kind="ghost" size="sm" onClick={() => { void classesQuery.refetch(); void streamsQuery.refetch(); void refetch(); }}>Retry</Button>
+            </div>
+          )}
+          {rows.map((row) => (
+            <SectionHeadRow
+              key={row.key}
+              row={row}
+              head={headFor(row)}
+              teachers={teachers ?? []}
+              onSearch={setTeacherSearch}
+              onAssign={(teacher_id) => assign.mutate({ academic_year_id: currentYear.id, grade_id: row.gradeId, stream_id: row.streamId, teacher_id })}
+              onRemoveClick={setToRemove}
+              removeDisabled={remove.isPending}
+            />
+          ))}
+        </>
       )}
 
       <MutationErrorNotification isError={assign.isError} error={assign.error} title="Could not assign section head" fallback="Please try again." onClose={() => assign.reset()} className="os-mx-6" />

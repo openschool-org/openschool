@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button, TextInput, TextArea, Dropdown, Tag, InlineNotification, ComposedModal, ModalBody, ModalHeader } from "@carbon/react";
 import { Send, Save } from "@carbon/icons-react";
 import {
@@ -26,6 +26,7 @@ export default function NotificationComposer() {
   const [category, setCategory] = useState<NotificationCategory>("general");
   const [priority, setPriority] = useState<NotificationPriority>("normal");
   const [rules, setRules] = useState<RecipientRule[]>([]);
+  const composeSession = useRef(0);
 
   const { role } = useRole();
   const { data: myPosition } = useMyPosition(role === "teacher");
@@ -47,6 +48,7 @@ export default function NotificationComposer() {
   };
 
   const handleSubmit = (saveAsDraft: boolean) => {
+    const submittedSession = composeSession.current;
     create.mutate(
       {
         title: title.trim(),
@@ -56,8 +58,23 @@ export default function NotificationComposer() {
         save_as_draft: saveAsDraft,
         recipient_rules: rules,
       },
-      { onSuccess: () => { resetForm(); setComposeOpen(false); } },
+      { onSuccess: () => {
+        if (composeSession.current !== submittedSession) return;
+        resetForm();
+        setComposeOpen(false);
+      } },
     );
+  };
+
+  const openComposer = () => {
+    composeSession.current += 1;
+    create.reset();
+    setComposeOpen(true);
+  };
+  const closeComposer = () => {
+    if (create.isPending) return;
+    composeSession.current += 1;
+    setComposeOpen(false);
   };
 
   const removeRule = (index: number) => setRules((r) => r.filter((_, i) => i !== index));
@@ -74,20 +91,11 @@ export default function NotificationComposer() {
             )}
           </p>
         </div>
-        <Button renderIcon={Send} kind="primary" onClick={() => setComposeOpen(true)}>
+        <Button renderIcon={Send} kind="primary" onClick={openComposer}>
           Notify
         </Button>
       </div>
 
-      {create.isError && (
-        <InlineNotification
-          kind="error"
-          title="Could not send notification"
-          subtitle={getErrorMessage(create.error)}
-          lowContrast
-          onClose={() => create.reset()} className="os-mb-6 os-max-w-full"
-        />
-      )}
       {create.isSuccess && (
         <InlineNotification
           kind="success"
@@ -98,9 +106,10 @@ export default function NotificationComposer() {
         />
       )}
 
-      <ComposedModal open={composeOpen} size="lg" onClose={() => setComposeOpen(false)} aria-label="Compose notification">
+      <ComposedModal open={composeOpen} size="lg" onClose={closeComposer} aria-label="Compose notification">
         <ModalHeader title="Compose notification" />
         <ModalBody>
+        {create.isError && <InlineNotification kind="error" title="Could not send notification" subtitle={getErrorMessage(create.error)} lowContrast onClose={() => create.reset()} className="os-mb-6 os-max-w-full" />}
         <div className="os-section">
           <div className="os-section__header">
             <h2 className="os-section__title">Compose</h2>

@@ -17,7 +17,8 @@ export default function AssignTeacherSubjectModal({ open, teacher, subjects, mut
   const [subjectId, setSubjectId] = useState("");
   const selectedSubject = subjects.find((subject) => subject.id === subjectId);
 
-  const close = () => {
+  const close = (force = false) => {
+    if (mutation.isPending && !force) return;
     setSubjectId("");
     mutation.reset();
     onClose();
@@ -25,7 +26,7 @@ export default function AssignTeacherSubjectModal({ open, teacher, subjects, mut
 
   const assign = () => {
     if (!subjectId) return;
-    mutation.mutate(subjectId, { onSuccess: close });
+    mutation.mutate(subjectId, { onSuccess: () => close(true) });
   };
 
   return (
