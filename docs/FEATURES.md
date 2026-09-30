@@ -64,7 +64,25 @@ dashboard shows them (a `RoleBadge` and, for Section Head and above, a
 - **Account provisioning** - teacher, student, and parent accounts are all
   created from inside OpenSchool (Teachers page, Students page, a student's
   Guardians tab), which provisions the matching ThunderID account
-  automatically. There is no self-registration for any role.
+  automatically. ThunderID's own self-registration stays off for every role.
+- **Self-service activation (students and parents)** - an admin issues
+  one-time activation codes in bulk from **Settings > Account activation**
+  (printable slips or CSV, per class or for everyone without a login). The
+  person opens `/activate`, enters the code, their index or NIC number and
+  an email, confirms the email through a 30-minute link and picks their own
+  password. Off by default, with a switch per role and an optional date
+  window. See [ADR 0008](adr/0008-self-service-account-activation.md).
+- **Class-wise activation code sheets** - each generated batch is split by
+  class (grade order, then name). Per class it prints a hand-out list for
+  the class teacher (logo, school name, class, class teacher, names, index
+  numbers, a signature column, and no codes) followed by cut-out slips, 10
+  per A4 page, each with the logo, school name, class and class teacher.
+  Print one class or all, or choose "Save as PDF" in the print window;
+  Ctrl+P on that screen prints the sheets too. Parents are filed under
+  their youngest child's class.
+- **Reprinting codes** - Issued batches has a "View codes" action that
+  reopens a batch's unused codes as class PDFs or CSV, when the server has
+  an `ACTIVATION_CODE_KEY`. Each reopening is audit-logged.
 - **NIC/index-number default passwords** - new accounts don't get a
   manually-typed password. A teacher's or guardian's initial password is
   their NIC number (`nic_number`, required and unique per person); a
@@ -81,7 +99,15 @@ dashboard shows them (a `RoleBadge` and, for Section Head and above, a
   reset link (15 minutes, token stored only as a hash) via SMTP. Requires
   `SMTP_*` env vars set - without them, the link is only logged server-side,
   not actually delivered. A signed-in user can also change their password at
-  any time from the header menu.
+  any time from the header menu. A "password changed" email follows every
+  change or reset.
+- **Account emails** - branded with the OpenSchool logo and the school's
+  name and contacts, in HTML and plain text, with a formal greeting by name
+  with initials ("Dear H.A.N. Perera,"). Sent through Resend or any SMTP
+  server; `MAIL_REDIRECT_TO` sends everything to one test inbox while no
+  domain is verified. Settings > Email shows the active provider, previews
+  each email and sends a test to the admin. See
+  [ADR 0009](adr/0009-transactional-email.md).
 - **Orphaned-identity handling** - if provisioning a ThunderID account
   succeeds but the local Postgres write fails (or vice versa), a
   compensating rollback attempts to delete the partially-created side. This
@@ -133,6 +159,29 @@ dashboard shows them (a `RoleBadge` and, for Section Head and above, a
 
 ## People
 
+- **Sri Lankan names** - students, teachers and guardians have a full name
+  (as on the birth certificate or NIC), a name with initials (for example
+  "H.A.H.E. Wickramasinghe", filled in from the full name and editable) and
+  an optional calling name. Lists, registers and printouts show the name
+  with initials; search matches all three. Names are never split into a
+  guessed first and last name.
+- **Bulk student import** - Students > Import students takes a CSV
+  (class, index number, full name, optional name with initials and calling
+  name, gender, contacts, guardian) and places each student straight into
+  their class for the current year. A preview shows every row before
+  anything is saved; an unknown class can be chosen in the preview; classes
+  over capacity are flagged; the whole import can be undone. No logins are
+  created: students and parents activate with codes afterwards.
+- **Guardian checks during import** - guardians are matched by NIC
+  (ignoring the case of the final V or X). An existing guardian, with or
+  without a login, is linked rather than created again. A NIC that comes
+  with a different name or email from the record or from an earlier row is
+  blocked, because it could link a child to the wrong parent. The same
+  parent under a second NIC, and an email already used by someone else, are
+  flagged for review.
+- **Phone numbers** - every phone field accepts 0771234567, +94771234567,
+  94771234567, spaces, dashes, and a number whose leading 0 a spreadsheet
+  dropped, and stores 0XXXXXXXXX.
 - **Students** - profile, enrollment status (active/left), house, guardians
   (up to 2 per student, shared guardians supported for siblings), and an
   8-tab detail view: Profile, Guardians, Subject Enrollment, Progress
@@ -438,6 +487,12 @@ five-check agent takes about as long as its slowest check, not the sum.
 | **Academic Delivery** | weekdays 12:00 | Missing or inconsistent attendance sessions, stale incomplete sessions, term-marks deadline and pace-behind-schedule |
 | **Security Audit** | hourly | Statistical audit-log anomaly detection (per-actor baseline, not one fixed number), off-hours activity, expired password-reset-token sweep |
 | **System Health** | daily 02:00 | Nightly `pg_dump`, migration-drift check, backup retention pruning, backup size-anomaly detection - the one agent that **cannot be disabled** |
+
+The Automation page also lists the **year-end workflows** (Year rollover,
+Leavers, Intake, Promotion and class formation, Teacher allocation,
+Timetable, Go live, in that order) and the **setup tools** (Import
+students). These run only when an admin proposes and applies them, so
+they have no schedule or switch.
 
 Findings go out as in-app notifications to every admin. Where a finding is
 relevant to a specific admin page (e.g. no-guardian students on the

@@ -71,7 +71,8 @@ SELECT
     g.name   AS grade_name,
     ay.label AS academic_year_label,
     m.name   AS medium_name,
-    hc.name  AS home_classroom_name
+    hc.name  AS home_classroom_name,
+    (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.id) AS student_count
 FROM classes c
 INNER JOIN grades g          ON g.id = c.grade_id
 INNER JOIN academic_years ay ON ay.id = c.academic_year_id
@@ -104,7 +105,8 @@ SET girl_monitor_id = $2,
 WHERE id = $1
 RETURNING *;
 
--- name: EnrollStudentInClass :exec
+-- name: EnrollStudentInClass :execrows
+-- Zero rows means the student is already in a class this year (one class per year).
 INSERT INTO class_students (class_id, student_id)
 VALUES ($1, $2)
 ON CONFLICT DO NOTHING;
@@ -155,7 +157,7 @@ SELECT
     s.name       AS subject_name,
     s.code       AS subject_code,
     tp.id        AS teacher_id,
-    tp.full_name AS teacher_name
+    COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS teacher_name
 FROM class_subject_teachers cst
 INNER JOIN subjects         s  ON s.id  = cst.subject_id
 INNER JOIN teacher_profiles tp ON tp.id = cst.teacher_id

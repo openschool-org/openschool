@@ -30,7 +30,7 @@ export default function SubjectsTab({ classId, academicYearId }: { classId: stri
         flush
         title="Subjects & teachers"
         meta={
-          <Button renderIcon={UserFollow} size="sm" onClick={() => setModalOpen(true)}>
+          <Button renderIcon={UserFollow} size="sm" onClick={() => { assignSubjectTeacher.reset(); setModalOpen(true); }}>
             Assign subject teacher
           </Button>
         }
@@ -59,12 +59,15 @@ export default function SubjectsTab({ classId, academicYearId }: { classId: stri
         </div>
       </SectionCard>
 
-      <AssignClassSubjectTeacherModal
-        open={modalOpen}
-        subjects={subjects}
-        assignSubjectTeacher={assignSubjectTeacher}
-        onClose={() => setModalOpen(false)}
-      />
+      {/* Mounted only while open, so each opening starts blank. */}
+      {modalOpen && (
+        <AssignClassSubjectTeacherModal
+          open
+          subjects={subjects}
+          assignSubjectTeacher={assignSubjectTeacher}
+          onClose={() => setModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
 import { relationshipLabel } from "@/features/guardians/constants";
 import GuardianDetail from "@/features/guardians/components/GuardianDetail";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
+import { displayName } from "@/shared/lib/name";
 
 // Server-paginated: search/orphansOnly/page/pageSize all live in the query
 // key, so the server does the filtering and sorting instead of downloading
@@ -55,7 +56,7 @@ export default function GuardiansDirectory() {
           <div className="os-flex-basis-18 os-min-w-14">
             <TableToolbarSearch
               persistent
-              placeholder="Search guardians by name, phone, or email…"
+              placeholder="Search guardians by name, phone, email or NIC…"
               value={search}
               onChange={(e) => { setSearch(typeof e === "string" ? e : e.target.value); setPage(1); }}
             />
@@ -98,7 +99,7 @@ export default function GuardiansDirectory() {
                 title={isSearching ? "No matching guardians" : "No guardians found"}
                 description={
                   isSearching
-                    ? "Try searching by a different name, phone number, or email address."
+                    ? "Try a different name, phone number, email address or NIC number."
                     : "Guardians are automatically linked when adding or editing student profiles."
                 }
               />
@@ -116,12 +117,11 @@ export default function GuardiansDirectory() {
                 >
                   <Avatar name={g.full_name} size="sm" />
                   <div className="os-min-w-0 os-flex-1">
-                    <div className="os-fw-600 os-text-md os-c-primary os-overflow-hidden os-truncate os-nowrap"
-                    >
-                      {g.full_name}
+                    <div className="os-fw-600 os-text-md os-c-primary os-overflow-hidden os-truncate os-nowrap" title={g.full_name}>
+                      {displayName(g)}
                     </div>
                     <div className="os-text-xs os-c-tertiary">
-                      {relationshipLabel(g.relationship)} · {g.phone}
+                      {relationshipLabel(g.relationship)} · {g.phone}{g.nic_number ? ` · NIC ${g.nic_number}` : ""}
                     </div>
                   </div>
                 </ClickableTile>

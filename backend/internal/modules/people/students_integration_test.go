@@ -65,16 +65,23 @@ func TestStudentProvisioningAPIWithPostgres(t *testing.T) {
 		c.Set("userID", actorID.String())
 		c.Next()
 	})
-	RegisterStudentRoutes(group, group, service, store, service, nil)
+	RegisterStudentRoutes(group, group, service, store, service, nil, nil)
 
 	request := CreateStudentRequest{
-		Email: "student@example.test", GivenName: "Test", FamilyName: "Student",
+		Email: "student@example.test", FullName: "Test Student", CallingName: "Testy",
 		PhoneNumber: "0771234567", IndexNumber: "STU-001", Address: "Colombo",
 		WhatsApp: "0712345678", Gender: "male",
 	}
 	created := performStudentRequest(t, router, request)
 	if created.Code != http.StatusCreated {
 		t.Fatalf("create student: code=%d body=%s", created.Code, created.Body.String())
+	}
+	if provider.attributes[0]["given_name"] != "Testy" || provider.attributes[0]["family_name"] != "Student" {
+		t.Fatalf("identity names should be the calling name and surname: %v", provider.attributes[0])
+	}
+	var withInitials, calling string
+	if err := pool.QueryRow(context.Background(), "SELECT name_with_initials, calling_name FROM student_profiles WHERE index_number = $1", request.IndexNumber).Scan(&withInitials, &calling); err != nil || withInitials != "T. Student" || calling != "Testy" {
+		t.Fatalf("names on the profile: %q %q %v", withInitials, calling, err)
 	}
 	if provider.createCalls != 1 || provider.attributes[0]["password"] != request.IndexNumber {
 		t.Fatalf("identity provisioning mismatch: calls=%d attributes=%v", provider.createCalls, provider.attributes)
@@ -100,7 +107,7 @@ func TestStudentProvisioningAPIWithPostgres(t *testing.T) {
 
 	request.IndexNumber = "STU-002"
 	duplicateEmail := performStudentRequest(t, router, request)
-	if duplicateEmail.Code != http.StatusBadRequest || !slices.Contains(provider.deleted, duplicateEmailUserID.String()) {
+	if duplicateEmail.Code != http.StatusConflict || !slices.Contains(provider.deleted, duplicateEmailUserID.String()) {
 		t.Fatalf("duplicate email rollback: code=%d deleted=%v body=%s", duplicateEmail.Code, provider.deleted, duplicateEmail.Body.String())
 	}
 	assertUserAbsent(t, pool, duplicateEmailUserID)

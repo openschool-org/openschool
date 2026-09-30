@@ -5,6 +5,7 @@ import { useGrades } from "@/features/academics/queries/useGrades";
 import { useAssignPrincipal, useAssignVicePrincipal } from "@/features/positions/queries/usePositions";
 import FormModal from "@/shared/ui/FormModal";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
+import { displayName } from "@/shared/lib/name";
 
 export function AssignPrincipalModal({ currentTeacherId, onClose }: { currentTeacherId: string; onClose: () => void }) {
   const [teacherSearch, setTeacherSearch] = useState("");
@@ -32,7 +33,7 @@ export function AssignPrincipalModal({ currentTeacherId, onClose }: { currentTea
       error={assign.error}
       errorFallback="Failed to assign Principal"
     >
-      <EntityCombobox id="principal-teacher" labelText="Teacher" items={teachers} selectedId={choice} onSelect={setChoice} onSearch={setTeacherSearch} getId={(t) => t.id} itemToString={(t) => t.full_name} placeholder="Search teachers by name…" />
+      <EntityCombobox id="principal-teacher" labelText="Teacher" items={teachers} selectedId={choice} onSelect={setChoice} onSearch={setTeacherSearch} getId={(t) => t.id} itemToString={(t) => displayName(t)} placeholder="Search teachers by name…" />
     </FormModal>
   );
 }
@@ -60,7 +61,7 @@ export function AddVicePrincipalModal({ onClose }: { onClose: () => void }) {
       errorFallback="Failed to add Vice Principal"
     >
       <div className="os-grid os-gap-4">
-        <EntityCombobox id="vp-teacher" labelText="Teacher" items={teachers ?? []} selectedId={teacherId} onSelect={setTeacherId} onSearch={setTeacherSearch} getId={(t) => t.id} itemToString={(t) => t.full_name} placeholder="Search teachers by name…" />
+        <EntityCombobox id="vp-teacher" labelText="Teacher" items={teachers ?? []} selectedId={teacherId} onSelect={setTeacherId} onSearch={setTeacherSearch} getId={(t) => t.id} itemToString={(t) => displayName(t)} placeholder="Search teachers by name…" />
         <Checkbox id="vp-whole-school" labelText="Can notify the whole school" checked={wholeSchool} onChange={(_e, { checked }) => setWholeSchool(checked)} />
         {!wholeSchool && (
           <MultiSelect

@@ -15,12 +15,19 @@ import type { HouseRow } from "@/features/school/components/setup/HousesStep";
 // Tracks which submission phases already succeeded, so Retry after a mid-sequence failure resumes instead of duplicating them.
 interface SubmitProgress {
   school: boolean;
-  houses: boolean;
+  // Names of houses already created, skipped on retry.
+  houses: Set<string>;
   grades: Grade[] | null;
   // Created medium ids keyed by name, reused on retry instead of recreated.
   mediums: Map<string, string> | null;
-  classes: boolean;
-  rooms: boolean;
+  academicYearId: string | null;
+  streams: Map<string, string>;
+  groups: Map<ALStreamKey, string>;
+  // Keys ("gradeId:className") of classes already created, skipped on retry.
+  classes: Set<string>;
+  classesDone: boolean;
+  // Keys ("group:name") of rooms already created, skipped on retry.
+  rooms: Set<string>;
 }
 
 interface Input {
@@ -62,11 +69,15 @@ export function useSchoolSetupSubmit(input: Input) {
   const lastSetupRequestAt = useRef(0);
   const progressRef = useRef<SubmitProgress>({
     school: false,
-    houses: false,
+    houses: new Set(),
     grades: null,
     mediums: null,
-    classes: false,
-    rooms: false,
+    academicYearId: null,
+    streams: new Map(),
+    groups: new Map(),
+    classes: new Set(),
+    classesDone: false,
+    rooms: new Set(),
   });
 
   // Keep the long setup sequence below the API-wide token bucket. This also
@@ -117,7 +128,7 @@ export function useSchoolSetupSubmit(input: Input) {
 
     try {
       if (!progress.school) {
-        await createSchool.mutateAsync({
+        await setupRequest(() => createSchool.mutateAsync({
           name: school.name.trim(),
           address: school.address.trim(),
           phone: school.phone.trim(),
@@ -126,22 +137,21 @@ export function useSchoolSetupSubmit(input: Input) {
           school_type: school.school_type,
           grade_from: school.grade_from === "" ? null : Number(school.grade_from),
           grade_to: school.grade_to === "" ? null : Number(school.grade_to),
-        });
+        }));
         progress.school = true;
       }
 
-      if (!progress.houses) {
-        if (!housesSkipped) {
-          const named = houses.filter((h) => h.name.trim());
-          for (let i = 0; i < named.length; i++) {
-            await createHouse.mutateAsync({
-              name: named[i].name.trim(),
-              code: named[i].code.trim() || undefined,
-              color: named[i].color,
-            });
-          }
+      if (!housesSkipped) {
+        for (const house of houses.filter((h) => h.name.trim())) {
+          const name = house.name.trim();
+          if (progress.houses.has(name)) continue;
+          await setupRequest(() => createHouse.mutateAsync({
+            name,
+            code: house.code.trim() || undefined,
+            color: house.color,
+          }));
+          progress.houses.add(name);
         }
-        progress.houses = true;
       }
 
       const setupGradeNumbers = new Set(orderedSelectedGrades);
@@ -156,10 +166,10 @@ export function useSchoolSetupSubmit(input: Input) {
       if (!progress.grades) {
         const created: Grade[] = [];
         for (let i = 0; i < normalizedSelectedGrades.length; i++) {
-          const g = await createGrade.mutateAsync({
+          const g = await setupRequest(() => createGrade.mutateAsync({
             name: `Grade ${normalizedSelectedGrades[i]}`,
             sort_order: i,
-          });
+          }));
           created.push(g);
         }
         progress.grades = created;
@@ -175,7 +185,7 @@ export function useSchoolSetupSubmit(input: Input) {
             ...customMediums.filter((m) => m.trim()),
           ];
           for (const name of names) {
-            const medium = await createMedium.mutateAsync({ name });
+            const medium = await setupRequest(() => createMedium.mutateAsync({ name }));
             byName.set(name, medium.id);
           }
         }
@@ -183,20 +193,32 @@ export function useSchoolSetupSubmit(input: Input) {
       }
       const mediumIdByName = progress.mediums;
 
-      if (!progress.classes) {
+      if (!progress.classesDone) {
         if (!skipClasses && yearLabel.trim() && createdGrades.length > 0) {
           const regularGrades = createdGrades.filter((g) => !AL_GRADE_NUMBERS.has(gradeNumberOf(g)));
           const alGrades = createdGrades.filter((g) => AL_GRADE_NUMBERS.has(gradeNumberOf(g)));
 
           // Year from the admin's typed label (e.g. "2025"), not the real-world current year, since the setup may target a past/upcoming year.
           const labelYear = Number(yearLabel.trim().match(/\d{4}/)?.[0] ?? now.getFullYear());
-          const year = await createAcademicYear.mutateAsync({
-            label: yearLabel.trim(),
-            // Date.UTC avoids the local Date constructor shifting Jan 1 to Dec 31 once converted to UTC in timezones ahead of it (e.g. Sri Lanka, UTC+5:30).
-            start_date: new Date(Date.UTC(labelYear, 0, 1)).toISOString(),
-            end_date: new Date(Date.UTC(labelYear, 11, 31)).toISOString(),
-            is_current: true,
-          });
+          if (!progress.academicYearId) {
+            const year = await setupRequest(() => createAcademicYear.mutateAsync({
+              label: yearLabel.trim(),
+              // Date.UTC avoids the local Date constructor shifting Jan 1 to Dec 31 once converted to UTC in timezones ahead of it (e.g. Sri Lanka, UTC+5:30).
+              start_date: new Date(Date.UTC(labelYear, 0, 1)).toISOString(),
+              end_date: new Date(Date.UTC(labelYear, 11, 31)).toISOString(),
+              is_current: true,
+            }));
+            progress.academicYearId = year.id;
+          }
+          const academicYearId = progress.academicYearId;
+
+          // Creates one class unless an earlier attempt already did.
+          const createClassOnce = async (data: Parameters<typeof createClass.mutateAsync>[0]) => {
+            const key = `${data.grade_id}:${data.name}`;
+            if (progress.classes.has(key)) return;
+            await setupRequest(() => createClass.mutateAsync(data));
+            progress.classes.add(key);
+          };
 
           for (const grade of regularGrades) {
             const gradeNumber = gradeNumberOf(grade);
@@ -204,27 +226,27 @@ export function useSchoolSetupSubmit(input: Input) {
             for (let i = 0; i < count; i++) {
               const section = String.fromCharCode(65 + i);
               const mediumName = sectionMediums[`${gradeNumber}-${i}`] || selectedMediumNames[0];
-              await setupRequest(() => createClass.mutateAsync({
+              await createClassOnce({
                 grade_id: grade.id,
-                academic_year_id: year.id,
+                academic_year_id: academicYearId,
                 name: `${gradeNumber}-${section}`,
                 medium_id: (mediumName && mediumIdByName.get(mediumName)) || null,
                 capacity: classCapacity,
-              }));
+              });
             }
           }
 
           if (alGrades.length > 0) {
             const enabledDefs = AL_STREAM_DEFS.filter((d) => alGrades.some((grade) => alStreams[gradeNumberOf(grade)]?.[d.key]?.enabled));
-            const streamIdByName = new Map<string, string>();
-            const groupIdByKey = new Map<ALStreamKey, string>();
+            const streamIdByName = progress.streams;
+            const groupIdByKey = progress.groups;
 
             for (const def of enabledDefs) {
               if (!streamIdByName.has(def.streamName)) {
                 const stream = await setupRequest(() => createStream.mutateAsync({ name: def.streamName }));
                 streamIdByName.set(def.streamName, stream.id);
               }
-              if (def.groupName) {
+              if (def.groupName && !groupIdByKey.has(def.key)) {
                 const groupName = def.groupName;
                 const group = await setupRequest(() => createStreamGroup.mutateAsync({
                   streamId: streamIdByName.get(def.streamName)!,
@@ -242,38 +264,37 @@ export function useSchoolSetupSubmit(input: Input) {
                 if (!config?.enabled) continue;
                 const code = config.code.trim() || def.defaultCode;
                 for (let i = 0; i < config.sections; i++) {
-                  await setupRequest(() => createClass.mutateAsync({
+                  await createClassOnce({
                     grade_id: grade.id,
-                    academic_year_id: year.id,
+                    academic_year_id: academicYearId,
                     stream_id: streamIdByName.get(def.streamName)!,
                     stream_group_id: def.groupName ? groupIdByKey.get(def.key) ?? null : null,
                     name: `${gradeNumber}-${code}${i + 1}`,
                     medium_id: (selectedMediumNames[0] && mediumIdByName.get(selectedMediumNames[0])) || null,
                     capacity: classCapacity,
-                  }));
+                  });
                 }
               }
             }
           }
         }
-        progress.classes = true;
+        progress.classesDone = true;
       }
 
-      if (!progress.rooms) {
-        if (!skipRooms) {
-          const namedRooms = facilityRooms.filter((room) => room.name.trim());
-          for (const room of namedRooms) {
-            await setupRequest(() => createClassroom.mutateAsync({
-              name: room.name.trim(),
-              // Keep the setup category with the room so Resources can show
-              // libraries, IT labs, halls, and other facilities distinctly.
-              code: room.group,
-              room_type: "eca",
-              capacity: room.capacity === "" ? undefined : room.capacity,
-            }));
-          }
+      if (!skipRooms) {
+        for (const room of facilityRooms.filter((r) => r.name.trim())) {
+          const key = `${room.group}:${room.name.trim()}`;
+          if (progress.rooms.has(key)) continue;
+          await setupRequest(() => createClassroom.mutateAsync({
+            name: room.name.trim(),
+            // Keep the setup category with the room so Resources can show
+            // libraries, IT labs, halls, and other facilities distinctly.
+            code: room.group,
+            room_type: "eca",
+            capacity: room.capacity === "" ? undefined : room.capacity,
+          }));
+          progress.rooms.add(key);
         }
-        progress.rooms = true;
       }
 
       setSubmitted(true);

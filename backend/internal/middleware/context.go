@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"slices"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -25,4 +26,11 @@ func rolesFromContext(c *gin.Context) ([]string, bool) {
 		return nil, false
 	}
 	return roleList, true
+}
+
+// HasRole reports whether the caller's JWT carries the role, without aborting the request.
+func HasRole(c *gin.Context, role string) bool {
+	roles, ok := c.Get("roles")
+	list, isList := roles.([]string)
+	return ok && isList && slices.Contains(list, role)
 }

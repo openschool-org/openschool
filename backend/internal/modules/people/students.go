@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/openschool-org/openschool/internal/authz"
 	"github.com/openschool-org/openschool/internal/idp"
+	"github.com/openschool-org/openschool/internal/names"
 	"github.com/openschool-org/openschool/internal/ports"
 	"github.com/openschool-org/openschool/internal/validation"
 )
@@ -66,12 +67,15 @@ type studentUserCreate struct {
 type studentCreate struct {
 	UserID, HouseID   uuid.UUID
 	FullName, Index   string
+	NameWithInitials  string
+	CallingName       string
 	Address, Phone    string
 	WhatsApp, Remarks string
 	Gender            string
 }
 type studentUpdate struct {
 	FullName, Address, Phone, WhatsApp, Remarks, Gender string
+	NameWithInitials, CallingName                       string
 }
 
 // PendingEraser persists a retry record when a post-anonymisation identity
@@ -110,7 +114,7 @@ func (s *StudentService) validateGender(ctx context.Context, gender string) erro
 }
 
 func (s *StudentService) Create(ctx context.Context, req CreateStudentRequest, actor uuid.UUID) (any, error) {
-	if !validation.IsValidSriLankanPhone(req.PhoneNumber) || !validation.IsValidSriLankanPhone(req.WhatsApp) {
+	if !validation.NormalizePhoneField(&req.PhoneNumber) || !validation.NormalizePhoneField(&req.WhatsApp) {
 		return nil, validation.ErrInvalidPhone
 	}
 	if err := s.validateGender(ctx, req.Gender); err != nil {
@@ -119,7 +123,9 @@ func (s *StudentService) Create(ctx context.Context, req CreateStudentRequest, a
 	if err := s.store.FindByIndex(ctx, req.IndexNumber); err == nil {
 		return nil, fmt.Errorf("index number already exists")
 	}
-	idpUser, err := s.idp.CreateUser(ctx, authz.RoleStudent, map[string]any{"username": req.IndexNumber, "email": req.Email, "given_name": req.GivenName, "family_name": req.FamilyName, "phone": req.PhoneNumber, "password": req.IndexNumber})
+	req.FullName, req.NameWithInitials, req.CallingName = names.Normalize(req.FullName, req.NameWithInitials, req.CallingName)
+	given, family := names.ForIdentityProvider(req.FullName, req.NameWithInitials, req.CallingName)
+	idpUser, err := s.idp.CreateUser(ctx, authz.RoleStudent, map[string]any{"username": req.IndexNumber, "email": req.Email, "given_name": given, "family_name": family, "phone": req.PhoneNumber, "password": req.IndexNumber})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create identity provider user: %w", err)
 	}
@@ -128,7 +134,7 @@ func (s *StudentService) Create(ctx context.Context, req CreateStudentRequest, a
 		return nil, fmt.Errorf("invalid identity provider user ID: %w", err)
 	}
 	rollback := func() { _ = s.idp.DeleteUser(ctx, idpUser.ID); _ = s.store.DeleteUser(ctx, uid) }
-	fullName := req.GivenName + " " + req.FamilyName
+	fullName := req.FullName
 	if err = s.store.CreateStudentUser(ctx, studentUserCreate{ID: uid, Email: req.Email, FullName: fullName, MustChangePassword: true}); err != nil {
 		_ = s.idp.DeleteUser(ctx, idpUser.ID)
 		return nil, fmt.Errorf("failed to create user record: %w", err)
@@ -141,7 +147,7 @@ func (s *StudentService) Create(ctx context.Context, req CreateStudentRequest, a
 	if s.houses != nil {
 		house, _ = s.houses.PickForStudent(ctx)
 	}
-	profile, err := s.store.Create(ctx, studentCreate{UserID: uid, HouseID: house, FullName: fullName, Index: req.IndexNumber, Address: req.Address, Phone: req.PhoneNumber, WhatsApp: req.WhatsApp, Remarks: req.SpecialRemarks, Gender: req.Gender})
+	profile, err := s.store.Create(ctx, studentCreate{UserID: uid, HouseID: house, FullName: fullName, NameWithInitials: req.NameWithInitials, CallingName: req.CallingName, Index: req.IndexNumber, Address: req.Address, Phone: req.PhoneNumber, WhatsApp: req.WhatsApp, Remarks: req.SpecialRemarks, Gender: req.Gender})
 	if err != nil {
 		rollback()
 		return nil, fmt.Errorf("failed to create student profile: %w", err)
@@ -153,7 +159,7 @@ func (s *StudentService) Create(ctx context.Context, req CreateStudentRequest, a
 }
 
 func (s *StudentService) Update(ctx context.Context, id uuid.UUID, req UpdateStudentRequest) (any, error) {
-	if !validation.IsValidSriLankanPhone(req.PhoneNumber) || !validation.IsValidSriLankanPhone(req.WhatsApp) {
+	if !validation.NormalizePhoneField(&req.PhoneNumber) || !validation.NormalizePhoneField(&req.WhatsApp) {
 		return nil, validation.ErrInvalidPhone
 	}
 	if err := s.validateGender(ctx, req.Gender); err != nil {
@@ -167,10 +173,12 @@ func (s *StudentService) Update(ctx context.Context, id uuid.UUID, req UpdateStu
 	if err != nil {
 		return nil, fmt.Errorf("user not found")
 	}
-	if err := s.idp.UpdateUser(ctx, student.UserID.String(), authz.RoleStudent, map[string]any{"username": student.IndexNumber, "email": user.Email, "given_name": req.GivenName, "family_name": req.FamilyName, "phone": req.PhoneNumber}); err != nil {
+	req.FullName, req.NameWithInitials, req.CallingName = names.Normalize(req.FullName, req.NameWithInitials, req.CallingName)
+	given, family := names.ForIdentityProvider(req.FullName, req.NameWithInitials, req.CallingName)
+	if err := s.idp.UpdateUser(ctx, student.UserID.String(), authz.RoleStudent, map[string]any{"username": student.IndexNumber, "email": user.Email, "given_name": given, "family_name": family, "phone": req.PhoneNumber}); err != nil {
 		log.Printf("UpdateStudent: failed to update identity provider user: %v", err)
 	}
-	return s.store.Update(ctx, id, studentUpdate{FullName: req.GivenName + " " + req.FamilyName, Address: req.Address, Phone: req.PhoneNumber, WhatsApp: req.WhatsApp, Remarks: req.SpecialRemarks, Gender: req.Gender})
+	return s.store.Update(ctx, id, studentUpdate{FullName: req.FullName, NameWithInitials: req.NameWithInitials, CallingName: req.CallingName, Address: req.Address, Phone: req.PhoneNumber, WhatsApp: req.WhatsApp, Remarks: req.SpecialRemarks, Gender: req.Gender})
 }
 
 func (s *StudentService) UpdateHouse(ctx context.Context, id uuid.UUID, req UpdateStudentHouseRequest, actor uuid.UUID) (any, error) {

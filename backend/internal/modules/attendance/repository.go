@@ -31,7 +31,7 @@ func (r *Repository) createSession(ctx context.Context, classID, takenBy uuid.UU
 }
 func (r *Repository) getSession(ctx context.Context, id uuid.UUID) (Session, error) {
 	row, err := r.queries.GetAttendanceSessionByID(ctx, id)
-	return mapSession(row), err
+	return Session{ID: row.ID, ClassID: row.ClassID, TakenBy: row.TakenBy, Date: row.Date, CreatedAt: row.CreatedAt, TakenByName: row.TakenByName}, err
 }
 func (r *Repository) findSession(ctx context.Context, classID uuid.UUID, date time.Time) (Session, error) {
 	row, err := r.queries.GetAttendanceSessionByClassAndDate(ctx, db.GetAttendanceSessionByClassAndDateParams{ClassID: classID, Date: dateValue(date)})
@@ -44,7 +44,7 @@ func (r *Repository) listSessionsByClass(ctx context.Context, classID uuid.UUID)
 	}
 	out := make([]Session, len(rows))
 	for i, row := range rows {
-		out[i] = mapSession(row)
+		out[i] = Session{ID: row.ID, ClassID: row.ClassID, TakenBy: row.TakenBy, Date: row.Date, CreatedAt: row.CreatedAt, PresentCount: &row.PresentCount, AbsentCount: &row.AbsentCount, LateCount: &row.LateCount}
 	}
 	return out, nil
 }
@@ -80,13 +80,18 @@ func (r *Repository) listRecords(ctx context.Context, sessionID uuid.UUID) ([]Re
 	}
 	return out, nil
 }
-func (r *Repository) markBatch(ctx context.Context, sessionID uuid.UUID, records []MarkInput) ([]Record, error) {
+func (r *Repository) markBatch(ctx context.Context, sessionID uuid.UUID, records []MarkInput, cleared []uuid.UUID) ([]Record, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback(ctx)
 	qtx := r.queries.WithTx(tx)
+	if len(cleared) > 0 {
+		if err := qtx.ClearAttendanceRecords(ctx, db.ClearAttendanceRecordsParams{SessionID: sessionID, StudentIds: cleared}); err != nil {
+			return nil, err
+		}
+	}
 	out := make([]Record, len(records))
 	for i, record := range records {
 		row, writeErr := qtx.MarkAttendance(ctx, db.MarkAttendanceParams{SessionID: sessionID, StudentID: record.StudentID, Status: record.Status, Note: textValue(record.Note)})

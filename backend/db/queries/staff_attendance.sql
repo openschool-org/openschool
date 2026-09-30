@@ -15,7 +15,7 @@ RETURNING *;
 -- name: ListTeacherAttendanceByDate :many
 SELECT
     tp.id          AS teacher_id,
-    tp.full_name   AS full_name,
+    COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name)   AS full_name,
     tp.employee_number AS employee_number,
     sar.id         AS record_id,
     sar.status     AS status,
@@ -55,7 +55,7 @@ ORDER BY date DESC;
 -- (the caller passes the first/last day of the month).
 SELECT
     tp.id        AS teacher_id,
-    tp.full_name AS full_name,
+    COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS full_name,
     COUNT(*) FILTER (WHERE sar.status = 'present') AS present_count,
     COUNT(*) FILTER (WHERE sar.status = 'late')    AS late_count,
     COUNT(*) FILTER (WHERE sar.status = 'absent')  AS absent_count,
@@ -87,7 +87,7 @@ ORDER BY nas.full_name ASC;
 -- their record for the date. The window totals cover the whole filtered set, not just
 -- the page, so the UI can show "12 unmarked" correctly. Search is escaped by the caller.
 WITH people AS (
-    SELECT tp.id, tp.full_name, tp.employee_number, 'teacher'::text AS kind
+    SELECT tp.id, COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS full_name, tp.employee_number, 'teacher'::text AS kind
     FROM teacher_profiles tp
     WHERE tp.employment_status = 'active' AND sqlc.arg(kind)::text = 'teacher'
     UNION ALL
@@ -118,7 +118,7 @@ LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int;
 -- name: ListStaffAttendanceMonthly :many
 -- One page of per-person status counts for the date range, same kind/search contract as above.
 WITH people AS (
-    SELECT tp.id, tp.full_name, tp.employee_number, 'teacher'::text AS kind
+    SELECT tp.id, COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS full_name, tp.employee_number, 'teacher'::text AS kind
     FROM teacher_profiles tp
     WHERE tp.employment_status = 'active' AND sqlc.arg(kind)::text = 'teacher'
     UNION ALL

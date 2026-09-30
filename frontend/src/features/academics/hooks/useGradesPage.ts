@@ -8,6 +8,7 @@ import { teacherDetailOptions } from "@/features/teachers/queries/useTeachers";
 import { useSchool } from "@/features/school/queries/useSchool";
 import type { Grade } from "@/features/academics/api/grade";
 import type { ClassWithDetails } from "@/features/academics/api/class";
+import { displayName } from "@/shared/lib/name";
 
 // Data, derived views and grade-form state for the Grades & Classes page.
 export function useGradesPage() {
@@ -33,7 +34,7 @@ export function useGradesPage() {
   const teacherQueries = useQueries({ queries: formTeacherIds.map((id) => teacherDetailOptions(id)) });
   const teacherNameById = useMemo(() => {
     const map = new Map<string, string>();
-    teacherQueries.forEach((q, i) => { if (q.data) map.set(formTeacherIds[i], q.data.full_name); });
+    teacherQueries.forEach((q, i) => { if (q.data) map.set(formTeacherIds[i], displayName(q.data)); });
     return map;
   }, [teacherQueries, formTeacherIds]);
   const streamGroupNameById = useMemo(() => {

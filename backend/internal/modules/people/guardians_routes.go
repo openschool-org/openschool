@@ -192,7 +192,7 @@ func RegisterGuardianReadRoutes(teacherOrAdmin, studentAccess *gin.RouterGroup, 
 	teacherOrAdmin.GET("/guardians", func(c *gin.Context) {
 		params := GuardianListParams{PageParams: httpx.ParsePage(c), Sort: httpx.ParseSort(c, "name", "relationship"), OrphansOnly: c.Query("orphans") == "true"}
 		value, err := reader.ListPage(c, params)
-		readGuardians(c, value, err)
+		readGuardians(c, hideNIC(c, value), err)
 	})
 	teacherOrAdmin.GET("/guardians/:id", func(c *gin.Context) {
 		id, ok := guardianID(c)
@@ -200,7 +200,7 @@ func RegisterGuardianReadRoutes(teacherOrAdmin, studentAccess *gin.RouterGroup, 
 			return
 		}
 		value, err := reader.Get(c, id)
-		readGuardians(c, value, err)
+		readGuardians(c, hideNIC(c, value), err)
 	})
 	teacherOrAdmin.GET("/guardians/:id/students", func(c *gin.Context) {
 		id, ok := guardianID(c)
@@ -216,7 +216,7 @@ func RegisterGuardianReadRoutes(teacherOrAdmin, studentAccess *gin.RouterGroup, 
 			return
 		}
 		value, err := reader.ByStudent(c, id)
-		readGuardians(c, value, err)
+		readGuardians(c, hideNIC(c, value), err)
 	})
 }
 func guardianID(c *gin.Context) (uuid.UUID, bool) {

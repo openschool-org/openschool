@@ -227,6 +227,10 @@ export const ta: Messages = {
   "parent.latestAverage": "சமீபத்திய சராசரி",
   "parent.noData": "இன்னும் தரவு இல்லை",
   "parent.daysAttended": "{total} நாட்களில் {attended}",
+  "parent.eyebrow": "பாதுகாவலர் கண்ணோட்டம்",
+  "parent.statChildren": "பிள்ளைகள்",
+  "parent.recentNotices": "அண்மைய அறிவிப்புகள்",
+  "parent.noNotices": "இன்னும் அறிவிப்புகள் இல்லை.",
 
   "child.notFound": "பிள்ளை கண்டுபிடிக்கப்படவில்லை",
   "child.notLinked": "இந்த மாணவர் உங்கள் கணக்குடன் இணைக்கப்படவில்லை.",

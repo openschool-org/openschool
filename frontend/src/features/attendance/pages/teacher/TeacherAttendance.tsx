@@ -11,6 +11,7 @@ import EmptyState from "@/shared/ui/EmptyState";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import { todayISODate } from "@/shared/lib/date";
+import { classLabel } from "@/shared/lib/classLabel";
 
 function PendingClassAction({ classId, className, gradeName }: { classId: string; className: string; gradeName: string }) {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ function PendingClassAction({ classId, className, gradeName }: { classId: string
       onClick={handleClick}
       disabled={createSession.isPending} className="os-py-2 os-px-4 os-bg-accent os-c-layer os-border-none os-pointer os-text-sm os-fw-500 os-nowrap os-flex os-items-center os-gap-1h"
     >
-      <EventSchedule size={14} /> {createSession.isPending ? "Starting…" : `${gradeName} - ${className}`}
+      <EventSchedule size={14} /> {createSession.isPending ? "Starting…" : classLabel(gradeName, className)}
     </button>
   );
 }
@@ -130,8 +131,9 @@ export default function TeacherAttendance() {
             columns={[
               { key: "date", header: "Date", render: (r) => <span className="os-table__mono os-text-xs">{r.session.date}</span> },
               { key: "class", header: "Class", render: (r) => <span className="os-fw-600">{r.className}</span> },
-              { key: "present", header: "Present", render: (r) => <SessionCountCell sessionId={r.session.id} status="present" /> },
-              { key: "absent", header: "Absent", render: (r) => <SessionCountCell sessionId={r.session.id} status="absent" /> },
+              { key: "present", header: "Present", render: (r) => <SessionCountCell count={r.session.present_count} status="present" /> },
+              { key: "absent", header: "Absent", render: (r) => <SessionCountCell count={r.session.absent_count} status="absent" /> },
+            { key: "late", header: "Late", render: (r) => <SessionCountCell count={r.session.late_count} status="late" /> },
               { key: "status", header: "Status", render: () => <Tag type="blue" size="sm">Marked</Tag> },
               { key: "action", header: "Action", align: "end", render: (r) => <Link to={`/attendance/sessions/${r.session.id}/mark`} className="os-c-tertiary os-no-underline os-text-sm">View</Link> },
             ]}

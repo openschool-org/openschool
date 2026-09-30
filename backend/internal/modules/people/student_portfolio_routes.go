@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openschool-org/openschool/internal/apierror"
 	"github.com/openschool-org/openschool/internal/middleware"
+	"github.com/openschool-org/openschool/internal/ports"
 )
 
 type studentPortfolioService interface {
@@ -382,23 +383,25 @@ func (h *StudentPortfolioHandler) DeleteDisciplinaryRecord(c *gin.Context) {
 }
 
 // RegisterStudentPortfolioRoutes owns all student portfolio HTTP endpoints.
-func RegisterStudentPortfolioRoutes(teacherOrAdmin, studentAccess *gin.RouterGroup, service *StudentPortfolioService) {
+// RegisterStudentPortfolioRoutes lets teachers write only for students in classes they teach or lead.
+func RegisterStudentPortfolioRoutes(teacherOrAdmin, studentAccess *gin.RouterGroup, service *StudentPortfolioService, access ports.ClassAccess) {
 	handler := NewStudentPortfolioHandler(service)
-	teacherOrAdmin.POST("/students/:id/progress-reports", handler.CreateProgressReport)
+	writer := teacherOrAdmin.Group("", middleware.RequireStudentWorkAccess(access, "id"))
+	writer.POST("/students/:id/progress-reports", handler.CreateProgressReport)
 	studentAccess.GET("/students/:id/progress-reports", handler.ListProgressReports)
-	teacherOrAdmin.PUT("/students/:id/progress-reports/:record_id", handler.UpdateProgressReport)
-	teacherOrAdmin.DELETE("/students/:id/progress-reports/:record_id", handler.DeleteProgressReport)
-	teacherOrAdmin.POST("/students/:id/activities", handler.CreateActivity)
+	writer.PUT("/students/:id/progress-reports/:record_id", handler.UpdateProgressReport)
+	writer.DELETE("/students/:id/progress-reports/:record_id", handler.DeleteProgressReport)
+	writer.POST("/students/:id/activities", handler.CreateActivity)
 	studentAccess.GET("/students/:id/activities", handler.ListActivities)
-	teacherOrAdmin.PUT("/students/:id/activities/:record_id", handler.UpdateActivity)
-	teacherOrAdmin.DELETE("/students/:id/activities/:record_id", handler.DeleteActivity)
-	teacherOrAdmin.POST("/students/:id/leadership-roles", handler.CreateLeadershipRole)
+	writer.PUT("/students/:id/activities/:record_id", handler.UpdateActivity)
+	writer.DELETE("/students/:id/activities/:record_id", handler.DeleteActivity)
+	writer.POST("/students/:id/leadership-roles", handler.CreateLeadershipRole)
 	studentAccess.GET("/students/:id/leadership-roles", handler.ListLeadershipRoles)
-	teacherOrAdmin.DELETE("/students/:id/leadership-roles/:record_id", handler.DeleteLeadershipRole)
-	teacherOrAdmin.POST("/students/:id/awards", handler.CreateAward)
+	writer.DELETE("/students/:id/leadership-roles/:record_id", handler.DeleteLeadershipRole)
+	writer.POST("/students/:id/awards", handler.CreateAward)
 	studentAccess.GET("/students/:id/awards", handler.ListAwards)
-	teacherOrAdmin.DELETE("/students/:id/awards/:record_id", handler.DeleteAward)
-	teacherOrAdmin.POST("/students/:id/disciplinary-records", handler.CreateDisciplinaryRecord)
+	writer.DELETE("/students/:id/awards/:record_id", handler.DeleteAward)
+	writer.POST("/students/:id/disciplinary-records", handler.CreateDisciplinaryRecord)
 	studentAccess.GET("/students/:id/disciplinary-records", handler.ListDisciplinaryRecords)
-	teacherOrAdmin.DELETE("/students/:id/disciplinary-records/:record_id", handler.DeleteDisciplinaryRecord)
+	writer.DELETE("/students/:id/disciplinary-records/:record_id", handler.DeleteDisciplinaryRecord)
 }

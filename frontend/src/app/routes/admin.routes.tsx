@@ -51,6 +51,7 @@ export function adminRoutes() {
       <Route index element={<Dashboard />} />
       <Route path="/students" element={<Students />} />
       <Route path="/students/new" element={<AddStudent />} />
+      <Route path="/students/import" element={<WorkflowPage workflowKey="student_import" backTo="/students" backLabel="Students" />} />
       <Route path="/students/:id" element={<StudentDetail />} />
       <Route path="/guardians" element={<GuardiansDirectory />} />
       <Route path="/non-academic-staff" element={<NonAcademicStaff />} />

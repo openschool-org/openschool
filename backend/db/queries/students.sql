@@ -8,9 +8,11 @@ INSERT INTO student_profiles (
     whatsapp,
     special_remarks,
     gender,
-    house_id
+    house_id,
+    name_with_initials,
+    calling_name
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 )
 RETURNING *;
 
@@ -76,7 +78,7 @@ LEFT JOIN class_students cs
 LEFT JOIN classes c ON c.id = cs.class_id
 LEFT JOIN grades  g ON g.id = c.grade_id
 LEFT JOIN houses  h ON h.id = sp.house_id
-WHERE (sqlc.narg(search)::text IS NULL OR sp.full_name ILIKE '%' || sqlc.narg(search)::text || '%' OR sp.index_number ILIKE '%' || sqlc.narg(search)::text || '%')
+WHERE (sqlc.narg(search)::text IS NULL OR sp.full_name ILIKE '%' || sqlc.narg(search)::text || '%' OR sp.name_with_initials ILIKE '%' || sqlc.narg(search)::text || '%' OR sp.calling_name ILIKE '%' || sqlc.narg(search)::text || '%' OR sp.index_number ILIKE '%' || sqlc.narg(search)::text || '%')
   AND (sqlc.narg(grade)::text IS NULL OR g.name = sqlc.narg(grade)::text)
   AND (sqlc.narg(class)::text IS NULL OR c.name = sqlc.narg(class)::text)
   AND (sqlc.narg(gender)::text IS NULL OR sp.gender = sqlc.narg(gender)::text)
@@ -105,6 +107,8 @@ SET
     whatsapp        = $5,
     special_remarks = $6,
     gender          = $7,
+    name_with_initials = $8,
+    calling_name    = $9,
     updated_at      = NOW()
 WHERE id = $1
 RETURNING *;
@@ -160,6 +164,8 @@ ORDER BY left_at;
 UPDATE student_profiles
 SET
     full_name       = 'Erased Student',
+    name_with_initials = 'Erased Student',
+    calling_name    = '',
     address         = NULL,
     phone           = NULL,
     whatsapp        = NULL,

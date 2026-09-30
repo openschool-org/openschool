@@ -33,7 +33,9 @@ func (e *Engine) definition(key string) (Definition, error) {
 
 // CatalogEntry is everything the frontend needs to render a workflow without hard-coding it.
 type CatalogEntry struct {
-	Key         string       `json:"key"`
+	Key string `json:"key"`
+	// Group is "year_end" for the pipeline, or "setup" for one-off tools such as the student import.
+	Group       string       `json:"group"`
 	Order       int          `json:"order"`
 	Title       string       `json:"title"`
 	Description string       `json:"description"`
@@ -50,12 +52,18 @@ func (e *Engine) Catalog(ctx context.Context) ([]CatalogEntry, error) {
 		return nil, err
 	}
 	out := make([]CatalogEntry, 0, len(e.definitions))
-	for i, d := range e.definitions {
+	order := 0
+	for _, d := range e.definitions {
 		inputs, err := d.Inputs(ctx, e.store)
 		if err != nil {
 			return nil, fmt.Errorf("%s inputs: %w", d.Key(), err)
 		}
-		entry := CatalogEntry{Key: d.Key(), Order: i + 1, Title: d.Title(), Description: d.Description(), Steps: d.Steps(), Inputs: inputs}
+		entry := CatalogEntry{Key: d.Key(), Group: groupOf(d), Title: d.Title(), Description: d.Description(), Steps: d.Steps(), Inputs: inputs}
+		// Only pipeline steps are numbered.
+		if entry.Group == GroupYearEnd {
+			order++
+			entry.Order = order
+		}
 		for _, s := range d.Steps() {
 			if tool, ok := Tools[s.Tool]; ok && !slices.ContainsFunc(entry.Tools, func(t ToolInfo) bool { return t.Name == tool.Name }) {
 				entry.Tools = append(entry.Tools, tool)
@@ -297,4 +305,19 @@ func (e *Engine) record(ctx context.Context, runID uuid.UUID, action string, act
 		return
 	}
 	_ = e.audit.Record(ctx, "workflow_run", runID, action, actor, nil, nil, reason)
+}
+
+const (
+	GroupYearEnd = "year_end"
+	GroupSetup   = "setup"
+)
+
+// grouped is implemented by workflows that are not part of the year-end pipeline.
+type grouped interface{ Group() string }
+
+func groupOf(d Definition) string {
+	if g, ok := d.(grouped); ok {
+		return g.Group()
+	}
+	return GroupYearEnd
 }

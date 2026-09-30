@@ -13,6 +13,7 @@ import NewSessionModal from "@/features/academics/components/NewSessionModal";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import { todayISODate } from "@/shared/lib/date";
 import { suggestHomeClassroom } from "@/features/timetable/lib/classroom";
+import { displayName } from "@/shared/lib/name";
 
 type Detail = ReturnType<typeof useClassDetail>;
 
@@ -53,7 +54,8 @@ export function useClassDetailModals(id: string, cls: ClassRow | undefined, deta
   };
   const openTeacher = () => {
     assignFormTeacher.reset();
-    setTeacherChoice(cls?.form_teacher_id ?? "");
+    detail.onTeacherSearch("");
+    setTeacherChoice("");
     setTeacherOpen(true);
   };
   const openMonitors = () => {
@@ -139,7 +141,7 @@ export function useClassDetailModals(id: string, cls: ClassRow | undefined, deta
       <ConfirmDeleteModal
         open={!!toUnenroll}
         title="Remove student from class"
-        description={<>Remove <strong>{toUnenroll?.full_name}</strong> from this class? Their student profile is not deleted.</>}
+        description={<>Remove <strong>{toUnenroll && displayName(toUnenroll)}</strong> from this class? Their student profile is not deleted.</>}
         subject="Student"
         successVerb="removed"
         mutation={unenrollStudent}

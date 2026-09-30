@@ -1,8 +1,9 @@
-import { Time } from "@carbon/icons-react";
+import { Link } from "react-router";
+import { CheckmarkFilled, Time } from "@carbon/icons-react";
 import RoleBadge from "@/features/teachers/components/dashboard/RoleBadge";
 import type { PositionRankLabel } from "@/features/positions/api/position";
 import type { Teacher } from "@/features/teachers/api/teacher";
-import { getInitials } from "@/shared/lib/name";
+import { getInitials, displayName } from "@/shared/lib/name";
 
 export default function WelcomeBanner({
   profile,
@@ -10,6 +11,7 @@ export default function WelcomeBanner({
   currentYearLabel,
   currentTermName,
   pendingCount,
+  classCount,
   rankLabel,
 }: {
   profile: Teacher;
@@ -17,6 +19,7 @@ export default function WelcomeBanner({
   currentYearLabel?: string;
   currentTermName?: string;
   pendingCount: number;
+  classCount: number;
   rankLabel: PositionRankLabel;
 }) {
   const hour = new Date().getHours();
@@ -27,12 +30,12 @@ export default function WelcomeBanner({
     >
       <div className="os-w-2t os-h-2t os-rounded-full os-bg-accent os-flex os-items-center os-justify-center os-c-layer os-fw-700 os-text-base os-shrink-0"
       >
-        {getInitials(profile.full_name)}
+        {getInitials(displayName(profile))}
       </div>
       <div className="os-flex-1">
         <div className="os-flex os-items-center os-gap-2 os-mb-h os-wrap">
           <p className="os-m-0 os-text-lg os-fw-500 os-c-primary">
-            {greeting}, {profile.title ? `${profile.title} ` : ""}{profile.full_name}
+            {greeting}, {profile.title ? `${profile.title} ` : ""}{displayName(profile)}
           </p>
           <RoleBadge rankLabel={rankLabel} />
         </div>
@@ -42,11 +45,11 @@ export default function WelcomeBanner({
           {currentTermName ? ` ${currentTermName}` : ""}
         </p>
       </div>
-      {pendingCount > 0 && (
-        <div className="os-flex os-items-center os-gap-2 os-py-2 os-px-3h os-bg-status-late os-border-warning os-text-sm os-c-warning-text">
-          <Time size={14} className="os-fill-warning" />
-          {pendingCount} session{pendingCount > 1 ? "s" : ""} pending today
-        </div>
+      {classCount > 0 && (
+        <Link to="/t/attendance" className={`os-teacher-banner__status${pendingCount > 0 ? " is-pending" : " is-done"}`}>
+          {pendingCount > 0 ? <Time size={16} /> : <CheckmarkFilled size={16} />}
+          {pendingCount > 0 ? `${pendingCount} of ${classCount} class${classCount > 1 ? "es" : ""} to mark today` : "All classes marked today"}
+        </Link>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ package timetable
 import (
 	"context"
 	"fmt"
+	"github.com/openschool-org/openschool/internal/apierror"
 	"math/rand"
 
 	"github.com/gin-gonic/gin"
@@ -431,7 +432,7 @@ func RegisterTimetableGenerationRoute(admin *gin.RouterGroup, store generationSt
 		}
 		result, err := (&generationService{store: store}).generate(c.Request.Context(), req, actor)
 		if err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
+			apierror.Respond(c, err)
 			return
 		}
 		c.JSON(200, result)

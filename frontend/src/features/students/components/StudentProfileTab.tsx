@@ -5,6 +5,7 @@ import type { UseMutationResult } from "@tanstack/react-query";
 import InfoTip from "@/shared/ui/InfoTip";
 import SectionCard from "@/shared/ui/SectionCard";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import PersonNameFields from "@/shared/ui/PersonNameFields";
 
 type Gender = "" | "male" | "female";
 
@@ -14,8 +15,9 @@ const ENROLLMENT_STATUSES: { value: StudentEnrollmentStatus; label: string }[] =
 ];
 
 export type StudentProfileForm = {
-  given_name: string;
-  family_name: string;
+  full_name: string;
+  name_with_initials: string;
+  calling_name: string;
   phone_number: string;
   address: string;
   whatsapp: string;
@@ -51,19 +53,16 @@ export default function StudentProfileTab({
       <SectionCard title="Profile" className="os-mt-4">
           <MutationErrorNotification isError={!!updateError} error={null} title="Could not update student" fallback={updateError ?? "Please try again."} />
           <div className="os-grid os-grid-cols-2 os-gap-5">
-            <TextInput
-              id="given-name"
-              labelText="First name"
-              value={form.given_name}
+            <PersonNameFields
+              idPrefix="student-profile"
+              value={form}
               readOnly={!editing}
-              onChange={(e) => onChange("given_name", e.target.value)}
-            />
-            <TextInput
-              id="family-name"
-              labelText="Last name"
-              value={form.family_name}
-              readOnly={!editing}
-              onChange={(e) => onChange("family_name", e.target.value)}
+              fullNameInvalid={editing && !form.full_name.trim()}
+              onChange={(next) => {
+                (["full_name", "name_with_initials", "calling_name"] as const).forEach((field) => {
+                  if (next[field] !== form[field]) onChange(field, next[field]);
+                });
+              }}
             />
             <TextInput id="index-number" labelText="Index number" value={student.index_number} readOnly />
             <TextInput id="email" labelText="Email" value={student.email ?? "-"} readOnly />

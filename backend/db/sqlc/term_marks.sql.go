@@ -48,7 +48,7 @@ func (q *Queries) GetTermMarkByID(ctx context.Context, id uuid.UUID) (TermMark, 
 const listClassMarksForTermSubject = `-- name: ListClassMarksForTermSubject :many
 SELECT
     sp.id          AS student_id,
-    sp.full_name   AS student_name,
+    display_name(sp.full_name, sp.name_with_initials)::text AS student_name,
     sp.index_number,
     tm.id          AS term_mark_id,
     tm.marks,
@@ -121,7 +121,7 @@ SELECT
     s.name       AS subject_name,
     s.code       AS subject_code,
     tp.id        AS teacher_id,
-    tp.full_name AS teacher_name
+    COALESCE(display_name(tp.full_name, tp.name_with_initials), '')::text AS teacher_name
 FROM term_marks tm
 INNER JOIN subjects s ON s.id = tm.subject_id
 INNER JOIN terms t ON t.id = tm.term_id
@@ -151,7 +151,7 @@ type ListStudentMarksByTermRow struct {
 	SubjectName string         `json:"subject_name"`
 	SubjectCode string         `json:"subject_code"`
 	TeacherID   pgtype.UUID    `json:"teacher_id"`
-	TeacherName pgtype.Text    `json:"teacher_name"`
+	TeacherName string         `json:"teacher_name"`
 }
 
 // teacher_id/teacher_name are NULL if the student's current-year class has

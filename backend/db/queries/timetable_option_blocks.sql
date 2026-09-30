@@ -46,7 +46,7 @@ SELECT EXISTS (
 
 -- name: ListOptionBlockTeachersForClass :many
 -- the teachers a class's students go to in one option block period
-SELECT DISTINCT cst.teacher_id, tp.full_name AS teacher_name
+SELECT DISTINCT cst.teacher_id, COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS teacher_name
 FROM timetable_option_block_subjects bs
 INNER JOIN class_subject_teachers cst ON cst.subject_id = bs.subject_id AND cst.class_id = sqlc.arg(class_id)::uuid
 INNER JOIN teacher_profiles tp ON tp.id = cst.teacher_id

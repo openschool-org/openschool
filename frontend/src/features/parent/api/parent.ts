@@ -4,6 +4,7 @@ import api from "@/shared/api/client";
 export interface Child {
   id: string;
   full_name: string;
+  name_with_initials: string;
   index_number: string;
   gender: string | null;
   class_id: string | null;

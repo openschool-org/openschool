@@ -2,9 +2,12 @@ import { Link } from "react-router";
 import { SkeletonText } from "@carbon/react";
 import { ChevronRight, EventSchedule, Report } from "@carbon/icons-react";
 import type { Child, ChildSummary } from "@/features/parent/api/parent";
-import { getInitials } from "@/shared/lib/name";
 import { formatPercent } from "@/shared/lib/number";
 import { useT } from "@/shared/i18n/useT";
+import { displayName } from "@/shared/lib/name";
+import { classLabel } from "@/shared/lib/classLabel";
+import GradeAvatar from "@/shared/ui/GradeAvatar";
+import ProgressBar from "@/shared/ui/ProgressBar";
 
 interface Props {
   child: Child;
@@ -21,13 +24,12 @@ export default function ChildCard({ child, summary, summaryLoading }: Props) {
   return (
     <Link to={`/p/children/${child.id}`} className="os-child-card os-bg-layer os-border os-no-underline">
       <div className="os-flex os-items-center os-gap-3h">
-        <div className="os-profile__avatar os-w-2t os-h-2t os-text-md">{getInitials(child.full_name)}</div>
+        <GradeAvatar gradeName={child.grade_name} className={child.class_name ?? ""} />
         <div className="os-flex-1 os-min-w-0">
-          <p className="os-mt-0 os-mx-0 os-mb-h os-fw-600 os-text-md os-c-primary">{child.full_name}</p>
+          <p className="os-mt-0 os-mx-0 os-mb-h os-fw-600 os-text-md os-c-primary">{displayName(child)}</p>
           <p className="os-m-0 os-text-sm os-c-secondary">
             {child.index_number}
-            {child.class_name ? ` · ${child.class_name}` : ""}
-            {child.grade_name ? ` · ${child.grade_name}` : ""}
+            {child.class_name ? ` · ${classLabel(child.grade_name, child.class_name)}` : ""}
           </p>
         </div>
         <ChevronRight size={18} className="os-fill-tertiary os-shrink-0" />
@@ -39,7 +41,10 @@ export default function ChildCard({ child, summary, summaryLoading }: Props) {
           <dd>
             {summaryLoading ? <SkeletonText width="3rem" /> : attendance === null ? t("parent.noData") : formatPercent(attendance)}
             {!summaryLoading && sessions > 0 && (
-              <span className="os-child-card__meta">{t("parent.daysAttended", { attended: summary!.attended_this_month, total: sessions })}</span>
+              <>
+                <ProgressBar value={summary!.attended_this_month} max={sessions} label={t("student.attendanceThisMonth")} size="sm" tone={attendance! >= 80 ? "success" : "warning"} />
+                <span className="os-child-card__meta">{t("parent.daysAttended", { attended: summary!.attended_this_month, total: sessions })}</span>
+              </>
             )}
           </dd>
         </div>

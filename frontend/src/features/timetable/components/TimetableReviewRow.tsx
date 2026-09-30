@@ -8,6 +8,7 @@ import { formatDateTime } from "@/shared/lib/date";
 import { useApproveTimetable, useRejectTimetable } from "@/features/timetable/queries/useTimetables";
 import type { TimetableWithClass } from "@/features/timetable/api/timetable";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import { classLabel } from "@/shared/lib/classLabel";
 
 export default function TimetableReviewRow({ timetable }: { timetable: TimetableWithClass }) {
   const approve = useApproveTimetable(timetable.id);
@@ -24,7 +25,7 @@ export default function TimetableReviewRow({ timetable }: { timetable: Timetable
     <div className="os-list-row os-gap-4 os-py-3h os-px-6">
       <div className="os-flex-1">
         <p className="os-m-0 os-fw-500 os-text-md">
-          {timetable.grade_name} - {timetable.class_name}{" "}
+          {classLabel(timetable.grade_name, timetable.class_name)}{" "}
           <Tag type="gray" size="sm">
             v{timetable.version}
           </Tag>
@@ -48,8 +49,8 @@ export default function TimetableReviewRow({ timetable }: { timetable: Timetable
         {approve.isPending ? "Approving…" : "Approve"}
       </Button>
 
-      <ComposedModal open={rejecting} size="sm" onClose={() => setRejecting(false)} aria-label={`Reject ${timetable.grade_name} - ${timetable.class_name}`}>
-        <ModalHeader title={`Reject ${timetable.grade_name} - ${timetable.class_name}`} />
+      <ComposedModal open={rejecting} size="sm" onClose={() => setRejecting(false)} aria-label={`Reject ${classLabel(timetable.grade_name, timetable.class_name)}`}>
+        <ModalHeader title={`Reject ${classLabel(timetable.grade_name, timetable.class_name)}`} />
         <ModalBody>
           <TextArea
             id={`reject-comment-${timetable.id}`}

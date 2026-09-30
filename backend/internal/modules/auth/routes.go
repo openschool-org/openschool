@@ -3,7 +3,6 @@ package auth
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/openschool-org/openschool/internal/mailer"
 	"github.com/openschool-org/openschool/internal/middleware"
 	"github.com/openschool-org/openschool/internal/ports"
 )
@@ -12,8 +11,8 @@ import (
 // ForgotPassword/ResetPassword must stay on the unauthenticated `public`
 // group — by definition, a caller who needs them has no valid session.
 // ChangePassword/KeepDefaultPassword require one, so they go on `protected`.
-func RegisterRoutes(public, protected *gin.RouterGroup, pool *pgxpool.Pool, guardians ports.GuardianAuthenticator, provider PasswordUpdater) {
-	service := NewService(NewRepository(pool), guardians, provider, mailer.NewFromEnv())
+func RegisterRoutes(public, protected *gin.RouterGroup, pool *pgxpool.Pool, guardians ports.GuardianAuthenticator, provider PasswordUpdater, mail Emailer) {
+	service := NewService(NewRepository(pool), guardians, provider, mail)
 	handler := NewAuthHandler(service)
 
 	// Rate-limited like /setup/admin — an unauthenticated endpoint that

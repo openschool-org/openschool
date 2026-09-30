@@ -12,6 +12,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteExpiredActivationEmailTokens = `-- name: DeleteExpiredActivationEmailTokens :execrows
+DELETE FROM activation_email_tokens
+WHERE used_at IS NULL AND expires_at < NOW()
+`
+
+func (q *Queries) DeleteExpiredActivationEmailTokens(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredActivationEmailTokens)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteExpiredPasswordResetTokens = `-- name: DeleteExpiredPasswordResetTokens :execrows
 
 DELETE FROM password_reset_tokens
@@ -474,7 +487,7 @@ func (q *Queries) ListGradesWithNoCurrentClasses(ctx context.Context) ([]ListGra
 
 const listInactiveTeachersStillAssigned = `-- name: ListInactiveTeachersStillAssigned :many
 
-SELECT DISTINCT tp.id, tp.full_name, tp.employment_status
+SELECT DISTINCT tp.id, COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS full_name, tp.employment_status
 FROM teacher_profiles tp
 INNER JOIN academic_years ay ON ay.is_current = TRUE
 WHERE tp.employment_status != 'active'

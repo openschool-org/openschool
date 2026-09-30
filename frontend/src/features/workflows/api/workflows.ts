@@ -56,6 +56,8 @@ export type RunState = "proposed" | "applied" | "failed" | "reverted" | "discard
 
 export interface CatalogEntry {
   key: string;
+  // "setup" tools (such as the student import) sit outside the numbered year-end pipeline
+  group: "year_end" | "setup";
   order: number;
   title: string;
   description: string;

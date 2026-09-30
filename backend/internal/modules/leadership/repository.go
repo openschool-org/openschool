@@ -130,3 +130,12 @@ func (r *Repository) deleteSectionHead(ctx context.Context, id uuid.UUID) (int64
 func (r *Repository) listGradeIDsHeadedByTeacher(ctx context.Context, teacherID, yearID uuid.UUID) ([]uuid.UUID, error) {
 	return r.queries.ListGradeIDsHeadedByTeacher(ctx, db.ListGradeIDsHeadedByTeacherParams{TeacherID: teacherID, AcademicYearID: yearID})
 }
+
+func (r *Repository) teacherClassAccess(ctx context.Context, userID, classID uuid.UUID) (classAccess, error) {
+	row, err := r.queries.TeacherClassAccess(ctx, db.TeacherClassAccessParams{UserID: userID, ClassID: classID})
+	return classAccess{TeacherID: row.TeacherID, GradeID: row.GradeID, AcademicYearID: row.AcademicYearID, Assigned: row.Assigned}, err
+}
+
+func (r *Repository) currentClassOfStudent(ctx context.Context, studentID uuid.UUID) (uuid.UUID, error) {
+	return r.queries.CurrentClassOfStudent(ctx, studentID)
+}

@@ -57,3 +57,46 @@
     box-shadow: none;
   }
 }
+
+// Printing activation codes: per class, a hand-out list page, then 10 cut-out slips per A4 page.
+@page activation-slips { size: A4; margin: 12mm; }
+
+@media print {
+  body.os-print-slips > :not(.os-slip-sheet) { display: none !important; }
+  body.os-print-slips .os-slip-sheet { display: block; page: activation-slips; }
+  // Two sheets can be ready at once (a new batch and a reopened one); only the newest prints.
+  body.os-print-slips .os-slip-sheet:has(~ .os-slip-sheet) { display: none; }
+  .os-code-brand {
+    align-items: center;
+    display: flex;
+    gap: 3mm;
+    margin-bottom: 4mm;
+    img { height: 12mm; width: auto; }
+    div { display: flex; flex-direction: column; }
+    strong { font-size: 13pt; }
+    span { color: var(--os-text-secondary); font-size: 9pt; }
+  }
+  .os-code-brand--small {
+    gap: 2mm;
+    margin-bottom: 1mm;
+    img { height: 7mm; }
+    strong { font-size: 9pt; }
+    span { font-size: 7pt; }
+  }
+  .os-code-class + .os-code-class { break-before: page; }
+  .os-code-roster {
+    break-after: page;
+    font-size: 10pt;
+    h1 { font-size: 15pt; margin: 0 0 2mm; }
+    p { margin: 0 0 2mm; }
+    table { border-collapse: collapse; margin-top: 4mm; width: 100%; }
+    th, td { border: 1px solid var(--os-border-strong); padding: 2mm 3mm; text-align: left; }
+    tr { break-inside: avoid; }
+    td:last-child { width: 35%; }
+  }
+  .os-code-roster__school { color: var(--os-text-secondary); font-size: 9pt; letter-spacing: 0.04em; text-transform: uppercase; }
+  .os-slip-grid { display: grid; grid-template-columns: repeat(2, 1fr); }
+  // min-height, not height: a long name grows the slip instead of spilling over the next one's code.
+  .os-slip { border: 1px dashed var(--os-border-strong); box-sizing: border-box; break-inside: avoid; display: flex; flex-direction: column; font-size: 9pt; gap: 1.5mm; min-height: 53mm; overflow-wrap: anywhere; padding: 4mm 5mm; }
+  .os-slip .os-slip__code { font-size: 16pt; }
+}

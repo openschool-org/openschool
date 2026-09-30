@@ -133,7 +133,7 @@ func (q *Queries) ListOptionBlockSubjects(ctx context.Context, blockIds []uuid.U
 }
 
 const listOptionBlockTeachersForClass = `-- name: ListOptionBlockTeachersForClass :many
-SELECT DISTINCT cst.teacher_id, tp.full_name AS teacher_name
+SELECT DISTINCT cst.teacher_id, COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS teacher_name
 FROM timetable_option_block_subjects bs
 INNER JOIN class_subject_teachers cst ON cst.subject_id = bs.subject_id AND cst.class_id = $1::uuid
 INNER JOIN teacher_profiles tp ON tp.id = cst.teacher_id

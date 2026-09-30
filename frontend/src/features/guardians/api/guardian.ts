@@ -11,6 +11,10 @@ export interface Guardian {
   id: string;
   user_id: string | null;
   full_name: string;
+  // e.g. "H.A.H.E. Wickramasinghe"; used in lists, registers and printouts
+  name_with_initials: string;
+  // e.g. "Hasitha"; optional, used in greetings
+  calling_name: string;
   relationship: GuardianRelationship;
   phone: string;
   email: string | null;
@@ -24,6 +28,9 @@ export interface GuardianWithPrimary extends Guardian {
 
 export interface CreateGuardianRequest {
   full_name: string;
+  // filled in from the full name by the server when empty
+  name_with_initials?: string;
+  calling_name?: string;
   relationship: GuardianRelationship;
   phone: string;
   email?: string;
@@ -39,10 +46,9 @@ export type UpdateGuardianRequest = CreateGuardianRequest;
 
 // No password field, the guardian's NIC number (already on file) becomes
 // their initial one-time portal password server-side.
+// Names come from the guardian record, so only the username is asked for.
 export interface ProvisionGuardianLoginRequest {
   username: string;
-  given_name: string;
-  family_name: string;
 }
 
 // /guardians is server-paginated (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md

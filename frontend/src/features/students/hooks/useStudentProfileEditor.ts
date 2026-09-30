@@ -3,11 +3,12 @@ import { useNavigate } from "react-router";
 import { useUpdateStudent, useDeleteStudent } from "@/features/students/queries/useStudents";
 import type { StudentWithClass } from "@/features/students/api/student";
 import type { StudentProfileForm } from "@/features/students/components/StudentProfileTab";
-import { splitFullName } from "@/shared/lib/name";
 import { getErrorMessage } from "@/shared/api/errors";
 
 const studentToForm = (s: StudentWithClass): StudentProfileForm => ({
-  ...splitFullName(s.full_name),
+  full_name: s.full_name,
+  name_with_initials: s.name_with_initials ?? "",
+  calling_name: s.calling_name ?? "",
   phone_number: s.phone ?? "",
   address: s.address ?? "",
   whatsapp: s.whatsapp ?? "",
@@ -15,7 +16,7 @@ const studentToForm = (s: StudentWithClass): StudentProfileForm => ({
   gender: (s.gender ?? "") as StudentProfileForm["gender"],
 });
 
-const EMPTY: StudentProfileForm = { given_name: "", family_name: "", phone_number: "", address: "", whatsapp: "", special_remarks: "", gender: "" };
+const EMPTY: StudentProfileForm = { full_name: "", name_with_initials: "", calling_name: "", phone_number: "", address: "", whatsapp: "", special_remarks: "", gender: "" };
 
 // Edit mode, form state and the save / delete mutations for the student profile banner and tab.
 export function useStudentProfileEditor(id: string, student: StudentWithClass | undefined, startEditing: boolean) {
@@ -65,7 +66,7 @@ export function useStudentProfileEditor(id: string, student: StudentWithClass | 
       editedFields.current.add(field);
       setForm((f) => ({ ...f, [field]: value }));
     },
-    isValid: !!form.given_name.trim() && !!form.family_name.trim(),
+    isValid: !!form.full_name.trim(),
     updateStudent,
     updateError: updateStudent.isError ? getErrorMessage(updateStudent.error, "Failed to update student") : null,
     save: (onDone: () => void) =>
@@ -73,8 +74,9 @@ export function useStudentProfileEditor(id: string, student: StudentWithClass | 
         {
           id,
           data: {
-            given_name: form.given_name.trim(),
-            family_name: form.family_name.trim(),
+            full_name: form.full_name.trim(),
+            name_with_initials: form.name_with_initials.trim(),
+            calling_name: form.calling_name.trim(),
             phone_number: trimOrUndefined(form.phone_number),
             address: trimOrUndefined(form.address),
             whatsapp: trimOrUndefined(form.whatsapp),

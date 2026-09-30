@@ -17,6 +17,7 @@ import { useListFilters } from "@/shared/hooks/useListFilters";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
 import Avatar from "@/shared/ui/Avatar";
 import { formatDateOnly } from "@/shared/lib/date";
+import { displayName } from "@/shared/lib/name";
 
 const STATUS_TAG: Record<string, "green" | "red" | "magenta"> = { active: "green", resigned: "red", transferred: "magenta" };
 const FILTER_LABELS: Record<string, string> = { query: "Search", status: "Status" };
@@ -49,8 +50,8 @@ export default function Teachers() {
       header: "Full name",
       render: (t) => (
         <div className="os-flex os-items-center os-gap-2">
-          <Avatar name={t.full_name} size="sm" />
-          <Link to={`/teachers/${t.id}`} className="os-table__link">{t.full_name}</Link>
+          <Avatar name={displayName(t)} size="sm" />
+          <Link to={`/teachers/${t.id}`} className="os-table__link" title={t.full_name}>{displayName(t)}</Link>
         </div>
       ),
     },
@@ -125,7 +126,7 @@ export default function Teachers() {
       <ConfirmDeleteModal
         open={!!toDelete}
         title="Delete teacher"
-        description={<>Delete <strong>{toDelete?.full_name}</strong>? This removes their account and cannot be undone.</>}
+        description={<>Delete <strong>{toDelete ? displayName(toDelete) : ""}</strong>? This removes their account and cannot be undone.</>}
         subject="Teacher"
         mutation={deleteTeacher}
         onClose={() => setToDelete(null)}

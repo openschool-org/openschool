@@ -20,15 +20,17 @@ import ProfileBanner from "@/shared/ui/ProfileBanner";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import ConfirmEditModal from "@/shared/ui/ConfirmEditModal";
 import type { Teacher, TeacherTitle } from "@/features/teachers/api/teacher";
-import { splitFullName } from "@/shared/lib/name";
 import { EMPLOYMENT_STATUSES } from "@/features/teachers/constants";
 import TeacherProfileSections from "@/features/teachers/components/TeacherProfileSections";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
+import { displayName } from "@/shared/lib/name";
 
 function teacherToForm(t: Teacher) {
   return {
-    ...splitFullName(t.full_name),
+    full_name: t.full_name,
+    name_with_initials: t.name_with_initials ?? "",
+    calling_name: t.calling_name ?? "",
     phone_number: t.phone ?? "",
     nic_number: t.nic_number ?? "",
     title: t.title ?? ("" as TeacherTitle | ""),
@@ -41,7 +43,7 @@ export default function TeacherDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data: teacher, isLoading, isError, refetch } = useTeacher(id);
-  usePageTitle(teacher?.full_name);
+  usePageTitle(teacher ? displayName(teacher) : undefined);
   const { data: subjects } = useTeacherSubjects(id);
   const deleteTeacher = useDeleteTeacher();
   const updateTeacher = useUpdateTeacher();
@@ -57,8 +59,9 @@ export default function TeacherDetail() {
     (location.state as { edit?: boolean } | null)?.edit ?? false,
   );
   const [form, setForm] = useState({
-    given_name: "",
-    family_name: "",
+    full_name: "",
+    name_with_initials: "",
+    calling_name: "",
     phone_number: "",
     nic_number: "",
     title: "" as TeacherTitle | "",
@@ -88,8 +91,9 @@ export default function TeacherDetail() {
       {
         id,
         data: {
-          given_name: form.given_name.trim(),
-          family_name: form.family_name.trim(),
+          full_name: form.full_name.trim(),
+          name_with_initials: form.name_with_initials.trim(),
+          calling_name: form.calling_name.trim(),
           phone_number: form.phone_number.trim() || undefined,
           nic_number: form.nic_number.trim(),
           title: form.title || undefined,
@@ -108,7 +112,7 @@ export default function TeacherDetail() {
     : null;
 
   const isValid =
-    form.given_name.trim() && form.family_name.trim() && form.nic_number.trim();
+    form.full_name.trim() && form.nic_number.trim();
 
   if (isLoading) return <LoadingSpinner />;
   if (isError || !teacher)
@@ -121,7 +125,7 @@ export default function TeacherDetail() {
   return (
     <div className="os-bg-layer-hover os-min-h-content">
       <ProfileBanner
-        name={teacher.full_name}
+        name={displayName(teacher)}
         meta={
           teacher.employment_status === "active"
             ? teacher.employee_number
@@ -214,7 +218,7 @@ export default function TeacherDetail() {
         title="Delete teacher"
         description={
           <>
-            Delete <strong>{teacher.full_name}</strong>? This removes their
+            Delete <strong>{displayName(teacher)}</strong>? This removes their
             account and cannot be undone.
           </>
         }
@@ -228,7 +232,7 @@ export default function TeacherDetail() {
       <ConfirmEditModal
         open={confirmEditOpen}
         title="Save changes"
-        description={<>Save these changes to <strong>{teacher.full_name}</strong>&apos;s profile?</>}
+        description={<>Save these changes to <strong>{displayName(teacher)}</strong>&apos;s profile?</>}
         isPending={updateTeacher.isPending}
         onClose={() => setConfirmEditOpen(false)}
         onConfirm={handleSave}

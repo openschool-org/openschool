@@ -3,6 +3,7 @@ package curriculum
 import (
 	"context"
 	"errors"
+	"github.com/openschool-org/openschool/internal/apierror"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -243,7 +244,7 @@ func (h *levelHandler) createLevel(c *gin.Context) {
 	}
 	result, err := h.service.create(c, r)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		apierror.Respond(c, err)
 		return
 	}
 	c.JSON(201, result)
@@ -272,7 +273,7 @@ func (h *levelHandler) listLevels(c *gin.Context) {
 	}
 	result, err := h.service.list(c, filter)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		apierror.Respond(c, err)
 		return
 	}
 	c.JSON(200, result)
@@ -289,7 +290,7 @@ func (h *levelHandler) updateLevel(c *gin.Context) {
 	}
 	result, err := h.service.update(c, id, r)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		apierror.Respond(c, err)
 		return
 	}
 	c.JSON(200, result)
@@ -308,7 +309,7 @@ func (h *levelHandler) duplicateLevel(c *gin.Context) {
 	if errors.Is(err, errLevelNotFound) {
 		c.JSON(404, gin.H{"error": err.Error()})
 	} else if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		apierror.Respond(c, err)
 	} else {
 		c.JSON(201, result)
 	}
@@ -343,7 +344,7 @@ func (h *levelHandler) createGroup(c *gin.Context) {
 		if errors.Is(err, errLevelNotFound) {
 			c.JSON(404, gin.H{"error": err.Error()})
 		} else {
-			c.JSON(400, gin.H{"error": err.Error()})
+			apierror.Respond(c, err)
 		}
 		return
 	}
@@ -356,7 +357,7 @@ func (h *levelHandler) listGroups(c *gin.Context) {
 	}
 	result, err := h.service.listGroups(c, id)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		apierror.Respond(c, err)
 		return
 	}
 	c.JSON(200, result)
@@ -373,7 +374,7 @@ func (h *levelHandler) updateGroup(c *gin.Context) {
 	}
 	result, err := h.service.updateGroup(c, id, r)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		apierror.Respond(c, err)
 		return
 	}
 	c.JSON(200, result)
@@ -407,7 +408,7 @@ func (h *levelHandler) addSubject(c *gin.Context) {
 		if errors.Is(err, errGroupNotFound) {
 			c.JSON(404, gin.H{"error": err.Error()})
 		} else {
-			c.JSON(400, gin.H{"error": err.Error()})
+			apierror.Respond(c, err)
 		}
 		return
 	}
@@ -420,7 +421,7 @@ func (h *levelHandler) listSubjects(c *gin.Context) {
 	}
 	result, err := h.service.listSubjects(c, id)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		apierror.Respond(c, err)
 		return
 	}
 	c.JSON(200, result)
@@ -436,7 +437,7 @@ func (h *levelHandler) removeSubject(c *gin.Context) {
 		return
 	}
 	if err := h.service.removeSubject(c, groupID, subjectID); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		apierror.Respond(c, err)
 		return
 	}
 	c.JSON(200, gin.H{"message": "subject removed from group"})
@@ -451,7 +452,7 @@ func (h *levelHandler) tree(c *gin.Context) {
 		if errors.Is(err, errLevelNotFound) {
 			c.JSON(404, gin.H{"error": err.Error()})
 		} else {
-			c.JSON(500, gin.H{"error": err.Error()})
+			apierror.Respond(c, err)
 		}
 		return
 	}

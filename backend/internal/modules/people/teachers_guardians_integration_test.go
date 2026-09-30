@@ -36,7 +36,7 @@ func TestTeacherProvisioningAPIWithPostgres(t *testing.T) {
 	RegisterTeacherWriteRoutes(group, service)
 
 	request := CreateTeacherRequest{
-		Email: "teacher@example.test", GivenName: "Test", FamilyName: "Teacher",
+		Email: "teacher@example.test", FullName: "Test Teacher",
 		PhoneNumber: "0771234567", NICNumber: "199012345678", JoinedDate: time.Date(2025, time.January, 6, 0, 0, 0, 0, time.UTC),
 		Title: "Mr", Gender: "male",
 	}
@@ -61,7 +61,7 @@ func TestTeacherProvisioningAPIWithPostgres(t *testing.T) {
 		t.Fatalf("unexpected teacher: id=%s role=%q name=%q must_change=%v employee=%q nic=%q", teacherID, role, fullName, mustChangePassword, employeeNumber, nic)
 	}
 
-	request.GivenName, request.FamilyName = "Duplicate", "Email"
+	request.FullName = "Duplicate Email"
 	duplicateEmail := performPeopleJSONRequest(t, router, http.MethodPost, "/teachers", request)
 	if duplicateEmail.Code != http.StatusBadRequest || !slices.Contains(provider.deleted, duplicateEmailUserID.String()) {
 		t.Fatalf("duplicate email rollback: code=%d deleted=%v body=%s", duplicateEmail.Code, provider.deleted, duplicateEmail.Body.String())
@@ -121,7 +121,7 @@ func TestGuardianLifecycleAPIWithPostgres(t *testing.T) {
 		t.Fatalf("primary guardian link: primary=%v err=%v", primary, err)
 	}
 
-	provisioned := performPeopleJSONRequest(t, router, http.MethodPost, "/guardians/"+guardianID.String()+"/provision-login", ProvisionGuardianLoginRequest{Username: "parent.one", GivenName: "Test", FamilyName: "Parent"})
+	provisioned := performPeopleJSONRequest(t, router, http.MethodPost, "/guardians/"+guardianID.String()+"/provision-login", ProvisionGuardianLoginRequest{Username: "parent.one"})
 	if provisioned.Code != http.StatusOK {
 		t.Fatalf("provision guardian: code=%d body=%s", provisioned.Code, provisioned.Body.String())
 	}
@@ -144,7 +144,7 @@ func TestGuardianLifecycleAPIWithPostgres(t *testing.T) {
 		t.Fatalf("provisioned guardian access status=%d", status)
 	}
 
-	repeated := performPeopleJSONRequest(t, router, http.MethodPost, "/guardians/"+guardianID.String()+"/provision-login", ProvisionGuardianLoginRequest{Username: "parent.one", GivenName: "Test", FamilyName: "Parent"})
+	repeated := performPeopleJSONRequest(t, router, http.MethodPost, "/guardians/"+guardianID.String()+"/provision-login", ProvisionGuardianLoginRequest{Username: "parent.one"})
 	if repeated.Code != http.StatusConflict || provider.createCalls != 1 {
 		t.Fatalf("repeat provision: code=%d calls=%d body=%s", repeated.Code, provider.createCalls, repeated.Body.String())
 	}
@@ -163,7 +163,7 @@ func TestGuardianLifecycleAPIWithPostgres(t *testing.T) {
 	failingUserID := uuid.New()
 	failingProvider := &peopleIntegrationIdentity{userIDs: []uuid.UUID{failingUserID}, assignErr: errors.New("role assignment failed")}
 	failingService := NewGuardianService(store, failingProvider, nil)
-	if _, err := failingService.Provision(ctx, failingGuardianID, ProvisionGuardianLoginRequest{Username: "rollback.parent", GivenName: "Rollback", FamilyName: "Parent"}, actorID); err == nil {
+	if _, err := failingService.Provision(ctx, failingGuardianID, ProvisionGuardianLoginRequest{Username: "rollback.parent"}, actorID); err == nil {
 		t.Fatal("expected guardian role assignment failure")
 	}
 	if !slices.Contains(failingProvider.deleted, failingUserID.String()) {

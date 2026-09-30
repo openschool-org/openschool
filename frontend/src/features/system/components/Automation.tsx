@@ -31,7 +31,7 @@ export default function Automation({ inline = false }: { inline?: boolean }) {
           <div className="os-page__header-left">
             <h1 className="os-page__title">Automation</h1>
             <div className="os-page__subtitle os-page__subtitle--tip">
-              Background checks that run on a schedule, and the year-end workflows that run when you ask. Each one lists what it does.
+              Scheduled agents that run by themselves, plus the year-end workflows and setup tools that run when you ask. Each one lists what it does.
               <InfoTip>Other features do not depend on these checks. Agents marked Always on, such as the backup, cannot be turned off.</InfoTip>
             </div>
           </div>
@@ -56,6 +56,10 @@ export default function Automation({ inline = false }: { inline?: boolean }) {
       />
 
       <div className="os-section os-mt-0">
+        <div className="os-section__header">
+          <h2 className="os-section__title">Scheduled agents</h2>
+          <span className="os-section__meta">Run automatically; turn each one on or off</span>
+        </div>
         {isLoading && (
           <div className="os-py-5 os-px-6">
             <SkeletonText width="60%" />

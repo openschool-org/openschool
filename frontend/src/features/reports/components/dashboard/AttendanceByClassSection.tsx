@@ -8,6 +8,8 @@ import EmptyState from "@/shared/ui/EmptyState";
 import ProgressBar from "@/shared/ui/ProgressBar";
 import SectionHeader from "@/shared/ui/SectionHeader";
 import MediumTag from "@/shared/ui/MediumTag";
+import GradeAvatar from "@/shared/ui/GradeAvatar";
+import { gradeBand } from "@/shared/lib/gradeBand";
 
 function ClassAttendanceBox({ cls, session }: { cls: ClassWithDetails; session: DailySession | undefined }) {
   const hasSession = !!session;
@@ -21,9 +23,12 @@ function ClassAttendanceBox({ cls, session }: { cls: ClassWithDetails; session: 
       style={{ borderTopColor: hasSession ? (isMarked ? "var(--os-success)" : "var(--os-warning)") : "var(--os-text-disabled)" }}
     >
       <div className="os-flex os-items-start os-justify-between os-mb-3">
-        <div className="os-min-w-0">
-          <p className="os-mt-0 os-mx-0 os-mb-h os-text-md os-fw-600 os-c-primary">{cls.name}</p>
-          {cls.medium_name && <MediumTag name={cls.medium_name} />}
+        <div className="os-flex os-items-center os-gap-3 os-min-w-0">
+          <GradeAvatar gradeName={cls.grade_name} className={cls.name} />
+          <div className="os-min-w-0">
+            <p className="os-mt-0 os-mx-0 os-mb-h os-text-md os-fw-600 os-c-primary">{cls.name}</p>
+            {cls.medium_name && <MediumTag name={cls.medium_name} />}
+          </div>
         </div>
         {hasSession ? (
           isMarked ? <CheckmarkFilled size={18} className="os-fill-success os-shrink-0" aria-label="Attendance marked" /> : <WarningFilled size={18} className="os-fill-warning os-shrink-0" aria-label="Attendance pending" />
@@ -85,12 +90,9 @@ export default function AttendanceByClassSection({
               return !!session && session.marked_count === 0;
             }).length;
             return (
-              <button key={grade.name} type="button" className="os-attendance-grade-card" onClick={() => setSelectedGradeName(grade.name)} aria-label={`View attendance for ${grade.name}`}>
+              <button key={grade.name} type="button" className={`os-attendance-grade-card os-grade-band--${gradeBand(grade.name)}`} onClick={() => setSelectedGradeName(grade.name)} aria-label={`View attendance for ${grade.name}`}>
                 <div className="os-flex os-items-start os-justify-between os-gap-3">
-                  <div>
-                    <p className="os-attendance-grade-card__eyebrow">Grade</p>
-                    <h3>{grade.name.replace(/^Grade\s*/i, "")}</h3>
-                  </div>
+                  <GradeAvatar gradeName={grade.name} size="lg" />
                   <ChevronRight size={20} className="os-fill-accent os-shrink-0" />
                 </div>
                 <p className="os-attendance-grade-card__classes">{grade.classes.length} class{grade.classes.length === 1 ? "" : "es"}</p>

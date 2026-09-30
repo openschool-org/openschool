@@ -225,6 +225,10 @@ export const en = {
   "parent.latestAverage": "Latest average",
   "parent.noData": "No data yet",
   "parent.daysAttended": "{attended} of {total} days",
+  "parent.eyebrow": "Guardian overview",
+  "parent.statChildren": "Children",
+  "parent.recentNotices": "Recent notices",
+  "parent.noNotices": "No notices yet.",
 
   "child.notFound": "Child not found",
   "child.notLinked": "This student is not linked to your account.",

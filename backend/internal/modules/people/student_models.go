@@ -2,10 +2,13 @@ package people
 
 type CreateStudentRequest struct {
 	// ThunderID account fields
-	Email       string `json:"email" binding:"required,email"`
-	GivenName   string `json:"given_name" binding:"required"`
-	FamilyName  string `json:"family_name" binding:"required"`
-	PhoneNumber string `json:"phone_number"`
+	Email string `json:"email" binding:"required,email"`
+	// Sri Lankan names don't split into first and last: the full name, the name with initials
+	// (suggested from the full name when empty) and an optional calling name.
+	FullName         string `json:"full_name" binding:"required,max=255"`
+	NameWithInitials string `json:"name_with_initials" binding:"max=255"`
+	CallingName      string `json:"calling_name" binding:"max=100"`
+	PhoneNumber      string `json:"phone_number"`
 	// Password is no longer collected — the student's index number becomes
 	// their initial (one-time) password (Phase 8.2).
 
@@ -19,13 +22,16 @@ type CreateStudentRequest struct {
 }
 
 type UpdateStudentRequest struct {
-	GivenName      string `json:"given_name" binding:"required"`
-	FamilyName     string `json:"family_name" binding:"required"`
-	PhoneNumber    string `json:"phone_number"`
-	Address        string `json:"address"`
-	WhatsApp       string `json:"whatsapp"`
-	SpecialRemarks string `json:"special_remarks"`
-	Gender         string `json:"gender" binding:"omitempty,oneof=male female"`
+	// Sri Lankan names don't split into first and last: the full name, the name with initials
+	// (suggested from the full name when empty) and an optional calling name.
+	FullName         string `json:"full_name" binding:"required,max=255"`
+	NameWithInitials string `json:"name_with_initials" binding:"max=255"`
+	CallingName      string `json:"calling_name" binding:"max=100"`
+	PhoneNumber      string `json:"phone_number"`
+	Address          string `json:"address"`
+	WhatsApp         string `json:"whatsapp"`
+	SpecialRemarks   string `json:"special_remarks"`
+	Gender           string `json:"gender" binding:"omitempty,oneof=male female"`
 }
 
 type UpdateStudentEnrollmentStatusRequest struct {

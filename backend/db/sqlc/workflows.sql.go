@@ -605,22 +605,24 @@ func (q *Queries) WfCreateGradeSection(ctx context.Context, arg WfCreateGradeSec
 }
 
 const wfCreateGuardian = `-- name: WfCreateGuardian :one
-INSERT INTO guardians (full_name, relationship, phone, email, nic_number)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO guardians (full_name, name_with_initials, relationship, phone, email, nic_number)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id
 `
 
 type WfCreateGuardianParams struct {
-	FullName     string      `json:"full_name"`
-	Relationship string      `json:"relationship"`
-	Phone        string      `json:"phone"`
-	Email        pgtype.Text `json:"email"`
-	NicNumber    string      `json:"nic_number"`
+	FullName         string      `json:"full_name"`
+	NameWithInitials string      `json:"name_with_initials"`
+	Relationship     string      `json:"relationship"`
+	Phone            string      `json:"phone"`
+	Email            pgtype.Text `json:"email"`
+	NicNumber        string      `json:"nic_number"`
 }
 
 func (q *Queries) WfCreateGuardian(ctx context.Context, arg WfCreateGuardianParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, wfCreateGuardian,
 		arg.FullName,
+		arg.NameWithInitials,
 		arg.Relationship,
 		arg.Phone,
 		arg.Email,
@@ -653,23 +655,27 @@ func (q *Queries) WfCreateIntake(ctx context.Context, arg WfCreateIntakeParams) 
 }
 
 const wfCreateIntakeStudent = `-- name: WfCreateIntakeStudent :one
-INSERT INTO student_profiles (full_name, index_number, address, phone, gender, house_id)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO student_profiles (full_name, name_with_initials, calling_name, index_number, address, phone, gender, house_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id
 `
 
 type WfCreateIntakeStudentParams struct {
-	FullName    string      `json:"full_name"`
-	IndexNumber string      `json:"index_number"`
-	Address     pgtype.Text `json:"address"`
-	Phone       pgtype.Text `json:"phone"`
-	Gender      pgtype.Text `json:"gender"`
-	HouseID     pgtype.UUID `json:"house_id"`
+	FullName         string      `json:"full_name"`
+	NameWithInitials string      `json:"name_with_initials"`
+	CallingName      string      `json:"calling_name"`
+	IndexNumber      string      `json:"index_number"`
+	Address          pgtype.Text `json:"address"`
+	Phone            pgtype.Text `json:"phone"`
+	Gender           pgtype.Text `json:"gender"`
+	HouseID          pgtype.UUID `json:"house_id"`
 }
 
 func (q *Queries) WfCreateIntakeStudent(ctx context.Context, arg WfCreateIntakeStudentParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, wfCreateIntakeStudent,
 		arg.FullName,
+		arg.NameWithInitials,
+		arg.CallingName,
 		arg.IndexNumber,
 		arg.Address,
 		arg.Phone,
@@ -809,6 +815,47 @@ DELETE FROM classes WHERE academic_year_id = $1
 func (q *Queries) WfDeleteYearClasses(ctx context.Context, academicYearID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, wfDeleteYearClasses, academicYearID)
 	return err
+}
+
+const wfEmailOwners = `-- name: WfEmailOwners :many
+SELECT lower(g.email)::text AS email, g.full_name, upper(COALESCE(g.nic_number, ''))::text AS nic_number, 'guardian'::text AS kind
+FROM guardians g WHERE lower(g.email) = ANY($1::text[])
+UNION ALL
+SELECT lower(u.email)::text, u.full_name, ''::text, 'account'::text
+FROM users u WHERE lower(u.email) = ANY($1::text[])
+`
+
+type WfEmailOwnersRow struct {
+	Email     string `json:"email"`
+	FullName  string `json:"full_name"`
+	NicNumber string `json:"nic_number"`
+	Kind      string `json:"kind"`
+}
+
+// Who already uses each email: a guardian on record or a login. Activation needs each email to be unused.
+func (q *Queries) WfEmailOwners(ctx context.Context, emails []string) ([]WfEmailOwnersRow, error) {
+	rows, err := q.db.Query(ctx, wfEmailOwners, emails)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WfEmailOwnersRow{}
+	for rows.Next() {
+		var i WfEmailOwnersRow
+		if err := rows.Scan(
+			&i.Email,
+			&i.FullName,
+			&i.NicNumber,
+			&i.Kind,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const wfEnrollmentLocks = `-- name: WfEnrollmentLocks :many
@@ -978,15 +1025,20 @@ func (q *Queries) WfGroupClasses(ctx context.Context, arg WfGroupClassesParams) 
 }
 
 const wfGuardiansByNIC = `-- name: WfGuardiansByNIC :many
-SELECT id, nic_number, full_name FROM guardians WHERE nic_number = ANY($1::text[])
+SELECT id, upper(nic_number)::text AS nic_number, full_name, COALESCE(email, '')::text AS email, phone, (user_id IS NOT NULL)::bool AS has_login
+FROM guardians WHERE upper(nic_number) = ANY($1::text[])
 `
 
 type WfGuardiansByNICRow struct {
 	ID        uuid.UUID `json:"id"`
 	NicNumber string    `json:"nic_number"`
 	FullName  string    `json:"full_name"`
+	Email     string    `json:"email"`
+	Phone     string    `json:"phone"`
+	HasLogin  bool      `json:"has_login"`
 }
 
+// Matched without regard to case, since an NIC's final V or X may be stored in either case.
 func (q *Queries) WfGuardiansByNIC(ctx context.Context, nics []string) ([]WfGuardiansByNICRow, error) {
 	rows, err := q.db.Query(ctx, wfGuardiansByNIC, nics)
 	if err != nil {
@@ -996,7 +1048,54 @@ func (q *Queries) WfGuardiansByNIC(ctx context.Context, nics []string) ([]WfGuar
 	items := []WfGuardiansByNICRow{}
 	for rows.Next() {
 		var i WfGuardiansByNICRow
-		if err := rows.Scan(&i.ID, &i.NicNumber, &i.FullName); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.NicNumber,
+			&i.FullName,
+			&i.Email,
+			&i.Phone,
+			&i.HasLogin,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const wfGuardiansByPhones = `-- name: WfGuardiansByPhones :many
+SELECT id, upper(COALESCE(nic_number, ''))::text AS nic_number, full_name, COALESCE(email, '')::text AS email, phone
+FROM guardians WHERE phone = ANY($1::text[])
+`
+
+type WfGuardiansByPhonesRow struct {
+	ID        uuid.UUID `json:"id"`
+	NicNumber string    `json:"nic_number"`
+	FullName  string    `json:"full_name"`
+	Email     string    `json:"email"`
+	Phone     string    `json:"phone"`
+}
+
+// Guardians on record with any of these phone numbers, to spot one parent entered under a second NIC.
+func (q *Queries) WfGuardiansByPhones(ctx context.Context, phones []string) ([]WfGuardiansByPhonesRow, error) {
+	rows, err := q.db.Query(ctx, wfGuardiansByPhones, phones)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WfGuardiansByPhonesRow{}
+	for rows.Next() {
+		var i WfGuardiansByPhonesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.NicNumber,
+			&i.FullName,
+			&i.Email,
+			&i.Phone,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

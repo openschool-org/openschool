@@ -15,9 +15,11 @@ INSERT INTO teacher_profiles (
     phone,
     title,
     gender,
-    house_id
+    house_id,
+    name_with_initials,
+    calling_name
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 )
 RETURNING *;
 
@@ -67,7 +69,7 @@ ORDER BY full_name ASC;
 -- layer (httpx.EscapeLikeTerm) before it reaches here.
 SELECT *, COUNT(*) OVER () AS total
 FROM teacher_profiles
-WHERE (sqlc.narg(search)::text IS NULL OR full_name ILIKE '%' || sqlc.narg(search)::text || '%' OR employee_number ILIKE '%' || sqlc.narg(search)::text || '%')
+WHERE (sqlc.narg(search)::text IS NULL OR full_name ILIKE '%' || sqlc.narg(search)::text || '%' OR name_with_initials ILIKE '%' || sqlc.narg(search)::text || '%' OR calling_name ILIKE '%' || sqlc.narg(search)::text || '%' OR employee_number ILIKE '%' || sqlc.narg(search)::text || '%')
   AND (sqlc.narg(status)::text IS NULL OR employment_status = sqlc.narg(status)::text)
 ORDER BY
     -- Whitelisted by httpx.ParseSort; an empty key keeps the default name order.
@@ -93,6 +95,8 @@ SET
     title      = $4,
     gender     = $5,
     nic_number = $6,
+    name_with_initials = $7,
+    calling_name = $8,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;

@@ -14,9 +14,11 @@ import { useCreateStudent } from "@/features/students/queries/useStudents";
 import { getErrorMessage } from "@/shared/api/errors";
 import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "@/shared/lib/phone";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
+import PersonNameFields from "@/shared/ui/PersonNameFields";
+import { EMPTY_PERSON_NAMES } from "@/shared/lib/name";
 
 type Touched = Partial<
-  Record<"givenName" | "familyName" | "email" | "phone" | "indexNumber" | "whatsapp", boolean>
+  Record<"fullName" | "email" | "phone" | "indexNumber" | "whatsapp", boolean>
 >;
 
 export default function AddStudent() {
@@ -24,8 +26,7 @@ export default function AddStudent() {
   const navigate = useNavigate();
   const createStudent = useCreateStudent();
 
-  const [givenName, setGivenName] = useState("");
-  const [familyName, setFamilyName] = useState("");
+  const [names, setNames] = useState(EMPTY_PERSON_NAMES);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [indexNumber, setIndexNumber] = useState("");
@@ -40,8 +41,7 @@ export default function AddStudent() {
 
   const handleSubmit = () => {
     setTouched({
-      givenName: true,
-      familyName: true,
+      fullName: true,
       email: true,
       phone: true,
       indexNumber: true,
@@ -50,8 +50,9 @@ export default function AddStudent() {
     if (!isValid) return;
     createStudent.mutate(
       {
-        given_name: givenName.trim(),
-        family_name: familyName.trim(),
+        full_name: names.full_name.trim(),
+        name_with_initials: names.name_with_initials.trim() || undefined,
+        calling_name: names.calling_name.trim() || undefined,
         email: email.trim(),
         phone_number: phone.trim() || undefined,
         index_number: indexNumber.trim(),
@@ -68,16 +69,14 @@ export default function AddStudent() {
     ? getErrorMessage(createStudent.error, "Failed to enrol student")
     : null;
 
-  const givenNameInvalid = !!touched.givenName && !givenName.trim();
-  const familyNameInvalid = !!touched.familyName && !familyName.trim();
+  const fullNameInvalid = !!touched.fullName && !names.full_name.trim();
   const emailInvalid = !!touched.email && !EMAIL_RE.test(email.trim());
   const phoneInvalid = !!touched.phone && !isValidSriLankanPhone(phone);
   const indexNumberInvalid = !!touched.indexNumber && !indexNumber.trim();
   const whatsappInvalid = !!touched.whatsapp && !isValidSriLankanPhone(whatsapp);
 
   const isValid =
-    givenName.trim().length > 0 &&
-    familyName.trim().length > 0 &&
+    names.full_name.trim().length > 0 &&
     EMAIL_RE.test(email.trim()) &&
     isValidSriLankanPhone(phone) &&
     indexNumber.trim().length > 0 &&
@@ -125,25 +124,12 @@ export default function AddStudent() {
         <div className="os-form__section">
           <div className="os-form__section-header">Account</div>
           <div className="os-form__section-body">
-            <TextInput
-              id="given-name"
-              labelText="First name"
-              placeholder="e.g. Kavinda"
-              value={givenName}
-              onChange={(e) => setGivenName(e.target.value)}
-              onBlur={() => markTouched("givenName")}
-              invalid={givenNameInvalid}
-              invalidText="First name is required."
-            />
-            <TextInput
-              id="family-name"
-              labelText="Last name"
-              placeholder="e.g. Perera"
-              value={familyName}
-              onChange={(e) => setFamilyName(e.target.value)}
-              onBlur={() => markTouched("familyName")}
-              invalid={familyNameInvalid}
-              invalidText="Last name is required."
+            <PersonNameFields
+              idPrefix="student"
+              value={names}
+              onChange={setNames}
+              fullNameInvalid={fullNameInvalid}
+              onFullNameBlur={() => markTouched("fullName")}
             />
             <TextInput
               id="email"

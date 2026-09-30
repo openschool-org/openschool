@@ -16,6 +16,8 @@ import InfoRow from "@/shared/ui/InfoRow";
 import MediumTag from "@/shared/ui/MediumTag";
 import StreamTag from "@/shared/ui/StreamTag";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
+import { displayName } from "@/shared/lib/name";
+import GradeAvatar from "@/shared/ui/GradeAvatar";
 
 // "10A" reads as "Grade 10-A" in the banner.
 function formatClassLabel(name: string) {
@@ -42,7 +44,7 @@ export default function ClassDetail() {
     );
   }
 
-  const meta = [names.academicYear, formTeacher && `Form teacher: ${formTeacher.full_name}`].filter(Boolean).join(" · ");
+  const meta = [names.academicYear, formTeacher && `Form teacher: ${displayName(formTeacher)}`].filter(Boolean).join(" · ");
   const students = detail.roster.data;
   const sessions = detail.sessions.data;
 
@@ -50,6 +52,7 @@ export default function ClassDetail() {
     <div className="os-bg-layer-hover os-min-h-content">
       <ProfileBanner
         name={`Grade ${formatClassLabel(cls.name)}`}
+        avatar={<GradeAvatar gradeName={names.grade} className={cls.name} size="lg" />}
         meta={meta}
         actions={(
           <>

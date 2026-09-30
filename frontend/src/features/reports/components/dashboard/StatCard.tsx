@@ -9,7 +9,7 @@ export default function StatCard({
   path,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   loading: boolean;
   Icon: React.ComponentType<{ size?: number; style?: React.CSSProperties }>;
   path: string;

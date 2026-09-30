@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/openschool-org/openschool/internal/apierror"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -237,7 +238,7 @@ func (h *enrollmentHandler) validate(c *gin.Context) {
 		if errors.Is(e, ErrLevelHasNoGroups) {
 			c.JSON(404, gin.H{"error": e.Error()})
 		} else {
-			c.JSON(400, gin.H{"error": e.Error()})
+			apierror.Respond(c, e)
 		}
 		return
 	}
@@ -262,7 +263,7 @@ func (h *enrollmentHandler) submit(c *gin.Context) {
 		} else if errors.Is(e, ErrEnrollmentLocked) {
 			c.JSON(409, gin.H{"error": e.Error()})
 		} else {
-			c.JSON(400, gin.H{"error": e.Error()})
+			apierror.Respond(c, e)
 		}
 		return
 	}
@@ -279,7 +280,7 @@ func (h *enrollmentHandler) list(c *gin.Context) {
 	}
 	v, e := h.service.store.list(c, id, year)
 	if e != nil {
-		c.JSON(500, gin.H{"error": e.Error()})
+		apierror.Respond(c, e)
 		return
 	}
 	c.JSON(200, v)
@@ -295,7 +296,7 @@ func (h *enrollmentHandler) subject(c *gin.Context) {
 	}
 	v, e := h.service.store.bySubject(c, id, year)
 	if e != nil {
-		c.JSON(500, gin.H{"error": e.Error()})
+		apierror.Respond(c, e)
 		return
 	}
 	c.JSON(200, v)
@@ -311,7 +312,7 @@ func (h *enrollmentHandler) group(c *gin.Context) {
 	}
 	v, e := h.service.store.byGroup(c, id, year)
 	if e != nil {
-		c.JSON(500, gin.H{"error": e.Error()})
+		apierror.Respond(c, e)
 		return
 	}
 	c.JSON(200, v)
@@ -334,7 +335,7 @@ func (h *enrollmentHandler) remove(c *gin.Context) {
 		return
 	}
 	if e := h.service.remove(c, student, year, group, subject); e != nil {
-		c.JSON(400, gin.H{"error": e.Error()})
+		apierror.Respond(c, e)
 		return
 	}
 	c.JSON(200, gin.H{"message": "enrollment removed"})
@@ -354,7 +355,7 @@ func (h *enrollmentHandler) unlock(c *gin.Context) {
 	}
 	n, e := h.service.store.unlock(c, student, level, year)
 	if e != nil {
-		c.JSON(400, gin.H{"error": e.Error()})
+		apierror.Respond(c, e)
 		return
 	}
 	if n == 0 {

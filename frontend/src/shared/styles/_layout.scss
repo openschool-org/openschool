@@ -458,13 +458,8 @@
 
 @media (max-width: 42rem) {
   .os-page { padding: 1rem; }
-  .os-society-summary { align-items: flex-start; flex-wrap: wrap; padding: 1rem; }
-  .os-society-summary__stat { margin-left: 3.75rem; }
-  .os-society-summary > .cds--tag { margin-left: auto; }
   .os-society-detail__owner { align-items: flex-start; flex-wrap: wrap; }
   .os-society-detail__owner .cds--tag { margin-left: 3rem; }
-  .os-current-period { align-items: flex-start; flex-wrap: wrap; padding: 1rem; }
-  .os-current-period .cds--tag { margin-left: 3.75rem; }
   .os-term-card { align-items: flex-start; flex-wrap: wrap; }
   .os-term-card__actions { width: calc(100% - 2.75rem); margin-left: 2.75rem; }
   .os-term-form-panel__heading { align-items: flex-start; flex-direction: column; }

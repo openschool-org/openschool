@@ -43,6 +43,7 @@ export interface MyClass {
   grade_name: string;
   subjects: string[];
   isFormTeacher: boolean;
+  studentCount: number;
 }
 
 // Form-teacher classes plus every class where the teacher takes a subject this year.
@@ -52,10 +53,11 @@ export const useMyClasses = () => {
   const { data: allClasses, isLoading: classesLoading, isError: classesError } = useCurrentClasses();
   const { data: workload, isLoading: workloadLoading, isError: workloadError } = useTeacherWorkload(teacherId);
 
+  const studentCount = new Map((allClasses ?? []).map((c) => [c.id, c.student_count ?? 0]));
   const classMap = new Map<string, MyClass>();
   for (const c of allClasses ?? []) {
     if (c.form_teacher_id === teacherId) {
-      classMap.set(c.id, { class_id: c.id, class_name: c.name, grade_name: c.grade_name, subjects: [], isFormTeacher: true });
+      classMap.set(c.id, { class_id: c.id, class_name: c.name, grade_name: c.grade_name, subjects: [], isFormTeacher: true, studentCount: studentCount.get(c.id) ?? 0 });
     }
   }
   for (const w of workload ?? []) {
@@ -64,7 +66,7 @@ export const useMyClasses = () => {
     if (existing) {
       if (!existing.subjects.includes(w.subject_name)) existing.subjects.push(w.subject_name);
     } else {
-      classMap.set(w.class_id, { class_id: w.class_id, class_name: w.class_name, grade_name: w.grade_name, subjects: [w.subject_name], isFormTeacher: false });
+      classMap.set(w.class_id, { class_id: w.class_id, class_name: w.class_name, grade_name: w.grade_name, subjects: [w.subject_name], isFormTeacher: false, studentCount: studentCount.get(w.class_id) ?? 0 });
     }
   }
 

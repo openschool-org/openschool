@@ -5,13 +5,15 @@ import type { House } from "@/features/school/api/house";
 import { TITLES, EMPLOYMENT_STATUSES } from "@/features/teachers/constants";
 import TeacherSubjectsSection from "@/features/teachers/components/TeacherSubjectsSection";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import PersonNameFields from "@/shared/ui/PersonNameFields";
 import { formatDateOnly, formatISODate } from "@/shared/lib/date";
 import InfoTip from "@/shared/ui/InfoTip";
 import SectionCard from "@/shared/ui/SectionCard";
 
 export type TeacherProfileForm = {
-  given_name: string;
-  family_name: string;
+  full_name: string;
+  name_with_initials: string;
+  calling_name: string;
   phone_number: string;
   nic_number: string;
   title: TeacherTitle | "";
@@ -58,8 +60,17 @@ export default function TeacherProfileSections(p: Props) {
               <RadioButton id="edit-gender-male" labelText="Male" value="male" />
               <RadioButton id="edit-gender-female" labelText="Female" value="female" />
             </RadioButtonGroup>
-            <TextInput {...field("given-name", "First name", "given_name")} />
-            <TextInput {...field("family-name", "Last name", "family_name")} />
+            <PersonNameFields
+              idPrefix="teacher-profile"
+              value={form}
+              readOnly={!editing}
+              fullNameInvalid={editing && !form.full_name.trim()}
+              onChange={(next) => {
+                (["full_name", "name_with_initials", "calling_name"] as const).forEach((key) => {
+                  if (next[key] !== form[key]) onChange(key, next[key]);
+                });
+              }}
+            />
             <TextInput id="employee-number" labelText="Employee number" value={teacher.employee_number} readOnly />
             <TextInput id="email" labelText="Email" value={teacher.email ?? "-"} readOnly />
             <TextInput {...field("phone", "Phone", "phone_number")} />

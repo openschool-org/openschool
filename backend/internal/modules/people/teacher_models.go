@@ -4,10 +4,13 @@ import "time"
 
 type CreateTeacherRequest struct {
 	// Identity provider account fields
-	Email       string `json:"email" binding:"required,email"`
-	GivenName   string `json:"given_name" binding:"required"`
-	FamilyName  string `json:"family_name" binding:"required"`
-	PhoneNumber string `json:"phone_number"`
+	Email string `json:"email" binding:"required,email"`
+	// Sri Lankan names don't split into first and last: the full name, the name with initials
+	// (suggested from the full name when empty) and an optional calling name.
+	FullName         string `json:"full_name" binding:"required,max=255"`
+	NameWithInitials string `json:"name_with_initials" binding:"max=255"`
+	CallingName      string `json:"calling_name" binding:"max=100"`
+	PhoneNumber      string `json:"phone_number"`
 	// Password is no longer collected — the teacher's NIC number becomes
 	// their initial (one-time) password (Phase 8.2).
 
@@ -21,9 +24,12 @@ type CreateTeacherRequest struct {
 }
 
 type UpdateTeacherRequest struct {
-	GivenName   string `json:"given_name" binding:"required"`
-	FamilyName  string `json:"family_name" binding:"required"`
-	PhoneNumber string `json:"phone_number"`
+	// Sri Lankan names don't split into first and last: the full name, the name with initials
+	// (suggested from the full name when empty) and an optional calling name.
+	FullName         string `json:"full_name" binding:"required,max=255"`
+	NameWithInitials string `json:"name_with_initials" binding:"max=255"`
+	CallingName      string `json:"calling_name" binding:"max=100"`
+	PhoneNumber      string `json:"phone_number"`
 	// EmployeeNumber is immutable once assigned — not updatable.
 	// NICNumber *is* updatable — unlike employee_number, a typo shouldn't be
 	// permanent (Phase 8.1).

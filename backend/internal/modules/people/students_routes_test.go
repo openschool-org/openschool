@@ -43,7 +43,7 @@ func TestListStudentsRouteParsesPageParamsAndFilters(t *testing.T) {
 	router := gin.New()
 	group := router.Group("")
 	reader := &studentListReaderStub{}
-	RegisterStudentRoutes(group, group, nil, reader, nil, nil)
+	RegisterStudentRoutes(group, group, nil, reader, nil, nil, nil)
 
 	request := httptest.NewRequest(http.MethodGet, "/students?limit=10&offset=20&search=perera&grade=Grade+5&gender=female", nil)
 	response := httptest.NewRecorder()
@@ -77,7 +77,7 @@ func TestGetStudentAuditsTheRead(t *testing.T) {
 	})
 	group := router.Group("")
 	audit := &auditRecorderStub{}
-	RegisterStudentRoutes(group, group, nil, &studentListReaderStub{}, nil, audit)
+	RegisterStudentRoutes(group, group, nil, &studentListReaderStub{}, nil, audit, nil)
 
 	request := httptest.NewRequest(http.MethodGet, "/students/"+studentUUID.String(), nil)
 	response := httptest.NewRecorder()

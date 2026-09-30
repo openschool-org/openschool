@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
-// Guards explicit in-page exits (Cancel/Back buttons, sidebar nav intercepted by the
-// caller) and the browser's own close/refresh/back. Does not catch every possible
-// navigation - react-router's useBlocker needs a data router, which this app's plain
-// BrowserRouter doesn't set up.
+// Guards explicit in-page exits (Cancel/Back buttons) and browser close/refresh.
+// Pair it with react-router's useBlocker to also catch sidebar links and history back/forward.
 export function useUnsavedChangesGuard(hasUnsaved: boolean) {
   const [pending, setPending] = useState(false);
   const pendingActionRef = useRef<(() => void) | null>(null);

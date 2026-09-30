@@ -11,6 +11,7 @@ import { useGuardians } from "@/features/guardians/queries/useGuardians";
 import { useTeachers } from "@/features/teachers/queries/useTeachers";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
 import type { RecipientRule, RecipientRuleType } from "@/features/notifications/api/notification";
+import { displayName } from "@/shared/lib/name";
 
 const RULE_TYPES: { value: RecipientRuleType; label: string }[] = [
   { value: "everyone", label: "Everyone" },
@@ -81,13 +82,13 @@ export default function RecipientPicker({
       });
     } else if (ruleType === "student") {
       const student = students?.find((s) => s.id === selectedId);
-      onAdd({ type: "student", student_id: selectedId, label: student?.full_name ?? "Student" });
+      onAdd({ type: "student", student_id: selectedId, label: student ? displayName(student) : "Student" });
     } else if (ruleType === "guardian") {
       const guardian = guardians?.find((g) => g.id === selectedId);
-      onAdd({ type: "guardian", guardian_id: selectedId, label: guardian?.full_name ?? "Guardian" });
+      onAdd({ type: "guardian", guardian_id: selectedId, label: guardian ? displayName(guardian) : "Guardian" });
     } else if (ruleType === "teacher") {
       const teacher = teachers?.find((t) => t.id === selectedId);
-      onAdd({ type: "teacher", teacher_id: selectedId, label: teacher?.full_name ?? "Teacher" });
+      onAdd({ type: "teacher", teacher_id: selectedId, label: teacher ? displayName(teacher) : "Teacher" });
     }
     reset();
   };
@@ -181,7 +182,7 @@ export default function RecipientPicker({
           onSelect={setSelectedId}
           onSearch={setStudentSearch}
           getId={(s) => s.id}
-          itemToString={(s) => `${s.full_name} - ${s.index_number}`}
+          itemToString={(s) => `${displayName(s)} - ${s.index_number}`}
           placeholder="Search students…"
           disabled={disabled}
         />
@@ -195,7 +196,7 @@ export default function RecipientPicker({
           onSelect={setSelectedId}
           onSearch={setGuardianSearch}
           getId={(g) => g.id}
-          itemToString={(g) => `${g.full_name} - ${g.phone}`}
+          itemToString={(g) => `${displayName(g)} - ${g.phone}`}
           placeholder="Search guardians…"
           disabled={disabled}
         />
@@ -209,7 +210,7 @@ export default function RecipientPicker({
           onSelect={setSelectedId}
           onSearch={setTeacherSearch}
           getId={(t) => t.id}
-          itemToString={(t) => `${t.full_name} - ${t.employee_number}`}
+          itemToString={(t) => `${displayName(t)} - ${t.employee_number}`}
           placeholder="Search teachers…"
           disabled={disabled}
         />

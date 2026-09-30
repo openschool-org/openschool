@@ -54,6 +54,11 @@ export default function EntityCombobox<T>({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- onSearch is expected to be a stable callback (e.g. a setState); including it would re-run on every parent render
   }, [debouncedInput]);
 
+  // Picking an item fills the input with its label; searching for that label would find nothing and drop the pick.
+  const handleInput = (value: string) => {
+    if (!items.some((item) => itemToString(item) === value)) setInputValue(value);
+  };
+
   return (
     <ComboBox
       id={id}
@@ -61,7 +66,7 @@ export default function EntityCombobox<T>({
       itemToString={(item) => (item ? itemToString(item as T) : "")}
       selectedItem={selectedItem}
       onChange={({ selectedItem }) => onSelect(selectedItem ? getId(selectedItem) : "")}
-      onInputChange={onSearch ? setInputValue : undefined}
+      onInputChange={onSearch ? handleInput : undefined}
       shouldFilterItem={onSearch
         ? () => true
         : ({ item, inputValue }) => itemToString(item as T).toLocaleLowerCase().includes((inputValue ?? "").trim().toLocaleLowerCase())}

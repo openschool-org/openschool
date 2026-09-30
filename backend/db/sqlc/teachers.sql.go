@@ -49,23 +49,27 @@ INSERT INTO teacher_profiles (
     phone,
     title,
     gender,
-    house_id
+    house_id,
+    name_with_initials,
+    calling_name
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 )
-RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number
+RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number, name_with_initials, calling_name
 `
 
 type CreateTeacherProfileParams struct {
-	UserID         uuid.UUID   `json:"user_id"`
-	FullName       string      `json:"full_name"`
-	EmployeeNumber string      `json:"employee_number"`
-	NicNumber      string      `json:"nic_number"`
-	JoinedDate     pgtype.Date `json:"joined_date"`
-	Phone          pgtype.Text `json:"phone"`
-	Title          pgtype.Text `json:"title"`
-	Gender         pgtype.Text `json:"gender"`
-	HouseID        pgtype.UUID `json:"house_id"`
+	UserID           uuid.UUID   `json:"user_id"`
+	FullName         string      `json:"full_name"`
+	EmployeeNumber   string      `json:"employee_number"`
+	NicNumber        string      `json:"nic_number"`
+	JoinedDate       pgtype.Date `json:"joined_date"`
+	Phone            pgtype.Text `json:"phone"`
+	Title            pgtype.Text `json:"title"`
+	Gender           pgtype.Text `json:"gender"`
+	HouseID          pgtype.UUID `json:"house_id"`
+	NameWithInitials string      `json:"name_with_initials"`
+	CallingName      string      `json:"calling_name"`
 }
 
 func (q *Queries) CreateTeacherProfile(ctx context.Context, arg CreateTeacherProfileParams) (TeacherProfile, error) {
@@ -79,6 +83,8 @@ func (q *Queries) CreateTeacherProfile(ctx context.Context, arg CreateTeacherPro
 		arg.Title,
 		arg.Gender,
 		arg.HouseID,
+		arg.NameWithInitials,
+		arg.CallingName,
 	)
 	var i TeacherProfile
 	err := row.Scan(
@@ -96,6 +102,8 @@ func (q *Queries) CreateTeacherProfile(ctx context.Context, arg CreateTeacherPro
 		&i.HouseID,
 		&i.EmploymentStatus,
 		&i.NicNumber,
+		&i.NameWithInitials,
+		&i.CallingName,
 	)
 	return i, err
 }
@@ -152,7 +160,7 @@ func (q *Queries) GetFormTeacherClass(ctx context.Context, formTeacherID pgtype.
 }
 
 const getTeacherByEmployeeNumber = `-- name: GetTeacherByEmployeeNumber :one
-SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number, name_with_initials, calling_name FROM teacher_profiles
 WHERE employee_number = $1
 `
 
@@ -174,12 +182,14 @@ func (q *Queries) GetTeacherByEmployeeNumber(ctx context.Context, employeeNumber
 		&i.HouseID,
 		&i.EmploymentStatus,
 		&i.NicNumber,
+		&i.NameWithInitials,
+		&i.CallingName,
 	)
 	return i, err
 }
 
 const getTeacherByID = `-- name: GetTeacherByID :one
-SELECT tp.id, tp.user_id, tp.full_name, tp.employee_number, tp.joined_date, tp.phone, tp.created_at, tp.updated_at, tp.title, tp.gender, tp.is_active, tp.house_id, tp.employment_status, tp.nic_number, u.email AS email
+SELECT tp.id, tp.user_id, tp.full_name, tp.employee_number, tp.joined_date, tp.phone, tp.created_at, tp.updated_at, tp.title, tp.gender, tp.is_active, tp.house_id, tp.employment_status, tp.nic_number, tp.name_with_initials, tp.calling_name, u.email AS email
 FROM teacher_profiles tp
 INNER JOIN users u ON u.id = tp.user_id
 WHERE tp.id = $1
@@ -200,6 +210,8 @@ type GetTeacherByIDRow struct {
 	HouseID          pgtype.UUID        `json:"house_id"`
 	EmploymentStatus string             `json:"employment_status"`
 	NicNumber        string             `json:"nic_number"`
+	NameWithInitials string             `json:"name_with_initials"`
+	CallingName      string             `json:"calling_name"`
 	Email            string             `json:"email"`
 }
 
@@ -221,13 +233,15 @@ func (q *Queries) GetTeacherByID(ctx context.Context, id uuid.UUID) (GetTeacherB
 		&i.HouseID,
 		&i.EmploymentStatus,
 		&i.NicNumber,
+		&i.NameWithInitials,
+		&i.CallingName,
 		&i.Email,
 	)
 	return i, err
 }
 
 const getTeacherByUserID = `-- name: GetTeacherByUserID :one
-SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number, name_with_initials, calling_name FROM teacher_profiles
 WHERE user_id = $1
 `
 
@@ -249,12 +263,14 @@ func (q *Queries) GetTeacherByUserID(ctx context.Context, userID uuid.UUID) (Tea
 		&i.HouseID,
 		&i.EmploymentStatus,
 		&i.NicNumber,
+		&i.NameWithInitials,
+		&i.CallingName,
 	)
 	return i, err
 }
 
 const getTeacherByUserIDAndNIC = `-- name: GetTeacherByUserIDAndNIC :one
-SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number, name_with_initials, calling_name FROM teacher_profiles
 WHERE user_id = $1 AND nic_number = $2
 `
 
@@ -284,6 +300,8 @@ func (q *Queries) GetTeacherByUserIDAndNIC(ctx context.Context, arg GetTeacherBy
 		&i.HouseID,
 		&i.EmploymentStatus,
 		&i.NicNumber,
+		&i.NameWithInitials,
+		&i.CallingName,
 	)
 	return i, err
 }
@@ -385,7 +403,7 @@ func (q *Queries) ListTeacherWorkload(ctx context.Context, teacherID uuid.UUID) 
 }
 
 const listTeachers = `-- name: ListTeachers :many
-SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number, name_with_initials, calling_name FROM teacher_profiles
 ORDER BY full_name ASC
 `
 
@@ -413,6 +431,8 @@ func (q *Queries) ListTeachers(ctx context.Context) ([]TeacherProfile, error) {
 			&i.HouseID,
 			&i.EmploymentStatus,
 			&i.NicNumber,
+			&i.NameWithInitials,
+			&i.CallingName,
 		); err != nil {
 			return nil, err
 		}
@@ -425,7 +445,7 @@ func (q *Queries) ListTeachers(ctx context.Context) ([]TeacherProfile, error) {
 }
 
 const listTeachersByIDs = `-- name: ListTeachersByIDs :many
-SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number, name_with_initials, calling_name FROM teacher_profiles
 WHERE id = ANY($1::uuid[])
 `
 
@@ -456,6 +476,8 @@ func (q *Queries) ListTeachersByIDs(ctx context.Context, dollar_1 []uuid.UUID) (
 			&i.HouseID,
 			&i.EmploymentStatus,
 			&i.NicNumber,
+			&i.NameWithInitials,
+			&i.CallingName,
 		); err != nil {
 			return nil, err
 		}
@@ -469,7 +491,7 @@ func (q *Queries) ListTeachersByIDs(ctx context.Context, dollar_1 []uuid.UUID) (
 
 const listTeachersBySubject = `-- name: ListTeachersBySubject :many
 SELECT
-    tp.id, tp.user_id, tp.full_name, tp.employee_number, tp.joined_date, tp.phone, tp.created_at, tp.updated_at, tp.title, tp.gender, tp.is_active, tp.house_id, tp.employment_status, tp.nic_number
+    tp.id, tp.user_id, tp.full_name, tp.employee_number, tp.joined_date, tp.phone, tp.created_at, tp.updated_at, tp.title, tp.gender, tp.is_active, tp.house_id, tp.employment_status, tp.nic_number, tp.name_with_initials, tp.calling_name
 FROM teacher_profiles tp
 INNER JOIN teacher_subjects ts ON ts.teacher_id = tp.id
 WHERE ts.subject_id = $1
@@ -500,6 +522,8 @@ func (q *Queries) ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID
 			&i.HouseID,
 			&i.EmploymentStatus,
 			&i.NicNumber,
+			&i.NameWithInitials,
+			&i.CallingName,
 		); err != nil {
 			return nil, err
 		}
@@ -512,9 +536,9 @@ func (q *Queries) ListTeachersBySubject(ctx context.Context, subjectID uuid.UUID
 }
 
 const listTeachersPage = `-- name: ListTeachersPage :many
-SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number, COUNT(*) OVER () AS total
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number, name_with_initials, calling_name, COUNT(*) OVER () AS total
 FROM teacher_profiles
-WHERE ($1::text IS NULL OR full_name ILIKE '%' || $1::text || '%' OR employee_number ILIKE '%' || $1::text || '%')
+WHERE ($1::text IS NULL OR full_name ILIKE '%' || $1::text || '%' OR name_with_initials ILIKE '%' || $1::text || '%' OR calling_name ILIKE '%' || $1::text || '%' OR employee_number ILIKE '%' || $1::text || '%')
   AND ($2::text IS NULL OR employment_status = $2::text)
 ORDER BY
     -- Whitelisted by httpx.ParseSort; an empty key keeps the default name order.
@@ -554,6 +578,8 @@ type ListTeachersPageRow struct {
 	HouseID          pgtype.UUID        `json:"house_id"`
 	EmploymentStatus string             `json:"employment_status"`
 	NicNumber        string             `json:"nic_number"`
+	NameWithInitials string             `json:"name_with_initials"`
+	CallingName      string             `json:"calling_name"`
 	Total            int64              `json:"total"`
 }
 
@@ -591,6 +617,8 @@ func (q *Queries) ListTeachersPage(ctx context.Context, arg ListTeachersPagePara
 			&i.HouseID,
 			&i.EmploymentStatus,
 			&i.NicNumber,
+			&i.NameWithInitials,
+			&i.CallingName,
 			&i.Total,
 		); err != nil {
 			return nil, err
@@ -655,7 +683,7 @@ SET
     employment_status = $2,
     updated_at        = NOW()
 WHERE id = $1
-RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number
+RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number, name_with_initials, calling_name
 `
 
 type UpdateTeacherEmploymentStatusParams struct {
@@ -681,6 +709,8 @@ func (q *Queries) UpdateTeacherEmploymentStatus(ctx context.Context, arg UpdateT
 		&i.HouseID,
 		&i.EmploymentStatus,
 		&i.NicNumber,
+		&i.NameWithInitials,
+		&i.CallingName,
 	)
 	return i, err
 }
@@ -693,18 +723,22 @@ SET
     title      = $4,
     gender     = $5,
     nic_number = $6,
+    name_with_initials = $7,
+    calling_name = $8,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number
+RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number, name_with_initials, calling_name
 `
 
 type UpdateTeacherProfileParams struct {
-	ID        uuid.UUID   `json:"id"`
-	FullName  string      `json:"full_name"`
-	Phone     pgtype.Text `json:"phone"`
-	Title     pgtype.Text `json:"title"`
-	Gender    pgtype.Text `json:"gender"`
-	NicNumber string      `json:"nic_number"`
+	ID               uuid.UUID   `json:"id"`
+	FullName         string      `json:"full_name"`
+	Phone            pgtype.Text `json:"phone"`
+	Title            pgtype.Text `json:"title"`
+	Gender           pgtype.Text `json:"gender"`
+	NicNumber        string      `json:"nic_number"`
+	NameWithInitials string      `json:"name_with_initials"`
+	CallingName      string      `json:"calling_name"`
 }
 
 // employee_number is immutable once assigned (Phase 6.1) — not updatable here.
@@ -718,6 +752,8 @@ func (q *Queries) UpdateTeacherProfile(ctx context.Context, arg UpdateTeacherPro
 		arg.Title,
 		arg.Gender,
 		arg.NicNumber,
+		arg.NameWithInitials,
+		arg.CallingName,
 	)
 	var i TeacherProfile
 	err := row.Scan(
@@ -735,6 +771,8 @@ func (q *Queries) UpdateTeacherProfile(ctx context.Context, arg UpdateTeacherPro
 		&i.HouseID,
 		&i.EmploymentStatus,
 		&i.NicNumber,
+		&i.NameWithInitials,
+		&i.CallingName,
 	)
 	return i, err
 }

@@ -14,6 +14,7 @@ import AssignTeacherSubjectModal from "@/features/teachers/components/AssignTeac
 import FilterBar from "@/shared/ui/FilterBar";
 import SectionCard from "@/shared/ui/SectionCard";
 import Avatar from "@/shared/ui/Avatar";
+import { displayName } from "@/shared/lib/name";
 
 function TeacherSubjectRow({ teacher, allSubjects }: { teacher: Teacher; allSubjects: Subject[] }) {
   const { data: assignedSubjects, isLoading, isError } = useTeacherSubjects(teacher.id);
@@ -35,7 +36,7 @@ function TeacherSubjectRow({ teacher, allSubjects }: { teacher: Teacher; allSubj
       <td>
         <div className="os-flex os-items-center os-gap-2">
           <Avatar name={teacher.full_name} size="sm" />
-          <span className="os-fw-500">{teacher.full_name}</span>
+          <span className="os-fw-500" title={teacher.full_name}>{displayName(teacher)}</span>
         </div>
       </td>
       <td className="os-table__mono">{teacher.employee_number}</td>
@@ -87,7 +88,7 @@ function TeacherSubjectRow({ teacher, allSubjects }: { teacher: Teacher; allSubj
         title="Remove subject"
         description={
           <>
-            Remove <strong>{subjectToRemove?.name}</strong> from {teacher.full_name}&apos;s assigned subjects?
+            Remove <strong>{subjectToRemove?.name}</strong> from {displayName(teacher)}&apos;s assigned subjects?
           </>
         }
         confirmLabel="Remove"

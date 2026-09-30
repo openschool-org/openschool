@@ -227,6 +227,10 @@ export const si: Messages = {
   "parent.latestAverage": "නවතම සාමාන්‍යය",
   "parent.noData": "තවම දත්ත නැත",
   "parent.daysAttended": "දින {total} න් {attended}",
+  "parent.eyebrow": "භාරකරු සාරාංශය",
+  "parent.statChildren": "දරුවන්",
+  "parent.recentNotices": "මෑත දැනුම්දීම්",
+  "parent.noNotices": "තවම දැනුම්දීම් නැත.",
 
   "child.notFound": "දරුවා හමු නොවීය",
   "child.notLinked": "මෙම සිසුවා ඔබගේ ගිණුමට සම්බන්ධ කර නැත.",
