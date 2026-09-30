@@ -48,7 +48,7 @@ docker compose up -d
 # Backend - runs migrations automatically on startup
 cd backend
 go mod download
-cp .env.example .env   # fill in DB + identity-provider values (see THUNDERID.md), plus SMTP_* (see below)
+cp .env.example .env   # fill in DB + identity-provider values (see THUNDERID.md), plus mail settings (see below)
 go run ./cmd/api/main.go
 
 # Frontend
@@ -68,10 +68,28 @@ Open `http://localhost:5173`.
 | ThunderID console | https://localhost:8090/console |
 | PostgreSQL | localhost:5432 |
 
-**SMTP note:** self-service "Forgot password?" emails a reset link, which
-needs `SMTP_HOST`/`SMTP_PORT`/`SMTP_USERNAME`/`SMTP_PASSWORD`/`SMTP_FROM`
-set. Leave them blank for local dev - the link is logged to the backend
-console instead of sent, so the flow still works, just not via real email.
+**Email note:** password reset and account activation send email links.
+Set these in `backend/.env` (see `.env.example` and
+[ADR 0009](./adr/0009-transactional-email.md)):
+
+| Setting | Purpose |
+| --- | --- |
+| `MAIL_PROVIDER` | `resend`, `smtp` or `console`. Left empty, it picks Resend if `RESEND_API_KEY` is set, SMTP if `SMTP_HOST` is set, otherwise console. |
+| `RESEND_API_KEY` or `SMTP_*` | Credentials for the chosen provider. Resend also works over SMTP (`smtp.resend.com`, port 465, username `resend`). |
+| `MAIL_FROM` | Sender, e.g. `OpenSchool <no-reply@yourschool.lk>`. Must be on a domain you have verified with the provider. |
+| `MAIL_REPLY_TO` | Optional; defaults to the school email in Settings > General. |
+| `FRONTEND_URL` | The address used in email links. |
+| `MAIL_REDIRECT_TO` | Testing only: sends every email to one inbox with a note naming the real recipient. |
+
+For local development, leave the provider empty: links are written to the
+backend log instead. Without a verified domain, Resend only delivers to your
+own Resend account address, so set `MAIL_REDIRECT_TO` to that address while
+testing; the backend warns about this at startup. Production refuses to
+start with the console provider or with `MAIL_REDIRECT_TO` set. After
+starting, **Settings > Email** shows the active provider and sends a test.
+
+**Activation note:** set `ACTIVATION_CODE_KEY` (see `.env.example`) so unused
+activation codes can be reprinted. Without it, codes are shown only once.
 
 **Production note - TLS:** the backend speaks plain HTTP; it does not
 terminate TLS itself. Everything above is fine for local development, but a
@@ -85,7 +103,8 @@ backend's `.env` to that proxy's address so `ClientIP()` reads the real
 client IP instead of the proxy's.
 
 **Production note - secrets:** `backend/.env` holds `DB_PASSWORD`,
-`SMTP_PASSWORD` and `THUNDERID_CLIENT_SECRET`. Don't leave it world-readable
+`SMTP_PASSWORD` or `RESEND_API_KEY`, `ACTIVATION_CODE_KEY` and
+`THUNDERID_CLIENT_SECRET`. Don't leave it world-readable
 on the host - use Docker/systemd secrets or an equivalent secret store, and
 set the file mode to `600` if it must be a plain file. Never commit a real
 `.env`, and never log its contents. Rotate the SMTP and DB passwords
@@ -288,7 +307,16 @@ at the moment their record is created (Setup wizard for the first admin,
 differently, since a parent isn't a standalone record - they're a guardian
 attached to one or more students.
 
-**Registering a parent:**
+**Self-activation (recommended for many students and parents):** instead of
+creating logins one by one, turn on activation for students and/or parents
+in **Settings > Account activation**, generate codes (per class or for
+everyone without a login), and hand out the printed slips. Each person opens
+`/activate`, enters their code, index or NIC number and email, confirms the
+email and chooses a password. Parent activation needs a `parent` user type
+and role in ThunderID (see `THUNDERID.md`). See
+[ADR 0008](./adr/0008-self-service-account-activation.md).
+
+**Registering a parent by hand:**
 
 1. Sign in as admin → **Students** → open a student → **Guardians** tab.
 2. **Add Guardian** - name, relationship, phone, and an email. The email is
@@ -297,8 +325,8 @@ attached to one or more students.
    and temporary password → **Create Login**. This is what actually
    provisions their ThunderID account (type `parent`, role `parent`) and
    links it back to the guardian record.
-4. Hand the username/password to the parent directly - there's no
-   self-registration or invite email.
+4. Hand the username/password to the parent directly, or use
+   self-activation above instead.
 
 A guardian can be added to more than one student (siblings share a
 guardian) - add them from each sibling's **Guardians** tab rather than
@@ -315,9 +343,9 @@ on their token:
 | Role | How the account is created | What they see |
 | --- | --- | --- |
 | Admin | Setup wizard (first one only) | Full admin dashboard - everything in this guide, including sending notifications to anyone |
-| Teacher | **Teachers** page | Their own dashboard (today's classes, recent sessions, quick actions - role-badged by position, see [Roles & positions](./FEATURES.md#roles--positions) in the feature guide), classes, attendance marking, plus **My Timetable**, **Review Timetables** if they're a section head or above, and **Notifications** scoped to their own classes/grades/subjects |
-| Student | **Students** page | Their own profile, attendance history, term marks, (once published) a **Timetable** tab on their dashboard, and their **Notification Center** |
-| Parent | A student's **Guardians** tab, per above | A list of their linked children; click into one for that child's attendance, term marks, and (once published) a **Timetable** tab; plus their own **Notification Center** |
+| Teacher | **Teachers** page | Their own dashboard (today's attendance, recent sessions, quick actions - role-badged by position, see [Roles & positions](./FEATURES.md#roles--positions) in the feature guide), classes, attendance marking, plus **My Timetable**, **Review Timetables** if they're a section head or above, and **Notifications** scoped to their own classes/grades/subjects |
+| Student | **Students** page, or self-activation with a code | Their own profile, attendance history, term marks, (once published) a **Timetable** tab on their dashboard, and their **Notification Center** |
+| Parent | A student's **Guardians** tab, or self-activation with a code | An overview of their children with attendance and recent notices; click into one for that child's attendance, term marks, and (once published) a **Timetable** tab; plus their own **Notification Center** |
 
 Every role also gets the header bell / Notification Center - see
 [Sending notifications](#6-sending-notifications) above.
@@ -334,25 +362,31 @@ redo it, but the two pieces live in different systems:
   …) lives in Postgres. To reset it:
   ```sql
   TRUNCATE TABLE
-    academic_years, attendance_records, attendance_sessions, audit_logs,
-    class_students, class_subject_teachers, classes, classrooms,
-    grade_section_grades, grade_sections, grades, grade_subjects,
-    group_subjects, guardians, houses, job_runs, job_settings, levels,
-    mediums, non_academic_staff, notification_recipients, notifications,
-    password_reset_tokens, prefects, school, section_heads,
-    selection_groups, societies, society_members, staff_attendance_records,
-    stream_groups, streams, student_activities, student_awards,
-    student_disciplinary_records, student_enrollment_locks,
-    student_guardians, student_leadership_roles, student_profiles,
-    student_progress_reports, student_siblings, student_subject_enrollments,
-    student_subject_selections, subject_bucket_options, subject_buckets,
-    subject_period_requirements, subjects, teacher_availability,
-    teacher_positions, teacher_profiles, teacher_subjects, term_marks,
-    terms, timetable_entries, timetable_notifications, timetable_periods,
-    timetable_settings, timetable_status_history, timetables, users,
-    vice_principal_grade_scopes
+    academic_years, activation_codes, activation_email_tokens,
+    attendance_records, attendance_sessions, audit_logs, class_students,
+    class_subject_teachers, classes, classrooms, grade_section_grades,
+    grade_sections, grades, group_subjects, guardians, houses, job_runs,
+    job_settings, levels, mediums, non_academic_staff,
+    notification_recipients, notifications, password_reset_tokens,
+    pending_identity_erasures, prefects, promotion_policies, school,
+    section_heads, selection_groups, societies, society_members,
+    staff_attendance_records, stream_groups, streams,
+    student_activities, student_awards, student_disciplinary_records,
+    student_enrollment_locks, student_guardians, student_intakes,
+    student_leadership_roles, student_profiles,
+    student_progress_reports, student_siblings,
+    student_subject_enrollments, subject_period_requirements, subjects,
+    teacher_availability, teacher_positions, teacher_profiles,
+    teacher_subjects, term_marks, terms, timetable_entries,
+    timetable_option_block_classes, timetable_option_block_subjects,
+    timetable_option_blocks, timetable_periods, timetable_settings,
+    timetable_status_history, timetables, users,
+    vice_principal_grade_scopes, workflow_runs
   RESTART IDENTITY CASCADE;
   ```
+  `activation_settings` is left out on purpose: it holds one settings row
+  created by a migration, and activation stops working without it.
+
   This does **not** delete the corresponding identities (student/teacher/
   admin accounts) on ThunderID - those are a separate system and need to be
   removed there too if you want a truly clean slate.

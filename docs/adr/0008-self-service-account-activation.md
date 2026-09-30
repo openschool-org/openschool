@@ -26,6 +26,12 @@ children's data.
   admin can reopen a batch's **unused** codes as class PDFs or CSV. Used,
   cancelled and expired codes are never shown, and every reopening is
   audit-logged. Without the key, codes are hash-only and shown once.
+- The code's own record decides whether it is a student or parent
+  activation. The "I am a" choice on the form only changes the labels, so
+  picking the wrong one does not silently fail a real match.
+- If the details match but the email can't be sent, the person is told to
+  try again. This does reveal that the details matched, but only to someone
+  who already holds the code.
 - Five wrong identifiers lock a code for an hour. Start is rate limited per
   IP, per code and per identifier. Responses never say which part failed.
 - The code is claimed in the database before ThunderID is called, so two

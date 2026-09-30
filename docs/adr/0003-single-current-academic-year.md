@@ -37,4 +37,4 @@ deployment rather than a multi-tenant model.
   permits. Creating a year as current goes through the same toggle.
 - **Promotion's preview-then-commit flow gets a "draft" concept for
   free.** This was a deliberate reuse, not an oversight - see
-  `docs/plan.md` Phase 5 for the original reasoning.
+  [`FEATURES.md`'s promotion section](../FEATURES.md#promotion--class-reassignment).

@@ -53,7 +53,7 @@ flowchart TB
             subgraph SECURITY["Cross-Cutting Middleware"]
                 MW["CORS · Security Headers<br/>Body Size Limit · Rate Limiting"]
                 AUTH["AuthMiddleware<br/>JWT Validation against cached JWKS"]
-                RBAC["RequireRole<br/>RequireStudentAccess"]
+                RBAC["RequireRole · RequireStudentAccess<br/>RequireClassAccess"]
             end
 
             subgraph LAYERS["Capability-Owned Feature Module"]
@@ -71,7 +71,7 @@ flowchart TB
                 IDENTITY["Identity Provider Interface"]
                 THUNDER_CLIENT["ThunderID Client"]
                 DATABASE["Database Package<br/>pgxpool · Migrations"]
-                MAILER["Mailer Client<br/>Password Reset Links (direct SMTP)"]
+                MAILER["Mailer + Email Templates<br/>Reset and Activation Emails (Resend / SMTP)"]
                 JOBS["In-Process Cron Scheduler<br/>Maintenance and Automation"]
             end
 
@@ -179,7 +179,19 @@ Cross-cutting packages:
   separate `PerAccountRateLimit` (per-authenticated-subject token bucket,
   applied only inside the `protected` route group, on top of the per-IP
   one), `BodySizeLimit` (caps every request body at 5 MiB via
-  `http.MaxBytesReader`, since Gin applies no cap by default), `SecurityHeaders`.
+  `http.MaxBytesReader`, since Gin applies no cap by default), `SecurityHeaders`,
+  `PerJSONFieldRateLimit` (per-code and per-identifier limits on reset and
+  activation), `RequestID`, `RequestTimeout`, structured request logging,
+  `CacheReference` (ETag caching of reference data) and Prometheus metrics.
+- **`RequireClassAccess` / `RequireStudentWorkAccess`** - admins pass; a
+  teacher passes only for a class they teach (class or subject teacher) or
+  lead (section head, vice principal scope, principal), or a student in
+  such a class. The rule is `ports.ClassAccess`, implemented once by the
+  leadership module and used by rosters, enrolment and portfolio writes.
+- **`internal/apierror/`** - `RespondInternal` logs the real error with a
+  request id and returns a generic 500; `Respond` maps not-found,
+  duplicate and in-use database errors to safe messages and passes
+  hand-written business messages through as 400.
 - **`internal/idp/`** - the provider-neutral seam
   (`Provider` interface: `CreateUser`/`UpdateUser`/`DeleteUser`/`AssignRole`)
   that `internal/thunderid` implements. See
@@ -190,15 +202,12 @@ Cross-cutting packages:
 - **`internal/modules/automation/`** - an in-process, cron-scheduled (`robfig/cron/v3`)
   background job runner, started/stopped alongside the HTTP server from
   `main.go` (`scheduler.Start()`/`defer scheduler.Stop()`) - not a separate
-  worker process or external queue. See [§2.2](#22-background-jobs) below.
-- **`internal/mailer/`** - sends outbound email (currently only
-  password-reset links) via direct SMTP (STARTTLS or implicit TLS,
-  TLS 1.2+, 15s send deadline); if `SMTP_HOST` is unset it logs the
-  message instead of failing, so local dev needs no mail server - a real
-  deployment must configure `SMTP_*` for reset links to actually be
-  delivered. See
-  [`adr/0005-hand-rolled-password-reset.md`](./adr/0005-hand-rolled-password-reset.md)
-  and [§5.3](#53-outbound-mail-smtp).
+  worker process or external queue. See [§2.2](#22-background-jobs-agents) below.
+- **`internal/mailer/`** and **`internal/emails/`** - account emails
+  (password reset and activation). `mailer` delivers through Resend,
+  SMTP or, in development, the server log; `emails` renders the branded
+  templates. Production refuses the console provider. See
+  [ADR 0009](./adr/0009-transactional-email.md) and [§5.3](#53-outbound-mail).
 - **`internal/database/`** - DSN construction, pool setup, and the
   `golang-migrate` runner invoked automatically on startup.
 - **`internal/config/`** - `.env` loading via `godotenv`.
@@ -207,7 +216,7 @@ Cross-cutting packages:
 annotated for `sqlc`; running `sqlc generate` regenerates
 `backend/db/sqlc/`, which is never hand-edited. Schema is defined
 entirely by the versioned migrations in `backend/db/migrations/`
-(currently 40), applied automatically on every backend startup.
+(currently 54), applied automatically on every backend startup.
 
 ### 2.2 Background jobs (agents)
 
@@ -228,8 +237,10 @@ agent (backup) is the one exception that can't be disabled.
 | `structural_integrity_agent` | daily 03:00 | current-academic-year invariant, student gender vs. school type, empty grades/streams, unclassed students |
 | `people_compliance_agent` | daily 05:00 | inactive teachers still assigned, zero-guardian students, teacher/student onboarding (severity rises with age) |
 | `academic_delivery_agent` | weekdays 12:00 | missing/inconsistent attendance sessions, stale sessions, term-marks deadline and pace-behind-schedule |
-| `security_audit_agent` | hourly | per-actor statistical audit-log anomaly detection, off-hours activity, expired reset-token sweep |
+| `security_audit_agent` | hourly | per-actor statistical audit-log anomaly detection, off-hours activity, expired reset and activation link sweep |
 | `system_health_agent` | daily 02:00 | nightly `pg_dump`, migration-drift check, backup retention pruning, backup size-anomaly detection |
+| `data_retention_agent` | daily 03:00 | anonymises students' personal data a set number of years after they leave, keeping marks and attendance attributable |
+| `identity_erasure_retry_agent` | hourly | retries identity cleanup (local user scrub, identity-provider deletion) that failed after a profile was anonymised |
 
 ```mermaid
 flowchart TD
@@ -241,6 +252,8 @@ flowchart TD
     AD["Academic Delivery Agent"]
     SA["Security Audit Agent"]
     SH["System Health Agent"]
+    DR["Data Retention Agent"]
+    IE["Identity Erasure Retry Agent"]
 
     DB[("PostgreSQL")]
     RUNS[("job_settings<br/>job_runs")]
@@ -254,6 +267,8 @@ flowchart TD
     SCHED --> AD
     SCHED --> SA
     SCHED --> SH
+    SCHED --> DR
+    SCHED --> IE
 
     SI -- "concurrent checks" --> DB
     PC -- "concurrent checks" --> DB
@@ -261,6 +276,8 @@ flowchart TD
     SA -- "concurrent checks" --> DB
     SH -- "pg_dump + drift check" --> DB
     SH -- "prune + size-anomaly check" --> DISK
+    DR -- "anonymise left students" --> DB
+    IE -- "retry identity cleanup" --> DB
 
     SCHED -- "run history" --> RUNS
     SI -- "per-check admin alerts" --> NOTIFY
@@ -491,6 +508,16 @@ and account activated. Notifications stay in-app ([ADR 0004](./adr/0004-in-app-o
   skips TLS certificate verification against the JWKS endpoint, to allow a
   self-signed local ThunderID instance - this must not be the value in a
   production `APP_ENV`.
+- Teachers reach a class or its students only through `RequireClassAccess`
+  / `RequireStudentWorkAccess` (see §2): they must teach the class or lead
+  its grade.
+- NIC numbers are initial passwords, so teacher and guardian reads blank
+  them for everyone but admins.
+- Database error details never reach the client (`apierror`); each failure
+  is logged with a request id the client can quote.
+- Account activation codes are hash-only (optionally encrypted for
+  reprinting), single use, rate limited and locked after repeated wrong
+  identifiers - see [ADR 0008](./adr/0008-self-service-account-activation.md).
 - `RequireStudentAccess` is a third authorization primitive beyond plain
   role checks, used where a route must additionally confirm the caller
   owns or is linked to the specific student in the URL (not just holds a
@@ -535,8 +562,9 @@ last update.
 
 ### Maintainability
 
-- Consistent layered architecture (routes → handlers → services →
-  repositories) across all ~30 backend feature modules.
+- Each backend module keeps the same shape (routes, use cases,
+  `repository.go` adapter) and an architecture test enforces that only
+  repository files import `db/sqlc`.
 - Generated code (`db/sqlc/`, Swagger docs) is never hand-edited - always
   regenerated from its source of truth.
 - One consistent CRUD-page template across the frontend admin portal's

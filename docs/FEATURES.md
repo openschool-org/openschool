@@ -1,8 +1,8 @@
 # OpenSchool - Feature Guide
 
 This is the current, as-built feature list - what exists in the codebase today,
-organized by module. For the history of how it got here (phased roadmap,
-decisions, and rationale), see [`plan.md`](./plan.md). For how to stand up an
+organized by module. For the reasoning behind key decisions, see the
+[ADRs](./adr/), and for release history the [changelog](../CHANGELOG.md). For how to stand up an
 instance and walk through these features hands-on, see [`SETUP.md`](./SETUP.md).
 
 Every feature below is scoped by **academic year**: almost all academic data
@@ -24,11 +24,11 @@ exactly one base role, carried in the `roles` claim of their JWT:
 | --- | --- |
 | `admin` | Registered once via the `/setup` wizard on a fresh instance |
 | `teacher` | Created from the admin's **Teachers** page |
-| `student` | Created from the admin's **Students** page |
-| `parent` | Provisioned from a student's **Guardians** tab ("Set Up Login") |
+| `student` | Created from the admin's **Students** page, or self-activated with a school code |
+| `parent` | Provisioned from a student's **Guardians** tab ("Set Up Login"), or self-activated with a school code |
 
 On top of the base `teacher` role, an **in-app position layer** (not backed
-by ThunderID - see the rationale in `plan.md` §"Role-hierarchy decision")
+by ThunderID - see [ADR 0002](adr/0002-in-app-position-layer.md))
 adds a hierarchy used for notification reach and dashboard framing:
 
 `Principal → Vice Principal → Section Head → Class Teacher → Subject Teacher → Teacher`
@@ -57,6 +57,22 @@ target when sending a notification (§ Notifications), and what their own
 dashboard shows them (a `RoleBadge` and, for Section Head and above, a
 "Leadership" panel).
 
+**What a teacher can reach.** The server lets a teacher open a class roster,
+enrol or remove students, and write a student's portfolio (progress reports,
+activities, leadership roles, awards, disciplinary records) only for classes
+they teach or lead:
+
+| Position | Classes they can reach |
+| --- | --- |
+| Class Teacher | Their own class |
+| Subject Teacher | Every class they teach a subject in, one subject or several |
+| Section Head | Every class in the grades they head |
+| Vice Principal | Every class in their scoped grades, or the whole school |
+| Principal | The whole school |
+
+Admins can reach everything. NIC numbers are the first password for
+teachers and guardians, so only admins see them.
+
 ---
 
 ## Identity, accounts & password lifecycle
@@ -71,7 +87,10 @@ dashboard shows them (a `RoleBadge` and, for Section Head and above, a
   person opens `/activate`, enters the code, their index or NIC number and
   an email, confirms the email through a 30-minute link and picks their own
   password. Off by default, with a switch per role and an optional date
-  window. See [ADR 0008](adr/0008-self-service-account-activation.md).
+  window. The code decides whether it is a student or parent activation,
+  so choosing the wrong "I am a" option does not block a real match. If the
+  email can't be sent, the page says so and asks the person to try again.
+  See [ADR 0008](adr/0008-self-service-account-activation.md).
 - **Class-wise activation code sheets** - each generated batch is split by
   class (grade order, then name). Per class it prints a hand-out list for
   the class teacher (logo, school name, class, class teacher, names, index
@@ -96,9 +115,11 @@ dashboard shows them (a `RoleBadge` and, for Section Head and above, a
   identifies the user by login email plus their on-file secret (NIC for
   teacher/parent, index number for student - admins are excluded, since they
   have no secondary secret on file), then emails a short-lived, single-use
-  reset link (15 minutes, token stored only as a hash) via SMTP. Requires
-  `SMTP_*` env vars set - without them, the link is only logged server-side,
-  not actually delivered. A signed-in user can also change their password at
+  reset link (15 minutes, token stored only as a hash) through the
+  configured mail provider. The new password is set through ThunderID's
+  credential update. Without a mail provider the link is only logged
+  server-side, and production refuses to start that way. A signed-in user
+  can also change their password at
   any time from the header menu. A "password changed" email follows every
   change or reset.
 - **Account emails** - branded with the OpenSchool logo and the school's
@@ -128,7 +149,8 @@ dashboard shows them (a `RoleBadge` and, for Section Head and above, a
   `boys`/`girls`.
 - **Academic years** - create/list years, and flip exactly one to "current"
   (`SetCurrentAcademicYear`), which is what almost every other module reads
-  as its implicit scope.
+  as its implicit scope. The database allows only one current year and one
+  current term; creating a year as current switches the old one off.
 - **Houses** - named groups (with an editable color) that students and staff
   are auto-assigned into using a least-populated-house-with-random-tiebreak
   balancing query, so houses self-balance without admin-maintained
@@ -165,6 +187,10 @@ dashboard shows them (a `RoleBadge` and, for Section Head and above, a
   an optional calling name. Lists, registers and printouts show the name
   with initials; search matches all three. Names are never split into a
   guessed first and last name.
+- **Class labels** - a class whose name already starts with its grade number
+  shows as "13-M1", not "Grade 13 - 13-M1". Grades and classes also get a
+  round avatar coloured by school section: Primary (1-5) teal, Junior (6-9)
+  blue, O/L (10-11) purple, A/L (12-13) magenta.
 - **Bulk student import** - Students > Import students takes a CSV
   (class, index number, full name, optional name with initials and calling
   name, gender, contacts, guardian) and places each student straight into
@@ -191,8 +217,9 @@ dashboard shows them (a `RoleBadge` and, for Section Head and above, a
   from a shared sequence with non-academic staff), employment status
   (active/resigned/transferred), house, and position (§ Roles & positions).
 - **Guardians directory** - a searchable, dedicated directory (not just
-  inline on a student page) with notification history and portal-login
-  status per guardian; delete is blocked while a guardian is still linked to
+  inline on a student page) with NIC number, notification history and
+  portal-login status per guardian, searchable by name, phone, email or
+  NIC; delete is blocked while a guardian is still linked to
   any student, since unlinking silently from every child would be
   surprising.
 - **Non-academic staff** - Lab Assistant, Librarian, Office Staff,
@@ -220,7 +247,10 @@ dashboard shows them (a `RoleBadge` and, for Section Head and above, a
   present/absent/late/excused records. Sessions lock 24 hours after
   creation; admins can override a lock, and any post-lock edit/delete is
   recorded in the audit log. A newly-marked `absent` record triggers an
-  in-app notification to that student's guardians.
+  in-app notification to that student's guardians. Absent, late and excused
+  marks take an optional note. Clicking a selected status again, or Clear,
+  removes the mark when saved. Session lists show present, absent and late
+  counts.
 - **Staff attendance** - one record per staff member per day
   (present/late/absent/leave - a separate status set from student
   attendance), covering both teachers and non-academic staff, with a
@@ -253,9 +283,54 @@ dashboard shows them (a `RoleBadge` and, for Section Head and above, a
   table), leadership roles, awards, and disciplinary records - each a
   simple CRUD tab on the student detail page.
 
+## Year-end workflows
+
+The **Year-end** page (`/year-end`) moves the school from one academic year
+to the next through guided workflows. Each workflow is declared by the
+backend (`internal/modules/workflows`) with its steps, inputs and checks,
+so the frontend shows whatever the backend offers.
+
+Every workflow follows the same path:
+
+1. **Inputs** - the admin fills in a short form (for example the year to
+   copy from, or a CSV).
+2. **Checks** - the backend lists what is ready and what is missing. A
+   blocking check links to the page that fixes it.
+3. **Proposal** - the workflow works out what it would change and shows it
+   as editable tables. Nothing is saved yet. The admin can edit rows, tick
+   or untick items, or discard the proposal.
+4. **Apply** - the changes are written in one transaction, and a snapshot is
+   kept.
+5. **Revert** - an applied run can be undone from its snapshot, until later
+   work depends on it (for example marks, attendance or a submitted
+   timetable).
+
+The same inputs always give the same result. No workflow calls an AI or any
+outside service. Each run's steps, timings and outcome are recorded.
+
+| Order | Workflow | What it does |
+| --- | --- | --- |
+| 1 | **Year rollover** | Creates next year with the same terms, classes, homerooms, capacities and timetable setup. Students are not moved here. |
+| 2 | **Leavers** | Marks students who are leaving as left, with a leaving date. The final grade is ticked by default. |
+| 3 | **Subject choices** | Records next year's subject choices for one curriculum level (the O/L baskets or one A/L stream), entered in the table or imported from paper forms as a CSV. Each group's rules are checked before saving. |
+| 4 | **Intake** | Imports new students and guardians from a CSV (grade 6 scholarship, grade 10 or A/L intake). Duplicates are caught by index number and guardian NIC. |
+| 5 | **Promotion and class formation** | Places every student in next year's class by the rule for their grade: keep the section, reshuffle, group by subject choice, or by A/L stream. New admissions are placed too, and full grades get extra sections. |
+| 6 | **Teacher allocation** | Assigns a qualified teacher to every class and subject, keeping last year's teacher with the class where possible and no one over the weekly period limit. Also suggests form teachers. |
+| 7 | **Timetable** | Checks the timetable setup, runs basket and A/L option subjects as option blocks at the same period across classes, and generates draft timetables for whole grade sections. Drafts then go to section-head review. |
+| 8 | **Go live** | Makes the new year and its first term current, so every page switches to it, and sends one notice to the school. |
+
+A setup tool, **Import students**, uses the same engine outside the year-end
+cycle: it adds many students and guardians at once into current classes,
+with a preview first and undo afterwards.
+
+The workflows are also listed on **Settings > Automation**, with their steps
+and last run. Unlike the background agents, they run only when an admin
+applies them.
+
 ## Promotion & class reassignment
 
-A preview-then-commit flow, run once per source→target academic year pair:
+The manual promotion page (`/promotion`) remains for one-off moves outside
+the year-end workflows. A preview-then-commit flow, run once per source→target academic year pair:
 
 1. **Preview** computes each actively-enrolled student's next grade (by
    grade sort order) and a non-binding same-name class-carryover suggestion
@@ -298,7 +373,7 @@ either way.
 |---|------|-------|-------|
 | 1 | **Timetable Settings** | `/timetable-settings` | The school's default daily schedule template (start/end time, period count, period/interval duration) for the current academic year - used only to auto-generate a *starting* period grid, never read directly when scheduling. |
 | 2 | **Grade Sections** | `/timetable-settings` (Grade Interval Times tab) / `/grade-sections` | Named groups of grades that share one period grid and one Section Head reviewer (e.g. Primary, Junior Secondary, Senior Secondary, A/L). A section's grid (`timetable_periods`) can be regenerated from Timetable Settings and hand-edited afterward - rows are either a `period` (with a `period_number`) or an `interval`/break, ordered by `sort_order`. The day dimension isn't in the grid at all; it lives on each timetable entry (`day_of_week` 1–5, Mon–Fri). |
-| 3 | **Classrooms & Facilities** | `/classrooms` | Every physical room. `room_type` is `regular` (a class's homeroom), `lab` (tagged to exactly one `subject_id` - the auto-generator only ever sends a subject's lab periods to a lab tagged to *that* subject), or `eca` (not subject-tied). School Setup's optional "Rooms & Facilities" step can bulk-create common presets (Library, Music Room, IT Room, Science Lab, Auditorium) as `eca` rooms at setup time - subjects don't exist yet at that point, so a preset like "IT Room" is re-typed into a proper subject-tagged Lab later, once Subjects are set up. |
+| 3 | **Resources & facilities** | `/resources` | Every physical room. `room_type` is `regular` (a class's homeroom), `lab` (tagged to exactly one `subject_id` - the auto-generator only ever sends a subject's lab periods to a lab tagged to *that* subject), or `eca` (not subject-tied). School Setup's optional "Rooms & Facilities" step can bulk-create common presets (Library, Music Room, IT Room, Science Lab, Auditorium) as `eca` rooms at setup time - subjects don't exist yet at that point, so a preset like "IT Room" is re-typed into a proper subject-tagged Lab later, once Subjects are set up. |
 | 4 | **Class → Home Classroom** | `/classes` (Add/Edit Class) | Each `Class` (e.g. "10-A") can point at one `regular` classroom as its fixed homeroom (`classes.home_classroom_id`) - this is what "students don't move" means concretely. Adding a class auto-suggests a `regular` classroom whose name exactly matches the class name (the common convention - class "13-M1" sits in room "13-M1"); if none exists, one is created automatically on save. An admin can still pick a different room or a different existing one at any time. |
 | 5 | **Subject Period Requirements** | `/subject-requirements` | Per grade, per subject: `periods_per_week`, how many of those must be in a matching Lab (`lab_periods_per_week`), and how many should run as double-period blocks (`double_period_blocks` - a *count of 2-period pairs*, capped at `⌊periods_per_week / 2⌋`, not a flag). Validated against before a timetable can be submitted for review. |
 | 6 | **Teacher Availability** | per-teacher | Which day/period slots a teacher is unavailable (`teacher_availability`) - absence of a row means available. Checked both by the manual editor's Validate action and by the auto-generator. |
@@ -471,9 +546,9 @@ readable admin-only at `/settings` → Audit Log.
 
 ## Automation
 
-Five background agents (`internal/modules/automation`) run scheduled checks that keep
+Seven background agents (`internal/modules/automation`) run scheduled checks that keep
 the school's data healthy - no user-facing feature depends on them, so any
-can be disabled from `/automation` (admin-only) except System Health.
+can be disabled from **Settings > Automation** (admin-only) except System Health.
 Every check is plain SQL and arithmetic (no AI/LLM, no external service),
 runs on its own cron schedule via an in-process scheduler, and notifies
 admins with a severity (`normal`/`important`/`urgent`) when something
@@ -485,14 +560,14 @@ five-check agent takes about as long as its slowest check, not the sum.
 | **Structural Integrity** | daily 03:00 | Current-academic-year invariant, student gender vs. school type, empty grades/streams, unclassed students |
 | **People Compliance** | daily 05:00 | Inactive teachers still assigned, students with no guardian, teacher/student accounts stuck onboarding (severity rises with age) |
 | **Academic Delivery** | weekdays 12:00 | Missing or inconsistent attendance sessions, stale incomplete sessions, term-marks deadline and pace-behind-schedule |
-| **Security Audit** | hourly | Statistical audit-log anomaly detection (per-actor baseline, not one fixed number), off-hours activity, expired password-reset-token sweep |
+| **Security Audit** | hourly | Statistical audit-log anomaly detection (per-actor baseline, not one fixed number), off-hours activity, sweep of expired password-reset and activation links |
 | **System Health** | daily 02:00 | Nightly `pg_dump`, migration-drift check, backup retention pruning, backup size-anomaly detection - the one agent that **cannot be disabled** |
+| **Data Retention** | daily 03:00 | Anonymises students' personal data a set number of years after they leave, keeping marks and attendance attributable |
+| **Identity Erasure Retry** | hourly | Retries identity cleanup (local user scrub, identity-provider account deletion) that failed after a profile was anonymised |
 
-The Automation page also lists the **year-end workflows** (Year rollover,
-Leavers, Intake, Promotion and class formation, Teacher allocation,
-Timetable, Go live, in that order) and the **setup tools** (Import
-students). These run only when an admin proposes and applies them, so
-they have no schedule or switch.
+The Automation tab also lists the **year-end workflows** and the **setup
+tools** (§ Year-end workflows). These run only when an admin proposes and
+applies them, so they have no schedule or switch.
 
 Findings go out as in-app notifications to every admin. Where a finding is
 relevant to a specific admin page (e.g. no-guardian students on the
@@ -508,9 +583,9 @@ by the `roles` claim on their token (never a separate URL per role):
 | Role | Landing experience |
 | --- | --- |
 | **Admin** | Full dashboard: everything above |
-| **Teacher** | Own dashboard (today's classes, recent sessions, quick actions, rank badge), classes, attendance marking, My Timetable, Review Timetables (if Section Head+), Notifications scoped to their own classes/grades/subjects |
+| **Teacher** | Own dashboard (today's attendance with progress, stat tiles, recent sessions with present/absent/late, quick actions, rank badge), classes with class and qualified subjects, attendance marking, My Timetable, Review Timetables (if Section Head+), Notifications scoped to their own classes/grades/subjects |
 | **Student** | Own profile, attendance history, term marks, timetable (once published), Notification Center |
-| **Parent** | List of linked children; per child, attendance/marks/timetable; own Notification Center |
+| **Parent** | Overview with attendance this month across children, each child's attendance and latest average, and recent notices; per child, attendance/marks/timetable; own Notification Center |
 
 A parent or student can only ever see their own (or their own child's) data
 - enforced server-side.
@@ -521,7 +596,11 @@ A parent or student can only ever see their own (or their own child's) data
 
 - **RBAC** - Gin route groups gated by `RequireRole`, checked against the
   JWT's `roles` claim; teacher-side actions are further scoped by the
-  position/assignment checks described above rather than by role alone.
+  position/assignment checks described above (`RequireClassAccess`) rather
+  than by role alone.
+- **Error responses** - database error details never reach the browser;
+  known cases get a plain message and anything else a generic error with a
+  request id for the logs.
 - **Rate limiting** - a per-client-IP token-bucket limiter applies API-wide
   (default 30 rps, burst 60, tunable via env), plus a matching per-account
   limiter for signed-in requests, on top of a stricter limiter on the

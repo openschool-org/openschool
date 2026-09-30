@@ -132,12 +132,12 @@ Core entities, enough to orient yourself:
 - `User` - accounts with roles: `admin`, `teacher`, `student`, `parent`
 - `TeacherProfile` / `StudentProfile` / `Guardian` - extended profile tables linked to `User`
 - `School` - single-row table for the instance's school info
-- `AcademicYear` - scopes almost all academic data via `academic_year_id` FKs; only one row should have `is_current = true` (enforced at app level, not a DB constraint - see [`docs/adr/0003-single-current-academic-year.md`](docs/adr/0003-single-current-academic-year.md))
+- `AcademicYear` - scopes almost all academic data via `academic_year_id` FKs; only one row may have `is_current = true` (enforced by a database constraint since migration 000054 - see [`docs/adr/0003-single-current-academic-year.md`](docs/adr/0003-single-current-academic-year.md))
 - `Grade` / `Class` / `Stream` / `StreamGroup` / `Medium` - school structure
-- `Subject` / `SubjectBucket` - curriculum; buckets group optional subject choices per grade
+- `Subject` / `Level` / `SelectionGroup` - curriculum; selection groups hold the optional subject choices for a level
 - `AttendanceSession` / `AttendanceRecord` - attendance tracking per class session
 
-The schema has grown well beyond this (40 migrations, ~50 tables - also
+The schema has grown well beyond this (54 migrations, ~67 tables - also
 covering timetable, notifications, prefects, staff/positions, student
 portfolio, and the audit log). Don't hand-maintain a full list here - see
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#4-data-model) for the
