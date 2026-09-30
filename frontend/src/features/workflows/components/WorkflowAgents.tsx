@@ -31,7 +31,7 @@ export default function WorkflowAgents() {
         <div key={w.key} className={`os-flex os-items-start os-justify-between os-gap-6 os-py-4 os-px-6 os-wrap ${i < catalog.length - 1 ? "os-border-b" : ""}`}>
           <div className="os-flex-1 os-min-w-20">
             <div className="os-flex os-items-center os-gap-2h os-wrap">
-              <span className="os-fw-600 os-text-md">{w.order}. {w.title}</span>
+              <span className="os-fw-600 os-text-md">{w.order > 0 ? `${w.order}. ` : ""}{w.title}</span>
               <Tag type="purple" size="sm">On request</Tag>
               {w.last_run && <Tag type={RUN_STATE_TAG[w.last_run.state].type} size="sm">{RUN_STATE_TAG[w.last_run.state].label}</Tag>}
             </div>

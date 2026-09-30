@@ -88,7 +88,11 @@ dashboard shows them (a `RoleBadge` and, for Section Head and above, a
   reset link (15 minutes, token stored only as a hash) via SMTP. Requires
   `SMTP_*` env vars set - without them, the link is only logged server-side,
   not actually delivered. A signed-in user can also change their password at
-  any time from the header menu.
+  any time from the header menu. A "password changed" email follows every
+  change or reset.
+- **Account emails** - branded with the OpenSchool logo and the school's
+  name and contacts, in HTML and plain text. Settings > Email shows the
+  active provider, previews each email and sends a test to the admin.
 - **Orphaned-identity handling** - if provisioning a ThunderID account
   succeeds but the local Postgres write fails (or vice versa), a
   compensating rollback attempts to delete the partially-created side. This

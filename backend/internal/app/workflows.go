@@ -17,6 +17,7 @@ func registerWorkflows(groups HTTPGroups, pool *pgxpool.Pool, shared sharedServi
 		workflowsmodule.TeacherAllocation{},
 		workflowsmodule.Timetable{},
 		workflowsmodule.NewGoLive(shared.notifications),
+		workflowsmodule.StudentImport{},
 	})
 	workflowsmodule.RegisterRoutes(groups.Admin, engine)
 }

@@ -91,9 +91,17 @@ type GenerateRequest struct {
 
 // IssuedCode is one row of the printable sheet; the plain code is only ever returned here.
 type IssuedCode struct {
-	Name   string `json:"name"`
+	Name string `json:"name"`
+	// Detail is the children's names for a parent code, empty for a student.
 	Detail string `json:"detail"`
 	Code   string `json:"code"`
+	// Index is the student's index number, for the class teacher's hand-out list; never printed on a slip.
+	Index      string `json:"index_number,omitempty"`
+	ClassName  string `json:"class_name"`
+	GradeName  string `json:"grade_name"`
+	GradeOrder int    `json:"grade_order"`
+	// FormTeacher heads the class hand-out list, so the sheet reaches the right person.
+	FormTeacher string `json:"form_teacher"`
 }
 
 // GenerateResponse carries the new batch; codes cannot be shown again later.
@@ -126,11 +134,16 @@ type codeRecord struct {
 	LockedUntil *time.Time
 }
 
-// target is a record that can receive a code.
+// target is a record that can receive a code, with the class its sheet is filed under.
 type target struct {
-	ID     uuid.UUID
-	Name   string
-	Detail string
+	ID          uuid.UUID
+	Name        string
+	Detail      string
+	Index       string
+	ClassName   string
+	GradeName   string
+	GradeOrder  int
+	FormTeacher string
 }
 
 // newCode is one hashed code ready to insert.

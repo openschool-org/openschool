@@ -166,7 +166,10 @@ func (r *Repository) targets(ctx context.Context, role string, classID, recordID
 		}
 		out := make([]target, len(rows))
 		for i, row := range rows {
-			out[i] = target{ID: row.ID, Name: row.FullName, Detail: row.ClassName}
+			out[i] = target{
+				ID: row.ID, Name: row.FullName, Index: row.IndexNumber,
+				ClassName: row.ClassName, GradeName: row.GradeName, GradeOrder: int(row.GradeOrder), FormTeacher: row.FormTeacher,
+			}
 		}
 		return out, nil
 	}
@@ -176,7 +179,10 @@ func (r *Repository) targets(ctx context.Context, role string, classID, recordID
 	}
 	out := make([]target, len(rows))
 	for i, row := range rows {
-		out[i] = target{ID: row.ID, Name: row.FullName, Detail: row.Children}
+		out[i] = target{
+			ID: row.ID, Name: row.FullName, Detail: row.Children,
+			ClassName: row.ClassName, GradeName: row.GradeName, GradeOrder: int(row.GradeOrder), FormTeacher: row.FormTeacher,
+		}
 	}
 	return out, nil
 }

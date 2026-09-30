@@ -13,14 +13,20 @@ WHERE id
 RETURNING *;
 
 -- name: ActivationStudentTargets :many
--- Active students with no login, optionally narrowed to one current-year class or one student.
-SELECT sp.id, sp.full_name, COALESCE(cur.name, '')::text AS class_name
+-- Active students with no login, with their current class for class-wise code sheets.
+SELECT sp.id, sp.full_name, sp.index_number,
+       COALESCE(cur.name, '')::text         AS class_name,
+       COALESCE(cur.grade_name, '')::text   AS grade_name,
+       COALESCE(cur.grade_order, 9999)::int AS grade_order,
+       COALESCE(cur.form_teacher, '')::text AS form_teacher
 FROM student_profiles sp
 LEFT JOIN LATERAL (
-    SELECT c.id, c.name
+    SELECT c.id, c.name, g.name AS grade_name, g.sort_order AS grade_order, tp.full_name AS form_teacher
     FROM class_students cs
-    JOIN classes c         ON c.id = cs.class_id
-    JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current
+    JOIN classes c              ON c.id = cs.class_id
+    JOIN academic_years ay      ON ay.id = c.academic_year_id AND ay.is_current
+    JOIN grades g               ON g.id = c.grade_id
+    LEFT JOIN teacher_profiles tp ON tp.id = c.form_teacher_id
     WHERE cs.student_id = sp.id
     LIMIT 1
 ) cur ON TRUE
@@ -29,25 +35,42 @@ WHERE sp.user_id IS NULL
   AND sp.erased_at IS NULL
   AND (sqlc.narg('class_id')::uuid IS NULL OR cur.id = sqlc.narg('class_id')::uuid)
   AND (sqlc.narg('student_id')::uuid IS NULL OR sp.id = sqlc.narg('student_id')::uuid)
-ORDER BY cur.name NULLS LAST, sp.full_name;
+ORDER BY grade_order, class_name, sp.full_name;
 
 -- name: ActivationGuardianTargets :many
--- Guardians with no login and an NIC on file, linked to at least one active student.
-SELECT g.id, g.full_name, string_agg(sp.full_name, ', ' ORDER BY sp.full_name)::text AS children
+-- Guardians with no login and an NIC on file, linked to at least one active student. Each is filed under
+-- the class of their youngest-grade child (or the chosen class), so codes can go home with the child.
+SELECT g.id, g.full_name, kids.children::text AS children,
+       COALESCE(kc.class_name, '')::text   AS class_name,
+       COALESCE(kc.grade_name, '')::text   AS grade_name,
+       COALESCE(kc.grade_order, 9999)::int AS grade_order,
+       COALESCE(kc.form_teacher, '')::text AS form_teacher
 FROM guardians g
-JOIN student_guardians sg ON sg.guardian_id = g.id
-JOIN student_profiles sp  ON sp.id = sg.student_id AND sp.enrollment_status = 'active' AND sp.erased_at IS NULL
+JOIN LATERAL (
+    SELECT string_agg(sp.full_name, ', ' ORDER BY sp.full_name) AS children
+    FROM student_guardians sg
+    JOIN student_profiles sp ON sp.id = sg.student_id AND sp.enrollment_status = 'active' AND sp.erased_at IS NULL
+    WHERE sg.guardian_id = g.id
+) kids ON kids.children IS NOT NULL
+LEFT JOIN LATERAL (
+    SELECT c.id, c.name AS class_name, gr.name AS grade_name, gr.sort_order AS grade_order, tp.full_name AS form_teacher
+    FROM student_guardians sg
+    JOIN student_profiles sp  ON sp.id = sg.student_id AND sp.enrollment_status = 'active' AND sp.erased_at IS NULL
+    JOIN class_students cs    ON cs.student_id = sp.id
+    JOIN classes c            ON c.id = cs.class_id
+    JOIN academic_years ay    ON ay.id = c.academic_year_id AND ay.is_current
+    JOIN grades gr            ON gr.id = c.grade_id
+    LEFT JOIN teacher_profiles tp ON tp.id = c.form_teacher_id
+    WHERE sg.guardian_id = g.id
+      AND (sqlc.narg('class_id')::uuid IS NULL OR c.id = sqlc.narg('class_id')::uuid)
+    ORDER BY gr.sort_order, c.name
+    LIMIT 1
+) kc ON TRUE
 WHERE g.user_id IS NULL
   AND COALESCE(g.nic_number, '') <> ''
   AND (sqlc.narg('guardian_id')::uuid IS NULL OR g.id = sqlc.narg('guardian_id')::uuid)
-  AND (sqlc.narg('class_id')::uuid IS NULL OR EXISTS (
-        SELECT 1
-        FROM class_students cs
-        JOIN classes c         ON c.id = cs.class_id
-        JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current
-        WHERE cs.student_id = sp.id AND cs.class_id = sqlc.narg('class_id')::uuid))
-GROUP BY g.id, g.full_name
-ORDER BY g.full_name;
+  AND (sqlc.narg('class_id')::uuid IS NULL OR kc.id IS NOT NULL)
+ORDER BY grade_order, class_name, g.full_name;
 
 -- name: RevokeLiveActivationCodesForStudents :exec
 UPDATE activation_codes SET revoked_at = NOW()

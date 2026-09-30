@@ -36,9 +36,15 @@ export interface GenerateCodesRequest {
 
 export interface IssuedCode {
   name: string;
-  // class for a student, children's names for a parent
+  // children's names for a parent code, empty for a student
   detail: string;
   code: string;
+  // students only; shown on the class teacher's hand-out list, never on a slip
+  index_number?: string;
+  class_name: string;
+  grade_name: string;
+  grade_order: number;
+  form_teacher: string;
 }
 
 // The plain codes exist only in this response; the server keeps hashes.

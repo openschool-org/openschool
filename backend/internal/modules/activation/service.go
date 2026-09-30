@@ -45,6 +45,13 @@ type store interface {
 	revokeBatch(context.Context, uuid.UUID) (int64, error)
 }
 
+// Emailer sends the activation emails.
+type Emailer interface {
+	ActivationLink(ctx context.Context, to, name, link string, ttl time.Duration) error
+	EmailInUse(ctx context.Context, to string) error
+	AccountActivated(ctx context.Context, to, name, username string) error
+}
+
 // identityProvider is the narrow set of identity-provider calls activation needs.
 type identityProvider interface {
 	CreateUser(ctx context.Context, userType string, attrs map[string]any) (*idp.User, error)
@@ -55,14 +62,14 @@ type identityProvider interface {
 type Service struct {
 	store    store
 	idp      identityProvider
-	mailer   mailer.Mailer
+	mailer   Emailer
 	audit    ports.AuditRecorder
 	random   io.Reader
 	now      func() time.Time
 	frontend func() string
 }
 
-func NewService(s store, provider identityProvider, mail mailer.Mailer, audit ports.AuditRecorder) *Service {
+func NewService(s store, provider identityProvider, mail Emailer, audit ports.AuditRecorder) *Service {
 	return &Service{store: s, idp: provider, mailer: mail, audit: audit, random: rand.Reader, now: time.Now, frontend: mailer.FrontendURL}
 }
 
@@ -119,9 +126,7 @@ func (s *Service) Start(ctx context.Context, req StartRequest) error {
 	if taken {
 		// Told by email, not in the response, so the page never reveals which addresses have accounts.
 		logAttempt("email in use")
-		return s.mailer.Send(ctx, email, "OpenSchool account activation",
-			"Someone tried to activate an OpenSchool account with this email, but it already belongs to an account.\n\n"+
-				"If that was you, sign in instead, or start the activation again with a different email.")
+		return s.mailer.EmailInUse(ctx, email)
 	}
 
 	raw := make([]byte, 32)
@@ -134,10 +139,11 @@ func (s *Service) Start(ctx context.Context, req StartRequest) error {
 	}
 	// Token in the fragment so it never reaches a server or proxy access log (same as reset links).
 	link := fmt.Sprintf("%s/activate#token=%s", s.frontend(), token)
-	body := fmt.Sprintf("Finish activating your OpenSchool account by choosing a password here:\n\n%s\n\n"+
-		"The link expires in %d minutes and works once. If you didn't ask for this, ignore this email.",
-		link, int(emailTokenTTL.Minutes()))
-	if err := s.mailer.Send(ctx, email, "Activate your OpenSchool account", body); err != nil {
+	name, err := s.store.recordName(ctx, code.Role, code.RecordID)
+	if err != nil {
+		return fmt.Errorf("load record: %w", err)
+	}
+	if err := s.mailer.ActivationLink(ctx, email, name, link, emailTokenTTL); err != nil {
 		return fmt.Errorf("send activation email: %w", err)
 	}
 	logAttempt("link sent")
@@ -196,7 +202,21 @@ func (s *Service) Complete(ctx context.Context, req CompleteRequest) error {
 			Email  string    `json:"email"`
 		}{userID, email}, "")
 	}
+	// Best effort: the account exists now, so a mail failure must not report activation as failed.
+	name, _ := s.store.recordName(ctx, code.Role, code.RecordID)
+	if err := s.mailer.AccountActivated(ctx, email, name, signInName(code, email)); err != nil {
+		slog.Warn("activation: confirmation email not sent", "user_id", userID, "error", err)
+	}
 	return nil
+}
+
+// signInName is the username the new account signs in with.
+func signInName(code codeRecord, email string) string {
+	// Students sign in with their index number, like admin-created student accounts; parents with their email.
+	if code.Role == authz.RoleStudent {
+		return code.Identifier
+	}
+	return email
 }
 
 // createLogin mirrors the admin provisioning order and undoes earlier steps when a later one fails.
@@ -213,13 +233,8 @@ func (s *Service) createLogin(ctx context.Context, code codeRecord, email, passw
 		return uuid.Nil, fmt.Errorf("load record: %w", err)
 	}
 	given, family := splitName(name)
-	// Students sign in with their index number, like admin-created student accounts; parents with their email.
-	username := email
-	if code.Role == authz.RoleStudent {
-		username = code.Identifier
-	}
 	user, err := s.idp.CreateUser(ctx, code.Role, map[string]any{
-		"username": username, "email": email, "given_name": given, "family_name": family, "password": password,
+		"username": signInName(code, email), "email": email, "given_name": given, "family_name": family, "password": password,
 	})
 	if errors.Is(err, idp.ErrDuplicateUser) {
 		return uuid.Nil, ErrEmailTaken

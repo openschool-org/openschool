@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Add, Edit, TrashCan } from "@carbon/icons-react";
+import { Add, Edit, TrashCan, Upload } from "@carbon/icons-react";
 import { Button, IconButton, Select, SelectItem, Tag } from "@carbon/react";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
@@ -120,9 +120,14 @@ export default function Students() {
           <h1 className="os-page__title">Students</h1>
           <p className="os-page__subtitle">Manage student enrolment and profiles</p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/students/new">
-          Enrol student
-        </Button>
+        <div className="os-flex os-gap-2">
+          <Button renderIcon={Upload} kind="secondary" size="md" as={Link} to="/students/import">
+            Import students
+          </Button>
+          <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/students/new">
+            Enrol student
+          </Button>
+        </div>
       </div>
 
       <AgentFindingsBanner />

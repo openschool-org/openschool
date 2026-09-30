@@ -14,10 +14,11 @@ import (
 type Querier interface {
 	ActivationEmailTaken(ctx context.Context, email string) (bool, error)
 	ActivationGuardianName(ctx context.Context, id uuid.UUID) (string, error)
-	// Guardians with no login and an NIC on file, linked to at least one active student.
+	// Guardians with no login and an NIC on file, linked to at least one active student. Each is filed under
+	// the class of their youngest-grade child (or the chosen class), so codes can go home with the child.
 	ActivationGuardianTargets(ctx context.Context, arg ActivationGuardianTargetsParams) ([]ActivationGuardianTargetsRow, error)
 	ActivationStudentName(ctx context.Context, id uuid.UUID) (string, error)
-	// Active students with no login, optionally narrowed to one current-year class or one student.
+	// Active students with no login, with their current class for class-wise code sheets.
 	ActivationStudentTargets(ctx context.Context, arg ActivationStudentTargetsParams) ([]ActivationStudentTargetsRow, error)
 	// ── group subjects ──────────────────────────────────────────────────────────
 	AddGroupSubject(ctx context.Context, arg AddGroupSubjectParams) (GroupSubject, error)
@@ -885,6 +886,8 @@ type Querier interface {
 	WfDeleteUnlinkedGuardians(ctx context.Context, ids []uuid.UUID) error
 	// Classes RESTRICT their year, so they go first; the rest cascades from the year.
 	WfDeleteYearClasses(ctx context.Context, academicYearID uuid.UUID) error
+	// Who already uses each email: a guardian on record or a login. Activation needs each email to be unused.
+	WfEmailOwners(ctx context.Context, emails []string) ([]WfEmailOwnersRow, error)
 	WfEnrollmentLocks(ctx context.Context, arg WfEnrollmentLocksParams) ([]uuid.UUID, error)
 	WfExistingIndexNumbers(ctx context.Context, numbers []string) ([]string, error)
 	WfGetAcademicYear(ctx context.Context, id uuid.UUID) (WfGetAcademicYearRow, error)
@@ -894,7 +897,10 @@ type Querier interface {
 	WfGradesWithStreamLevels(ctx context.Context) ([]uuid.UUID, error)
 	// Classes of the year holding at least one student enrolled in this selection group.
 	WfGroupClasses(ctx context.Context, arg WfGroupClassesParams) ([]uuid.UUID, error)
+	// Matched without regard to case, since an NIC's final V or X may be stored in either case.
 	WfGuardiansByNIC(ctx context.Context, nics []string) ([]WfGuardiansByNICRow, error)
+	// Guardians on record with any of these phone numbers, to spot one parent entered under a second NIC.
+	WfGuardiansByPhones(ctx context.Context, phones []string) ([]WfGuardiansByPhonesRow, error)
 	WfInsertEnrollment(ctx context.Context, arg WfInsertEnrollmentParams) error
 	// Admitted students waiting for a class in the target year.
 	WfIntakeStudents(ctx context.Context, academicYearID uuid.UUID) ([]WfIntakeStudentsRow, error)

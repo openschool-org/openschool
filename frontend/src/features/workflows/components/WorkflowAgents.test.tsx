@@ -6,7 +6,7 @@ import type { CatalogEntry } from "@/features/workflows/api/workflows";
 
 const catalog: CatalogEntry[] = [
   {
-    key: "teacher_allocation", order: 6, title: "Teacher allocation", description: "Assigns a qualified teacher to every class and subject.",
+    key: "teacher_allocation", group: "year_end", order: 6, title: "Teacher allocation", description: "Assigns a qualified teacher to every class and subject.",
     steps: [{ key: "allocate", title: "Allocate teachers", tool: "allocate_teachers", phase: "propose" }],
     tools: [{ name: "allocate_teachers", description: "Deterministic allocation.", mutates: false }],
     inputs: [],

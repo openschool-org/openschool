@@ -284,7 +284,22 @@ SELECT COALESCE(school_type, '')::text AS school_type FROM school LIMIT 1;
 SELECT index_number FROM student_profiles WHERE index_number = ANY(sqlc.arg(numbers)::text[]);
 
 -- name: WfGuardiansByNIC :many
-SELECT id, nic_number, full_name FROM guardians WHERE nic_number = ANY(sqlc.arg(nics)::text[]);
+-- Matched without regard to case, since an NIC's final V or X may be stored in either case.
+SELECT id, upper(nic_number)::text AS nic_number, full_name, COALESCE(email, '')::text AS email, phone, (user_id IS NOT NULL)::bool AS has_login
+FROM guardians WHERE upper(nic_number) = ANY(sqlc.arg(nics)::text[]);
+
+-- name: WfGuardiansByPhones :many
+-- Guardians on record with any of these phone numbers, to spot one parent entered under a second NIC.
+SELECT id, upper(COALESCE(nic_number, ''))::text AS nic_number, full_name, COALESCE(email, '')::text AS email, phone
+FROM guardians WHERE phone = ANY(sqlc.arg(phones)::text[]);
+
+-- name: WfEmailOwners :many
+-- Who already uses each email: a guardian on record or a login. Activation needs each email to be unused.
+SELECT lower(g.email)::text AS email, g.full_name, upper(COALESCE(g.nic_number, ''))::text AS nic_number, 'guardian'::text AS kind
+FROM guardians g WHERE lower(g.email) = ANY(sqlc.arg(emails)::text[])
+UNION ALL
+SELECT lower(u.email)::text, u.full_name, ''::text, 'account'::text
+FROM users u WHERE lower(u.email) = ANY(sqlc.arg(emails)::text[]);
 
 -- name: WfLeastUsedHouse :one
 -- The house with the fewest active students, so imported students spread evenly.

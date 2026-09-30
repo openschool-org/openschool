@@ -140,11 +140,11 @@ func validateImageDataURL(value string) error {
 	}
 	return nil
 }
-func validateSchool(command schoolCommand) error {
+func validateSchool(command *schoolCommand) error {
 	if err := validateLogoURL(command.LogoURL); err != nil {
 		return err
 	}
-	if !validation.IsValidSriLankanPhone(command.Phone) {
+	if !validation.NormalizePhoneField(&command.Phone) {
 		return validation.ErrInvalidPhone
 	}
 	return nil
@@ -162,7 +162,7 @@ func (s *schoolService) createSchool(ctx context.Context, command schoolCommand)
 	if existing, err := s.store.getSchool(ctx); err == nil && existing.ID != "" {
 		return School{}, fmt.Errorf("school already exists")
 	}
-	if err := validateSchool(command); err != nil {
+	if err := validateSchool(&command); err != nil {
 		return School{}, err
 	}
 	values := schoolValuesFrom(command)
@@ -170,7 +170,7 @@ func (s *schoolService) createSchool(ctx context.Context, command schoolCommand)
 	return s.store.createSchool(ctx, values)
 }
 func (s *schoolService) updateSchool(ctx context.Context, id uuid.UUID, command schoolCommand) (School, error) {
-	if err := validateSchool(command); err != nil {
+	if err := validateSchool(&command); err != nil {
 		return School{}, err
 	}
 	values := schoolValuesFrom(command)

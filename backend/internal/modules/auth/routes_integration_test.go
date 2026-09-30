@@ -40,7 +40,7 @@ func TestPasswordAPIWithPostgres(t *testing.T) {
 
 	repository := NewRepository(pool)
 	provider := &integrationPasswordUpdater{}
-	service := NewService(repository, nil, provider, nil)
+	service := NewService(repository, nil, provider, &mailerStub{})
 	handler := NewAuthHandler(service)
 	router := gin.New()
 	router.POST("/auth/change-password", func(c *gin.Context) {

@@ -64,7 +64,7 @@ func TestActivationFlowWithPostgres(t *testing.T) {
 
 	// Class filter narrows to the one enrolled student.
 	byClass, err := svc.Generate(ctx, GenerateRequest{Role: "student", ClassID: &s.classID}, admin)
-	if err != nil || len(byClass.Codes) != 1 || byClass.Codes[0].Detail != "6-A" {
+	if err != nil || len(byClass.Codes) != 1 || byClass.Codes[0].ClassName != "6-A" || byClass.Codes[0].GradeName != "Grade 6" || byClass.Codes[0].Index != "2026/0001" {
 		t.Fatalf("class batch = %+v, %v", byClass, err)
 	}
 	// A second run reissues: the first code is revoked, not left live beside the new one.
@@ -129,7 +129,7 @@ func TestActivationFlowWithPostgres(t *testing.T) {
 		t.Fatalf("later batch = %+v, %v", again, err)
 	}
 	parents, err := svc.Generate(ctx, GenerateRequest{Role: "parent", ClassID: &s.classID}, admin)
-	if err != nil || len(parents.Codes) != 1 || parents.Codes[0].Detail != "Nimali Perera" {
+	if err != nil || len(parents.Codes) != 1 || parents.Codes[0].Detail != "Nimali Perera" || parents.Codes[0].ClassName != "6-A" || parents.Codes[0].Index != "" {
 		t.Fatalf("parent batch = %+v, %v", parents, err)
 	}
 	provider.userID = uuid.NewString()

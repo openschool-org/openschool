@@ -9,7 +9,8 @@ import { formatDateTime } from "@/shared/lib/date";
 
 // The year-end pipeline in order. Each card is one deterministic workflow from the backend catalogue.
 export default function YearEnd() {
-  const { data: catalog, isLoading, isError, refetch } = useWorkflowCatalog();
+  const { data: allWorkflows, isLoading, isError, refetch } = useWorkflowCatalog();
+  const catalog = allWorkflows?.filter((w) => w.group === "year_end");
 
   return (
     <div className="os-page">

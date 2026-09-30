@@ -123,10 +123,25 @@ func (f *fakeIDP) DeleteUser(_ context.Context, id string) error {
 }
 func (f *fakeIDP) AssignRole(context.Context, string, string) error { return nil }
 
-type fakeMail struct{ to, body []string }
+// fakeMail keeps activation links apart from notices, so link counts stay easy to assert.
+type fakeMail struct {
+	to, body  []string
+	inUse     []string
+	activated []string
+}
 
-func (f *fakeMail) Send(_ context.Context, to, _, body string) error {
-	f.to, f.body = append(f.to, to), append(f.body, body)
+func (f *fakeMail) ActivationLink(_ context.Context, to, _, link string, _ time.Duration) error {
+	f.to, f.body = append(f.to, to), append(f.body, link)
+	return nil
+}
+
+func (f *fakeMail) EmailInUse(_ context.Context, to string) error {
+	f.inUse = append(f.inUse, to)
+	return nil
+}
+
+func (f *fakeMail) AccountActivated(_ context.Context, to, _, username string) error {
+	f.activated = append(f.activated, to+" as "+username)
 	return nil
 }
 
@@ -227,7 +242,7 @@ func TestStartWithTakenEmailSendsNoticeOnly(t *testing.T) {
 	if err := svc.Start(context.Background(), startReq()); err != nil {
 		t.Fatalf("Start() error = %v", err)
 	}
-	if store.tokenHash != "" || len(mail.body) != 1 || strings.Contains(mail.body[0], "#token=") {
+	if store.tokenHash != "" || len(mail.to) != 0 || len(mail.inUse) != 1 {
 		t.Fatal("a taken email must get a notice, not an activation link")
 	}
 }
@@ -243,11 +258,15 @@ func startedFixture(t *testing.T) (*Service, *fakeStore, *fakeIDP, string) {
 
 func TestCompleteCreatesLinkedLogin(t *testing.T) {
 	svc, store, provider, token := startedFixture(t)
+	mail := svc.mailer.(*fakeMail)
 	if err := svc.Complete(context.Background(), CompleteRequest{Token: token, NewPassword: "a-Good-passphrase"}); err != nil {
 		t.Fatalf("Complete() error = %v", err)
 	}
 	if provider.userType != "student" || provider.attrs["username"] != "2027/0001" || provider.attrs["password"] != "a-Good-passphrase" {
 		t.Fatalf("unexpected identity-provider call: %s %v", provider.userType, provider.attrs)
+	}
+	if len(mail.activated) != 1 || mail.activated[0] != "nimali@example.com as 2027/0001" {
+		t.Fatalf("activation confirmation = %v", mail.activated)
 	}
 	if !store.consumed || !store.claimed || store.released || len(store.users) != 1 {
 		t.Fatalf("consumed=%v claimed=%v released=%v users=%d", store.consumed, store.claimed, store.released, len(store.users))

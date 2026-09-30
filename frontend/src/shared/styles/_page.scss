@@ -837,7 +837,10 @@
 .os-resource-map__empty { color: var(--os-text-secondary); font-size: 0.8125rem; }
 @media (max-width: 56rem) { .os-resource-map { padding: 1rem; } .os-resource-map__zones { grid-template-columns: 1fr; } .os-resource-map__zone--eca { grid-column: auto; } }
 
-// Activation code slips: a screen preview table plus a print-only sheet rendered beside #root.
+// Activation code slips: a print-only sheet rendered beside #root.
 .os-slip__code { font-family: 'IBM Plex Mono', monospace; font-size: 1rem; font-weight: 600; letter-spacing: 0.08em; }
 .os-slip__detail { color: var(--os-text-secondary); font-size: 0.75rem; }
 .os-slip-sheet { display: none; }
+
+// Settings > Email: a fixed-height frame showing the rendered email.
+.os-email-preview { background: var(--os-canvas); border: 1px solid var(--os-border-subtle); display: block; height: 46rem; width: 100%; }

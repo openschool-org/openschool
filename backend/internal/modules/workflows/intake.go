@@ -117,6 +117,11 @@ type intakeRow struct {
 }
 
 func parseIntakeCSV(text string) ([]intakeRow, error) {
+	return parseStudentCSV(text, intakeColumns)
+}
+
+// parseStudentCSV reads a student CSV, keeping only the given columns and skipping blank lines.
+func parseStudentCSV(text string, columns []string) ([]intakeRow, error) {
 	r := csv.NewReader(strings.NewReader(strings.TrimPrefix(text, "\ufeff")))
 	r.FieldsPerRecord = -1
 	r.TrimLeadingSpace = true
@@ -129,7 +134,7 @@ func parseIntakeCSV(text string) ([]intakeRow, error) {
 	}
 	header := make([]string, len(records[0]))
 	known := map[string]bool{}
-	for _, c := range intakeColumns {
+	for _, c := range columns {
 		known[c] = true
 	}
 	for i, h := range records[0] {
@@ -153,6 +158,12 @@ func parseIntakeCSV(text string) ([]intakeRow, error) {
 			}
 		}
 		if !empty {
+			// Spreadsheets drop a leading 0 or the +; tidy phones here so checks and saved values agree.
+			for _, key := range []string{"phone", "guardian_phone"} {
+				if tidy, ok := validation.NormalizeSriLankanPhone(row.fields[key]); ok {
+					row.fields[key] = tidy
+				}
+			}
 			out = append(out, row)
 		}
 	}
@@ -332,7 +343,6 @@ func (w StudentIntake) Apply(ctx context.Context, tx *Store, in Inputs, p Propos
 	year, _ := parseID(in["target_year"])
 	grade, _ := parseID(in["grade"])
 	var snap intakeSnapshot
-	linked := 0
 	if err := trace.Run(stepByKey(w, "create_students"), func() (string, error) {
 		var ticked []Row
 		var numbers, nics []string
@@ -359,33 +369,13 @@ func (w StudentIntake) Apply(ctx context.Context, tx *Store, in Inputs, p Propos
 		for nic, g := range known {
 			guardianByNIC[nic] = g.ID
 		}
-		for _, r := range ticked {
-			c := r.Cells
-			if taken[c["index"]] {
-				return "", fmt.Errorf("%w: line %s: index number %s was added since the proposal; run the intake again", ErrInvalidProposal, c["line"], c["index"])
-			}
-			st := NewStudent{Name: c["name"], Index: c["index"], Gender: c["gender"], Address: c["address"], Phone: c["phone"],
-				GuardianName: c["guardian"], Relationship: c["relationship"], GuardianPhone: c["guardian_phone"], GuardianNIC: c["guardian_nic"], GuardianEmail: c["guardian_email"]}
-			id, err := tx.createIntakeStudent(ctx, st)
-			if err != nil {
-				return "", fmt.Errorf("line %s: %w", c["line"], err)
-			}
-			snap.Students = append(snap.Students, id)
-			if st.GuardianNIC != "" {
-				gid, ok := guardianByNIC[st.GuardianNIC]
-				if !ok {
-					if gid, err = tx.createGuardian(ctx, st); err != nil {
-						return "", fmt.Errorf("line %s guardian: %w", c["line"], err)
-					}
-					guardianByNIC[st.GuardianNIC] = gid
-					snap.Guardians = append(snap.Guardians, gid)
-				}
-				if err := tx.linkGuardian(ctx, id, gid); err != nil {
-					return "", err
-				}
-				linked++
-			}
-			if err := tx.createIntake(ctx, Intake{StudentID: id, YearID: year, GradeID: grade, MediumID: optionalID(c["medium"])}); err != nil {
+		ids, guardians, err := createStudentRows(ctx, tx, ticked, taken, guardianByNIC)
+		if err != nil {
+			return "", err
+		}
+		snap.Students, snap.Guardians = ids, guardians
+		for i, r := range ticked {
+			if err := tx.createIntake(ctx, Intake{StudentID: ids[i], YearID: year, GradeID: grade, MediumID: optionalID(r.Cells["medium"])}); err != nil {
 				return "", err
 			}
 		}
@@ -466,4 +456,38 @@ func (StudentIntake) Revert(ctx context.Context, tx *Store, snapshot json.RawMes
 		return errStudentsInUse
 	}
 	return tx.deleteImported(ctx, snap.Students, snap.Guardians)
+}
+
+// createStudentRows creates each row's student, then links an existing guardian by NIC or creates one.
+// The returned student ids follow the row order; siblings in the file share one new guardian.
+func createStudentRows(ctx context.Context, tx *Store, rows []Row, taken map[string]bool, guardianByNIC map[string]uuid.UUID) ([]uuid.UUID, []uuid.UUID, error) {
+	var students, guardians []uuid.UUID
+	for _, r := range rows {
+		c := r.Cells
+		if taken[c["index"]] {
+			return nil, nil, fmt.Errorf("%w: line %s: index number %s was added since the proposal; run it again", ErrInvalidProposal, c["line"], c["index"])
+		}
+		st := NewStudent{Name: c["name"], Index: c["index"], Gender: c["gender"], Address: c["address"], Phone: c["phone"],
+			GuardianName: c["guardian"], Relationship: c["relationship"], GuardianPhone: c["guardian_phone"], GuardianNIC: c["guardian_nic"], GuardianEmail: c["guardian_email"]}
+		id, err := tx.createIntakeStudent(ctx, st)
+		if err != nil {
+			return nil, nil, fmt.Errorf("line %s: %w", c["line"], err)
+		}
+		students = append(students, id)
+		if st.GuardianNIC == "" {
+			continue
+		}
+		gid, ok := guardianByNIC[st.GuardianNIC]
+		if !ok {
+			if gid, err = tx.createGuardian(ctx, st); err != nil {
+				return nil, nil, fmt.Errorf("line %s guardian: %w", c["line"], err)
+			}
+			guardianByNIC[st.GuardianNIC] = gid
+			guardians = append(guardians, gid)
+		}
+		if err := tx.linkGuardian(ctx, id, gid); err != nil {
+			return nil, nil, err
+		}
+	}
+	return students, guardians, nil
 }

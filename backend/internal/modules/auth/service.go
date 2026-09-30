@@ -52,6 +52,12 @@ type authStore interface {
 // would leave the account exactly as guessable as before.
 const DefaultPasswordExpiry = 7 * 24 * time.Hour
 
+// Emailer sends the account emails Auth needs.
+type Emailer interface {
+	PasswordReset(ctx context.Context, to, link string, ttl time.Duration) error
+	PasswordChanged(ctx context.Context, to string) error
+}
+
 // PasswordUpdater is the narrow identity-provider operation needed by Auth.
 type PasswordUpdater interface {
 	UpdatePassword(ctx context.Context, userID string, password string) error
@@ -63,7 +69,7 @@ type Service struct {
 	store     authStore
 	guardians ports.GuardianAuthenticator
 	idp       PasswordUpdater
-	mailer    mailer.Mailer
+	mailer    Emailer
 	random    io.Reader
 	now       func() time.Time
 	frontend  func() string
@@ -73,7 +79,7 @@ func NewService(
 	store authStore,
 	guardians ports.GuardianAuthenticator,
 	idp PasswordUpdater,
-	mailSender mailer.Mailer,
+	mailSender Emailer,
 ) *Service {
 	return &Service{store: store, guardians: guardians, idp: idp, mailer: mailSender, random: rand.Reader, now: time.Now, frontend: mailer.FrontendURL}
 }
@@ -143,13 +149,7 @@ func (s *Service) issueAndEmailResetToken(ctx context.Context, userID uuid.UUID,
 	// is never sent to a server, so it can't land in the SPA host's or a
 	// proxy's access log, though it's still POSTed to the API explicitly (S5).
 	resetLink := fmt.Sprintf("%s/reset-password#token=%s", s.frontend(), token)
-	body := fmt.Sprintf(
-		"A password reset was requested for your OpenSchool account.\n\n"+
-			"Reset your password using the link below. It expires in %d minutes and can only be used once.\n\n%s\n\n"+
-			"If you didn't request this, you can safely ignore this email.",
-		int(passwordResetTokenTTL.Minutes()), resetLink,
-	)
-	if err := s.mailer.Send(ctx, email, "Reset your OpenSchool password", body); err != nil {
+	if err := s.mailer.PasswordReset(ctx, email, resetLink, passwordResetTokenTTL); err != nil {
 		return fmt.Errorf("failed to send reset email: %w", err)
 	}
 
@@ -214,7 +214,16 @@ func (s *Service) setPassword(ctx context.Context, userID uuid.UUID, newPassword
 		return fmt.Errorf("failed to update identity provider password: %w", err)
 	}
 
-	return s.store.clearMustChangePassword(ctx, userID, false)
+	if err := s.store.clearMustChangePassword(ctx, userID, false); err != nil {
+		return err
+	}
+	// Best effort: the password already changed, so a mail failure must not report the change as failed.
+	if user.Email != "" {
+		if err := s.mailer.PasswordChanged(ctx, user.Email); err != nil {
+			slog.Warn("auth: password-changed notice not sent", "user_id", userID, "error", err)
+		}
+	}
+	return nil
 }
 
 // matchesIdentitySecret reports whether candidate equals the account's own

@@ -88,12 +88,18 @@ func (s *passwordUpdaterStub) UpdatePassword(_ context.Context, userID, password
 }
 
 type mailerStub struct {
-	to, subject, body string
-	err               error
+	to, link  string
+	changedTo string
+	err       error
 }
 
-func (s *mailerStub) Send(_ context.Context, to, subject, body string) error {
-	s.to, s.subject, s.body = to, subject, body
+func (s *mailerStub) PasswordReset(_ context.Context, to, link string, _ time.Duration) error {
+	s.to, s.link = to, link
+	return s.err
+}
+
+func (s *mailerStub) PasswordChanged(_ context.Context, to string) error {
+	s.changedTo = to
 	return s.err
 }
 
@@ -125,7 +131,7 @@ func TestForgotPasswordIssuesOnlyHashedShortLivedToken(t *testing.T) {
 	if want := service.now().Add(passwordResetTokenTTL); !store.createdExpiry.Equal(want) {
 		t.Fatalf("expiry = %s, want %s", store.createdExpiry, want)
 	}
-	if mail.to != "student@example.com" || !strings.Contains(mail.body, "https://school.example/reset-password#token="+rawToken) {
+	if mail.to != "student@example.com" || mail.link != "https://school.example/reset-password#token="+rawToken {
 		t.Fatalf("reset email was not addressed or linked correctly: %+v", mail)
 	}
 }
@@ -174,6 +180,18 @@ func TestResetPasswordConsumesTokenBeforeUpdatingProvider(t *testing.T) {
 	}
 	if !store.setCalled || store.setValue {
 		t.Fatal("must-change-password flag was not cleared")
+	}
+}
+
+func TestPasswordChangeSendsNoticeWithoutFailingOnMailError(t *testing.T) {
+	userID := uuid.New()
+	store := &authStoreStub{user: userAccount{ID: userID, Email: "teacher@example.com", Role: authz.RoleTeacher}}
+	mail := &mailerStub{err: errors.New("mail down")}
+	if err := newTestService(store, guardianStub{}, &passwordUpdaterStub{}, mail).ChangePassword(context.Background(), userID, "a-Good-passphrase"); err != nil {
+		t.Fatalf("a mail failure must not fail the change: %v", err)
+	}
+	if mail.changedTo != "teacher@example.com" || !store.setCalled {
+		t.Fatalf("notice sent to %q, flag cleared %v", mail.changedTo, store.setCalled)
 	}
 }
 

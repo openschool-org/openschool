@@ -1,16 +1,12 @@
 import { useState } from "react";
-import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
-import { Download, Printer } from "@carbon/icons-react";
+import { Button, Select, SelectItem } from "@carbon/react";
 import { useActivationSettings, useGenerateCodes } from "@/features/activation/queries/useActivation";
 import type { ActivationRole, GeneratedBatch } from "@/features/activation/api/activation";
-import { downloadBatchCsv } from "@/features/activation/lib/codeSheet";
-import CodeSlips from "@/features/activation/components/CodeSlips";
-import { printSlips } from "@/features/activation/lib/print";
 import { useCurrentClasses } from "@/features/academics/queries/useClasses";
+import IssuedBatchPanel from "@/features/activation/components/IssuedBatchPanel";
 import SectionCard from "@/shared/ui/SectionCard";
 import ConfirmActionModal from "@/shared/ui/ConfirmActionModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
-import { formatDate } from "@/shared/lib/date";
 
 const ROLE_LABELS: Record<ActivationRole, string> = { student: "Students", parent: "Parents and guardians" };
 
@@ -60,25 +56,7 @@ export default function GenerateCodesCard() {
 
       {batch && (
         <div className="os-mt-5">
-          {batch.codes.length === 0 ? (
-            <InlineNotification kind="info" lowContrast hideCloseButton title="Nobody to issue" subtitle="Everyone in this selection already has a login." />
-          ) : (
-            <>
-              <InlineNotification
-                kind="warning"
-                lowContrast
-                hideCloseButton
-                title={`${batch.codes.length} codes ready, valid until ${formatDate(batch.expires_at)}`}
-                subtitle="Download or print them now. For security, they cannot be shown again."
-              />
-              <div className="os-flex os-gap-2 os-my-4">
-                <Button kind="secondary" size="sm" renderIcon={Download} onClick={() => downloadBatchCsv(batch)}>Download CSV</Button>
-                <Button kind="secondary" size="sm" renderIcon={Printer} onClick={printSlips}>Print slips</Button>
-                <Button kind="ghost" size="sm" onClick={() => setBatch(null)}>Done</Button>
-              </div>
-              <CodeSlips batch={batch} />
-            </>
-          )}
+          <IssuedBatchPanel batch={batch} onDone={() => setBatch(null)} />
         </div>
       )}
 

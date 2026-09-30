@@ -57,7 +57,7 @@ func NewGuardianService(store guardianStore, idp idp.Provider, audit ports.Audit
 }
 
 func (s *GuardianService) Create(ctx context.Context, req CreateGuardianRequest) (any, any, error) {
-	if !validation.IsValidSriLankanPhone(req.Phone) {
+	if !validation.NormalizePhoneField(&req.Phone) {
 		return nil, nil, validation.ErrInvalidPhone
 	}
 	duplicates, err := s.store.guardianDuplicates(ctx, req.Phone, req.Email)
@@ -69,7 +69,7 @@ func (s *GuardianService) Create(ctx context.Context, req CreateGuardianRequest)
 }
 
 func (s *GuardianService) Update(ctx context.Context, id uuid.UUID, req UpdateGuardianRequest) (any, error) {
-	if !validation.IsValidSriLankanPhone(req.Phone) {
+	if !validation.NormalizePhoneField(&req.Phone) {
 		return nil, validation.ErrInvalidPhone
 	}
 	return s.store.updateGuardian(ctx, id, req)

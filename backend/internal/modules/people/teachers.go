@@ -63,7 +63,7 @@ func NewTeacherService(store teacherStore, idp idp.Provider, houses ports.HouseA
 	return &TeacherService{store: store, idp: idp, houses: houses, audit: audit}
 }
 func (s *TeacherService) Create(ctx context.Context, req CreateTeacherRequest, actor uuid.UUID) (any, error) {
-	if !validation.IsValidSriLankanPhone(req.PhoneNumber) {
+	if !validation.NormalizePhoneField(&req.PhoneNumber) {
 		return nil, validation.ErrInvalidPhone
 	}
 	employee, err := s.store.NextEmployee(ctx)
@@ -103,7 +103,7 @@ func (s *TeacherService) Create(ctx context.Context, req CreateTeacherRequest, a
 	return profile, nil
 }
 func (s *TeacherService) Update(ctx context.Context, id uuid.UUID, req UpdateTeacherRequest) (any, error) {
-	if !validation.IsValidSriLankanPhone(req.PhoneNumber) {
+	if !validation.NormalizePhoneField(&req.PhoneNumber) {
 		return nil, validation.ErrInvalidPhone
 	}
 	t, err := s.store.GetTeacher(ctx, id)

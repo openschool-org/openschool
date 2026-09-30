@@ -65,7 +65,10 @@ func (s *Service) Generate(ctx context.Context, req GenerateRequest, actor uuid.
 			return GenerateResponse{}, err
 		}
 		codes = append(codes, newCode{RecordID: t.ID, Hash: hashSecret(normalizeCode(code))})
-		resp.Codes = append(resp.Codes, IssuedCode{Name: t.Name, Detail: t.Detail, Code: code})
+		resp.Codes = append(resp.Codes, IssuedCode{
+			Name: t.Name, Detail: t.Detail, Code: code, Index: t.Index,
+			ClassName: t.ClassName, GradeName: t.GradeName, GradeOrder: t.GradeOrder, FormTeacher: t.FormTeacher,
+		})
 	}
 	if err := s.store.issueCodes(ctx, batchID, req.Role, codes, expiresAt, actor); err != nil {
 		return GenerateResponse{}, err

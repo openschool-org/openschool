@@ -110,7 +110,7 @@ func (s *StudentService) validateGender(ctx context.Context, gender string) erro
 }
 
 func (s *StudentService) Create(ctx context.Context, req CreateStudentRequest, actor uuid.UUID) (any, error) {
-	if !validation.IsValidSriLankanPhone(req.PhoneNumber) || !validation.IsValidSriLankanPhone(req.WhatsApp) {
+	if !validation.NormalizePhoneField(&req.PhoneNumber) || !validation.NormalizePhoneField(&req.WhatsApp) {
 		return nil, validation.ErrInvalidPhone
 	}
 	if err := s.validateGender(ctx, req.Gender); err != nil {
@@ -153,7 +153,7 @@ func (s *StudentService) Create(ctx context.Context, req CreateStudentRequest, a
 }
 
 func (s *StudentService) Update(ctx context.Context, id uuid.UUID, req UpdateStudentRequest) (any, error) {
-	if !validation.IsValidSriLankanPhone(req.PhoneNumber) || !validation.IsValidSriLankanPhone(req.WhatsApp) {
+	if !validation.NormalizePhoneField(&req.PhoneNumber) || !validation.NormalizePhoneField(&req.WhatsApp) {
 		return nil, validation.ErrInvalidPhone
 	}
 	if err := s.validateGender(ctx, req.Gender); err != nil {

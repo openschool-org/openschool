@@ -10,7 +10,7 @@ func TestRegisterRoutesPreservesPublicAndProtectedEndpoints(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	api := router.Group("/api/v1")
-	RegisterRoutes(api, api, nil, guardianStub{}, &passwordUpdaterStub{})
+	RegisterRoutes(api, api, nil, guardianStub{}, &passwordUpdaterStub{}, &mailerStub{})
 
 	want := map[string]bool{
 		"POST /api/v1/auth/forgot-password":       true,

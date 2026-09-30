@@ -437,30 +437,26 @@ production. It's a committed snapshot, not regenerated from source
 annotations - handlers now carry one plain comment line instead of
 `swaggo` tags.
 
-### 5.3 Outbound mail (SMTP)
+### 5.3 Outbound mail
 
-`internal/mailer` sends the one email OpenSchool generates itself: the
-self-service password-reset link (`adr/0005`), triggered from
-`auth.Service.ForgotPassword` and rendered end-to-end by the frontend's
-`ForgotPassword.tsx`/`ResetPassword.tsx` pages. It speaks SMTP directly
-(Go's standard library `net/smtp`, no third-party mail API/SDK) and
-supports both submission-port STARTTLS (587/25, upgrading the connection
-only if the server advertises the extension) and implicit-TLS SMTPS
-(465), each pinned to TLS 1.2+; the whole exchange (dial through `QUIT`)
-is bounded by a 15-second deadline so an unreachable or slow mail host
-fails the request instead of hanging it. Configured via `SMTP_HOST`,
-`SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`.
+Account emails only (see [ADR 0009](./adr/0009-transactional-email.md)):
+password reset, password changed, activation link, email already in use,
+and account activated. Notifications stay in-app ([ADR 0004](./adr/0004-in-app-only-notifications.md)).
 
-**This still requires a deployment to supply real SMTP credentials** -
-same as it requires real database credentials. If `SMTP_HOST` is left
-unset, `internal/mailer.NewFromEnv` deliberately falls back to logging the
-message to the server console instead of sending it (so local dev needs no
-mail server), which also means **a deployment that never configures SMTP
-has no working self-service password reset** - only a server-log record
-of what would have been sent. This is an operational/configuration
-prerequisite, not a code gap; there is otherwise no other outbound
-notification channel - see
-[`adr/0004-in-app-only-notifications.md`](./adr/0004-in-app-only-notifications.md).
+| Package | Role |
+| --- | --- |
+| `internal/mailer` | Delivery only. Resend HTTP API, SMTP (TLS 1.2+, 15-second limit), or console. Picked by `MAIL_PROVIDER` or auto-detected from `RESEND_API_KEY` / `SMTP_HOST`. |
+| `internal/emails` | One shared HTML and text layout with the OpenSchool logo (sent inline) and the school's name and contacts. One builder per email. Applies test redirect and Reply-To. |
+| `internal/modules/mail` | Admin routes for Settings > Email: status, preview, send a test to yourself. Supplies school branding. |
+
+- **Test mode:** `MAIL_REDIRECT_TO` sends every email to one inbox, with a
+  banner naming the real recipient. Needed while testing with Resend's
+  `onboarding@resend.dev`, which only delivers to the account owner.
+- **Startup checks:** a bad mail setting stops the server. In production,
+  the console provider and `MAIL_REDIRECT_TO` are refused.
+- **Safety:** header line breaks are rejected, Resend retries 429 and 5xx
+  with one idempotency key, and provider error bodies are logged, never
+  returned to API callers.
 
 ## 6. Non-functional characteristics
 
