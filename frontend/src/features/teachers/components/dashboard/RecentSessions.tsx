@@ -26,6 +26,7 @@ export default function RecentSessions({ sessions }: { sessions: Row[] }) {
             { key: "class", header: "Class", render: (r) => <Link to={`/attendance/sessions/${r.session.id}/mark`} className="os-table__link">{r.className}</Link> },
             { key: "present", header: "Present", render: (r) => <SessionCountCell count={r.session.present_count} status="present" /> },
             { key: "absent", header: "Absent", render: (r) => <SessionCountCell count={r.session.absent_count} status="absent" /> },
+            { key: "late", header: "Late", render: (r) => <SessionCountCell count={r.session.late_count} status="late" /> },
           ]}
         />
       )}

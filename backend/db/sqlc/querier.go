@@ -53,6 +53,8 @@ type Querier interface {
 	BulkInsertClassStudents(ctx context.Context, arg BulkInsertClassStudentsParams) error
 	// Marks the code used before any account is created, so two requests can't both activate.
 	ClaimActivationCode(ctx context.Context, id uuid.UUID) (int64, error)
+	// Removes marks the teacher un-set, so a cleared student goes back to "not marked".
+	ClearAttendanceRecords(ctx context.Context, arg ClearAttendanceRecordsParams) error
 	// Used by both a real password change (kept_default_password = FALSE) and
 	// the first-login "keep this password" choice (kept_default_password =
 	// TRUE) — the two clear must_change_password identically but need telling

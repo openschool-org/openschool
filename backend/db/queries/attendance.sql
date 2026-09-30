@@ -24,7 +24,8 @@ WHERE id = $1;
 -- Counts come with each session so lists need no request per row.
 SELECT ats.*,
        COUNT(ar.id) FILTER (WHERE ar.status = 'present') AS present_count,
-       COUNT(ar.id) FILTER (WHERE ar.status = 'absent')  AS absent_count
+       COUNT(ar.id) FILTER (WHERE ar.status = 'absent')  AS absent_count,
+       COUNT(ar.id) FILTER (WHERE ar.status = 'late')    AS late_count
 FROM attendance_sessions ats
 LEFT JOIN attendance_records ar ON ar.session_id = ats.id
 WHERE ats.class_id = $1
@@ -66,6 +67,11 @@ SET
     status = EXCLUDED.status,
     note   = EXCLUDED.note
 RETURNING *;
+
+-- name: ClearAttendanceRecords :exec
+-- Removes marks the teacher un-set, so a cleared student goes back to "not marked".
+DELETE FROM attendance_records
+WHERE session_id = sqlc.arg(session_id) AND student_id = ANY(sqlc.arg(student_ids)::uuid[]);
 
 -- name: GetAttendanceRecord :one
 SELECT * FROM attendance_records

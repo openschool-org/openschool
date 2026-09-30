@@ -34,7 +34,7 @@ func (f *fakeStore) listSessionsByDate(context.Context, time.Time, []uuid.UUID) 
 }
 func (f *fakeStore) deleteSession(context.Context, uuid.UUID) error           { return nil }
 func (f *fakeStore) listRecords(context.Context, uuid.UUID) ([]Record, error) { return f.records, nil }
-func (f *fakeStore) markBatch(_ context.Context, sessionID uuid.UUID, input []MarkInput) ([]Record, error) {
+func (f *fakeStore) markBatch(_ context.Context, sessionID uuid.UUID, input []MarkInput, _ []uuid.UUID) ([]Record, error) {
 	f.marked = append([]MarkInput(nil), input...)
 	rows := make([]Record, len(input))
 	for i, value := range input {

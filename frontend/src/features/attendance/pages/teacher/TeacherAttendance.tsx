@@ -133,6 +133,7 @@ export default function TeacherAttendance() {
               { key: "class", header: "Class", render: (r) => <span className="os-fw-600">{r.className}</span> },
               { key: "present", header: "Present", render: (r) => <SessionCountCell count={r.session.present_count} status="present" /> },
               { key: "absent", header: "Absent", render: (r) => <SessionCountCell count={r.session.absent_count} status="absent" /> },
+            { key: "late", header: "Late", render: (r) => <SessionCountCell count={r.session.late_count} status="late" /> },
               { key: "status", header: "Status", render: () => <Tag type="blue" size="sm">Marked</Tag> },
               { key: "action", header: "Action", align: "end", render: (r) => <Link to={`/attendance/sessions/${r.session.id}/mark`} className="os-c-tertiary os-no-underline os-text-sm">View</Link> },
             ]}

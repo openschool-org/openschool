@@ -12,6 +12,7 @@ export interface AttendanceSession {
   // only on a class's session list
   present_count?: number;
   absent_count?: number;
+  late_count?: number;
 }
 
 export interface CreateSessionRequest {
@@ -46,6 +47,8 @@ export interface MarkAttendanceRequest {
     status: "present" | "absent" | "late" | "excused";
     note?: string;
   }[];
+  // students whose earlier mark was removed; the server deletes those records
+  cleared?: string[];
   // Required by convention when an admin edits a session after its 24h
   // lock, recorded in the audit log.
   reason?: string;

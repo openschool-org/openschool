@@ -20,7 +20,7 @@ describe("GradeAvatar", () => {
     expect(parts("Grade 1", "10-A")).toEqual(["os-grade-avatar os-grade-avatar--md os-grade-avatar--primary", "1", "10-A"]);
   });
 
-  it("shows only the grade when no class is given", () => {
-    expect(parts("Grade 11")).toEqual(["os-grade-avatar os-grade-avatar--md os-grade-avatar--ol", "11"]);
+  it("shows G-11 when no class is given", () => {
+    expect(parts("Grade 11")).toEqual(["os-grade-avatar os-grade-avatar--md os-grade-avatar--ol is-grade-only", "G-11"]);
   });
 });

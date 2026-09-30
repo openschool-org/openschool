@@ -1,10 +1,4 @@
-// Sri Lankan school sections: primary 1-5, junior 6-9, O/L 10-11, A/L 12-13.
-function band(grade: number): string {
-  if (grade <= 5) return "primary";
-  if (grade <= 9) return "junior";
-  if (grade <= 11) return "ol";
-  return "al";
-}
+import { gradeBand } from "@/shared/lib/gradeBand";
 
 interface Props {
   gradeName: string | null | undefined;
@@ -13,13 +7,14 @@ interface Props {
   size?: "sm" | "md" | "lg";
 }
 
-// Grade number with the class section under it ("13" over "M1" for 13-M1), tinted by school section.
+// "13" over "M1" for class 13-M1, or "G-13" for a grade on its own; tinted by school section.
 export default function GradeAvatar({ gradeName, className = "", size = "md" }: Props) {
   const grade = gradeName?.match(/\d+/)?.[0] ?? "";
   const section = grade ? className.replace(new RegExp(`^${grade}(?!\\d)[-\\s]?`), "") : className;
-  const main = grade || (section || gradeName || "?").slice(0, 3);
+  const gradeOnly = className === "";
+  const main = grade ? (gradeOnly ? `G-${grade}` : grade) : (section || gradeName || "?").slice(0, 3);
   return (
-    <span className={`os-grade-avatar os-grade-avatar--${size} os-grade-avatar--${grade ? band(Number(grade)) : "none"}`} aria-hidden="true">
+    <span className={`os-grade-avatar os-grade-avatar--${size} os-grade-avatar--${gradeBand(gradeName)}${gradeOnly ? " is-grade-only" : ""}`} aria-hidden="true">
       <span className="os-grade-avatar__grade">{main}</span>
       {grade && section && <span className="os-grade-avatar__section">{section}</span>}
     </span>

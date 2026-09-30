@@ -12,6 +12,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearAttendanceRecords = `-- name: ClearAttendanceRecords :exec
+DELETE FROM attendance_records
+WHERE session_id = $1 AND student_id = ANY($2::uuid[])
+`
+
+type ClearAttendanceRecordsParams struct {
+	SessionID  uuid.UUID   `json:"session_id"`
+	StudentIds []uuid.UUID `json:"student_ids"`
+}
+
+// Removes marks the teacher un-set, so a cleared student goes back to "not marked".
+func (q *Queries) ClearAttendanceRecords(ctx context.Context, arg ClearAttendanceRecordsParams) error {
+	_, err := q.db.Exec(ctx, clearAttendanceRecords, arg.SessionID, arg.StudentIds)
+	return err
+}
+
 const createAttendanceSession = `-- name: CreateAttendanceSession :one
 INSERT INTO attendance_sessions (class_id, taken_by, date)
 VALUES ($1, $2, $3)
@@ -361,7 +377,8 @@ func (q *Queries) ListAttendanceRecordsForClassInRange(ctx context.Context, arg 
 const listAttendanceSessionsByClass = `-- name: ListAttendanceSessionsByClass :many
 SELECT ats.id, ats.class_id, ats.taken_by, ats.date, ats.created_at,
        COUNT(ar.id) FILTER (WHERE ar.status = 'present') AS present_count,
-       COUNT(ar.id) FILTER (WHERE ar.status = 'absent')  AS absent_count
+       COUNT(ar.id) FILTER (WHERE ar.status = 'absent')  AS absent_count,
+       COUNT(ar.id) FILTER (WHERE ar.status = 'late')    AS late_count
 FROM attendance_sessions ats
 LEFT JOIN attendance_records ar ON ar.session_id = ats.id
 WHERE ats.class_id = $1
@@ -377,6 +394,7 @@ type ListAttendanceSessionsByClassRow struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	PresentCount int64              `json:"present_count"`
 	AbsentCount  int64              `json:"absent_count"`
+	LateCount    int64              `json:"late_count"`
 }
 
 // Counts come with each session so lists need no request per row.
@@ -397,6 +415,7 @@ func (q *Queries) ListAttendanceSessionsByClass(ctx context.Context, classID uui
 			&i.CreatedAt,
 			&i.PresentCount,
 			&i.AbsentCount,
+			&i.LateCount,
 		); err != nil {
 			return nil, err
 		}
