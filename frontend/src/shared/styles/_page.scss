@@ -829,7 +829,7 @@
 .os-resource-map__zone--lab .os-resource-map__zone-icon { background: #f3e8ff; color: #8a3ffc; }
 .os-resource-map__zone--eca .os-resource-map__zone-icon { background: #defbe6; color: #198038; }
 .os-resource-map__zone-count { align-items: center; background: var(--os-background); border: 1px solid var(--os-border-subtle); border-radius: 999px; color: var(--os-text-primary); display: inline-flex; font-size: 0.75rem; font-weight: 600; height: 1.75rem; justify-content: center; min-width: 1.75rem; padding: 0 0.4rem; }
-.os-resource-map__rooms { display: grid; gap: 0.625rem; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); margin-top: 1rem; }
+.os-resource-map__rooms { display: grid; gap: 0.625rem; grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr)); margin-top: 1rem; }
 .os-resource-map__room { align-items: stretch; background: var(--os-background); border: 1px solid var(--os-border-subtle); display: flex; min-height: 4.25rem; padding: 0; text-align: left; transition: border-color 120ms ease, box-shadow 120ms ease; &:hover, &:focus-within { border-color: var(--os-link); box-shadow: inset 3px 0 var(--os-link); } }
 .os-resource-map__room-select { flex: 1; min-width: 0; padding: 0.75rem; text-align: left; span, small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } small { color: var(--os-text-secondary); font-size: 0.6875rem; margin-top: 0.45rem; } }
 .os-resource-map__room-name { align-items: center; display: flex; gap: 0.5rem; min-width: 0; & > span { color: var(--os-text-primary); font-size: 0.8125rem; font-weight: 600; min-width: 0; } & .cds--tag { flex: 0 0 auto; max-width: 9rem; } }

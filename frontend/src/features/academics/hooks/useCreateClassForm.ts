@@ -21,6 +21,18 @@ const EMPTY_CLASS_FORM = {
 export type ClassForm = typeof EMPTY_CLASS_FORM;
 type Touched = Partial<Record<"grade" | "name" | "year", boolean>>;
 
+const MIN_CAPACITY = 1;
+const MAX_CAPACITY = 200;
+
+// Empty means no capacity; anything else must be a whole number in range.
+function isValidCapacity(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  if (!/^\d+$/.test(trimmed)) return false;
+  const n = Number(trimmed);
+  return n >= MIN_CAPACITY && n <= MAX_CAPACITY;
+}
+
 // Form state and validation; the backend links or creates the homeroom when none is chosen.
 export function useCreateClassForm(preselectedGradeId: string, onSuccess?: () => void) {
   const navigate = useNavigate();
@@ -35,7 +47,8 @@ export function useCreateClassForm(preselectedGradeId: string, onSuccess?: () =>
   const suggestedHomeClassroom = suggestHomeClassroom(classrooms, form.name);
   const effectiveHomeClassroomId = form.home_classroom_id || suggestedHomeClassroom?.id || "";
   const academicYearId = form.academic_year_id || years?.find((y) => y.is_current)?.id || "";
-  const isValid = !!form.grade_id && !!academicYearId && !!form.name.trim();
+  const capacityValid = isValidCapacity(form.capacity);
+  const isValid = !!form.grade_id && !!academicYearId && !!form.name.trim() && capacityValid;
 
   const set = (field: keyof ClassForm, value: string) =>
     setForm((f) => (field === "stream_id" ? { ...f, stream_id: value, stream_group_id: "" } : { ...f, [field]: value }));
@@ -70,6 +83,7 @@ export function useCreateClassForm(preselectedGradeId: string, onSuccess?: () =>
     suggestedHomeClassroom,
     effectiveHomeClassroomId,
     academicYearId,
+    capacityValid,
     isValid,
     isSaving: createClass.isPending,
     error: createClass.isError ? getErrorMessage(createClass.error, "Could not create the class.") : null,

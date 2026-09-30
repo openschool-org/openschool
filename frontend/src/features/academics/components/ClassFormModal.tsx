@@ -40,7 +40,7 @@ export default function ClassFormModal({ open, gradeId = "", onClose }: Props) {
             {grades?.map((grade) => <SelectItem key={grade.id} value={grade.id} text={grade.name} />)}
           </Select>
           <TextInput id="modal-class-name" labelText="Class name" placeholder="e.g. 10-A" maxLength={20} value={form.name} onChange={(e) => set("name", e.target.value)} onBlur={() => f.markTouched("name")} invalid={!!touched.name && !form.name.trim()} invalidText="A class name is required." />
-          <NumberInput id="modal-class-capacity" label="Capacity" helperText="Maximum students for this class." min={1} max={200} value={form.capacity} onChange={(_e, { value }) => set("capacity", value === "" ? "" : String(value))} />
+          <NumberInput id="modal-class-capacity" label="Capacity" helperText="Maximum students for this class." min={1} max={200} invalid={!f.capacityValid} invalidText="Enter a whole number from 1 to 200." value={form.capacity} onChange={(_e, { value }) => set("capacity", value === "" ? "" : String(value))} />
           <Select id="modal-stream" labelText="Stream (optional)" value={form.stream_id} onChange={(e) => set("stream_id", e.target.value)}>
             <SelectItem value="" text="No stream" />
             {streams?.map((stream) => <SelectItem key={stream.id} value={stream.id} text={stream.name} />)}

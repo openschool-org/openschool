@@ -2,10 +2,12 @@ package thunderid
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -55,6 +57,48 @@ func TestGetAccessTokenDoesNotExposeProviderResponse(t *testing.T) {
 func TestNewClientBoundsProviderCalls(t *testing.T) {
 	if timeout := NewClient().httpClient.Timeout; timeout != requestTimeout {
 		t.Fatalf("HTTP timeout = %s, want %s", timeout, requestTimeout)
+	}
+}
+
+func TestUpdatePasswordUsesCredentialsEndpoint(t *testing.T) {
+	var method, path string
+	var sent map[string]map[string]string
+	client := &Client{
+		baseUrl:     "https://identity.example",
+		cachedToken: "management-token",
+		tokenExpiry: time.Now().Add(time.Minute),
+		httpClient: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+			method, path = request.Method, request.URL.Path
+			if err := json.NewDecoder(request.Body).Decode(&sent); err != nil {
+				t.Fatalf("decode body: %v", err)
+			}
+			return response(http.StatusNoContent, ""), nil
+		})},
+	}
+
+	if err := client.UpdatePassword(context.Background(), "user-1", "n3w-Password!"); err != nil {
+		t.Fatalf("UpdatePassword() error = %v", err)
+	}
+	if method != http.MethodPost || path != "/users/user-1/update-credentials" {
+		t.Fatalf("request = %s %s", method, path)
+	}
+	if len(sent) != 1 || len(sent["credentials"]) != 1 || sent["credentials"]["password"] != "n3w-Password!" {
+		t.Fatalf("unexpected body: %v", sent)
+	}
+}
+
+func TestUpdatePasswordReportsProviderRejection(t *testing.T) {
+	client := &Client{
+		baseUrl:     "https://identity.example",
+		cachedToken: "management-token",
+		tokenExpiry: time.Now().Add(time.Minute),
+		httpClient: &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+			return response(http.StatusBadRequest, `{"code":"USR-1019"}`), nil
+		})},
+	}
+
+	if err := client.UpdatePassword(context.Background(), "user-1", "n3w-Password!"); err == nil {
+		t.Fatal("expected a 400 from the provider to be returned as an error")
 	}
 }
 

@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 import { useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useBlocker, useNavigate, useParams } from "react-router";
 import { Add, ArrowLeft } from "@carbon/icons-react";
 import { Button, InlineNotification } from "@carbon/react";
 import {
@@ -64,7 +64,9 @@ export default function LevelDetail() {
   const [subjectsDirty, setSubjectsDirty] = useState(false);
   const [savingSubjects, setSavingSubjects] = useState(false);
   const [subjectsSaveError, setSubjectsSaveError] = useState(false);
-  const unsavedGuard = useUnsavedChangesGuard(subjectsDirty);
+  // Covers refresh/close; useBlocker covers Back, sidebar links and history back/forward.
+  useUnsavedChangesGuard(subjectsDirty);
+  const blocker = useBlocker(subjectsDirty);
 
   const draftTree = useMemo(
     () => tree ? { ...tree, groups: tree.groups.map((group) => ({ ...group, subjects: subjectChanges[group.id] ?? group.subjects })) } : null,
@@ -219,7 +221,7 @@ export default function LevelDetail() {
           </div>
         </div>
         <div className="os-flex os-gap-2">
-          <Button renderIcon={ArrowLeft} kind="ghost" size="md" onClick={() => unsavedGuard.guard(() => navigate("/curriculum"))}>
+          <Button renderIcon={ArrowLeft} kind="ghost" size="md" onClick={() => navigate("/curriculum")}>
             Back
           </Button>
           <Button renderIcon={Add} kind="primary" size="md" onClick={openCreateGroup}>
@@ -320,13 +322,13 @@ export default function LevelDetail() {
       />
 
       <ConfirmActionModal
-        open={unsavedGuard.modalOpen}
+        open={blocker.state === "blocked"}
         title="Leave with unsaved subject changes?"
         description="Your staged subject changes will be lost if you leave this page before saving them."
         confirmLabel="Leave page"
         danger
-        onClose={unsavedGuard.cancelLeave}
-        onConfirm={unsavedGuard.confirmLeave}
+        onClose={() => blocker.reset?.()}
+        onConfirm={() => blocker.proceed?.()}
       />
     </div>
   );

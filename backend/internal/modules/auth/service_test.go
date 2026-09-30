@@ -73,18 +73,17 @@ type guardianStub struct{ err error }
 func (s guardianStub) VerifyCredentials(context.Context, uuid.UUID, string) error { return s.err }
 
 type passwordUpdaterStub struct {
-	userID string
-	role   string
-	attrs  map[string]any
-	err    error
-	events *[]string
+	userID   string
+	password string
+	err      error
+	events   *[]string
 }
 
-func (s *passwordUpdaterStub) UpdateUser(_ context.Context, userID, role string, attrs map[string]any) error {
+func (s *passwordUpdaterStub) UpdatePassword(_ context.Context, userID, password string) error {
 	if s.events != nil {
 		*s.events = append(*s.events, "update-idp")
 	}
-	s.userID, s.role, s.attrs = userID, role, attrs
+	s.userID, s.password = userID, password
 	return s.err
 }
 
@@ -170,7 +169,7 @@ func TestResetPasswordConsumesTokenBeforeUpdatingProvider(t *testing.T) {
 	if store.consumeHash != hashResetToken("one-time-token") {
 		t.Fatal("raw reset token was passed to persistence")
 	}
-	if provider.userID != userID.String() || provider.role != authz.RoleTeacher || provider.attrs["password"] != "new-password" {
+	if provider.userID != userID.String() || provider.password != "new-password" {
 		t.Fatalf("unexpected identity-provider update: %+v", provider)
 	}
 	if !store.setCalled || store.setValue {

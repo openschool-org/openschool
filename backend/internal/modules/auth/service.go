@@ -54,7 +54,7 @@ const DefaultPasswordExpiry = 7 * 24 * time.Hour
 
 // PasswordUpdater is the narrow identity-provider operation needed by Auth.
 type PasswordUpdater interface {
-	UpdateUser(context.Context, string, string, map[string]any) error
+	UpdatePassword(ctx context.Context, userID string, password string) error
 }
 
 // Service implements the password lifecycle without exposing raw reset tokens
@@ -210,9 +210,7 @@ func (s *Service) setPassword(ctx context.Context, userID uuid.UUID, newPassword
 		return ErrWeakPassword
 	}
 
-	if err := s.idp.UpdateUser(ctx, userID.String(), user.Role, map[string]any{
-		"password": newPassword,
-	}); err != nil {
+	if err := s.idp.UpdatePassword(ctx, userID.String(), newPassword); err != nil {
 		return fmt.Errorf("failed to update identity provider password: %w", err)
 	}
 

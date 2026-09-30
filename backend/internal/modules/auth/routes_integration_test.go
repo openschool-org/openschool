@@ -19,14 +19,12 @@ import (
 
 type integrationPasswordUpdater struct {
 	userID   string
-	userType string
 	password string
 	calls    int
 }
 
-func (u *integrationPasswordUpdater) UpdateUser(_ context.Context, userID, userType string, attributes map[string]any) error {
-	u.userID, u.userType, u.calls = userID, userType, u.calls+1
-	u.password, _ = attributes["password"].(string)
+func (u *integrationPasswordUpdater) UpdatePassword(_ context.Context, userID, password string) error {
+	u.userID, u.password, u.calls = userID, password, u.calls+1
 	return nil
 }
 
@@ -52,7 +50,7 @@ func TestPasswordAPIWithPostgres(t *testing.T) {
 	router.POST("/auth/reset-password", handler.ResetPassword)
 
 	changed := performAuthRequest(t, router, "/auth/change-password", ChangePasswordRequest{NewPassword: "changed-password"})
-	if changed.Code != http.StatusOK || provider.userID != userID.String() || provider.userType != "admin" || provider.password != "changed-password" {
+	if changed.Code != http.StatusOK || provider.userID != userID.String() || provider.password != "changed-password" {
 		t.Fatalf("change password: code=%d provider=%+v body=%s", changed.Code, provider, changed.Body.String())
 	}
 	assertMustChangePassword(t, pool, userID, false)
