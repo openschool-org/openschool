@@ -18,6 +18,41 @@ type AcademicYear struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type ActivationCode struct {
+	ID             uuid.UUID          `json:"id"`
+	BatchID        uuid.UUID          `json:"batch_id"`
+	Role           string             `json:"role"`
+	StudentID      pgtype.UUID        `json:"student_id"`
+	GuardianID     pgtype.UUID        `json:"guardian_id"`
+	CodeHash       string             `json:"code_hash"`
+	ExpiresAt      pgtype.Timestamptz `json:"expires_at"`
+	FailedAttempts int32              `json:"failed_attempts"`
+	LockedUntil    pgtype.Timestamptz `json:"locked_until"`
+	UsedAt         pgtype.Timestamptz `json:"used_at"`
+	RevokedAt      pgtype.Timestamptz `json:"revoked_at"`
+	CreatedBy      pgtype.UUID        `json:"created_by"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type ActivationEmailToken struct {
+	TokenHash string             `json:"token_hash"`
+	CodeID    uuid.UUID          `json:"code_id"`
+	Email     string             `json:"email"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	UsedAt    pgtype.Timestamptz `json:"used_at"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type ActivationSetting struct {
+	ID             bool               `json:"id"`
+	StudentEnabled bool               `json:"student_enabled"`
+	ParentEnabled  bool               `json:"parent_enabled"`
+	OpensAt        pgtype.Timestamptz `json:"opens_at"`
+	ClosesAt       pgtype.Timestamptz `json:"closes_at"`
+	CodeTtlDays    int32              `json:"code_ttl_days"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+}
+
 type AttendanceRecord struct {
 	ID        uuid.UUID   `json:"id"`
 	SessionID uuid.UUID   `json:"session_id"`

@@ -1,5 +1,6 @@
 import { Tabs, TabList, Tab, TabPanels, TabPanel } from "@carbon/react";
 import GeneralSettingsTab from "@/features/school/components/GeneralSettingsTab";
+import ActivationTab from "@/features/activation/components/ActivationTab";
 import HousesPanel from "@/features/school/components/HousesPanel";
 import AuditLog from "@/features/system/components/AuditLog";
 import OrphanedAccounts from "@/features/system/components/OrphanedAccounts";
@@ -19,6 +20,7 @@ export default function SettingsPage() {
         <TabList aria-label="Settings sections">
           <Tab>General</Tab>
           <Tab>Houses</Tab>
+          <Tab>Account activation</Tab>
           <Tab>Audit log</Tab>
           <Tab>Orphaned accounts</Tab>
           <Tab>Automation</Tab>
@@ -26,6 +28,7 @@ export default function SettingsPage() {
         <TabPanels>
           <TabPanel className="os-p-0"><GeneralSettingsTab /></TabPanel>
           <TabPanel className="os-p-0"><div className="os-mt-4"><HousesPanel /></div></TabPanel>
+          <TabPanel className="os-p-0"><ActivationTab /></TabPanel>
           <TabPanel className="os-p-0"><div className="os-mt-4"><AuditLog /></div></TabPanel>
           <TabPanel className="os-p-0"><div className="os-mt-4"><OrphanedAccounts /></div></TabPanel>
           <TabPanel className="os-p-0"><div className="os-mt-4"><Automation inline /></div></TabPanel>

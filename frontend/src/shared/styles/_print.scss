@@ -57,3 +57,11 @@
     box-shadow: none;
   }
 }
+
+// Printing activation slips shows only the slip sheet, two slips per row, never split across pages.
+@media print {
+  body.os-print-slips > :not(.os-slip-sheet) { display: none !important; }
+  body.os-print-slips .os-slip-sheet { display: grid; gap: 0.5rem; grid-template-columns: repeat(2, 1fr); }
+  .os-slip { border: 1px dashed var(--os-border-strong); break-inside: avoid; display: flex; flex-direction: column; gap: 0.35rem; padding: 0.75rem; }
+  .os-slip .os-slip__code { font-size: 1.25rem; }
+}

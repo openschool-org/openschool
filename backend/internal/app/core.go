@@ -3,6 +3,8 @@ package app
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/openschool-org/openschool/internal/mailer"
+	activationmodule "github.com/openschool-org/openschool/internal/modules/activation"
 	auditmodule "github.com/openschool-org/openschool/internal/modules/audit"
 	authmodule "github.com/openschool-org/openschool/internal/modules/auth"
 	dashboardmodule "github.com/openschool-org/openschool/internal/modules/dashboard"
@@ -37,6 +39,8 @@ func registerCore(groups HTTPGroups, pool *pgxpool.Pool) sharedServices {
 
 	setupmodule.RegisterRoutes(groups.API, setupmodule.NewService(setupmodule.NewRepository(pool), thunderid.NewClient()))
 	authmodule.RegisterRoutes(groups.API, groups.Protected, pool, peoplemodule.NewGuardianAuthenticator(pool), thunderid.NewClient())
+	activationmodule.RegisterRoutes(groups.API, groups.Admin, activationmodule.NewService(
+		activationmodule.NewRepository(pool), thunderid.NewClient(), mailer.NewFromEnv(), auditService))
 	identitymodule.Register(groups.Protected, pool)
 	identitymodule.RegisterReconciliation(groups.Admin, pool, thunderid.NewClient(), auditService)
 	auditmodule.RegisterRoutes(groups.Admin, auditService)

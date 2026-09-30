@@ -64,7 +64,14 @@ dashboard shows them (a `RoleBadge` and, for Section Head and above, a
 - **Account provisioning** - teacher, student, and parent accounts are all
   created from inside OpenSchool (Teachers page, Students page, a student's
   Guardians tab), which provisions the matching ThunderID account
-  automatically. There is no self-registration for any role.
+  automatically. ThunderID's own self-registration stays off for every role.
+- **Self-service activation (students and parents)** - an admin issues
+  one-time activation codes in bulk from **Settings > Account activation**
+  (printable slips or CSV, per class or for everyone without a login). The
+  person opens `/activate`, enters the code, their index or NIC number and
+  an email, confirms the email through a 30-minute link and picks their own
+  password. Off by default, with a switch per role and an optional date
+  window. See [ADR 0008](adr/0008-self-service-account-activation.md).
 - **NIC/index-number default passwords** - new accounts don't get a
   manually-typed password. A teacher's or guardian's initial password is
   their NIC number (`nic_number`, required and unique per person); a

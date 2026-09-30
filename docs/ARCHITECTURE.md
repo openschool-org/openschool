@@ -337,7 +337,7 @@ Schema is defined across 40 versioned migrations
 
 | Area | Tables |
 | --- | --- |
-| Identity & accounts | `users`, `password_reset_tokens` |
+| Identity & accounts | `users`, `password_reset_tokens`, `activation_settings`, `activation_codes`, `activation_email_tokens` |
 | School & academic structure | `school`, `academic_years`, `houses`, `grades`, `classes`, `streams`, `stream_groups`, `mediums` |
 | Curriculum | `subjects`, `mediums`, `levels`, `selection_groups`, `group_subjects` |
 | People | `student_profiles`, `student_siblings`, `student_guardians`, `guardians`, `teacher_profiles`, `teacher_subjects`, `non_academic_staff`, `prefects`, `section_heads`, `teacher_positions`, `vice_principal_grade_scopes` |

@@ -12,6 +12,13 @@ import (
 )
 
 type Querier interface {
+	ActivationEmailTaken(ctx context.Context, email string) (bool, error)
+	ActivationGuardianName(ctx context.Context, id uuid.UUID) (string, error)
+	// Guardians with no login and an NIC on file, linked to at least one active student.
+	ActivationGuardianTargets(ctx context.Context, arg ActivationGuardianTargetsParams) ([]ActivationGuardianTargetsRow, error)
+	ActivationStudentName(ctx context.Context, id uuid.UUID) (string, error)
+	// Active students with no login, optionally narrowed to one current-year class or one student.
+	ActivationStudentTargets(ctx context.Context, arg ActivationStudentTargetsParams) ([]ActivationStudentTargetsRow, error)
 	// ── group subjects ──────────────────────────────────────────────────────────
 	AddGroupSubject(ctx context.Context, arg AddGroupSubjectParams) (GroupSubject, error)
 	AddOptionBlockClass(ctx context.Context, arg AddOptionBlockClassParams) error
@@ -40,12 +47,15 @@ type Querier interface {
 	// Paired via WITH ORDINALITY rather than the two-array UNNEST(a, b) form,
 	// since sqlc's static analyzer doesn't resolve that overload.
 	BulkInsertClassStudents(ctx context.Context, arg BulkInsertClassStudentsParams) error
+	// Marks the code used before any account is created, so two requests can't both activate.
+	ClaimActivationCode(ctx context.Context, id uuid.UUID) (int64, error)
 	// Used by both a real password change (kept_default_password = FALSE) and
 	// the first-login "keep this password" choice (kept_default_password =
 	// TRUE) — the two clear must_change_password identically but need telling
 	// apart so an unchanged default password can still expire after a week
 	// (S1, docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md).
 	ClearMustChangePassword(ctx context.Context, arg ClearMustChangePasswordParams) error
+	ConsumeActivationEmailToken(ctx context.Context, tokenHash string) (int64, error)
 	// Atomically claims a valid token. This prevents two concurrent reset
 	// requests from both changing the account password with the same token.
 	ConsumePasswordResetToken(ctx context.Context, tokenHash string) (PasswordResetToken, error)
@@ -61,6 +71,7 @@ type Querier interface {
 	CountSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID) (int64, error)
 	CountUsersByRole(ctx context.Context, role string) (int64, error)
 	CreateAcademicYear(ctx context.Context, arg CreateAcademicYearParams) (AcademicYear, error)
+	CreateActivationEmailToken(ctx context.Context, arg CreateActivationEmailTokenParams) error
 	CreateAttendanceSession(ctx context.Context, arg CreateAttendanceSessionParams) (AttendanceSession, error)
 	CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) (AuditLog, error)
 	CreateClass(ctx context.Context, arg CreateClassParams) (Class, error)
@@ -219,6 +230,7 @@ type Querier interface {
 	FindGuardianDuplicateCandidates(ctx context.Context, arg FindGuardianDuplicateCandidatesParams) ([]Guardian, error)
 	FinishJobRun(ctx context.Context, arg FinishJobRunParams) error
 	GetAcademicYearByID(ctx context.Context, id uuid.UUID) (AcademicYear, error)
+	GetActivationSettings(ctx context.Context) (ActivationSetting, error)
 	GetAttendanceRecord(ctx context.Context, arg GetAttendanceRecordParams) (AttendanceRecord, error)
 	GetAttendanceSessionByClassAndDate(ctx context.Context, arg GetAttendanceSessionByClassAndDateParams) (AttendanceSession, error)
 	GetAttendanceSessionByID(ctx context.Context, id uuid.UUID) (AttendanceSession, error)
@@ -295,10 +307,14 @@ type Querier interface {
 	GetTermMarkByID(ctx context.Context, id uuid.UUID) (TermMark, error)
 	GetTimetableByID(ctx context.Context, id uuid.UUID) (Timetable, error)
 	GetTimetableSettingsByYear(ctx context.Context, academicYearID uuid.UUID) (TimetableSetting, error)
+	// A code that is not used, revoked or expired, with the record it belongs to.
+	GetUsableActivationCode(ctx context.Context, codeHash string) (GetUsableActivationCodeRow, error)
+	GetUsableActivationCodeByID(ctx context.Context, id uuid.UUID) (GetUsableActivationCodeByIDRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetWorkflowRun(ctx context.Context, id uuid.UUID) (WorkflowRun, error)
 	GetWorkflowRunForUpdate(ctx context.Context, id uuid.UUID) (WorkflowRun, error)
+	InsertActivationCodes(ctx context.Context, arg []InsertActivationCodesParams) (int64, error)
 	InsertVicePrincipalScope(ctx context.Context, arg InsertVicePrincipalScopeParams) error
 	// used by PositionService.RankForTeacher to detect "Class Teacher" rank,
 	// since that's classes.form_teacher_id rather than a teacher_positions row.
@@ -338,8 +354,11 @@ type Querier interface {
 	LeadershipOverviewCounts(ctx context.Context, gradeIds []uuid.UUID) (LeadershipOverviewCountsRow, error)
 	// Human-readable grade names for a grade-scoped caller's panel heading.
 	LeadershipOverviewGradeNames(ctx context.Context, dollar_1 []uuid.UUID) ([]string, error)
+	LinkActivatedGuardian(ctx context.Context, arg LinkActivatedGuardianParams) (int64, error)
+	LinkActivatedStudent(ctx context.Context, arg LinkActivatedStudentParams) (int64, error)
 	LinkGuardianToStudent(ctx context.Context, arg LinkGuardianToStudentParams) error
 	ListAcademicYears(ctx context.Context) ([]AcademicYear, error)
+	ListActivationBatches(ctx context.Context) ([]ListActivationBatchesRow, error)
 	// every actively-enrolled student's current class/grade for an academic
 	// year — the source list for a promotion/reassignment preview.
 	ListActiveStudentsForYear(ctx context.Context, academicYearID uuid.UUID) ([]ListActiveStudentsForYearRow, error)
@@ -714,6 +733,7 @@ type Querier interface {
 	NextNonAcademicEmployeeNumber(ctx context.Context) (string, error)
 	// a block already used by a timetable past draft cannot be replaced
 	OptionBlocksInSubmittedTimetables(ctx context.Context, ids []uuid.UUID) (bool, error)
+	PeekActivationEmailToken(ctx context.Context, tokenHash string) (PeekActivationEmailTokenRow, error)
 	// Picks whichever house currently has the fewest students, breaking ties
 	// randomly. A newly-created house has zero members and so is naturally
 	// preferred until it catches up — no manual remainder bookkeeping needed.
@@ -725,7 +745,10 @@ type Querier interface {
 	// unbounded on a job that runs hourly/daily forever.
 	PruneJobRuns(ctx context.Context, arg PruneJobRunsParams) error
 	PublishTimetable(ctx context.Context, arg PublishTimetableParams) (Timetable, error)
+	// Five wrong identifiers lock the code for an hour; each later miss locks it again.
+	RecordActivationFailure(ctx context.Context, id uuid.UUID) error
 	RejectTimetable(ctx context.Context, arg RejectTimetableParams) (Timetable, error)
+	ReleaseActivationCode(ctx context.Context, id uuid.UUID) error
 	RemoveGradeFromSection(ctx context.Context, arg RemoveGradeFromSectionParams) error
 	RemoveGroupSubject(ctx context.Context, arg RemoveGroupSubjectParams) error
 	// scoped by society_id as well as id: the caller is only authorized for one
@@ -733,6 +756,10 @@ type Querier interface {
 	// must not be able to reach a membership row belonging to a different one.
 	RemoveSocietyMember(ctx context.Context, arg RemoveSocietyMemberParams) (int64, error)
 	RemoveSubjectFromTeacher(ctx context.Context, arg RemoveSubjectFromTeacherParams) error
+	ResetActivationFailures(ctx context.Context, id uuid.UUID) error
+	RevokeActivationBatch(ctx context.Context, batchID uuid.UUID) (int64, error)
+	RevokeLiveActivationCodesForGuardians(ctx context.Context, ids []uuid.UUID) error
+	RevokeLiveActivationCodesForStudents(ctx context.Context, ids []uuid.UUID) error
 	// Top 5 guardians matching a name/phone fragment, for the admin header's
 	// global search.
 	SearchGuardians(ctx context.Context, dollar_1 pgtype.Text) ([]SearchGuardiansRow, error)
@@ -766,6 +793,7 @@ type Querier interface {
 	UnenrollStudentFromClass(ctx context.Context, arg UnenrollStudentFromClassParams) error
 	UnlinkGuardianFromStudent(ctx context.Context, arg UnlinkGuardianFromStudentParams) error
 	UnlockStudentEnrollment(ctx context.Context, arg UnlockStudentEnrollmentParams) (int64, error)
+	UpdateActivationSettings(ctx context.Context, arg UpdateActivationSettingsParams) (ActivationSetting, error)
 	UpdateClass(ctx context.Context, arg UpdateClassParams) (Class, error)
 	UpdateClassroom(ctx context.Context, arg UpdateClassroomParams) (Classroom, error)
 	UpdateGrade(ctx context.Context, arg UpdateGradeParams) (Grade, error)
