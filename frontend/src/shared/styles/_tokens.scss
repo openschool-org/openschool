@@ -21,6 +21,12 @@ $os-chart-teal:    #009D9A;
 $os-chart-orange:  #FF832B;
 $os-chart-yellow:  #F1C21B;
 $os-chart-magenta: #8A3FFC;
+// Grade avatar fills by school section (Carbon 70 shades, white text passes AA).
+$os-grade-primary: #005D5D; // teal 70
+$os-grade-junior:  #0043CE; // blue 70
+$os-grade-ol:      #6929C4; // purple 70
+$os-grade-al:      #9F1853; // magenta 70
+$os-text-on-color: #FFFFFF; // Carbon text-on-color
 $os-accent-muted:  #0043CE; // Carbon blue 70
 
 $os-text-primary:   #161616; // Carbon gray 100
@@ -62,6 +68,10 @@ $os-status-excused-text:   #31135E; // Carbon purple 100
   --os-chart-orange: #{$os-chart-orange};
   --os-chart-yellow: #{$os-chart-yellow};
   --os-chart-magenta: #{$os-chart-magenta};
+  --os-grade-primary: #{$os-grade-primary};
+  --os-grade-junior: #{$os-grade-junior};
+  --os-grade-ol: #{$os-grade-ol};
+  --os-grade-al: #{$os-grade-al};
   --os-accent-muted: #{$os-accent-muted};
   --os-accent-deeper: #{$os-accent-deeper};
   --os-canvas: #{$os-canvas};

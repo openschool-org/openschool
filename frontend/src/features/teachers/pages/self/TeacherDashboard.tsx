@@ -1,6 +1,6 @@
 import { POSITION_RANK } from "@/shared/lib/constants/people";
 import { useQueries } from "@tanstack/react-query";
-import { useMyClasses } from "@/features/teachers/queries/useTeachers";
+import { useMyClasses, useTeacherSubjects } from "@/features/teachers/queries/useTeachers";
 import { classSessionsOptions } from "@/features/attendance/queries/useAttendance";
 import { studentsByClassOptions } from "@/features/students/queries/useStudents";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
@@ -22,6 +22,7 @@ import { Building, UserMultiple, CheckmarkOutline, Time } from "@carbon/icons-re
 
 export default function TeacherDashboard() {
   const { teacher: profile, classes: myClasses, isLoading: profileLoading, isError: profileError, refetch } = useMyClasses();
+  const { data: qualified } = useTeacherSubjects(profile?.id ?? "");
   const { data: currentYear } = useCurrentAcademicYear();
   const { data: terms } = useTerms(currentYear?.id);
   const { data: positionSummary } = useMyPosition();
@@ -65,7 +66,9 @@ export default function TeacherDashboard() {
     );
   }
 
-  const subjectSummary = [...new Set(myClasses.flatMap((c) => c.subjects))].join(", ") || "No subjects assigned yet";
+  // Subjects assigned in classes, else the teacher's qualifications until an admin assigns classes.
+  const classSubjects = [...new Set(myClasses.flatMap((c) => c.subjects))];
+  const subjectSummary = (classSubjects.length > 0 ? classSubjects : (qualified ?? []).map((q) => q.name)).join(", ") || "No subjects yet";
   const rankLabel = positionSummary?.rank_label ?? "Teacher";
 
   return (

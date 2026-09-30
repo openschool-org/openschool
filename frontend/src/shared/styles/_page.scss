@@ -726,6 +726,7 @@
 
     dt { display: flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--os-text-secondary); margin-bottom: 0.25rem; }
     dd { margin: 0; font-size: 1.25rem; font-weight: 600; color: var(--os-text-primary); }
+    dd .os-progress { margin: 0.375rem 0 0.25rem; }
   }
 
   &__meta { display: block; font-size: 0.75rem; font-weight: 400; color: var(--os-text-tertiary); }
@@ -846,7 +847,7 @@
 .os-email-preview { background: var(--os-canvas); border: 1px solid var(--os-border-subtle); display: block; height: 46rem; width: 100%; }
 
 .os-grade-avatar {
-  --os-grade-band: var(--os-accent);
+  --os-grade-band: var(--os-accent-dark);
   display: inline-flex;
   flex-direction: column;
   align-items: center;
@@ -854,25 +855,25 @@
   flex-shrink: 0;
   width: 2.75rem;
   height: 2.75rem;
-  border: 1px solid color-mix(in srgb, var(--os-grade-band) 35%, transparent);
-  background: color-mix(in srgb, var(--os-grade-band) 12%, var(--os-layer));
-  color: var(--os-grade-band);
+  border-radius: 50%;
+  background: var(--os-grade-band);
+  color: $os-text-on-color;
   line-height: 1;
 
-  &__grade { font-size: 1.125rem; font-weight: 700; }
+  &__grade { font-size: 1rem; font-weight: 700; }
+  &__section { max-width: 80%; margin-top: 0.125rem; overflow: hidden; font-size: 0.625rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; opacity: 0.9; }
 
   &--sm { width: 2rem; height: 2rem; }
-  &--sm &__grade { font-size: 0.875rem; }
+  &--sm &__grade { font-size: 0.8125rem; }
   &--sm &__section { display: none; }
   &--lg { width: 4rem; height: 4rem; }
   &--lg &__grade { font-size: 1.5rem; }
   &--lg &__section { font-size: 0.75rem; }
-  &__section { max-width: 100%; margin-top: 0.125rem; overflow: hidden; font-size: 0.625rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 
-  &--primary { --os-grade-band: var(--os-chart-teal); }
-  &--junior { --os-grade-band: var(--os-chart-blue); }
-  &--ol { --os-grade-band: var(--os-chart-purple); }
-  &--al { --os-grade-band: var(--os-chart-pink); }
+  &--primary { --os-grade-band: var(--os-grade-primary); }
+  &--junior { --os-grade-band: var(--os-grade-junior); }
+  &--ol { --os-grade-band: var(--os-grade-ol); }
+  &--al { --os-grade-band: var(--os-grade-al); }
 }
 
 .os-teacher-today__progress { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--os-border-subtle); }

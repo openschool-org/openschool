@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { Button } from "@carbon/react";
 import { Search, EventSchedule } from "@carbon/icons-react";
-import { useMyClasses } from "@/features/teachers/queries/useTeachers";
+import { useMyClasses, useTeacherSubjects } from "@/features/teachers/queries/useTeachers";
 import { useStudentsByClass } from "@/features/students/queries/useStudents";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
@@ -14,7 +14,8 @@ import { displayName } from "@/shared/lib/name";
 import { classLabel } from "@/shared/lib/classLabel";
 
 export default function TeacherClasses() {
-  const { classes: myClasses, isLoading, isError, refetch } = useMyClasses();
+  const { teacher, classes: myClasses, isLoading, isError, refetch } = useMyClasses();
+  const { data: qualified } = useTeacherSubjects(teacher?.id ?? "");
   const [activeClassId, setActiveClassId] = useState("");
   const [query, setQuery] = useState("");
 
@@ -123,8 +124,10 @@ export default function TeacherClasses() {
             <div className="os-section__body os-py-3 os-px-6">
               <InfoRow label="Grade" value={activeClass.grade_name} />
               <InfoRow label="Class" value={activeClass.class_name} />
-              <InfoRow label="Your role" value={activeClass.isFormTeacher ? "Form teacher" : "Subject teacher"} />
-              <InfoRow label="Subjects you teach" value={activeClass.subjects.length > 0 ? activeClass.subjects.join(", ") : "-"} />
+              <InfoRow label="Your role" value={activeClass.isFormTeacher ? "Class teacher" : "Subject teacher"} />
+              {/* Class subjects come from Class > Subjects in admin; qualifications from Teacher subjects. */}
+              <InfoRow label="Subjects in this class" value={activeClass.subjects.length > 0 ? activeClass.subjects.join(", ") : "None assigned yet"} />
+              <InfoRow label="Your subjects" value={qualified && qualified.length > 0 ? qualified.map((q) => q.name).join(", ") : "-"} />
               <InfoRow label="Students" value={roster?.length ?? 0} divider={false} />
             </div>
           </div>
