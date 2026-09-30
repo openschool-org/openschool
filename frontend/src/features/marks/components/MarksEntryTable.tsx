@@ -1,6 +1,7 @@
 import { Checkbox, NumberInput, Tag } from "@carbon/react";
 import type { Student } from "@/features/students/api/student";
 import type { useMarksDraft } from "@/features/marks/hooks/useMarksDraft";
+import { displayName } from "@/shared/lib/name";
 
 interface Props {
   students: Student[];
@@ -57,7 +58,7 @@ export default function MarksEntryTable({ students, subjectName, maxMarks, draft
             return (
               <tr key={student.id}>
                 <td className="os-table__muted">{i + 1}</td>
-                <td className="os-fw-500">{student.full_name}</td>
+                <td className="os-fw-500" title={student.full_name}>{displayName(student)}</td>
                 <td className="os-table__mono">{student.index_number}</td>
                 <td>
                   <NumberInput

@@ -8,7 +8,6 @@ import { useSession, useSessionRecords, useMarkAttendance } from "@/features/att
 import { useClass } from "@/features/academics/queries/useClasses";
 import { useStudentsByClass } from "@/features/students/queries/useStudents";
 import { useGrades } from "@/features/academics/queries/useGrades";
-import { useTeacher } from "@/features/teachers/queries/useTeachers";
 import { useRole } from "@/shared/auth/useRole";
 import { useAttendanceMarking } from "@/features/attendance/hooks/useAttendanceMarking";
 import { useUnsavedChangesGuard } from "@/shared/hooks/useUnsavedChangesGuard";
@@ -36,9 +35,6 @@ export default function AttendanceMark() {
   usePageTitle(cls ? `Mark attendance ${cls.name}` : null);
   const { data: students, isLoading: studentsLoading } = useStudentsByClass(session?.class_id ?? "");
   const { data: grades } = useGrades();
-  // Who took this session - a single-record lookup by id, not a picker, so
-  // a capped /teachers page can't be used as a directory.
-  const { data: takenByTeacher } = useTeacher(session?.taken_by ?? "");
   const markAttendance = useMarkAttendance(id);
   const marking = useAttendanceMarking(id, records, students);
   const unsavedGuard = useUnsavedChangesGuard(marking.hasUnsaved);
@@ -55,11 +51,11 @@ export default function AttendanceMark() {
   const isOverride = locked && isAdmin;
   const backPath = role === "teacher" ? "/t/attendance" : "/attendance";
   const gradeName = grades?.find((g) => g.id === cls?.grade_id)?.name;
-  const teacherName = takenByTeacher?.full_name;
+  const teacherName = session?.taken_by_name;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return (students ?? []).filter((s) => s.full_name.toLowerCase().includes(q) || s.index_number.toLowerCase().includes(q));
+    return (students ?? []).filter((s) => s.full_name.toLowerCase().includes(q) || s.name_with_initials.toLowerCase().includes(q) || s.index_number.toLowerCase().includes(q));
   }, [students, search]);
   const visibleStudents = useMemo(
     () => filtered.slice((studentPage - 1) * studentPageSize, studentPage * studentPageSize),
@@ -68,7 +64,7 @@ export default function AttendanceMark() {
 
   const save = () => {
     markAttendance.mutate(
-      { records: marking.toRecords(), reason: isOverride ? reason.trim() || undefined : undefined },
+      { ...marking.toRequest(), reason: isOverride ? reason.trim() || undefined : undefined },
       { onSuccess: () => { marking.clearDraft(); marking.markSaved(); showToast({ kind: "success", title: "Attendance saved" }); navigate(backPath); } },
     );
   };

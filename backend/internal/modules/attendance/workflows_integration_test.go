@@ -337,3 +337,49 @@ func assertStaffAttendance(t *testing.T, pool *pgxpool.Pool, column string, staf
 		t.Fatalf("staff attendance count=%d status=%q note=%q; want %d, %q, %q", count, status, note, wantCount, wantStatus, wantNote)
 	}
 }
+
+func TestLateAttendanceWithOptionalNoteWithPostgres(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	pool := testdb.Open(t)
+	fixture := seedAttendanceFixture(t, pool)
+	service := NewService(NewRepository(pool), &recordingNotifier{}, &recordingAuditor{}, nil)
+	teacherRouter := attendanceRouter(service, fixture.teacherUserID, authz.RoleTeacher)
+
+	created := performAttendanceRequest(t, teacherRouter, http.MethodPost, "/attendance/sessions", CreateAttendanceSessionRequest{ClassID: fixture.classID.String(), Date: "2026-09-16"})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create session: code=%d body=%s", created.Code, created.Body.String())
+	}
+	var session Session
+	if err := json.Unmarshal(created.Body.Bytes(), &session); err != nil {
+		t.Fatal(err)
+	}
+	markPath := "/attendance/sessions/" + session.ID.String() + "/records"
+	mark := func(status, note string) {
+		t.Helper()
+		res := performAttendanceRequest(t, teacherRouter, http.MethodPost, markPath, MarkAttendanceRequest{Records: []AttendanceRecord{{StudentID: fixture.studentID.String(), Status: status, Note: note}}})
+		if res.Code != http.StatusOK {
+			t.Fatalf("mark %s: code=%d body=%s", status, res.Code, res.Body.String())
+		}
+	}
+
+	mark(AttendanceStatusLate, "bus delay")
+	assertStudentAttendance(t, pool, session.ID, fixture.studentID, AttendanceStatusLate, "bus delay", 1)
+	list := performAttendanceRequest(t, teacherRouter, http.MethodGet, "/classes/"+fixture.classID.String()+"/attendance/sessions", nil)
+	if list.Code != http.StatusOK || !bytes.Contains(list.Body.Bytes(), []byte(`"late_count":1`)) {
+		t.Fatalf("class sessions late count: code=%d body=%s", list.Code, list.Body.String())
+	}
+
+	// The note is optional: a late mark without one saves, and an empty note clears an old one.
+	mark(AttendanceStatusLate, "")
+	assertStudentAttendance(t, pool, session.ID, fixture.studentID, AttendanceStatusLate, "", 1)
+
+	// Un-marking a student deletes the record, so a mistaken "late" does not stay behind.
+	cleared := performAttendanceRequest(t, teacherRouter, http.MethodPost, markPath, MarkAttendanceRequest{Records: []AttendanceRecord{}, Cleared: []string{fixture.studentID.String()}})
+	if cleared.Code != http.StatusOK {
+		t.Fatalf("clear mark: code=%d body=%s", cleared.Code, cleared.Body.String())
+	}
+	var remaining int
+	if err := pool.QueryRow(context.Background(), "SELECT COUNT(*) FROM attendance_records WHERE session_id = $1", session.ID).Scan(&remaining); err != nil || remaining != 0 {
+		t.Fatalf("records after clear = %d, err %v", remaining, err)
+	}
+}

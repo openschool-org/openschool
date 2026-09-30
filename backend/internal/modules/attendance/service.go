@@ -34,6 +34,12 @@ type Session struct {
 	TakenBy   uuid.UUID          `json:"taken_by"`
 	Date      pgtype.Date        `json:"date"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	// TakenByName is filled only when one session is fetched by id.
+	TakenByName string `json:"taken_by_name,omitempty"`
+	// Counts are filled only on a class's session list.
+	PresentCount *int64 `json:"present_count,omitempty"`
+	AbsentCount  *int64 `json:"absent_count,omitempty"`
+	LateCount    *int64 `json:"late_count,omitempty"`
 }
 
 type Record struct {
@@ -90,7 +96,7 @@ type store interface {
 	listSessionsByDate(context.Context, time.Time, []uuid.UUID) ([]DailySession, error)
 	deleteSession(context.Context, uuid.UUID) error
 	listRecords(context.Context, uuid.UUID) ([]Record, error)
-	markBatch(context.Context, uuid.UUID, []MarkInput) ([]Record, error)
+	markBatch(ctx context.Context, sessionID uuid.UUID, records []MarkInput, cleared []uuid.UUID) ([]Record, error)
 	listBySession(context.Context, uuid.UUID) ([]SessionRecord, error)
 	listByStudent(context.Context, uuid.UUID) ([]StudentRecord, error)
 	summary(context.Context, uuid.UUID, uuid.UUID) (Summary, error)
@@ -311,7 +317,15 @@ func (s *Service) MarkAttendance(ctx context.Context, actor Actor, sessionID uui
 		}
 		batch[i] = MarkInput{StudentID: studentID, Status: record.Status, Note: record.Note}
 	}
-	updated, err := s.store.markBatch(ctx, sessionID, batch)
+	cleared := make([]uuid.UUID, 0, len(req.Cleared))
+	for _, raw := range req.Cleared {
+		studentID, err := uuid.Parse(raw)
+		if err != nil {
+			return fmt.Errorf("invalid student id: %s", raw)
+		}
+		cleared = append(cleared, studentID)
+	}
+	updated, err := s.store.markBatch(ctx, sessionID, batch, cleared)
 	if err != nil {
 		return fmt.Errorf("failed to mark attendance: %w", err)
 	}
@@ -323,6 +337,13 @@ func (s *Service) MarkAttendance(ctx context.Context, actor Actor, sessionID uui
 		}
 		if input.Status == AttendanceStatusAbsent && (!existed || before.Status != AttendanceStatusAbsent) {
 			s.notifyAbsent(ctx, session, input.StudentID, takenBy)
+		}
+	}
+	if locked && s.auditor != nil {
+		for _, studentID := range cleared {
+			if before, existed := previous[studentID]; existed {
+				_ = s.auditor.Record(ctx, "attendance_record", before.ID, "cleared_after_lock", actor.ID, before, nil, req.Reason)
+			}
 		}
 	}
 	return nil

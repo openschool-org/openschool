@@ -42,7 +42,7 @@ export default function SignIn() {
           </SignInButton>
         </div>
         <div className="os-auth-card__footer">
-          <Link to="/forgot-password">Forgot password?</Link>
+          <Link to="/forgot-password">Forgot password?</Link> · <Link to="/activate">First time? Activate your account</Link>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { Locked, UserMultiple, Edit, TrashCan, Phone, Email, Notification } from "@carbon/icons-react";
+import type { ReactNode } from "react";
+import { Locked, UserMultiple, Edit, TrashCan, Phone, Email, Identification, Notification } from "@carbon/icons-react";
 import { Tag, SkeletonText, Button, Pagination } from "@carbon/react";
 import { useGuardianStudents, useGuardianNotifications, useDeleteGuardian } from "@/features/guardians/queries/useGuardians";
 import type { Guardian } from "@/features/guardians/api/guardian";
@@ -10,6 +11,19 @@ import { relationshipLabel } from "@/features/guardians/constants";
 import EditGuardianModal from "@/features/guardians/components/EditGuardianModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import SectionHeader from "@/shared/ui/SectionHeader";
+import { displayName } from "@/shared/lib/name";
+
+function ContactCard({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="os-guardian-contact-card">
+      {icon}
+      <div className="os-min-w-0">
+        <p className="os-m-0 os-text-xs os-c-tertiary">{label}</p>
+        <p className="os-mt-1 os-mb-0 os-text-md os-fw-500 os-truncate">{value}</p>
+      </div>
+    </div>
+  );
+}
 
 export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guardian; onDeleted: () => void }) {
   const NOTIFICATIONS_PAGE_SIZE = 5;
@@ -40,7 +54,7 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
   return (
     <div className="os-section os-mt-0 os-guardian-detail">
       <SectionHeader
-        title={guardian.full_name}
+        title={<span title={guardian.full_name}>{displayName(guardian)}</span>}
         meta={
           <div className="os-flex os-gap-2 os-items-center">
             <Tag size="sm" type="gray">
@@ -83,20 +97,9 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
         />
 
         <div className="os-guardian-contact-grid os-mb-6">
-          <div className="os-guardian-contact-card">
-            <Phone size={18} className="os-fill-accent" />
-            <div>
-              <p className="os-m-0 os-text-xs os-c-tertiary">Phone</p>
-              <p className="os-mt-1 os-mb-0 os-text-md os-fw-500">{guardian.phone}</p>
-            </div>
-          </div>
-          <div className="os-guardian-contact-card">
-            <Email size={18} className="os-fill-accent" />
-            <div className="os-min-w-0">
-              <p className="os-m-0 os-text-xs os-c-tertiary">Email</p>
-              <p className="os-mt-1 os-mb-0 os-text-md os-fw-500 os-truncate">{guardian.email || "Not provided"}</p>
-            </div>
-          </div>
+          <ContactCard icon={<Phone size={18} className="os-fill-accent" />} label="Phone" value={guardian.phone} />
+          <ContactCard icon={<Email size={18} className="os-fill-accent" />} label="Email" value={guardian.email || "Not provided"} />
+          <ContactCard icon={<Identification size={18} className="os-fill-accent" />} label="NIC number" value={guardian.nic_number || "Not provided"} />
         </div>
 
         <div className="os-guardian-section-heading">
@@ -116,7 +119,7 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
                 to={`/students/${s.id}`} className="os-flex os-items-center os-gap-1h os-py-1h os-px-3 os-border os-text-sm os-no-underline os-c-primary"
               >
                 <UserMultiple size={14} className="os-fill-accent" />
-                {s.full_name}
+                {displayName(s)}
               </Link>
             ))}
           </div>
@@ -183,13 +186,13 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
             "Checking linked students…"
           ) : hasStudents ? (
             <>
-              <strong>{guardian.full_name}</strong> is still linked to {students?.length} student
+              <strong>{displayName(guardian)}</strong> is still linked to {students?.length} student
               {students && students.length !== 1 ? "s" : ""}. Unlink them from this guardian first
               (from each student's profile), then delete.
             </>
           ) : (
             <>
-              Delete <strong>{guardian.full_name}</strong>? This cannot be undone.
+              Delete <strong>{displayName(guardian)}</strong>? This cannot be undone.
             </>
           )
         }

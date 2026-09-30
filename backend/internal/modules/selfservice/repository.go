@@ -29,6 +29,7 @@ func (r *Repository) studentWithClass(ctx context.Context, studentID uuid.UUID) 
 	}
 	return StudentProfile{
 		ID: row.ID, UserID: optionalUUID(row.UserID), FullName: row.FullName,
+		NameWithInitials: row.NameWithInitials, CallingName: row.CallingName,
 		IndexNumber: row.IndexNumber, Address: optionalText(row.Address), Phone: optionalText(row.Phone),
 		WhatsApp: optionalText(row.Whatsapp), SpecialRemarks: optionalText(row.SpecialRemarks),
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time, Gender: optionalText(row.Gender),
@@ -50,6 +51,7 @@ func (r *Repository) teacherForUser(ctx context.Context, userID uuid.UUID) (Teac
 	}
 	return TeacherProfile{
 		ID: row.ID, UserID: row.UserID, FullName: row.FullName, EmployeeNumber: row.EmployeeNumber,
+		NameWithInitials: row.NameWithInitials, CallingName: row.CallingName,
 		JoinedDate: row.JoinedDate.Time.Format("2006-01-02"), Phone: optionalText(row.Phone), CreatedAt: row.CreatedAt.Time,
 		UpdatedAt: row.UpdatedAt.Time, Title: optionalText(row.Title), Gender: optionalText(row.Gender),
 		IsActive: row.IsActive, HouseID: optionalUUID(row.HouseID), EmploymentStatus: row.EmploymentStatus,

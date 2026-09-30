@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Add, Edit, TrashCan } from "@carbon/icons-react";
+import { Add, Edit, TrashCan, Upload } from "@carbon/icons-react";
 import { Button, IconButton, Select, SelectItem, Tag } from "@carbon/react";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
@@ -19,6 +19,7 @@ import { useHouses } from "@/features/school/queries/useHouses";
 import { useCurrentClasses } from "@/features/academics/queries/useClasses";
 import type { Student } from "@/features/students/api/student";
 import Avatar from "@/shared/ui/Avatar";
+import { displayName } from "@/shared/lib/name";
 
 const FILTER_LABELS: Record<string, string> = {
   query: "Search",
@@ -82,7 +83,7 @@ export default function Students() {
       render: (s) => (
         <div className="os-flex os-items-center os-gap-2">
           <Avatar name={s.full_name} size="sm" />
-          <Link to={`/students/${s.id}`} className="os-table__link">{s.full_name}</Link>
+          <Link to={`/students/${s.id}`} className="os-table__link" title={s.full_name}>{displayName(s)}</Link>
         </div>
       ),
     },
@@ -120,9 +121,14 @@ export default function Students() {
           <h1 className="os-page__title">Students</h1>
           <p className="os-page__subtitle">Manage student enrolment and profiles</p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/students/new">
-          Enrol student
-        </Button>
+        <div className="os-flex os-gap-2">
+          <Button renderIcon={Upload} kind="secondary" size="md" as={Link} to="/students/import">
+            Import students
+          </Button>
+          <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/students/new">
+            Enrol student
+          </Button>
+        </div>
       </div>
 
       <AgentFindingsBanner />
@@ -220,7 +226,7 @@ export default function Students() {
       <ConfirmDeleteModal
         open={!!toDelete}
         title="Delete student"
-        description={<>Delete <strong>{toDelete?.full_name}</strong>? This removes their account and cannot be undone.</>}
+        description={<>Delete <strong>{toDelete ? displayName(toDelete) : ""}</strong>? This removes their account and cannot be undone.</>}
         subject="Student"
         mutation={deleteStudent}
         onClose={() => setToDelete(null)}

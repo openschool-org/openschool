@@ -174,7 +174,7 @@ func (q *Queries) ListGradeIDsForSectionHeadTeacher(ctx context.Context, arg Lis
 const listGradeSectionsByYear = `-- name: ListGradeSectionsByYear :many
 SELECT
     gs.id, gs.academic_year_id, gs.name, gs.interval_start_time, gs.interval_end_time, gs.section_head_teacher_id, gs.sort_order, gs.created_at,
-    tp.full_name AS section_head_name
+    COALESCE(display_name(tp.full_name, tp.name_with_initials), '')::text AS section_head_name
 FROM grade_sections gs
 LEFT JOIN teacher_profiles tp ON tp.id = gs.section_head_teacher_id
 WHERE gs.academic_year_id = $1
@@ -190,7 +190,7 @@ type ListGradeSectionsByYearRow struct {
 	SectionHeadTeacherID pgtype.UUID        `json:"section_head_teacher_id"`
 	SortOrder            int32              `json:"sort_order"`
 	CreatedAt            pgtype.Timestamptz `json:"created_at"`
-	SectionHeadName      pgtype.Text        `json:"section_head_name"`
+	SectionHeadName      string             `json:"section_head_name"`
 }
 
 func (q *Queries) ListGradeSectionsByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListGradeSectionsByYearRow, error) {

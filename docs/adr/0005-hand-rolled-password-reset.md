@@ -31,6 +31,9 @@ integration:
   secret on file) before issuing a token and emailing a reset link
   containing it to the address on file (`internal/mailer`) - the token
   itself is never returned in the API response.
+- **Password changes** - `auth.Service` sets the new password with
+  ThunderID's `POST /users/{id}/update-credentials`. `PUT /users/{id}`
+  cannot change credentials and rejects a body with only `password`.
 - **Single-use enforcement** - reset execution atomically updates the token
   from unused to used only when it is still within its expiry window. The
   ThunderID password update starts only after that claim succeeds, so two

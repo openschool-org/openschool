@@ -2,6 +2,7 @@ import type { useAssignFormTeacher } from "@/features/academics/queries/useClass
 import type { Teacher } from "@/features/teachers/api/teacher";
 import FormModal from "@/shared/ui/FormModal";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
+import { displayName } from "@/shared/lib/name";
 
 interface Props {
   open: boolean;
@@ -45,7 +46,7 @@ export default function AssignTeacherModal({
         onSelect={onTeacherChoiceChange}
         onSearch={onTeacherSearch}
         getId={(t) => t.id}
-        itemToString={(t) => `${t.full_name} - ${t.employee_number}`}
+        itemToString={(t) => `${displayName(t)} - ${t.employee_number}`}
         placeholder="Search teachers by name or employee number…"
       />
     </FormModal>

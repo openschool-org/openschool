@@ -169,16 +169,20 @@ func (a *SecurityAuditAgent) checkOffHoursActivity(ctx context.Context) checkOut
 	return checkOutcome{findings: len(actors), label: fmt.Sprintf("%d account(s) active off-hours", len(actors))}
 }
 
-// checkPasswordResetTokenSweep deletes expired, unused password-reset tokens; pure housekeeping, nothing to notify about.
+// checkPasswordResetTokenSweep deletes expired, unused password-reset and activation links; pure housekeeping, nothing to notify about.
 func (a *SecurityAuditAgent) checkPasswordResetTokenSweep(ctx context.Context) checkOutcome {
-	deleted, err := a.checks.DeleteExpiredPasswordResetTokens(ctx)
+	resets, err := a.checks.DeleteExpiredPasswordResetTokens(ctx)
 	if err != nil {
 		return checkOutcome{err: fmt.Errorf("expired reset token sweep: %w", err)}
 	}
-	if deleted == 0 {
+	activations, err := a.checks.DeleteExpiredActivationEmailTokens(ctx)
+	if err != nil {
+		return checkOutcome{err: fmt.Errorf("expired activation link sweep: %w", err)}
+	}
+	if resets+activations == 0 {
 		return checkOutcome{}
 	}
-	return checkOutcome{label: fmt.Sprintf("swept %d expired reset token(s)", deleted)}
+	return checkOutcome{label: fmt.Sprintf("swept %d expired reset and %d activation link(s)", resets, activations)}
 }
 
 // Title is the agent's name on the Automation panel.
@@ -192,6 +196,6 @@ func (a *SecurityAuditAgent) Checks() []CheckInfo {
 	return []CheckInfo{
 		{Key: "audit_anomaly", Title: "Unusual admin activity", Description: "Flags a spike in audit-log entries compared with the usual level.", FindingTitle: "Unusual audit-log activity", Pages: []string{"/settings"}},
 		{Key: "off_hours", Title: "Off-hours activity", Description: "Flags account activity at unusual hours.", FindingTitle: "Unusual off-hours account activity", Pages: []string{"/settings"}},
-		{Key: "reset_token_sweep", Title: "Expired reset links", Description: "Deletes expired password-reset links."},
+		{Key: "reset_token_sweep", Title: "Expired reset links", Description: "Deletes expired password-reset and account activation links."},
 	}
 }

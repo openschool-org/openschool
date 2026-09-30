@@ -9,6 +9,10 @@ export interface Teacher {
   id: string;
   user_id: string;
   full_name: string;
+  // e.g. "H.A.H.E. Wickramasinghe"; used in lists, registers and printouts
+  name_with_initials: string;
+  // e.g. "Hasitha"; optional, used in greetings
+  calling_name: string;
   email?: string;
   employee_number: string;
   nic_number: string;
@@ -46,8 +50,10 @@ export interface TeacherSubject {
 // employee_number is assigned server-side; the NIC number becomes the initial one-time password.
 export interface CreateTeacherRequest {
   email: string;
-  given_name: string;
-  family_name: string;
+  full_name: string;
+  // filled in from the full name by the server when empty
+  name_with_initials?: string;
+  calling_name?: string;
   phone_number?: string;
   nic_number: string;
   joined_date: string; // RFC3339 timestamp
@@ -58,8 +64,10 @@ export interface CreateTeacherRequest {
 // Matches models.UpdateTeacherRequest, employee_number is immutable,
 // nic_number is.
 export interface UpdateTeacherRequest {
-  given_name: string;
-  family_name: string;
+  full_name: string;
+  // filled in from the full name by the server when empty
+  name_with_initials?: string;
+  calling_name?: string;
   phone_number?: string;
   nic_number: string;
   title?: TeacherTitle;

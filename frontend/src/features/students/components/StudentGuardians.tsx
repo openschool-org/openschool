@@ -16,6 +16,7 @@ import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import SectionCard from "@/shared/ui/SectionCard";
 import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
+import { displayName } from "@/shared/lib/name";
 
 // A student can have at most 2 guardians on file.
 const MAX_GUARDIANS = 2;
@@ -111,7 +112,7 @@ export default function StudentGuardians({ studentId }: { studentId: string }) {
         title="Remove guardian"
         description={
           <>
-            Remove <strong>{toUnlink?.full_name}</strong> from this student? Their guardian
+            Remove <strong>{toUnlink && displayName(toUnlink)}</strong> from this student? Their guardian
             record isn't deleted - this only unlinks them from this student.
           </>
         }

@@ -163,11 +163,11 @@ function StudentEnrollmentSection({ byGrade, byClass }: { byGrade: CountRow[]; b
             {gradeRows.map((row) => (
               <Button
                 key={row.label}
-                kind={selectedGrade === row.label ? "tertiary" : "ghost"}
+                kind={effectiveSelectedGrade === row.label ? "tertiary" : "ghost"}
                 size="sm"
                 className="os-justify-start os-w-full"
                 onClick={() => setSelectedGrade(row.label)}
-                aria-pressed={selectedGrade === row.label}
+                aria-pressed={effectiveSelectedGrade === row.label}
               >
                 <span className="os-flex os-justify-between os-w-full os-text-left">
                   <span>{row.label}</span>

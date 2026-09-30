@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Idea, Add, Edit, Checkmark, UserMultiple } from "@carbon/icons-react";
+import { Idea, Add, Edit, UserMultiple } from "@carbon/icons-react";
 import { Button, Select, SelectItem, InlineNotification, SkeletonText, Tag } from "@carbon/react";
 import { useCurrentAcademicYear, useAcademicYears } from "@/features/school/queries/useAcademicYears";
 import { useSocieties, useSocietyYears, useDeleteSociety } from "@/features/portfolio/queries/useSocieties";
@@ -107,23 +107,6 @@ export default function Societies() {
           <ErrorMessage message="Could not load societies." onRetry={refetch} />
         </div>
       )}
-
-      <div className="os-society-summary os-mb-6">
-        <div className="os-society-summary__icon"><Idea size={22} /></div>
-        <div className="os-flex-1 os-min-w-0">
-          <p className="os-eyebrow">Society programme</p>
-          <h2 className="os-society-summary__title">{allYears?.find((y) => y.id === viewingYearId)?.label ?? "Academic year"}</h2>
-          <p className="os-m-0 os-text-sm os-c-secondary">{isArchive ? "Browsing a read-only archive" : "Manage clubs, leaders, and student participation"}</p>
-        </div>
-        <div className="os-society-summary__stat">
-          <strong>{societies?.length ?? 0}</strong>
-          <span>societies</span>
-        </div>
-        <Tag type={isArchive || !currentYear ? "cool-gray" : "teal"} size="md">
-          {!isArchive && currentYear && <Checkmark size={14} className="os-mr-1" />}
-          {isArchive ? "Archive" : currentYear ? "Current year" : "No current year set"}
-        </Tag>
-      </div>
 
       <MutationErrorNotification
         isError={deleteSociety.isError}

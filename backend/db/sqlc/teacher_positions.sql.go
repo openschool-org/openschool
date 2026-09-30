@@ -12,6 +12,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const currentClassOfStudent = `-- name: CurrentClassOfStudent :one
+SELECT cs.class_id
+FROM class_students cs
+JOIN classes c         ON c.id = cs.class_id
+JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current
+WHERE cs.student_id = $1
+LIMIT 1
+`
+
+func (q *Queries) CurrentClassOfStudent(ctx context.Context, studentID uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, currentClassOfStudent, studentID)
+	var class_id uuid.UUID
+	err := row.Scan(&class_id)
+	return class_id, err
+}
+
 const deleteTeacherPosition = `-- name: DeleteTeacherPosition :execrows
 DELETE FROM teacher_positions WHERE id = $1
 `
@@ -179,7 +195,7 @@ SELECT
     tp.notify_whole_school,
     tp.scope_note,
     tp.created_at,
-    t.full_name AS teacher_name
+    COALESCE(NULLIF(t.name_with_initials, ''), t.full_name) AS teacher_name
 FROM teacher_positions tp
 INNER JOIN teacher_profiles t ON t.id = tp.teacher_id
 ORDER BY
@@ -259,6 +275,40 @@ func (q *Queries) ListVicePrincipalScopeGrades(ctx context.Context, positionID u
 		return nil, err
 	}
 	return items, nil
+}
+
+const teacherClassAccess = `-- name: TeacherClassAccess :one
+SELECT tp.id AS teacher_id, c.grade_id, c.academic_year_id,
+       (c.form_teacher_id IS NOT DISTINCT FROM tp.id
+        OR EXISTS (SELECT 1 FROM class_subject_teachers cst WHERE cst.class_id = c.id AND cst.teacher_id = tp.id))::bool AS assigned
+FROM teacher_profiles tp
+CROSS JOIN classes c
+WHERE tp.user_id = $1 AND c.id = $2
+`
+
+type TeacherClassAccessParams struct {
+	UserID  uuid.UUID `json:"user_id"`
+	ClassID uuid.UUID `json:"class_id"`
+}
+
+type TeacherClassAccessRow struct {
+	TeacherID      uuid.UUID `json:"teacher_id"`
+	GradeID        uuid.UUID `json:"grade_id"`
+	AcademicYearID uuid.UUID `json:"academic_year_id"`
+	Assigned       bool      `json:"assigned"`
+}
+
+// The caller's teacher profile, the class's grade and year, and whether they teach the class.
+func (q *Queries) TeacherClassAccess(ctx context.Context, arg TeacherClassAccessParams) (TeacherClassAccessRow, error) {
+	row := q.db.QueryRow(ctx, teacherClassAccess, arg.UserID, arg.ClassID)
+	var i TeacherClassAccessRow
+	err := row.Scan(
+		&i.TeacherID,
+		&i.GradeID,
+		&i.AcademicYearID,
+		&i.Assigned,
+	)
+	return i, err
 }
 
 const upsertPrincipal = `-- name: UpsertPrincipal :one

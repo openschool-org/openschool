@@ -310,7 +310,7 @@ const listTimetableEntriesByTimetable = `-- name: ListTimetableEntriesByTimetabl
 SELECT
     te.id, te.timetable_id, te.day_of_week, te.period_number, te.subject_id, te.teacher_id, te.classroom_id, te.created_at, te.updated_at, te.option_block_id,
     s.name       AS subject_name,
-    tp.full_name AS teacher_name,
+    COALESCE(display_name(tp.full_name, tp.name_with_initials), '')::text AS teacher_name,
     cr.name      AS classroom_name,
     ob.name      AS option_block_name
 FROM timetable_entries te
@@ -334,7 +334,7 @@ type ListTimetableEntriesByTimetableRow struct {
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 	OptionBlockID   pgtype.UUID        `json:"option_block_id"`
 	SubjectName     pgtype.Text        `json:"subject_name"`
-	TeacherName     pgtype.Text        `json:"teacher_name"`
+	TeacherName     string             `json:"teacher_name"`
 	ClassroomName   pgtype.Text        `json:"classroom_name"`
 	OptionBlockName pgtype.Text        `json:"option_block_name"`
 }

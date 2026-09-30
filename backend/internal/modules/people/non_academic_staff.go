@@ -29,6 +29,7 @@ type staffCreate struct {
 }
 type staffUpdate struct{ FullName, Designation, Phone, Gender string }
 type staffRecord struct{ HouseID *uuid.UUID }
+
 // StaffListParams is the non-academic-staff pagination request: the shared
 // limit/offset/search contract plus the designation filter.
 type StaffListParams struct {
@@ -61,7 +62,7 @@ func (s *NonAcademicStaffService) Create(ctx context.Context, req CreateNonAcade
 	if !ValidNonAcademicDesignations[req.Designation] {
 		return nil, ErrInvalidNonAcademicDesignation
 	}
-	if !validation.IsValidSriLankanPhone(req.Phone) {
+	if !validation.NormalizePhoneField(&req.Phone) {
 		return nil, validation.ErrInvalidPhone
 	}
 	number, err := s.store.nextStaffEmployeeNumber(ctx)
@@ -88,7 +89,7 @@ func (s *NonAcademicStaffService) Update(ctx context.Context, id uuid.UUID, req 
 	if !ValidNonAcademicDesignations[req.Designation] {
 		return nil, ErrInvalidNonAcademicDesignation
 	}
-	if !validation.IsValidSriLankanPhone(req.Phone) {
+	if !validation.NormalizePhoneField(&req.Phone) {
 		return nil, validation.ErrInvalidPhone
 	}
 	return s.store.updateStaff(ctx, id, staffUpdate(req))

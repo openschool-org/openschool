@@ -11,6 +11,8 @@ type StudentProfile struct {
 	ID               uuid.UUID  `json:"id"`
 	UserID           *uuid.UUID `json:"user_id"`
 	FullName         string     `json:"full_name"`
+	NameWithInitials string     `json:"name_with_initials"`
+	CallingName      string     `json:"calling_name"`
 	IndexNumber      string     `json:"index_number"`
 	Address          *string    `json:"address"`
 	Phone            *string    `json:"phone"`
@@ -33,6 +35,8 @@ type TeacherProfile struct {
 	ID               uuid.UUID  `json:"id"`
 	UserID           uuid.UUID  `json:"user_id"`
 	FullName         string     `json:"full_name"`
+	NameWithInitials string     `json:"name_with_initials"`
+	CallingName      string     `json:"calling_name"`
 	EmployeeNumber   string     `json:"employee_number"`
 	JoinedDate       string     `json:"joined_date"`
 	Phone            *string    `json:"phone"`

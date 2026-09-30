@@ -1,0 +1,21 @@
+{{.Brand.SchoolName}} - OpenSchool
+{{if .TestRecipient}}
+[Test mode: this email was meant for {{.TestRecipient}}]
+{{end}}
+{{.Title}}
+
+{{if .Greeting}}{{.Greeting}}
+
+{{end}}{{range .Paragraphs}}{{.}}
+
+{{end}}{{range .Details}}{{.Label}}: {{.Value}}
+{{end}}{{if .Details}}
+{{end}}{{if .Button}}{{.Button.Label}}: {{.Button.URL}}
+
+{{end}}{{if .Note}}{{.Note}}
+
+{{end}}{{if .Safety}}{{.Safety}}
+
+{{end}}--
+{{.Brand.SchoolName}}{{if .Brand.Phone}} | {{.Brand.Phone}}{{end}}{{if .Brand.Email}} | {{.Brand.Email}}{{end}}
+Sent by OpenSchool. This is an automatic message about your account.

@@ -12,7 +12,7 @@ SELECT
     p.student_id,
     p.rank,
     p.created_at,
-    sp.full_name    AS student_name,
+    display_name(sp.full_name, sp.name_with_initials)::text AS student_name,
     sp.index_number AS student_index,
     g.name          AS grade_name
 FROM prefects p

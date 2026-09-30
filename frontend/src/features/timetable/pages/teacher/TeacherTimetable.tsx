@@ -4,6 +4,7 @@ import { useMyTeacherSchedule } from "@/features/timetable/queries/useTimetables
 import TimetableByDay from "@/features/timetable/components/TimetableByDay";
 import EmptyState from "@/shared/ui/EmptyState";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
+import { classLabel } from "@/shared/lib/classLabel";
 
 export default function TeacherTimetable() {
   const { data: currentYear } = useCurrentAcademicYear();
@@ -25,7 +26,7 @@ export default function TeacherTimetable() {
       ) : !schedule?.length ? (
         <div className="os-section"><EmptyState title="No published classes yet" description="Your teaching schedule will appear here once a timetable is published." /></div>
       ) : (
-        <TimetableByDay entries={schedule} asSections getRowId={(_e, i) => String(i)} middle={{ key: "class", header: "Class", render: (e) => `${e.grade_name} - ${e.class_name}` }} />
+        <TimetableByDay entries={schedule} asSections getRowId={(_e, i) => String(i)} middle={{ key: "class", header: "Class", render: (e) => classLabel(e.grade_name, e.class_name) }} />
       )}
     </div>
   );

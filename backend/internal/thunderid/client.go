@@ -221,6 +221,25 @@ func (c *Client) UpdateUser(ctx context.Context, userID string, userType string,
 	return nil
 }
 
+// updateCredentialsRequest is the POST /users/{id}/update-credentials request body.
+type updateCredentialsRequest struct {
+	Credentials map[string]string `json:"credentials"`
+}
+
+// UpdatePassword sets a user's password through the credentials endpoint; PUT /users/{id} cannot change credentials.
+func (c *Client) UpdatePassword(ctx context.Context, userID string, password string) error {
+	status, body, err := c.doRequest(ctx, http.MethodPost, "/users/"+userID+"/update-credentials", updateCredentialsRequest{
+		Credentials: map[string]string{"password": password},
+	})
+	if err != nil {
+		return err
+	}
+	if status != http.StatusNoContent && status != http.StatusOK {
+		return idpError("UpdatePassword", status, body)
+	}
+	return nil
+}
+
 // DeleteUser deletes a ThunderID account, treating an already-deleted account (404) as success.
 func (c *Client) DeleteUser(ctx context.Context, userID string) error {
 	status, body, err := c.doRequest(ctx, http.MethodDelete, "/users/"+userID, nil)

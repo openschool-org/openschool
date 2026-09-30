@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,6 +14,8 @@ import (
 	db "github.com/openschool-org/openschool/db/sqlc"
 	academicsmodule "github.com/openschool-org/openschool/internal/modules/academics"
 	timetablemodule "github.com/openschool-org/openschool/internal/modules/timetable"
+	"github.com/openschool-org/openschool/internal/names"
+	"github.com/openschool-org/openschool/internal/validation"
 )
 
 // Store is the module's only SQL adapter. Workflow definitions receive a pool-bound Store
@@ -668,14 +671,49 @@ func (s *Store) guardiansByNIC(ctx context.Context, nics []string) (map[string]d
 	return out, nil
 }
 
+// existingContacts loads guardians on record who share a phone, and every guardian or login using one of
+// the emails, so an import can spot a parent already entered under another NIC or an email already taken.
+func (s *Store) existingContacts(ctx context.Context, phones, emails []string) ([]guardianSeen, []guardianSeen, error) {
+	// Older records may hold +94 or 94 forms, so search every spelling of each number.
+	var variants []string
+	for _, p := range phones {
+		if len(p) == 10 && p[0] == '0' {
+			variants = append(variants, p, "+94"+p[1:], "94"+p[1:])
+		}
+	}
+	var people, owners []guardianSeen
+	if len(variants) > 0 {
+		rows, err := s.q.WfGuardiansByPhones(ctx, variants)
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, r := range rows {
+			phone, _ := validation.NormalizeSriLankanPhone(r.Phone)
+			people = append(people, guardianSeen{nic: r.NicNumber, name: r.FullName, email: strings.ToLower(r.Email), phone: phone})
+		}
+	}
+	if len(emails) > 0 {
+		rows, err := s.q.WfEmailOwners(ctx, emails)
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, r := range rows {
+			owners = append(owners, guardianSeen{nic: r.NicNumber, name: r.FullName, email: r.Email, account: r.Kind == "account"})
+		}
+	}
+	return people, owners, nil
+}
+
 func optText(v string) pgtype.Text { return pgtype.Text{String: v, Valid: v != ""} }
 
 // NewStudent is one imported student with their first guardian.
 type NewStudent struct {
 	Name, Index, Gender, Address, Phone string
-	GuardianName, Relationship          string
-	GuardianPhone, GuardianNIC          string
-	GuardianEmail                       string
+	// NameWithInitials and CallingName are optional; the name with initials is suggested when empty.
+	NameWithInitials, CallingName string
+	GuardianName, Relationship    string
+	GuardianPhone, GuardianNIC    string
+	GuardianEmail                 string
 }
 
 // leastUsedHouse returns nil when the school has no houses.
@@ -692,11 +730,13 @@ func (s *Store) createIntakeStudent(ctx context.Context, st NewStudent) (uuid.UU
 	if err != nil {
 		return uuid.Nil, err
 	}
-	return s.q.WfCreateIntakeStudent(ctx, db.WfCreateIntakeStudentParams{FullName: st.Name, IndexNumber: st.Index, Address: optText(st.Address), Phone: optText(st.Phone), Gender: optText(st.Gender), HouseID: house})
+	full, withInitials, calling := names.Normalize(st.Name, st.NameWithInitials, st.CallingName)
+	return s.q.WfCreateIntakeStudent(ctx, db.WfCreateIntakeStudentParams{FullName: full, NameWithInitials: withInitials, CallingName: calling, IndexNumber: st.Index, Address: optText(st.Address), Phone: optText(st.Phone), Gender: optText(st.Gender), HouseID: house})
 }
 
 func (s *Store) createGuardian(ctx context.Context, st NewStudent) (uuid.UUID, error) {
-	return s.q.WfCreateGuardian(ctx, db.WfCreateGuardianParams{FullName: st.GuardianName, Relationship: st.Relationship, Phone: st.GuardianPhone, Email: optText(st.GuardianEmail), NicNumber: st.GuardianNIC})
+	full, withInitials, _ := names.Normalize(st.GuardianName, "", "")
+	return s.q.WfCreateGuardian(ctx, db.WfCreateGuardianParams{FullName: full, NameWithInitials: withInitials, Relationship: st.Relationship, Phone: st.GuardianPhone, Email: optText(st.GuardianEmail), NicNumber: st.GuardianNIC})
 }
 
 func (s *Store) linkGuardian(ctx context.Context, student, guardian uuid.UUID) error {

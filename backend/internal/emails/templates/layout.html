@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>{{.Title}}</title>
+<style>
+  body { margin: 0; padding: 0; }
+  a { color: #007D9C; }
+  @media (max-width: 620px) {
+    .os-card { width: 100% !important; border-radius: 0 !important; }
+    .os-pad { padding-left: 20px !important; padding-right: 20px !important; }
+  }
+  @media (prefers-color-scheme: dark) {
+    .os-canvas { background: #161616 !important; }
+    .os-card, .os-header, .os-footer { background: #262626 !important; border-color: #393939 !important; }
+    .os-text, .os-title, .os-school { color: #F4F4F4 !important; }
+    .os-muted { color: #C6C6C6 !important; }
+    .os-details { background: #161616 !important; }
+    a { color: #1CB3D6 !important; }
+  }
+</style>
+</head>
+<body class="os-canvas" style="margin:0;padding:0;background:#F4F4F4;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">{{.Preheader}}&#8199;&#65279;&#847;&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="os-canvas" style="background:#F4F4F4;">
+<tr><td align="center" style="padding:32px 12px;">
+  <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="os-card" style="width:600px;max-width:600px;background:#FFFFFF;border:1px solid #E0E0E0;border-radius:8px;overflow:hidden;">
+    <tr><td style="height:4px;line-height:4px;font-size:0;background:#007D9C;">&nbsp;</td></tr>
+    <tr><td class="os-header os-pad" style="padding:24px 40px 20px;border-bottom:1px solid #E0E0E0;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="vertical-align:middle;padding-right:14px;"><img src="{{.LogoSrc}}" width="44" height="38" alt="OpenSchool" style="display:block;border:0;width:44px;height:38px;"></td>
+        <td style="vertical-align:middle;font-family:'IBM Plex Sans',Arial,Helvetica,sans-serif;">
+          <div class="os-school" style="font-size:18px;line-height:24px;font-weight:600;color:#161616;">{{.Brand.SchoolName}}</div>
+          <div class="os-muted" style="font-size:12px;line-height:16px;color:#525252;letter-spacing:0.02em;">OpenSchool</div>
+        </td>
+      </tr></table>
+    </td></tr>
+    {{- if .TestRecipient}}
+    <tr><td class="os-pad" style="padding:16px 40px 0;">
+      <div style="background:#FCF4D6;border-left:4px solid #F1C21B;padding:10px 14px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:18px;color:#161616;">
+        <strong>Test mode:</strong> this email was meant for {{.TestRecipient}}.
+      </div>
+    </td></tr>
+    {{- end}}
+    <tr><td class="os-pad os-text" style="padding:32px 40px 8px;font-family:'IBM Plex Sans',Arial,Helvetica,sans-serif;color:#161616;">
+      <h1 class="os-title" style="margin:0 0 16px;font-size:24px;line-height:32px;font-weight:600;color:#161616;">{{.Title}}</h1>
+      {{- if .Greeting}}<p style="margin:0 0 12px;font-size:16px;line-height:24px;">{{.Greeting}}</p>{{end}}
+      {{- range .Paragraphs}}<p style="margin:0 0 12px;font-size:16px;line-height:24px;">{{.}}</p>{{end}}
+    </td></tr>
+    {{- if .Details}}
+    <tr><td class="os-pad" style="padding:8px 40px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="os-details" style="background:#F4F4F4;border-radius:6px;">
+        {{- range .Details}}
+        <tr>
+          <td class="os-muted" style="padding:10px 16px;font-family:Arial,Helvetica,sans-serif;font-size:13px;line-height:18px;color:#525252;width:40%;">{{.Label}}</td>
+          <td class="os-text" style="padding:10px 16px;font-family:'IBM Plex Sans',Arial,Helvetica,sans-serif;font-size:14px;line-height:20px;font-weight:600;color:#161616;">{{.Value}}</td>
+        </tr>
+        {{- end}}
+      </table>
+    </td></tr>
+    {{- end}}
+    {{- if .Button}}
+    <tr><td class="os-pad" style="padding:20px 40px 8px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td align="center" bgcolor="#007D9C" style="border-radius:6px;background:#007D9C;">
+          <a href="{{.Button.URL}}" target="_blank" style="display:inline-block;padding:14px 28px;font-family:'IBM Plex Sans',Arial,Helvetica,sans-serif;font-size:16px;line-height:20px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:6px;">{{.Button.Label}}</a>
+        </td>
+      </tr></table>
+    </td></tr>
+    {{- end}}
+    <tr><td class="os-pad os-text" style="padding:12px 40px 28px;font-family:Arial,Helvetica,sans-serif;color:#161616;">
+      {{- if .Note}}<p class="os-muted" style="margin:0 0 12px;font-size:14px;line-height:20px;color:#525252;">{{.Note}}</p>{{end}}
+      {{- if .ShowLink}}
+      <p class="os-muted" style="margin:0 0 4px;font-size:13px;line-height:18px;color:#525252;">Button not working? Copy this link into your browser:</p>
+      <p style="margin:0;font-size:13px;line-height:18px;word-break:break-all;"><a href="{{.Button.URL}}" style="color:#007D9C;">{{.Button.URL}}</a></p>
+      {{- end}}
+      {{- if .Safety}}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;border-top:1px solid #E0E0E0;"><tr>
+        <td class="os-muted" style="padding-top:16px;font-size:13px;line-height:20px;color:#525252;">{{.Safety}}</td>
+      </tr></table>
+      {{- end}}
+    </td></tr>
+    <tr><td class="os-footer os-pad" style="padding:20px 40px;background:#F4F4F4;border-top:1px solid #E0E0E0;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#525252;">
+      <span class="os-muted"><strong>{{.Brand.SchoolName}}</strong>{{if .Brand.Phone}} &middot; {{.Brand.Phone}}{{end}}{{if .Brand.Email}} &middot; <a href="mailto:{{.Brand.Email}}" style="color:#525252;">{{.Brand.Email}}</a>{{end}}</span><br>
+      <span class="os-muted">Sent by OpenSchool. This is an automatic message about your account.</span>
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body>
+</html>

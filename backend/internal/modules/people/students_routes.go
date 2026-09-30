@@ -48,7 +48,7 @@ type StudentReader interface {
 	ListByClass(context.Context, uuid.UUID) (any, error)
 }
 
-func RegisterStudentRoutes(admin, teacherOrAdmin *gin.RouterGroup, runner StudentRunner, reader StudentReader, statusWriter StudentStatusWriter, audit ports.AuditRecorder) {
+func RegisterStudentRoutes(admin, teacherOrAdmin *gin.RouterGroup, runner StudentRunner, reader StudentReader, statusWriter StudentStatusWriter, audit ports.AuditRecorder, access ports.ClassAccess) {
 	admin.POST("/students", func(c *gin.Context) {
 		var r CreateStudentRequest
 		if e := httpx.BindStrict(c, &r); e != nil {
@@ -61,7 +61,7 @@ func RegisterStudentRoutes(admin, teacherOrAdmin *gin.RouterGroup, runner Studen
 		}
 		v, e := runner.Create(c, r, a)
 		if e != nil {
-			c.JSON(400, gin.H{"error": e.Error()})
+			apierror.Respond(c, e)
 			return
 		}
 		c.JSON(201, v)
@@ -117,7 +117,7 @@ func RegisterStudentRoutes(admin, teacherOrAdmin *gin.RouterGroup, runner Studen
 		}
 		v, e := runner.Update(c, id, r)
 		if e != nil {
-			c.JSON(400, gin.H{"error": e.Error()})
+			apierror.Respond(c, e)
 			return
 		}
 		c.JSON(200, v)
@@ -138,7 +138,7 @@ func RegisterStudentRoutes(admin, teacherOrAdmin *gin.RouterGroup, runner Studen
 		}
 		v, e := runner.UpdateHouse(c, id, r, a)
 		if e != nil {
-			c.JSON(400, gin.H{"error": e.Error()})
+			apierror.Respond(c, e)
 			return
 		}
 		c.JSON(200, v)
@@ -155,7 +155,7 @@ func RegisterStudentRoutes(admin, teacherOrAdmin *gin.RouterGroup, runner Studen
 		}
 		v, e := statusWriter.UpdateStatus(c, id, r.Status)
 		if e != nil {
-			c.JSON(400, gin.H{"error": e.Error()})
+			apierror.Respond(c, e)
 			return
 		}
 		c.JSON(200, v)
@@ -170,7 +170,7 @@ func RegisterStudentRoutes(admin, teacherOrAdmin *gin.RouterGroup, runner Studen
 			return
 		}
 		if e := runner.Delete(c, id, a); e != nil {
-			c.JSON(400, gin.H{"error": e.Error()})
+			apierror.Respond(c, e)
 			return
 		}
 		c.JSON(200, gin.H{"message": "student deleted"})
@@ -201,19 +201,20 @@ func RegisterStudentRoutes(admin, teacherOrAdmin *gin.RouterGroup, runner Studen
 		}
 		c.JSON(200, gin.H{"message": "student profile erased"})
 	})
-	teacherOrAdmin.GET("/classes/:id/students", func(c *gin.Context) {
+	teacherOrAdmin.GET("/classes/:id/students", middleware.RequireClassAccess(access, "id"), func(c *gin.Context) {
 		id, ok := studentID(c)
 		if !ok {
 			return
 		}
 		v, e := reader.ListByClass(c, id)
 		if e != nil {
-			c.JSON(500, gin.H{"error": e.Error()})
+			apierror.RespondInternal(c, e)
 			return
 		}
 		c.JSON(200, v)
 	})
 }
+
 // auditStudentProfileRead logs a read of a student's profile, best-effort:
 // PDPA requires an access log for reads of student data (S11), but a
 // logging failure must never fail the read itself.

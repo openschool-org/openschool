@@ -13,9 +13,17 @@ import { usePageTitle } from "@/shared/hooks/usePageTitle";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
 
+interface Props {
+  // Fixed workflow for pages outside year-end, such as /students/import.
+  workflowKey?: string;
+  backTo?: string;
+  backLabel?: string;
+}
+
 // One workflow: its steps and tools, the form, preconditions, the proposal to review, and its history.
-export default function WorkflowPage() {
-  const { key = "" } = useParams();
+export default function WorkflowPage({ workflowKey, backTo = "/year-end", backLabel = "All steps" }: Props) {
+  const params = useParams();
+  const key = workflowKey ?? params.key ?? "";
   const p = useWorkflowPage(key);
   const [confirm, setConfirm] = useState<"apply" | "revert" | null>(null);
   usePageTitle(p.entry?.title);
@@ -24,7 +32,7 @@ export default function WorkflowPage() {
   if (!p.entry) {
     return (
       <div className="os-page">
-        <EmptyState title="Workflow not found" description="It may have been renamed." action={<Link to="/year-end" className="os-table__link">Back to year-end</Link>} />
+        <EmptyState title="Workflow not found" description="It may have been renamed." action={<Link to={backTo} className="os-table__link">Go back</Link>} />
       </div>
     );
   }
@@ -36,10 +44,10 @@ export default function WorkflowPage() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">{entry.order}. {entry.title}</h1>
+          <h1 className="os-page__title">{entry.order > 0 ? `${entry.order}. ` : ""}{entry.title}</h1>
           <p className="os-page__subtitle">{entry.description}</p>
         </div>
-        <Button kind="ghost" size="md" renderIcon={ArrowLeft} as={Link} to="/year-end">All steps</Button>
+        <Button kind="ghost" size="md" renderIcon={ArrowLeft} as={Link} to={backTo}>{backLabel}</Button>
       </div>
 
       <div className="os-grid os-grid-cols-2-1 os-gap-6 os-items-grid-start">

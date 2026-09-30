@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS display_name(TEXT, TEXT);

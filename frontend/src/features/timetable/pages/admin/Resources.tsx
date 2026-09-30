@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Education, Home, Music, Map as MapIcon, Information, Add, Edit, TrashCan } from "@carbon/icons-react";
+import { Education, Home, Map as MapIcon, Information, Add, Edit, TrashCan } from "@carbon/icons-react";
 import { Button, IconButton, Tag } from "@carbon/react";
 import { useClassrooms, useCreateClassroom, useUpdateClassroom, useDeleteClassroom } from "@/features/timetable/queries/useClassrooms";
 import type { Classroom, ClassroomType } from "@/features/timetable/api/classroom";
@@ -9,19 +9,22 @@ import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import BackfillHomeroomsButton from "@/features/timetable/components/BackfillHomeroomsButton";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
+import RoomAvatar from "@/features/timetable/components/RoomAvatar";
+import { BAND_TAG, roomKind } from "@/features/timetable/lib/roomKind";
+import { HallIcon } from "@/features/timetable/components/facilityIcons";
 
 const RESOURCE_TYPES = [
   { key: "regular", label: "Homerooms & classrooms", icon: Home },
   { key: "lab", label: "Labs", icon: Education },
-  { key: "eca", label: "Libraries, halls & facilities", icon: Music },
+  { key: "eca", label: "Libraries, halls & facilities", icon: HallIcon },
 ] as const;
 
 type ZoneKey = ClassroomType | "all";
 
-const ZONES: { key: ZoneKey; label: string; description: string; icon: typeof Home }[] = [
+const ZONES: { key: ZoneKey; label: string; description: string; icon: React.ComponentType<{ size?: number }> }[] = [
   { key: "regular", label: "Learning block", description: "Homerooms and everyday teaching spaces", icon: Home },
   { key: "lab", label: "Practical learning", description: "Subject labs used for practical lessons", icon: Education },
-  { key: "eca", label: "Shared facilities", description: "Libraries, halls, arts, sports and support spaces", icon: Music },
+  { key: "eca", label: "Shared facilities", description: "Libraries, halls, arts, sports and support spaces", icon: HallIcon },
 ];
 
 const FACILITY_LABEL: Record<string, string> = {
@@ -122,9 +125,13 @@ function ResourceMap({ resources }: { resources: Classroom[] }) {
                 <div className="os-resource-map__rooms">
                   {zoneResources.length === 0 ? <span className="os-resource-map__empty">No resources configured</span> : zoneResources.map((resource) => (
                     <article key={resource.id} className="os-resource-map__room">
-                      <div className="os-resource-map__room-select">
-                        <div className="os-resource-map__room-name"><span title={resource.name}>{resource.name}</span><Tag type="gray" size="sm">{resourceMeta(resource)}</Tag></div>
-                        <small>{resourceCapacity(resource)}</small>
+                      <RoomAvatar room={resource} />
+                      <div className="os-resource-map__room-body">
+                        <p className="os-resource-map__room-title" title={resource.name}>{resource.name}</p>
+                        <div className="os-resource-map__room-meta">
+                          <Tag type={BAND_TAG[roomKind(resource).band]} size="sm">{resourceMeta(resource)}</Tag>
+                          <small>{resourceCapacity(resource)}</small>
+                        </div>
                       </div>
                       <div className="os-resource-map__room-actions">
                         <IconButton label={`Edit ${resource.name}`} kind="ghost" size="sm" onClick={() => openEdit(resource)}><Edit size={16} /></IconButton>

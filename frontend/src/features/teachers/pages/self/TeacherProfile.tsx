@@ -2,12 +2,11 @@ import { useQueries } from "@tanstack/react-query";
 import { Tag } from "@carbon/react";
 import { Book } from "@carbon/icons-react";
 import { useMyTeacherProfile, useTeacherSubjects, useMyClasses } from "@/features/teachers/queries/useTeachers";
-import { studentsByClassOptions } from "@/features/students/queries/useStudents";
 import { classSessionsOptions } from "@/features/attendance/queries/useAttendance";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import InfoRow from "@/shared/ui/InfoRow";
-import { getInitials } from "@/shared/lib/name";
+import { getInitials, displayName } from "@/shared/lib/name";
 
 export default function TeacherProfile() {
   const { data: profile, isLoading, isError, refetch } = useMyTeacherProfile();
@@ -15,9 +14,9 @@ export default function TeacherProfile() {
   const { classes: myClasses } = useMyClasses();
 
   const classIds = myClasses.map((c) => c.class_id);
-  const studentQueries = useQueries({ queries: classIds.map(studentsByClassOptions) });
   const sessionQueries = useQueries({ queries: classIds.map(classSessionsOptions) });
-  const studentsTaught = new Set(studentQueries.flatMap((q) => (q.data ?? []).map((s) => s.id))).size;
+  // A student is in one class per year, so the class counts add up to distinct students.
+  const studentsTaught = myClasses.reduce((n, c) => n + c.studentCount, 0);
   const sessionsTaken = sessionQueries.reduce((sum, q) => sum + (q.data?.length ?? 0), 0);
 
   if (isLoading) return <LoadingSpinner />;
@@ -32,9 +31,9 @@ export default function TeacherProfile() {
   return (
     <div className="os-bg-layer-hover os-min-h-content">
       <div className="os-profile__banner">
-        <div className="os-profile__avatar">{getInitials(profile.full_name)}</div>
+        <div className="os-profile__avatar">{getInitials(displayName(profile))}</div>
         <div className="os-flex-1">
-          <p className="os-profile__name">{profile.title ? `${profile.title} ` : ""}{profile.full_name}</p>
+          <p className="os-profile__name">{profile.title ? `${profile.title} ` : ""}{displayName(profile)}</p>
           <p className="os-profile__meta">{profile.employee_number}</p>
         </div>
         <div className="os-profile__actions">

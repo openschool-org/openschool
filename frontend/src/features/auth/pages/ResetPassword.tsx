@@ -6,14 +6,8 @@ import { useResetPassword } from "@/features/auth/queries/useAuth";
 import { validateNewPassword } from "@/shared/auth/password";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import PasswordFields from "@/shared/ui/PasswordFields";
+import { tokenFromHash } from "@/shared/lib/urlHash";
 
-// The reset token travels in the URL fragment (#token=...), not a query
-// string - a fragment is never sent to a server, so it can't land in the
-// SPA host's or a proxy's access log the way a query string would (S5).
-function tokenFromHash(): string {
-  const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
-  return new URLSearchParams(hash).get("token") ?? "";
-}
 
 export default function ResetPassword() {
   const [token] = useState(tokenFromHash);

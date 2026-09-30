@@ -19,6 +19,8 @@ current behavior.
 | [0005](./0005-hand-rolled-password-reset.md) | Hand-rolled password lifecycle (no IDP primitive) | Accepted, known weakness |
 | [0006](./0006-five-agent-job-consolidation.md) | Five consolidated background agents instead of many single-purpose jobs | Accepted |
 | [0007](./0007-plain-comments-over-swaggo.md) | Plain one-line doc comments in handlers instead of swaggo annotations | Accepted |
+| [0008](./0008-self-service-account-activation.md) | Self-service account activation with school-issued codes | Accepted |
+| [0009](./0009-transactional-email.md) | Branded transactional email through Resend or SMTP | Accepted |
 
 ## Adding a new ADR
 

@@ -10,14 +10,14 @@ import (
 	"github.com/openschool-org/openschool/internal/thunderid"
 )
 
-func registerPeople(groups HTTPGroups, pool *pgxpool.Pool, houses ports.HouseAssignments, audit *auditmodule.Service) {
+func registerPeople(groups HTTPGroups, pool *pgxpool.Pool, houses ports.HouseAssignments, audit *auditmodule.Service, access ports.ClassAccess) {
 	studentStore := peoplemodule.NewStudentStore(pool)
 	// automationmodule.Repository backs PendingEraser too — IdentityErasureRetryAgent
 	// (internal/modules/automation) is what actually retries a failed local
 	// scrub/identity-provider deletion recorded here (S11).
 	pendingEraser := automationmodule.NewRepository(pool)
 	studentService := peoplemodule.NewStudentService(studentStore, thunderid.NewClient(), houses, audit, schoolmodule.NewSchoolTypeReader(pool), pendingEraser)
-	peoplemodule.RegisterStudentRoutes(groups.Admin, groups.TeacherOrAdmin, studentService, studentStore, studentService, audit)
+	peoplemodule.RegisterStudentRoutes(groups.Admin, groups.TeacherOrAdmin, studentService, studentStore, studentService, audit, access)
 
 	teacherService := peoplemodule.NewTeacherService(studentStore, thunderid.NewClient(), houses, audit)
 	peoplemodule.RegisterTeacherReadRoutes(groups.TeacherOrAdmin, groups.Admin, peoplemodule.NewTeacherReader(pool))
@@ -32,5 +32,5 @@ func registerPeople(groups HTTPGroups, pool *pgxpool.Pool, houses ports.HouseAss
 	staffService := peoplemodule.NewNonAcademicStaffService(peoplemodule.NewNonAcademicStaffStore(pool), audit)
 	peoplemodule.RegisterNonAcademicStaffRoutes(groups.Admin, groups.TeacherOrAdmin, staffService)
 	portfolioService := peoplemodule.NewStudentPortfolioService(peoplemodule.NewStudentPortfolioStore(pool))
-	peoplemodule.RegisterStudentPortfolioRoutes(groups.TeacherOrAdmin, groups.StudentAccess, portfolioService)
+	peoplemodule.RegisterStudentPortfolioRoutes(groups.TeacherOrAdmin, groups.StudentAccess, portfolioService, access)
 }

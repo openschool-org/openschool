@@ -9,6 +9,9 @@ interface Draft {
   notes: Record<string, string>;
 }
 
+// A note box shows only for these, so a note left from an earlier status is not saved.
+const NOTE_STATUSES = new Set<Status>(["absent", "late", "excused"]);
+
 const draftKey = (sessionId: string) => `attendance-draft:${sessionId}`;
 
 function readDraft(sessionId: string): Draft | null {
@@ -102,9 +105,12 @@ export function useAttendanceMarking(sessionId: string, records: AttendanceRecor
     clearAll: () => setStatuses({}),
     setNote: (studentId: string, value: string) => setNotes((prev) => ({ ...prev, [studentId]: value })),
     clearDraft: () => removeDraft(sessionId),
-    toRecords: () =>
-      Object.entries(statuses)
+    // Marked students go in records; students whose saved mark was removed go in cleared so the server deletes it.
+    toRequest: () => ({
+      records: Object.entries(statuses)
         .filter((entry): entry is [string, NonNullable<Status>] => !!entry[1])
-        .map(([student_id, status]) => ({ student_id, status, note: notes[student_id]?.trim() || undefined })),
+        .map(([student_id, status]) => ({ student_id, status, note: NOTE_STATUSES.has(status) ? notes[student_id]?.trim() || undefined : undefined })),
+      cleared: Object.keys(saved.statuses).filter((id) => saved.statuses[id] && !statuses[id]),
+    }),
   };
 }

@@ -79,6 +79,8 @@ type store interface {
 	listSectionHeads(context.Context, uuid.UUID) ([]SectionHeadListItem, error)
 	deleteSectionHead(context.Context, uuid.UUID) (int64, error)
 	listGradeIDsHeadedByTeacher(context.Context, uuid.UUID, uuid.UUID) ([]uuid.UUID, error)
+	teacherClassAccess(ctx context.Context, userID, classID uuid.UUID) (classAccess, error)
+	currentClassOfStudent(context.Context, uuid.UUID) (uuid.UUID, error)
 }
 
 type Service struct {

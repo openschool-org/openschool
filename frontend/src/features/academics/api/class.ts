@@ -19,6 +19,7 @@ export interface ClassWithDetails {
   academic_year_label: string;
   medium_name: string | null;
   home_classroom_name: string | null;
+  student_count?: number;
 }
 
 export interface ClassRow {

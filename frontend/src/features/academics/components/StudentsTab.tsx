@@ -10,6 +10,7 @@ import { capitalize } from "@/shared/lib/text";
 import EmptyState from "@/shared/ui/EmptyState";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import SectionCard from "@/shared/ui/SectionCard";
+import { displayName } from "@/shared/lib/name";
 
 interface Props {
   cls: NonNullable<ReturnType<typeof useClass>["data"]>;
@@ -62,7 +63,7 @@ export default function StudentsTab({
               header: "Name",
               render: (s) => (
                 <>
-                  <Link to={`/students/${s.id}`} className="os-table__link">{s.full_name}</Link>
+                  <Link to={`/students/${s.id}`} className="os-table__link" title={s.full_name}>{displayName(s)}</Link>
                   {s.id === cls.girl_monitor_id && <Tag type="magenta" size="sm" className="os-ml-2">Girl monitor</Tag>}
                   {s.id === cls.boy_monitor_id && <Tag type="blue" size="sm" className="os-ml-2">Boy monitor</Tag>}
                 </>

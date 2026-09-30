@@ -41,3 +41,14 @@ func isCommonPassword(password string) bool {
 	_, ok := commonPasswords[strings.ToLower(password)]
 	return ok
 }
+
+// ValidateNewPassword applies the length and deny-list rules to any flow that sets a password outside this module.
+func ValidateNewPassword(password string) error {
+	if len(password) < MinPasswordLength {
+		return ErrPasswordTooShort
+	}
+	if isCommonPassword(password) {
+		return ErrWeakPassword
+	}
+	return nil
+}

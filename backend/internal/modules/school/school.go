@@ -83,6 +83,25 @@ type schoolStore interface {
 }
 type schoolService struct{ store schoolStore }
 
+// createYear sets "current" through setCurrentYear so the old current year is cleared, never left beside the new one.
+func (s *schoolService) createYear(ctx context.Context, values yearValues) (AcademicYear, error) {
+	makeCurrent := values.IsCurrent
+	values.IsCurrent = false
+	year, err := s.store.createYear(ctx, values)
+	if err != nil || !makeCurrent {
+		return year, err
+	}
+	id, err := uuid.Parse(year.ID)
+	if err != nil {
+		return year, err
+	}
+	if err := s.store.setCurrentYear(ctx, id); err != nil {
+		return year, err
+	}
+	year.IsCurrent = true
+	return year, nil
+}
+
 // imageSignatures maps a data URL's declared media type to the byte
 // sequence a real file of that type starts with. Checking only the
 // "data:image/..." prefix (the previous behaviour) accepts anything —
@@ -140,11 +159,11 @@ func validateImageDataURL(value string) error {
 	}
 	return nil
 }
-func validateSchool(command schoolCommand) error {
+func validateSchool(command *schoolCommand) error {
 	if err := validateLogoURL(command.LogoURL); err != nil {
 		return err
 	}
-	if !validation.IsValidSriLankanPhone(command.Phone) {
+	if !validation.NormalizePhoneField(&command.Phone) {
 		return validation.ErrInvalidPhone
 	}
 	return nil
@@ -162,7 +181,7 @@ func (s *schoolService) createSchool(ctx context.Context, command schoolCommand)
 	if existing, err := s.store.getSchool(ctx); err == nil && existing.ID != "" {
 		return School{}, fmt.Errorf("school already exists")
 	}
-	if err := validateSchool(command); err != nil {
+	if err := validateSchool(&command); err != nil {
 		return School{}, err
 	}
 	values := schoolValuesFrom(command)
@@ -170,7 +189,7 @@ func (s *schoolService) createSchool(ctx context.Context, command schoolCommand)
 	return s.store.createSchool(ctx, values)
 }
 func (s *schoolService) updateSchool(ctx context.Context, id uuid.UUID, command schoolCommand) (School, error) {
-	if err := validateSchool(command); err != nil {
+	if err := validateSchool(&command); err != nil {
 		return School{}, err
 	}
 	values := schoolValuesFrom(command)
@@ -246,9 +265,9 @@ func (h *schoolHandler) createYear(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	value, err := h.service.store.createYear(c.Request.Context(), yearValues(command))
+	value, err := h.service.createYear(c.Request.Context(), yearValues(command))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierror.Respond(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, value)

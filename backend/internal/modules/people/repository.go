@@ -116,14 +116,14 @@ func (r *studentRepository) CreateUser(c context.Context, p teacherUserCreate) e
 }
 func (r *studentRepository) Create(c context.Context, p studentCreate) (any, error) {
 	return r.queries.CreateStudentProfile(c, db.CreateStudentProfileParams{
-		UserID: pgtype.UUID{Bytes: p.UserID, Valid: true}, FullName: p.FullName, IndexNumber: p.Index,
+		UserID: pgtype.UUID{Bytes: p.UserID, Valid: true}, FullName: p.FullName, NameWithInitials: p.NameWithInitials, CallingName: p.CallingName, IndexNumber: p.Index,
 		Address: pgtype.Text{String: p.Address, Valid: p.Address != ""}, Phone: pgtype.Text{String: p.Phone, Valid: p.Phone != ""},
 		Whatsapp: pgtype.Text{String: p.WhatsApp, Valid: p.WhatsApp != ""}, SpecialRemarks: pgtype.Text{String: p.Remarks, Valid: p.Remarks != ""},
 		Gender: pgtype.Text{String: p.Gender, Valid: p.Gender != ""}, HouseID: pgtype.UUID{Bytes: p.HouseID, Valid: p.HouseID != uuid.Nil},
 	})
 }
 func (r *studentRepository) Update(c context.Context, id uuid.UUID, p studentUpdate) (any, error) {
-	return r.queries.UpdateStudentProfile(c, db.UpdateStudentProfileParams{ID: id, FullName: p.FullName,
+	return r.queries.UpdateStudentProfile(c, db.UpdateStudentProfileParams{ID: id, FullName: p.FullName, NameWithInitials: p.NameWithInitials, CallingName: p.CallingName,
 		Address: pgtype.Text{String: p.Address, Valid: p.Address != ""}, Phone: pgtype.Text{String: p.Phone, Valid: p.Phone != ""},
 		Whatsapp: pgtype.Text{String: p.WhatsApp, Valid: p.WhatsApp != ""}, SpecialRemarks: pgtype.Text{String: p.Remarks, Valid: p.Remarks != ""}, Gender: pgtype.Text{String: p.Gender, Valid: p.Gender != ""}})
 }
@@ -162,10 +162,10 @@ func (r *studentRepository) GetUserEmail(c context.Context, id uuid.UUID) (strin
 	return u.Email, err
 }
 func (r *studentRepository) CreateTeacher(c context.Context, p teacherCreate) (any, error) {
-	return r.queries.CreateTeacherProfile(c, db.CreateTeacherProfileParams{UserID: p.UserID, FullName: p.FullName, EmployeeNumber: p.EmployeeNumber, NicNumber: p.NIC, JoinedDate: pgtype.Date{Time: p.JoinedDate, Valid: true}, Phone: pgtype.Text{String: p.Phone, Valid: p.Phone != ""}, Title: pgtype.Text{String: p.Title, Valid: p.Title != ""}, Gender: pgtype.Text{String: p.Gender, Valid: p.Gender != ""}, HouseID: pgtype.UUID{Bytes: p.HouseID, Valid: p.HouseID != uuid.Nil}})
+	return r.queries.CreateTeacherProfile(c, db.CreateTeacherProfileParams{UserID: p.UserID, FullName: p.FullName, NameWithInitials: p.NameWithInitials, CallingName: p.CallingName, EmployeeNumber: p.EmployeeNumber, NicNumber: p.NIC, JoinedDate: pgtype.Date{Time: p.JoinedDate, Valid: true}, Phone: pgtype.Text{String: p.Phone, Valid: p.Phone != ""}, Title: pgtype.Text{String: p.Title, Valid: p.Title != ""}, Gender: pgtype.Text{String: p.Gender, Valid: p.Gender != ""}, HouseID: pgtype.UUID{Bytes: p.HouseID, Valid: p.HouseID != uuid.Nil}})
 }
 func (r *studentRepository) UpdateTeacher(c context.Context, id uuid.UUID, p teacherUpdate) (any, error) {
-	return r.queries.UpdateTeacherProfile(c, db.UpdateTeacherProfileParams{ID: id, FullName: p.FullName, Phone: pgtype.Text{String: p.Phone, Valid: p.Phone != ""}, Title: pgtype.Text{String: p.Title, Valid: p.Title != ""}, Gender: pgtype.Text{String: p.Gender, Valid: p.Gender != ""}, NicNumber: p.NIC})
+	return r.queries.UpdateTeacherProfile(c, db.UpdateTeacherProfileParams{ID: id, FullName: p.FullName, NameWithInitials: p.NameWithInitials, CallingName: p.CallingName, Phone: pgtype.Text{String: p.Phone, Valid: p.Phone != ""}, Title: pgtype.Text{String: p.Title, Valid: p.Title != ""}, Gender: pgtype.Text{String: p.Gender, Valid: p.Gender != ""}, NicNumber: p.NIC})
 }
 func (r *studentRepository) UpdateTeacherStatus(c context.Context, id uuid.UUID, status string) (any, error) {
 	return r.queries.UpdateTeacherEmploymentStatus(c, db.UpdateTeacherEmploymentStatusParams{ID: id, EmploymentStatus: status})
@@ -345,16 +345,16 @@ func (r *guardianRepository) guardian(c context.Context, id uuid.UUID) (guardian
 		id := uuid.UUID(g.UserID.Bytes)
 		userID = &id
 	}
-	return guardianRecord{ID: g.ID, UserID: userID, FullName: g.FullName, Email: g.Email.String, Phone: g.Phone, NIC: g.NicNumber}, err
+	return guardianRecord{ID: g.ID, UserID: userID, FullName: g.FullName, NameWithInitials: g.NameWithInitials, CallingName: g.CallingName, Email: g.Email.String, Phone: g.Phone, NIC: g.NicNumber}, err
 }
 func (r *guardianRepository) guardianDuplicates(c context.Context, phone, email string) (any, error) {
 	return r.queries.FindGuardianDuplicateCandidates(c, db.FindGuardianDuplicateCandidatesParams{Phone: phone, Email: pgtype.Text{String: email, Valid: email != ""}})
 }
 func (r *guardianRepository) createGuardian(c context.Context, req CreateGuardianRequest) (any, error) {
-	return r.queries.CreateGuardian(c, db.CreateGuardianParams{FullName: req.FullName, Relationship: req.Relationship, Phone: req.Phone, Email: pgtype.Text{String: req.Email, Valid: req.Email != ""}, NicNumber: req.NICNumber})
+	return r.queries.CreateGuardian(c, db.CreateGuardianParams{FullName: req.FullName, NameWithInitials: req.NameWithInitials, CallingName: req.CallingName, Relationship: req.Relationship, Phone: req.Phone, Email: pgtype.Text{String: req.Email, Valid: req.Email != ""}, NicNumber: req.NICNumber})
 }
 func (r *guardianRepository) updateGuardian(c context.Context, id uuid.UUID, req UpdateGuardianRequest) (any, error) {
-	return r.queries.UpdateGuardian(c, db.UpdateGuardianParams{ID: id, FullName: req.FullName, Relationship: req.Relationship, Phone: req.Phone, Email: pgtype.Text{String: req.Email, Valid: req.Email != ""}, NicNumber: req.NICNumber})
+	return r.queries.UpdateGuardian(c, db.UpdateGuardianParams{ID: id, FullName: req.FullName, NameWithInitials: req.NameWithInitials, CallingName: req.CallingName, Relationship: req.Relationship, Phone: req.Phone, Email: pgtype.Text{String: req.Email, Valid: req.Email != ""}, NicNumber: req.NICNumber})
 }
 func (r *guardianRepository) deleteGuardian(c context.Context, id uuid.UUID) (int64, error) {
 	return r.queries.DeleteGuardian(c, id)
@@ -508,4 +508,32 @@ func (r *teacherReader) Workload(c context.Context, id uuid.UUID) (any, error) {
 }
 func (r *teacherReader) BySubject(c context.Context, id uuid.UUID) (any, error) {
 	return r.queries.ListTeachersBySubject(c, id)
+}
+
+// withoutNIC blanks the NIC on guardian and teacher read rows; see hideNIC.
+func withoutNIC(value any) any {
+	switch v := value.(type) {
+	case db.Guardian:
+		v.NicNumber = ""
+		return v
+	case httpx.Page[db.ListGuardiansRow]:
+		for i := range v.Items {
+			v.Items[i].NicNumber = ""
+		}
+		return v
+	case []db.ListGuardiansByStudentRow:
+		for i := range v {
+			v[i].NicNumber = ""
+		}
+		return v
+	case db.GetTeacherByIDRow:
+		v.NicNumber = ""
+		return v
+	case httpx.Page[db.ListTeachersPageRow]:
+		for i := range v.Items {
+			v.Items[i].NicNumber = ""
+		}
+		return v
+	}
+	return value
 }

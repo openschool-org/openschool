@@ -8,6 +8,7 @@ import { useTeachers } from "@/features/teachers/queries/useTeachers";
 import { useCreateClassForm } from "@/features/academics/hooks/useCreateClassForm";
 import InfoTip from "@/shared/ui/InfoTip";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
+import { displayName } from "@/shared/lib/name";
 
 interface Props {
   open: boolean;
@@ -40,7 +41,7 @@ export default function ClassFormModal({ open, gradeId = "", onClose }: Props) {
             {grades?.map((grade) => <SelectItem key={grade.id} value={grade.id} text={grade.name} />)}
           </Select>
           <TextInput id="modal-class-name" labelText="Class name" placeholder="e.g. 10-A" maxLength={20} value={form.name} onChange={(e) => set("name", e.target.value)} onBlur={() => f.markTouched("name")} invalid={!!touched.name && !form.name.trim()} invalidText="A class name is required." />
-          <NumberInput id="modal-class-capacity" label="Capacity" helperText="Maximum students for this class." min={1} max={200} value={form.capacity} onChange={(_e, { value }) => set("capacity", value === "" ? "" : String(value))} />
+          <NumberInput id="modal-class-capacity" label="Capacity" helperText="Maximum students for this class." min={1} max={200} invalid={!f.capacityValid} invalidText="Enter a whole number from 1 to 200." value={form.capacity} onChange={(_e, { value }) => set("capacity", value === "" ? "" : String(value))} />
           <Select id="modal-stream" labelText="Stream (optional)" value={form.stream_id} onChange={(e) => set("stream_id", e.target.value)}>
             <SelectItem value="" text="No stream" />
             {streams?.map((stream) => <SelectItem key={stream.id} value={stream.id} text={stream.name} />)}
@@ -57,7 +58,7 @@ export default function ClassFormModal({ open, gradeId = "", onClose }: Props) {
             <SelectItem value="" text="Auto-create to match the class name" />
             {regularClassrooms?.map((classroom) => <SelectItem key={classroom.id} value={classroom.id} text={classroom.name} />)}
           </Select>
-          <EntityCombobox id="modal-class-teacher" labelText="Form teacher (optional)" items={teacherPage?.items ?? []} selectedId={form.form_teacher_id} onSelect={(id) => set("form_teacher_id", id)} onSearch={setTeacherSearch} getId={(teacher) => teacher.id} itemToString={(teacher) => `${teacher.full_name} - ${teacher.employee_number}`} placeholder="Search teachers…" />
+          <EntityCombobox id="modal-class-teacher" labelText="Form teacher (optional)" items={teacherPage?.items ?? []} selectedId={form.form_teacher_id} onSelect={(id) => set("form_teacher_id", id)} onSearch={setTeacherSearch} getId={(teacher) => teacher.id} itemToString={(teacher) => `${displayName(teacher)} - ${teacher.employee_number}`} placeholder="Search teachers…" />
           <Select id="modal-academic-year" labelText="Academic year" value={f.academicYearId} onChange={(e) => set("academic_year_id", e.target.value)} onBlur={() => f.markTouched("year")} invalid={!!touched.year && !f.academicYearId} invalidText="An academic year is required.">
             <SelectItem value="" text="Select academic year…" />
             {f.years?.map((year) => <SelectItem key={year.id} value={year.id} text={year.is_current ? `${year.label} (Current)` : year.label} />)}

@@ -5,8 +5,14 @@ export interface AttendanceSession {
   id: string;
   class_id: string;
   taken_by: string;
+  // name with initials of whoever opened the session; only on the single-session response
+  taken_by_name?: string;
   date: string;
   created_at: string | null;
+  // only on a class's session list
+  present_count?: number;
+  absent_count?: number;
+  late_count?: number;
 }
 
 export interface CreateSessionRequest {
@@ -41,6 +47,8 @@ export interface MarkAttendanceRequest {
     status: "present" | "absent" | "late" | "excused";
     note?: string;
   }[];
+  // students whose earlier mark was removed; the server deletes those records
+  cleared?: string[];
   // Required by convention when an admin edits a session after its 24h
   // lock, recorded in the audit log.
   reason?: string;

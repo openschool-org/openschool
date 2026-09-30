@@ -24,7 +24,7 @@ SELECT
     sh.created_at,
     g.name        AS grade_name,
     s.name        AS stream_name,
-    tp.full_name  AS teacher_name
+    COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name)  AS teacher_name
 FROM section_heads sh
 INNER JOIN grades           g  ON g.id = sh.grade_id
 LEFT JOIN  streams          s  ON s.id = sh.stream_id

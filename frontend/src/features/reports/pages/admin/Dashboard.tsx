@@ -39,9 +39,9 @@ export default function Dashboard() {
   const { data: classes, isLoading: classesLoading } = useCurrentClasses();
   const { data: grades, isLoading: gradesLoading } = useGrades();
   const { data: subjects, isLoading: subjectsLoading } = useSubjects();
-  const { data: years } = useAcademicYears();
+  const { data: years, isLoading: yearsLoading } = useAcademicYears();
   const currentYear = years?.find((y) => y.is_current) ?? null;
-  const { data: terms, isLoading: termsLoading, isError: termsError } = useTerms(currentYear?.id);
+  const { data: terms, isPending: termsPending, isError: termsError } = useTerms(currentYear?.id);
   const { data: todaySessions, isLoading: sessionsLoading } = useDailySessions(todayISODate());
   const { data: staffAttendance, isLoading: staffAttendanceLoading } = useStaffAttendanceByDate(todayISODate());
 
@@ -54,6 +54,8 @@ export default function Dashboard() {
 
   const classAttendanceLoading = classesLoading || sessionsLoading;
 
+  // Terms only start loading once the current year is known, so wait for both before judging "Set up terms".
+  const termsLoading = yearsLoading || (!!currentYear && termsPending);
   const setupLoading = classesLoading || gradesLoading || subjectsLoading || teachersLoading || studentsLoading || termsLoading;
   const setupItems = [
     { label: "Set a current academic year", done: !!currentYear, path: "/academic-years" },

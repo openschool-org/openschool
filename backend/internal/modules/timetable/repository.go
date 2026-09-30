@@ -188,7 +188,7 @@ func (r *gradeSectionRepository) listSections(ctx context.Context, yearID uuid.U
 		result[i] = gradeSectionRecord{
 			ID: row.ID, AcademicYearID: row.AcademicYearID, Name: row.Name,
 			IntervalStartMicroseconds: row.IntervalStartTime.Microseconds, IntervalEndMicroseconds: row.IntervalEndTime.Microseconds,
-			SectionHeadTeacherID: classroomUUID(row.SectionHeadTeacherID), SectionHeadName: classroomText(row.SectionHeadName), SortOrder: row.SortOrder,
+			SectionHeadTeacherID: classroomUUID(row.SectionHeadTeacherID), SectionHeadName: classroomText(pgtype.Text{String: row.SectionHeadName, Valid: row.SectionHeadName != ""}), SortOrder: row.SortOrder,
 		}
 	}
 	return result, nil
@@ -685,7 +685,7 @@ func (r *timetableEntryRepository) listEntries(ctx context.Context, timetableID 
 			ID: row.ID, TimetableID: row.TimetableID, DayOfWeek: row.DayOfWeek, PeriodNumber: row.PeriodNumber,
 			SubjectID: entryUUID(row.SubjectID), TeacherID: entryUUID(row.TeacherID), ClassroomID: entryUUID(row.ClassroomID),
 			CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time, SubjectName: entryText(row.SubjectName),
-			TeacherName: entryText(row.TeacherName), ClassroomName: entryText(row.ClassroomName),
+			TeacherName: entryText(pgtype.Text{String: row.TeacherName, Valid: row.TeacherName != ""}), ClassroomName: entryText(row.ClassroomName),
 			OptionBlockID: entryUUID(row.OptionBlockID), OptionBlockName: entryText(row.OptionBlockName),
 		}
 	}
