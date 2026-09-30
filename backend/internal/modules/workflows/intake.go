@@ -467,7 +467,7 @@ func createStudentRows(ctx context.Context, tx *Store, rows []Row, taken map[str
 		if taken[c["index"]] {
 			return nil, nil, fmt.Errorf("%w: line %s: index number %s was added since the proposal; run it again", ErrInvalidProposal, c["line"], c["index"])
 		}
-		st := NewStudent{Name: c["name"], Index: c["index"], Gender: c["gender"], Address: c["address"], Phone: c["phone"],
+		st := NewStudent{Name: c["name"], NameWithInitials: c["name_with_initials"], CallingName: c["calling_name"], Index: c["index"], Gender: c["gender"], Address: c["address"], Phone: c["phone"],
 			GuardianName: c["guardian"], Relationship: c["relationship"], GuardianPhone: c["guardian_phone"], GuardianNIC: c["guardian_nic"], GuardianEmail: c["guardian_email"]}
 		id, err := tx.createIntakeStudent(ctx, st)
 		if err != nil {

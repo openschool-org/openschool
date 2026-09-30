@@ -7,6 +7,10 @@ export interface Student {
   id: string;
   user_id: string | null;
   full_name: string;
+  // e.g. "H.A.H.E. Wickramasinghe"; used in lists, registers and printouts
+  name_with_initials: string;
+  // e.g. "Hasitha"; optional, used in greetings
+  calling_name: string;
   index_number: string;
   address: string | null;
   phone: string | null;
@@ -33,8 +37,10 @@ export interface StudentWithClass extends Student {
 // one-time password server-side.
 export interface CreateStudentRequest {
   email: string;
-  given_name: string;
-  family_name: string;
+  full_name: string;
+  // filled in from the full name by the server when empty
+  name_with_initials?: string;
+  calling_name?: string;
   phone_number?: string;
   index_number: string;
   address?: string;
@@ -44,8 +50,10 @@ export interface CreateStudentRequest {
 }
 
 export interface UpdateStudentRequest {
-  given_name: string;
-  family_name: string;
+  full_name: string;
+  // filled in from the full name by the server when empty
+  name_with_initials?: string;
+  calling_name?: string;
   phone_number?: string;
   address?: string;
   whatsapp?: string;

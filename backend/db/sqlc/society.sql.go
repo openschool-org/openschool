@@ -98,7 +98,7 @@ SELECT
     s.teacher_in_charge_id,
     s.academic_year_id,
     s.created_at,
-    tp.full_name AS teacher_name,
+    COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS teacher_name,
     (SELECT COUNT(*) FROM society_members sm WHERE sm.society_id = s.id) AS member_count
 FROM societies s
 INNER JOIN teacher_profiles tp ON tp.id = s.teacher_in_charge_id

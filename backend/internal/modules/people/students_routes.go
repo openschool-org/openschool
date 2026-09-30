@@ -214,6 +214,7 @@ func RegisterStudentRoutes(admin, teacherOrAdmin *gin.RouterGroup, runner Studen
 		c.JSON(200, v)
 	})
 }
+
 // auditStudentProfileRead logs a read of a student's profile, best-effort:
 // PDPA requires an access log for reads of student data (S11), but a
 // logging failure must never fail the read itself.

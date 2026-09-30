@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/openschool-org/openschool/internal/names"
 )
 
 // StudentImport loads existing students into this year's classes in one go, for a school starting on OpenSchool.
@@ -24,8 +25,8 @@ func (StudentImport) Description() string {
 var (
 	ToolReadImportCSV  = tool("read_import_csv", "Reads the student CSV and checks every row: required fields, class, phone numbers, gender, duplicates by index number and guardian NIC.", false)
 	ToolImportStudents = tool("import_students", "Creates the students and guardians, links siblings to the same guardian and places each student in their class.", true)
-	importColumns      = []string{"class", "index_number", "full_name", "gender", "address", "phone", "guardian_name", "guardian_relationship", "guardian_phone", "guardian_nic", "guardian_email"}
-	importTemplate     = strings.Join(importColumns, ",") + "\n6-A,2026/0001,Nimali Perera,female,\"12 Temple Road, Kandy\",0771234567,Sunil Perera,father,0712345678,197512345678,\n6-A,2026/0002,Kasun Perera,male,\"12 Temple Road, Kandy\",,Sunil Perera,father,0712345678,197512345678,\n"
+	importColumns      = []string{"class", "index_number", "full_name", "name_with_initials", "calling_name", "gender", "address", "phone", "guardian_name", "guardian_relationship", "guardian_phone", "guardian_nic", "guardian_email"}
+	importTemplate     = strings.Join(importColumns, ",") + "\n6-A,2026/0001,Hettiwatta Arachchige Nimali Perera,,Nimali,female,\"12 Temple Road, Kandy\",0771234567,H.A. Sunil Perera,father,0712345678,197512345678,\n6-A,2026/0002,Hettiwatta Arachchige Kasun Perera,H.A.K. Perera,,male,\"12 Temple Road, Kandy\",,H.A. Sunil Perera,father,0712345678,197512345678,\n"
 )
 
 func (StudentImport) Steps() []StepInfo {
@@ -37,7 +38,7 @@ func (StudentImport) Steps() []StepInfo {
 
 func (StudentImport) Inputs(context.Context, *Store) ([]InputField, error) {
 	return []InputField{{Key: "csv", Label: "Students CSV", Type: "csv", Required: true, Template: importTemplate,
-		Help: "One row per student. The class column uses the class name, such as 6-A. Siblings share a guardian NIC, so they are linked to one guardian. In Excel, format the phone and NIC columns as Text before typing, or Excel shortens long numbers."}}, nil
+		Help: "One row per student. The class column uses the class name, such as 6-A. name_with_initials (like H.A.N. Perera) is filled in from the full name when left blank; calling_name is optional. Siblings share a guardian NIC, so they are linked to one guardian. In Excel, format the phone and NIC columns as Text before typing, or Excel shortens long numbers."}}, nil
 }
 
 func (StudentImport) Check(ctx context.Context, s *Store, in Inputs) ([]Check, error) {
@@ -145,6 +146,8 @@ func (w StudentImport) Propose(ctx context.Context, s *Store, in Inputs, trace *
 		for _, r := range records {
 			f := r.fields
 			nic := strings.ToUpper(f["guardian_nic"])
+			var withInitials, calling string
+			f["full_name"], withInitials, calling = names.Normalize(f["full_name"], f["name_with_initials"], f["calling_name"])
 			problem := rowProblem(f, schoolType)
 			if problem == "" && taken[f["index_number"]] {
 				problem = "Index number " + f["index_number"] + " already belongs to a student on record."
@@ -215,6 +218,7 @@ func (w StudentImport) Propose(ctx context.Context, s *Store, in Inputs, trace *
 			rows = append(rows, Row{ID: "line:" + strconv.Itoa(r.line), Reason: strings.TrimSpace(reason), Warning: problem,
 				Cells: map[string]string{
 					"line": strconv.Itoa(r.line), "class": classID, "index": f["index_number"], "name": f["full_name"], "gender": strings.ToLower(f["gender"]),
+					"name_with_initials": withInitials, "calling_name": calling,
 					"guardian": f["guardian_name"], "guardian_nic": nic, "import": strconv.FormatBool(importIt), "error": problem,
 					"address": f["address"], "phone": f["phone"], "relationship": strings.ToLower(f["guardian_relationship"]),
 					"guardian_phone": f["guardian_phone"], "guardian_email": f["guardian_email"],
@@ -240,7 +244,7 @@ func (w StudentImport) Propose(ctx context.Context, s *Store, in Inputs, trace *
 		},
 		Sections: []Section{{Key: "students", Title: "Students", Description: "Ticked rows are imported into the class shown. Rows with a problem cannot be ticked: fix the CSV and run again.", Columns: []Column{
 			{Key: "line", Label: "Line", Type: "number"}, {Key: "class", Label: "Class", Type: "select", Editable: true, Options: classOptions},
-			{Key: "index", Label: "Index no.", Type: "text"}, {Key: "name", Label: "Name", Type: "text"}, {Key: "gender", Label: "Gender", Type: "text"},
+			{Key: "index", Label: "Index no.", Type: "text"}, {Key: "name_with_initials", Label: "Name with initials", Type: "text"}, {Key: "name", Label: "Full name", Type: "text"}, {Key: "gender", Label: "Gender", Type: "text"},
 			{Key: "guardian", Label: "Guardian", Type: "text"}, {Key: "guardian_nic", Label: "Guardian NIC", Type: "text"},
 			{Key: "import", Label: "Import", Type: "boolean", Editable: true},
 		}, Rows: rows}},

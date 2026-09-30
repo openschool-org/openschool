@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/openschool-org/openschool/internal/apierror"
 	"github.com/openschool-org/openschool/internal/middleware"
 	"github.com/openschool-org/openschool/internal/modules/auth"
@@ -25,7 +26,7 @@ func respond(c *gin.Context, err error) {
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 	case errors.Is(err, ErrLinkInvalid):
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-	case errors.Is(err, ErrAlreadyActivated), errors.Is(err, ErrEmailTaken):
+	case errors.Is(err, ErrAlreadyActivated), errors.Is(err, ErrEmailTaken), errors.Is(err, ErrReprintDisabled):
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 	case errors.Is(err, ErrPasswordMatchesID), errors.Is(err, ErrInvalidSettings), errors.Is(err, ErrBatchTooLarge),
 		errors.Is(err, auth.ErrPasswordTooShort), errors.Is(err, auth.ErrWeakPassword):
@@ -126,6 +127,30 @@ func (h *Handler) Batches(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, batches)
+}
+
+func (h *Handler) BatchCodes(c *gin.Context) {
+	actor, err := middleware.UserIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
+		return
+	}
+	batchID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid batch id"})
+		return
+	}
+	resp, err := h.service.BatchCodes(c.Request.Context(), batchID, actor)
+	if errors.Is(err, pgx.ErrNoRows) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "batch not found"})
+		return
+	}
+	if err != nil {
+		respond(c, err)
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	c.JSON(http.StatusOK, resp)
 }
 
 func (h *Handler) RevokeBatch(c *gin.Context) {

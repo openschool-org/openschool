@@ -12,6 +12,105 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activationBatchCodes = `-- name: ActivationBatchCodes :many
+SELECT ac.code_hash, ac.code_encrypted, ac.role, ac.expires_at,
+       COALESCE(NULLIF(COALESCE(sp.name_with_initials, g.name_with_initials), ''), COALESCE(sp.full_name, g.full_name))::text AS name,
+       COALESCE(sp.index_number, '')::text   AS index_number,
+       COALESCE(kids.children, '')::text     AS children,
+       COALESCE(cls.class_name, '')::text    AS class_name,
+       COALESCE(cls.grade_name, '')::text    AS grade_name,
+       COALESCE(cls.grade_order, 9999)::int  AS grade_order,
+       COALESCE(cls.form_teacher, '')::text  AS form_teacher
+FROM activation_codes ac
+LEFT JOIN student_profiles sp ON sp.id = ac.student_id
+LEFT JOIN guardians g         ON g.id  = ac.guardian_id
+LEFT JOIN LATERAL (
+    SELECT string_agg(COALESCE(NULLIF(c.name_with_initials, ''), c.full_name), ', ' ORDER BY c.full_name) AS children
+    FROM student_guardians sg
+    JOIN student_profiles c ON c.id = sg.student_id AND c.enrollment_status = 'active' AND c.erased_at IS NULL
+    WHERE sg.guardian_id = ac.guardian_id
+) kids ON TRUE
+LEFT JOIN LATERAL (
+    SELECT cl.name AS class_name, gr.name AS grade_name, gr.sort_order AS grade_order, NULLIF(concat_ws(' ', tp.title || '.', COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name)), '') AS form_teacher
+    FROM class_students cs
+    JOIN classes cl               ON cl.id = cs.class_id
+    JOIN academic_years ay        ON ay.id = cl.academic_year_id AND ay.is_current
+    JOIN grades gr                ON gr.id = cl.grade_id
+    LEFT JOIN teacher_profiles tp ON tp.id = cl.form_teacher_id
+    WHERE cs.student_id = ac.student_id
+       OR cs.student_id IN (SELECT sg.student_id FROM student_guardians sg WHERE sg.guardian_id = ac.guardian_id)
+    ORDER BY gr.sort_order, cl.name
+    LIMIT 1
+) cls ON TRUE
+WHERE ac.batch_id = $1
+  AND ac.used_at IS NULL AND ac.revoked_at IS NULL AND ac.expires_at > NOW()
+  AND ac.code_encrypted IS NOT NULL
+ORDER BY grade_order, class_name, name
+`
+
+type ActivationBatchCodesRow struct {
+	CodeHash      string             `json:"code_hash"`
+	CodeEncrypted []byte             `json:"code_encrypted"`
+	Role          string             `json:"role"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+	Name          string             `json:"name"`
+	IndexNumber   string             `json:"index_number"`
+	Children      string             `json:"children"`
+	ClassName     string             `json:"class_name"`
+	GradeName     string             `json:"grade_name"`
+	GradeOrder    int32              `json:"grade_order"`
+	FormTeacher   string             `json:"form_teacher"`
+}
+
+// A batch's still-usable codes with each person's current name and class, for reprinting.
+func (q *Queries) ActivationBatchCodes(ctx context.Context, batchID uuid.UUID) ([]ActivationBatchCodesRow, error) {
+	rows, err := q.db.Query(ctx, activationBatchCodes, batchID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ActivationBatchCodesRow{}
+	for rows.Next() {
+		var i ActivationBatchCodesRow
+		if err := rows.Scan(
+			&i.CodeHash,
+			&i.CodeEncrypted,
+			&i.Role,
+			&i.ExpiresAt,
+			&i.Name,
+			&i.IndexNumber,
+			&i.Children,
+			&i.ClassName,
+			&i.GradeName,
+			&i.GradeOrder,
+			&i.FormTeacher,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const activationBatchRole = `-- name: ActivationBatchRole :one
+SELECT role, MAX(expires_at)::timestamptz AS expires_at FROM activation_codes WHERE batch_id = $1 GROUP BY role LIMIT 1
+`
+
+type ActivationBatchRoleRow struct {
+	Role      string             `json:"role"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+}
+
+func (q *Queries) ActivationBatchRole(ctx context.Context, batchID uuid.UUID) (ActivationBatchRoleRow, error) {
+	row := q.db.QueryRow(ctx, activationBatchRole, batchID)
+	var i ActivationBatchRoleRow
+	err := row.Scan(&i.Role, &i.ExpiresAt)
+	return i, err
+}
+
 const activationEmailTaken = `-- name: ActivationEmailTaken :one
 SELECT EXISTS (SELECT 1 FROM users WHERE lower(email) = lower($1::text))
 `
@@ -24,31 +123,37 @@ func (q *Queries) ActivationEmailTaken(ctx context.Context, email string) (bool,
 }
 
 const activationGuardianName = `-- name: ActivationGuardianName :one
-SELECT full_name FROM guardians WHERE id = $1
+SELECT full_name, name_with_initials, calling_name FROM guardians WHERE id = $1
 `
 
-func (q *Queries) ActivationGuardianName(ctx context.Context, id uuid.UUID) (string, error) {
+type ActivationGuardianNameRow struct {
+	FullName         string `json:"full_name"`
+	NameWithInitials string `json:"name_with_initials"`
+	CallingName      string `json:"calling_name"`
+}
+
+func (q *Queries) ActivationGuardianName(ctx context.Context, id uuid.UUID) (ActivationGuardianNameRow, error) {
 	row := q.db.QueryRow(ctx, activationGuardianName, id)
-	var full_name string
-	err := row.Scan(&full_name)
-	return full_name, err
+	var i ActivationGuardianNameRow
+	err := row.Scan(&i.FullName, &i.NameWithInitials, &i.CallingName)
+	return i, err
 }
 
 const activationGuardianTargets = `-- name: ActivationGuardianTargets :many
-SELECT g.id, g.full_name, kids.children::text AS children,
+SELECT g.id, COALESCE(NULLIF(g.name_with_initials, ''), g.full_name)::text AS full_name, kids.children::text AS children,
        COALESCE(kc.class_name, '')::text   AS class_name,
        COALESCE(kc.grade_name, '')::text   AS grade_name,
        COALESCE(kc.grade_order, 9999)::int AS grade_order,
        COALESCE(kc.form_teacher, '')::text AS form_teacher
 FROM guardians g
 JOIN LATERAL (
-    SELECT string_agg(sp.full_name, ', ' ORDER BY sp.full_name) AS children
+    SELECT string_agg(COALESCE(NULLIF(sp.name_with_initials, ''), sp.full_name), ', ' ORDER BY sp.full_name) AS children
     FROM student_guardians sg
     JOIN student_profiles sp ON sp.id = sg.student_id AND sp.enrollment_status = 'active' AND sp.erased_at IS NULL
     WHERE sg.guardian_id = g.id
 ) kids ON kids.children IS NOT NULL
 LEFT JOIN LATERAL (
-    SELECT c.id, c.name AS class_name, gr.name AS grade_name, gr.sort_order AS grade_order, tp.full_name AS form_teacher
+    SELECT c.id, c.name AS class_name, gr.name AS grade_name, gr.sort_order AS grade_order, NULLIF(concat_ws(' ', tp.title || '.', COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name)), '') AS form_teacher
     FROM student_guardians sg
     JOIN student_profiles sp  ON sp.id = sg.student_id AND sp.enrollment_status = 'active' AND sp.erased_at IS NULL
     JOIN class_students cs    ON cs.student_id = sp.id
@@ -114,25 +219,31 @@ func (q *Queries) ActivationGuardianTargets(ctx context.Context, arg ActivationG
 }
 
 const activationStudentName = `-- name: ActivationStudentName :one
-SELECT full_name FROM student_profiles WHERE id = $1
+SELECT full_name, name_with_initials, calling_name FROM student_profiles WHERE id = $1
 `
 
-func (q *Queries) ActivationStudentName(ctx context.Context, id uuid.UUID) (string, error) {
+type ActivationStudentNameRow struct {
+	FullName         string `json:"full_name"`
+	NameWithInitials string `json:"name_with_initials"`
+	CallingName      string `json:"calling_name"`
+}
+
+func (q *Queries) ActivationStudentName(ctx context.Context, id uuid.UUID) (ActivationStudentNameRow, error) {
 	row := q.db.QueryRow(ctx, activationStudentName, id)
-	var full_name string
-	err := row.Scan(&full_name)
-	return full_name, err
+	var i ActivationStudentNameRow
+	err := row.Scan(&i.FullName, &i.NameWithInitials, &i.CallingName)
+	return i, err
 }
 
 const activationStudentTargets = `-- name: ActivationStudentTargets :many
-SELECT sp.id, sp.full_name, sp.index_number,
+SELECT sp.id, COALESCE(NULLIF(sp.name_with_initials, ''), sp.full_name)::text AS full_name, sp.index_number,
        COALESCE(cur.name, '')::text         AS class_name,
        COALESCE(cur.grade_name, '')::text   AS grade_name,
        COALESCE(cur.grade_order, 9999)::int AS grade_order,
        COALESCE(cur.form_teacher, '')::text AS form_teacher
 FROM student_profiles sp
 LEFT JOIN LATERAL (
-    SELECT c.id, c.name, g.name AS grade_name, g.sort_order AS grade_order, tp.full_name AS form_teacher
+    SELECT c.id, c.name, g.name AS grade_name, g.sort_order AS grade_order, NULLIF(concat_ws(' ', tp.title || '.', COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name)), '') AS form_teacher
     FROM class_students cs
     JOIN classes c              ON c.id = cs.class_id
     JOIN academic_years ay      ON ay.id = c.academic_year_id AND ay.is_current
@@ -146,7 +257,7 @@ WHERE sp.user_id IS NULL
   AND sp.erased_at IS NULL
   AND ($1::uuid IS NULL OR cur.id = $1::uuid)
   AND ($2::uuid IS NULL OR sp.id = $2::uuid)
-ORDER BY grade_order, class_name, sp.full_name
+ORDER BY grade_order, class_name, sp.full_name, sp.id
 `
 
 type ActivationStudentTargetsParams struct {
@@ -340,17 +451,18 @@ func (q *Queries) GetUsableActivationCodeByID(ctx context.Context, id uuid.UUID)
 }
 
 type InsertActivationCodesParams struct {
-	BatchID    uuid.UUID          `json:"batch_id"`
-	Role       string             `json:"role"`
-	StudentID  pgtype.UUID        `json:"student_id"`
-	GuardianID pgtype.UUID        `json:"guardian_id"`
-	CodeHash   string             `json:"code_hash"`
-	ExpiresAt  pgtype.Timestamptz `json:"expires_at"`
-	CreatedBy  pgtype.UUID        `json:"created_by"`
+	BatchID       uuid.UUID          `json:"batch_id"`
+	Role          string             `json:"role"`
+	StudentID     pgtype.UUID        `json:"student_id"`
+	GuardianID    pgtype.UUID        `json:"guardian_id"`
+	CodeHash      string             `json:"code_hash"`
+	ExpiresAt     pgtype.Timestamptz `json:"expires_at"`
+	CreatedBy     pgtype.UUID        `json:"created_by"`
+	CodeEncrypted []byte             `json:"code_encrypted"`
 }
 
 const linkActivatedGuardian = `-- name: LinkActivatedGuardian :execrows
-UPDATE guardians SET user_id = $1, email = $2
+UPDATE guardians SET user_id = $1, email = COALESCE(NULLIF(email, ''), $2)
 WHERE id = $3 AND user_id IS NULL
 `
 
@@ -360,6 +472,7 @@ type LinkActivatedGuardianParams struct {
 	ID     uuid.UUID   `json:"id"`
 }
 
+// The verified email fills the guardian's email only when none is on file.
 func (q *Queries) LinkActivatedGuardian(ctx context.Context, arg LinkActivatedGuardianParams) (int64, error) {
 	result, err := q.db.Exec(ctx, linkActivatedGuardian, arg.UserID, arg.Email, arg.ID)
 	if err != nil {
@@ -393,7 +506,8 @@ SELECT batch_id, role,
        COUNT(*)                     AS total,
        COUNT(used_at)               AS used,
        COUNT(revoked_at)            AS revoked,
-       COUNT(*) FILTER (WHERE used_at IS NULL AND revoked_at IS NULL AND expires_at <= NOW()) AS expired
+       COUNT(*) FILTER (WHERE used_at IS NULL AND revoked_at IS NULL AND expires_at <= NOW()) AS expired,
+       COUNT(*) FILTER (WHERE code_encrypted IS NOT NULL AND used_at IS NULL AND revoked_at IS NULL AND expires_at > NOW()) AS reprintable
 FROM activation_codes
 GROUP BY batch_id, role
 ORDER BY MIN(created_at) DESC
@@ -401,14 +515,15 @@ LIMIT 50
 `
 
 type ListActivationBatchesRow struct {
-	BatchID   uuid.UUID          `json:"batch_id"`
-	Role      string             `json:"role"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
-	Total     int64              `json:"total"`
-	Used      int64              `json:"used"`
-	Revoked   int64              `json:"revoked"`
-	Expired   int64              `json:"expired"`
+	BatchID     uuid.UUID          `json:"batch_id"`
+	Role        string             `json:"role"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	Total       int64              `json:"total"`
+	Used        int64              `json:"used"`
+	Revoked     int64              `json:"revoked"`
+	Expired     int64              `json:"expired"`
+	Reprintable int64              `json:"reprintable"`
 }
 
 func (q *Queries) ListActivationBatches(ctx context.Context) ([]ListActivationBatchesRow, error) {
@@ -429,6 +544,7 @@ func (q *Queries) ListActivationBatches(ctx context.Context) ([]ListActivationBa
 			&i.Used,
 			&i.Revoked,
 			&i.Expired,
+			&i.Reprintable,
 		); err != nil {
 			return nil, err
 		}

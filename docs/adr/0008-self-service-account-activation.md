@@ -18,9 +18,14 @@ children's data.
   plus their index number (student) or NIC number (parent), plus an email
   they prove they own through a 30-minute link. They then choose their own
   password. There is no default password.
-- Codes are random (10 characters, about 49 bits), stored only as SHA-256
-  hashes, single use, and expire (1 to 90 days, set by the admin). Issuing
-  a new code revokes the old one. Admins can cancel a whole batch.
+- Codes are random (10 characters, about 49 bits), checked only against a
+  SHA-256 hash, single use, and expire (1 to 90 days, set by the admin).
+  Issuing a new code revokes the old one. Admins can cancel a whole batch.
+- **Reprinting:** when `ACTIVATION_CODE_KEY` is set, each code is also
+  stored encrypted (AES-256-GCM, with its hash as associated data), so an
+  admin can reopen a batch's **unused** codes as class PDFs or CSV. Used,
+  cancelled and expired codes are never shown, and every reopening is
+  audit-logged. Without the key, codes are hash-only and shown once.
 - Five wrong identifiers lock a code for an hour. Start is rate limited per
   IP, per code and per identifier. Responses never say which part failed.
 - The code is claimed in the database before ThunderID is called, so two
@@ -39,5 +44,9 @@ children's data.
 - A lost printed slip plus a known index number is enough to activate. The
   admin cancels the batch and reissues; the audit log shows who activated
   and with which email.
-- A parent's verified email replaces the email on their guardian record.
+- A parent's verified email fills their guardian record's email only if
+  none is on file; it is always the login email. A student's login email
+  becomes the email shown on their profile.
+- Anyone with the database **and** the server key can read unused codes.
+  The key lives only in the server environment, and codes expire.
 - Admin-created logins with default passwords still work, unchanged.

@@ -122,6 +122,8 @@ type Batch struct {
 	Used      int64     `json:"used"`
 	Revoked   int64     `json:"revoked"`
 	Expired   int64     `json:"expired"`
+	// Reprintable counts unused codes that can be shown again as PDF or CSV.
+	Reprintable int64 `json:"reprintable"`
 }
 
 // codeRecord is a usable code joined to the record it activates.
@@ -146,8 +148,21 @@ type target struct {
 	FormTeacher string
 }
 
-// newCode is one hashed code ready to insert.
+// personName holds the three forms of a Sri Lankan name kept on a record.
+type personName struct {
+	Full, WithInitials, Calling string
+}
+
+// newCode is one hashed code ready to insert; Encrypted is empty when reprinting is off.
 type newCode struct {
-	RecordID uuid.UUID
-	Hash     string
+	RecordID  uuid.UUID
+	Hash      string
+	Encrypted []byte
+}
+
+// storedCode is an unused code read back for reprinting, still encrypted.
+type storedCode struct {
+	Hash      string
+	Encrypted []byte
+	IssuedCode
 }

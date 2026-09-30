@@ -45,8 +45,11 @@ func registerCore(groups HTTPGroups, pool *pgxpool.Pool) sharedServices {
 	mailSender := newMailSender(pool)
 	setupmodule.RegisterRoutes(groups.API, setupmodule.NewService(setupmodule.NewRepository(pool), thunderid.NewClient()))
 	authmodule.RegisterRoutes(groups.API, groups.Protected, pool, peoplemodule.NewGuardianAuthenticator(pool), thunderid.NewClient(), mailSender)
-	activationmodule.RegisterRoutes(groups.API, groups.Admin, activationmodule.NewService(
-		activationmodule.NewRepository(pool), thunderid.NewClient(), mailSender, auditService))
+	activationService := activationmodule.NewService(activationmodule.NewRepository(pool), thunderid.NewClient(), mailSender, auditService)
+	if err := activationService.LoadCodeKey(); err != nil {
+		log.Fatalf("activation: %v", err)
+	}
+	activationmodule.RegisterRoutes(groups.API, groups.Admin, activationService)
 	identitymodule.Register(groups.Protected, pool)
 	identitymodule.RegisterReconciliation(groups.Admin, pool, thunderid.NewClient(), auditService)
 	auditmodule.RegisterRoutes(groups.Admin, auditService)

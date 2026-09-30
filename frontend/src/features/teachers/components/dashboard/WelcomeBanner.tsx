@@ -2,7 +2,7 @@ import { Time } from "@carbon/icons-react";
 import RoleBadge from "@/features/teachers/components/dashboard/RoleBadge";
 import type { PositionRankLabel } from "@/features/positions/api/position";
 import type { Teacher } from "@/features/teachers/api/teacher";
-import { getInitials } from "@/shared/lib/name";
+import { getInitials, displayName } from "@/shared/lib/name";
 
 export default function WelcomeBanner({
   profile,
@@ -27,12 +27,12 @@ export default function WelcomeBanner({
     >
       <div className="os-w-2t os-h-2t os-rounded-full os-bg-accent os-flex os-items-center os-justify-center os-c-layer os-fw-700 os-text-base os-shrink-0"
       >
-        {getInitials(profile.full_name)}
+        {getInitials(displayName(profile))}
       </div>
       <div className="os-flex-1">
         <div className="os-flex os-items-center os-gap-2 os-mb-h os-wrap">
           <p className="os-m-0 os-text-lg os-fw-500 os-c-primary">
-            {greeting}, {profile.title ? `${profile.title} ` : ""}{profile.full_name}
+            {greeting}, {profile.title ? `${profile.title} ` : ""}{displayName(profile)}
           </p>
           <RoleBadge rankLabel={rankLabel} />
         </div>

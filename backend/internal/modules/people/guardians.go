@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openschool-org/openschool/internal/authz"
 	"github.com/openschool-org/openschool/internal/idp"
+	"github.com/openschool-org/openschool/internal/names"
 	"github.com/openschool-org/openschool/internal/ports"
 	"github.com/openschool-org/openschool/internal/validation"
 )
@@ -23,12 +24,14 @@ var (
 )
 
 type guardianRecord struct {
-	ID       uuid.UUID
-	UserID   *uuid.UUID
-	FullName string
-	Email    string
-	Phone    string
-	NIC      string
+	ID               uuid.UUID
+	UserID           *uuid.UUID
+	FullName         string
+	NameWithInitials string
+	CallingName      string
+	Email            string
+	Phone            string
+	NIC              string
 }
 
 type guardianStore interface {
@@ -57,6 +60,7 @@ func NewGuardianService(store guardianStore, idp idp.Provider, audit ports.Audit
 }
 
 func (s *GuardianService) Create(ctx context.Context, req CreateGuardianRequest) (any, any, error) {
+	req.FullName, req.NameWithInitials, req.CallingName = names.Normalize(req.FullName, req.NameWithInitials, req.CallingName)
 	if !validation.NormalizePhoneField(&req.Phone) {
 		return nil, nil, validation.ErrInvalidPhone
 	}
@@ -69,6 +73,7 @@ func (s *GuardianService) Create(ctx context.Context, req CreateGuardianRequest)
 }
 
 func (s *GuardianService) Update(ctx context.Context, id uuid.UUID, req UpdateGuardianRequest) (any, error) {
+	req.FullName, req.NameWithInitials, req.CallingName = names.Normalize(req.FullName, req.NameWithInitials, req.CallingName)
 	if !validation.NormalizePhoneField(&req.Phone) {
 		return nil, validation.ErrInvalidPhone
 	}
@@ -124,9 +129,10 @@ func (s *GuardianService) Provision(ctx context.Context, id uuid.UUID, req Provi
 		return nil, ErrGuardianMissingNIC
 	}
 
+	given, family := names.ForIdentityProvider(guardian.FullName, guardian.NameWithInitials, guardian.CallingName)
 	idpUser, err := s.idp.CreateUser(ctx, authz.RoleParent, map[string]any{
-		"username": req.Username, "email": guardian.Email, "given_name": req.GivenName,
-		"family_name": req.FamilyName, "phone": guardian.Phone, "password": guardian.NIC,
+		"username": req.Username, "email": guardian.Email, "given_name": given,
+		"family_name": family, "phone": guardian.Phone, "password": guardian.NIC,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create identity provider account: %w", err)

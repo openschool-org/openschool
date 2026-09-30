@@ -36,6 +36,7 @@ func (r iteratorForInsertActivationCodes) Values() ([]interface{}, error) {
 		r.rows[0].CodeHash,
 		r.rows[0].ExpiresAt,
 		r.rows[0].CreatedBy,
+		r.rows[0].CodeEncrypted,
 	}, nil
 }
 
@@ -44,5 +45,5 @@ func (r iteratorForInsertActivationCodes) Err() error {
 }
 
 func (q *Queries) InsertActivationCodes(ctx context.Context, arg []InsertActivationCodesParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"activation_codes"}, []string{"batch_id", "role", "student_id", "guardian_id", "code_hash", "expires_at", "created_by"}, &iteratorForInsertActivationCodes{rows: arg})
+	return q.db.CopyFrom(ctx, []string{"activation_codes"}, []string{"batch_id", "role", "student_id", "guardian_id", "code_hash", "expires_at", "created_by", "code_encrypted"}, &iteratorForInsertActivationCodes{rows: arg})
 }

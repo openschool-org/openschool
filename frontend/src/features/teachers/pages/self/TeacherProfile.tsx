@@ -7,7 +7,7 @@ import { classSessionsOptions } from "@/features/attendance/queries/useAttendanc
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import InfoRow from "@/shared/ui/InfoRow";
-import { getInitials } from "@/shared/lib/name";
+import { getInitials, displayName } from "@/shared/lib/name";
 
 export default function TeacherProfile() {
   const { data: profile, isLoading, isError, refetch } = useMyTeacherProfile();
@@ -32,9 +32,9 @@ export default function TeacherProfile() {
   return (
     <div className="os-bg-layer-hover os-min-h-content">
       <div className="os-profile__banner">
-        <div className="os-profile__avatar">{getInitials(profile.full_name)}</div>
+        <div className="os-profile__avatar">{getInitials(displayName(profile))}</div>
         <div className="os-flex-1">
-          <p className="os-profile__name">{profile.title ? `${profile.title} ` : ""}{profile.full_name}</p>
+          <p className="os-profile__name">{profile.title ? `${profile.title} ` : ""}{displayName(profile)}</p>
           <p className="os-profile__meta">{profile.employee_number}</p>
         </div>
         <div className="os-profile__actions">

@@ -107,7 +107,7 @@ func (q *Queries) ListNonAcademicStaffAttendanceHistory(ctx context.Context, arg
 
 const listStaffAttendanceMonthly = `-- name: ListStaffAttendanceMonthly :many
 WITH people AS (
-    SELECT tp.id, tp.full_name, tp.employee_number, 'teacher'::text AS kind
+    SELECT tp.id, COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS full_name, tp.employee_number, 'teacher'::text AS kind
     FROM teacher_profiles tp
     WHERE tp.employment_status = 'active' AND $6::text = 'teacher'
     UNION ALL
@@ -193,7 +193,7 @@ func (q *Queries) ListStaffAttendanceMonthly(ctx context.Context, arg ListStaffA
 
 const listStaffAttendanceRoster = `-- name: ListStaffAttendanceRoster :many
 WITH people AS (
-    SELECT tp.id, tp.full_name, tp.employee_number, 'teacher'::text AS kind
+    SELECT tp.id, COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS full_name, tp.employee_number, 'teacher'::text AS kind
     FROM teacher_profiles tp
     WHERE tp.employment_status = 'active' AND $5::text = 'teacher'
     UNION ALL
@@ -288,7 +288,7 @@ func (q *Queries) ListStaffAttendanceRoster(ctx context.Context, arg ListStaffAt
 const listTeacherAttendanceByDate = `-- name: ListTeacherAttendanceByDate :many
 SELECT
     tp.id          AS teacher_id,
-    tp.full_name   AS full_name,
+    COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name)   AS full_name,
     tp.employee_number AS employee_number,
     sar.id         AS record_id,
     sar.status     AS status,
@@ -481,7 +481,7 @@ func (q *Queries) MonthlyNonAcademicStaffAttendanceSummary(ctx context.Context, 
 const monthlyTeacherAttendanceSummary = `-- name: MonthlyTeacherAttendanceSummary :many
 SELECT
     tp.id        AS teacher_id,
-    tp.full_name AS full_name,
+    COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS full_name,
     COUNT(*) FILTER (WHERE sar.status = 'present') AS present_count,
     COUNT(*) FILTER (WHERE sar.status = 'late')    AS late_count,
     COUNT(*) FILTER (WHERE sar.status = 'absent')  AS absent_count,

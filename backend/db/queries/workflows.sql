@@ -310,13 +310,13 @@ ORDER BY COUNT(sp.id), h.name
 LIMIT 1;
 
 -- name: WfCreateIntakeStudent :one
-INSERT INTO student_profiles (full_name, index_number, address, phone, gender, house_id)
-VALUES (sqlc.arg(full_name), sqlc.arg(index_number), sqlc.narg(address), sqlc.narg(phone), sqlc.narg(gender), sqlc.narg(house_id))
+INSERT INTO student_profiles (full_name, name_with_initials, calling_name, index_number, address, phone, gender, house_id)
+VALUES (sqlc.arg(full_name), sqlc.arg(name_with_initials), sqlc.arg(calling_name), sqlc.arg(index_number), sqlc.narg(address), sqlc.narg(phone), sqlc.narg(gender), sqlc.narg(house_id))
 RETURNING id;
 
 -- name: WfCreateGuardian :one
-INSERT INTO guardians (full_name, relationship, phone, email, nic_number)
-VALUES (sqlc.arg(full_name), sqlc.arg(relationship), sqlc.arg(phone), sqlc.narg(email), sqlc.arg(nic_number))
+INSERT INTO guardians (full_name, name_with_initials, relationship, phone, email, nic_number)
+VALUES (sqlc.arg(full_name), sqlc.arg(name_with_initials), sqlc.arg(relationship), sqlc.arg(phone), sqlc.narg(email), sqlc.arg(nic_number))
 RETURNING id;
 
 -- name: WfLinkGuardian :exec

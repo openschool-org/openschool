@@ -4,9 +4,11 @@ INSERT INTO guardians (
     relationship,
     phone,
     email,
-    nic_number
+    nic_number,
+    name_with_initials,
+    calling_name
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4, $5, $6, $7
 )
 RETURNING *;
 
@@ -36,6 +38,8 @@ SELECT g.*, COUNT(*) OVER () AS total FROM guardians g
 WHERE (
     sqlc.narg(search)::text IS NULL
     OR g.full_name ILIKE '%' || sqlc.narg(search) || '%'
+    OR g.name_with_initials ILIKE '%' || sqlc.narg(search) || '%'
+    OR g.calling_name ILIKE '%' || sqlc.narg(search) || '%'
     OR g.phone      ILIKE '%' || sqlc.narg(search) || '%'
     OR g.email      ILIKE '%' || sqlc.narg(search) || '%'
   )
@@ -79,7 +83,9 @@ SET
     relationship = $3,
     phone        = $4,
     email        = $5,
-    nic_number   = $6
+    nic_number   = $6,
+    name_with_initials = $7,
+    calling_name = $8
 WHERE id = $1
 RETURNING *;
 

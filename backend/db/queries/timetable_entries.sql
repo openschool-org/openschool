@@ -28,7 +28,7 @@ WHERE timetable_id = $1 AND day_of_week = $2 AND period_number = $3;
 SELECT
     te.*,
     s.name       AS subject_name,
-    tp.full_name AS teacher_name,
+    COALESCE(display_name(tp.full_name, tp.name_with_initials), '')::text AS teacher_name,
     cr.name      AS classroom_name,
     ob.name      AS option_block_name
 FROM timetable_entries te

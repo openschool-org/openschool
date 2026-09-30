@@ -16,6 +16,7 @@ import (
 	"github.com/openschool-org/openschool/internal/idp"
 	"github.com/openschool-org/openschool/internal/mailer"
 	"github.com/openschool-org/openschool/internal/modules/auth"
+	"github.com/openschool-org/openschool/internal/names"
 	"github.com/openschool-org/openschool/internal/ports"
 )
 
@@ -35,7 +36,7 @@ type store interface {
 	claimCode(context.Context, uuid.UUID) (bool, error)
 	releaseCode(context.Context, uuid.UUID) error
 	emailTaken(context.Context, string) (bool, error)
-	recordName(context.Context, string, uuid.UUID) (string, error)
+	recordName(context.Context, string, uuid.UUID) (personName, error)
 	createUser(ctx context.Context, id uuid.UUID, email, name, role string) error
 	deleteUser(context.Context, uuid.UUID) error
 	linkRecord(ctx context.Context, role string, recordID, userID uuid.UUID, email string) (bool, error)
@@ -43,13 +44,14 @@ type store interface {
 	issueCodes(ctx context.Context, batchID uuid.UUID, role string, codes []newCode, expiresAt time.Time, actor uuid.UUID) error
 	batches(context.Context) ([]Batch, error)
 	revokeBatch(context.Context, uuid.UUID) (int64, error)
+	batchCodes(context.Context, uuid.UUID) (string, time.Time, []storedCode, error)
 }
 
 // Emailer sends the activation emails.
 type Emailer interface {
-	ActivationLink(ctx context.Context, to, name, link string, ttl time.Duration) error
+	ActivationLink(ctx context.Context, to, nameWithInitials, link string, ttl time.Duration) error
 	EmailInUse(ctx context.Context, to string) error
-	AccountActivated(ctx context.Context, to, name, username string) error
+	AccountActivated(ctx context.Context, to, nameWithInitials, username string) error
 }
 
 // identityProvider is the narrow set of identity-provider calls activation needs.
@@ -67,6 +69,18 @@ type Service struct {
 	random   io.Reader
 	now      func() time.Time
 	frontend func() string
+	// cipher is nil when ACTIVATION_CODE_KEY is unset; codes are then kept as hashes only.
+	cipher *codeCipher
+}
+
+// LoadCodeKey turns on reprinting when ACTIVATION_CODE_KEY is set; a malformed key is an error.
+func (s *Service) LoadCodeKey() error {
+	c, err := cipherFromEnv()
+	if err != nil {
+		return err
+	}
+	s.cipher = c
+	return nil
 }
 
 func NewService(s store, provider identityProvider, mail Emailer, audit ports.AuditRecorder) *Service {
@@ -143,7 +157,8 @@ func (s *Service) Start(ctx context.Context, req StartRequest) error {
 	if err != nil {
 		return fmt.Errorf("load record: %w", err)
 	}
-	if err := s.mailer.ActivationLink(ctx, email, name, link, emailTokenTTL); err != nil {
+	// Emails address people formally by their name with initials.
+	if err := s.mailer.ActivationLink(ctx, email, greetingName(name), link, emailTokenTTL); err != nil {
 		return fmt.Errorf("send activation email: %w", err)
 	}
 	logAttempt("link sent")
@@ -204,10 +219,18 @@ func (s *Service) Complete(ctx context.Context, req CompleteRequest) error {
 	}
 	// Best effort: the account exists now, so a mail failure must not report activation as failed.
 	name, _ := s.store.recordName(ctx, code.Role, code.RecordID)
-	if err := s.mailer.AccountActivated(ctx, email, name, signInName(code, email)); err != nil {
+	if err := s.mailer.AccountActivated(ctx, email, greetingName(name), signInName(code, email)); err != nil {
 		slog.Warn("activation: confirmation email not sent", "user_id", userID, "error", err)
 	}
 	return nil
+}
+
+// greetingName is the name with initials, worked out from the full name for older records without one.
+func greetingName(n personName) string {
+	if n.WithInitials != "" {
+		return n.WithInitials
+	}
+	return names.WithInitials(n.Full)
 }
 
 // signInName is the username the new account signs in with.
@@ -232,7 +255,7 @@ func (s *Service) createLogin(ctx context.Context, code codeRecord, email, passw
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("load record: %w", err)
 	}
-	given, family := splitName(name)
+	given, family := names.ForIdentityProvider(name.Full, name.WithInitials, name.Calling)
 	user, err := s.idp.CreateUser(ctx, code.Role, map[string]any{
 		"username": signInName(code, email), "email": email, "given_name": given, "family_name": family, "password": password,
 	})
@@ -247,7 +270,7 @@ func (s *Service) createLogin(ctx context.Context, code codeRecord, email, passw
 		s.undo(user.ID, uuid.Nil)
 		return uuid.Nil, fmt.Errorf("invalid identity provider user id: %w", err)
 	}
-	if err := s.store.createUser(ctx, userID, email, name, code.Role); err != nil {
+	if err := s.store.createUser(ctx, userID, email, name.Full, code.Role); err != nil {
 		s.undo(user.ID, uuid.Nil)
 		return uuid.Nil, fmt.Errorf("create user record: %w", err)
 	}
@@ -278,12 +301,4 @@ func (s *Service) undo(idpUserID string, userID uuid.UUID) {
 			slog.Error("activation: user rollback failed", "user_id", userID, "error", err)
 		}
 	}
-}
-
-func splitName(full string) (string, string) {
-	full = strings.TrimSpace(full)
-	if i := strings.LastIndex(full, " "); i > 0 {
-		return full[:i], full[i+1:]
-	}
-	return full, full
 }

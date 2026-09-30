@@ -30,6 +30,9 @@ export const useGenerateCodes = () => {
   });
 };
 
+// A mutation, not a query, so codes are fetched only on request and never kept in the cache.
+export const useBatchCodes = () => useMutation({ mutationFn: (batchId: string) => activationApi.batchCodes(batchId) });
+
 export const useRevokeBatch = () => {
   const invalidate = useInvalidate();
   return useMutation({

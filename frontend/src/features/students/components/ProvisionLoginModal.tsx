@@ -3,10 +3,9 @@ import { TextInput, InlineNotification } from "@carbon/react";
 import { useProvisionGuardianLogin } from "@/features/guardians/queries/useGuardians";
 import type { GuardianWithPrimary } from "@/features/guardians/api/guardian";
 import FormModal from "@/shared/ui/FormModal";
-import { splitFullName } from "@/shared/lib/name";
+import { displayName } from "@/shared/lib/name";
 
-const EMPTY_LOGIN_FORM = { given_name: "", family_name: "", username: "" };
-
+// Names come from the guardian record, so only the username is asked for here.
 export default function ProvisionLoginModal({
   studentId,
   guardian,
@@ -17,38 +16,21 @@ export default function ProvisionLoginModal({
   onClose: () => void;
 }) {
   const provision = useProvisionGuardianLogin(studentId);
-  const [form, setForm] = useState(() => ({ ...EMPTY_LOGIN_FORM, ...splitFullName(guardian.full_name) }));
-  const [touched, setTouched] = useState<Record<keyof typeof EMPTY_LOGIN_FORM, boolean>>({
-    given_name: false,
-    family_name: false,
-    username: false,
-  });
-
-  const isValid =
-    form.given_name.trim().length > 0 &&
-    form.family_name.trim().length > 0 &&
-    form.username.trim().length > 0;
+  const [username, setUsername] = useState("");
+  const [touched, setTouched] = useState(false);
+  const name = displayName(guardian);
+  const isValid = username.trim().length > 0;
 
   const handleSubmit = () => {
-    setTouched({ given_name: true, family_name: true, username: true });
+    setTouched(true);
     if (!isValid) return;
-    provision.mutate(
-      {
-        guardianId: guardian.id,
-        data: {
-          given_name: form.given_name.trim(),
-          family_name: form.family_name.trim(),
-          username: form.username.trim(),
-        },
-      },
-      { onSuccess: onClose },
-    );
+    provision.mutate({ guardianId: guardian.id, data: { username: username.trim() } }, { onSuccess: onClose });
   };
 
   return (
     <FormModal
       open
-      title={`Set up portal login - ${guardian.full_name}`}
+      title={`Set up portal login - ${name}`}
       onClose={onClose}
       onSubmit={handleSubmit}
       isPending={provision.isPending}
@@ -71,42 +53,20 @@ export default function ProvisionLoginModal({
       <InlineNotification
         kind="info"
         title="One-time password"
-        subtitle={`${guardian.full_name}'s NIC number on file becomes their initial portal password. They'll be prompted to change it on first sign-in.`}
+        subtitle={`${name}'s NIC number on file becomes their initial portal password. They'll be prompted to change it on first sign-in.`}
         lowContrast
         hideCloseButton className="os-mb-4 os-max-w-full"
       />
-      <div className="os-grid os-grid-cols-2 os-gap-4">
-        <TextInput
-          id="guardian-login-given-name"
-          labelText="First name"
-          value={form.given_name}
-          onChange={(e) => setForm((f) => ({ ...f, given_name: e.target.value }))}
-          onBlur={() => setTouched((t) => ({ ...t, given_name: true }))}
-          invalid={touched.given_name && !form.given_name.trim()}
-          invalidText="Required."
-        />
-        <TextInput
-          id="guardian-login-family-name"
-          labelText="Last name"
-          value={form.family_name}
-          onChange={(e) => setForm((f) => ({ ...f, family_name: e.target.value }))}
-          onBlur={() => setTouched((t) => ({ ...t, family_name: true }))}
-          invalid={touched.family_name && !form.family_name.trim()}
-          invalidText="Required."
-        />
-      </div>
-      <div className="os-mt-4 os-grid os-gap-4">
-        <TextInput
-          id="guardian-login-username"
-          labelText="Username"
-          helperText="What this guardian signs in with - separate from their email."
-          value={form.username}
-          onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
-          onBlur={() => setTouched((t) => ({ ...t, username: true }))}
-          invalid={touched.username && !form.username.trim()}
-          invalidText="Required."
-        />
-      </div>
+      <TextInput
+        id="guardian-login-username"
+        labelText="Username"
+        helperText="What this guardian signs in with - separate from their email. Their name is taken from their guardian details."
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        onBlur={() => setTouched(true)}
+        invalid={touched && !username.trim()}
+        invalidText="Required."
+      />
     </FormModal>
   );
 }

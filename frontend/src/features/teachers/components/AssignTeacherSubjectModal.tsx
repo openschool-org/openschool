@@ -4,6 +4,7 @@ import type { Teacher } from "@/features/teachers/api/teacher";
 import type { useAssignTeacherSubject } from "@/features/teachers/queries/useTeachers";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
 import FormModal from "@/shared/ui/FormModal";
+import { displayName } from "@/shared/lib/name";
 
 interface Props {
   open: boolean;
@@ -32,7 +33,7 @@ export default function AssignTeacherSubjectModal({ open, teacher, subjects, mut
   return (
     <FormModal
       open={open}
-      title={`Assign subject to ${teacher.full_name}`}
+      title={`Assign subject to ${displayName(teacher)}`}
       onClose={close}
       onSubmit={assign}
       isPending={mutation.isPending}
@@ -55,7 +56,7 @@ export default function AssignTeacherSubjectModal({ open, teacher, subjects, mut
       />
       {selectedSubject && (
         <p className="os-mt-2 os-mb-0 os-text-xs os-c-secondary">
-          This subject will be added to {teacher.full_name}&apos;s qualifications.
+          This subject will be added to {displayName(teacher)}&apos;s qualifications.
         </p>
       )}
     </FormModal>

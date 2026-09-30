@@ -14,14 +14,14 @@ RETURNING *;
 
 -- name: ActivationStudentTargets :many
 -- Active students with no login, with their current class for class-wise code sheets.
-SELECT sp.id, sp.full_name, sp.index_number,
+SELECT sp.id, COALESCE(NULLIF(sp.name_with_initials, ''), sp.full_name)::text AS full_name, sp.index_number,
        COALESCE(cur.name, '')::text         AS class_name,
        COALESCE(cur.grade_name, '')::text   AS grade_name,
        COALESCE(cur.grade_order, 9999)::int AS grade_order,
        COALESCE(cur.form_teacher, '')::text AS form_teacher
 FROM student_profiles sp
 LEFT JOIN LATERAL (
-    SELECT c.id, c.name, g.name AS grade_name, g.sort_order AS grade_order, tp.full_name AS form_teacher
+    SELECT c.id, c.name, g.name AS grade_name, g.sort_order AS grade_order, NULLIF(concat_ws(' ', tp.title || '.', COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name)), '') AS form_teacher
     FROM class_students cs
     JOIN classes c              ON c.id = cs.class_id
     JOIN academic_years ay      ON ay.id = c.academic_year_id AND ay.is_current
@@ -35,25 +35,25 @@ WHERE sp.user_id IS NULL
   AND sp.erased_at IS NULL
   AND (sqlc.narg('class_id')::uuid IS NULL OR cur.id = sqlc.narg('class_id')::uuid)
   AND (sqlc.narg('student_id')::uuid IS NULL OR sp.id = sqlc.narg('student_id')::uuid)
-ORDER BY grade_order, class_name, sp.full_name;
+ORDER BY grade_order, class_name, sp.full_name, sp.id;
 
 -- name: ActivationGuardianTargets :many
 -- Guardians with no login and an NIC on file, linked to at least one active student. Each is filed under
 -- the class of their youngest-grade child (or the chosen class), so codes can go home with the child.
-SELECT g.id, g.full_name, kids.children::text AS children,
+SELECT g.id, COALESCE(NULLIF(g.name_with_initials, ''), g.full_name)::text AS full_name, kids.children::text AS children,
        COALESCE(kc.class_name, '')::text   AS class_name,
        COALESCE(kc.grade_name, '')::text   AS grade_name,
        COALESCE(kc.grade_order, 9999)::int AS grade_order,
        COALESCE(kc.form_teacher, '')::text AS form_teacher
 FROM guardians g
 JOIN LATERAL (
-    SELECT string_agg(sp.full_name, ', ' ORDER BY sp.full_name) AS children
+    SELECT string_agg(COALESCE(NULLIF(sp.name_with_initials, ''), sp.full_name), ', ' ORDER BY sp.full_name) AS children
     FROM student_guardians sg
     JOIN student_profiles sp ON sp.id = sg.student_id AND sp.enrollment_status = 'active' AND sp.erased_at IS NULL
     WHERE sg.guardian_id = g.id
 ) kids ON kids.children IS NOT NULL
 LEFT JOIN LATERAL (
-    SELECT c.id, c.name AS class_name, gr.name AS grade_name, gr.sort_order AS grade_order, tp.full_name AS form_teacher
+    SELECT c.id, c.name AS class_name, gr.name AS grade_name, gr.sort_order AS grade_order, NULLIF(concat_ws(' ', tp.title || '.', COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name)), '') AS form_teacher
     FROM student_guardians sg
     JOIN student_profiles sp  ON sp.id = sg.student_id AND sp.enrollment_status = 'active' AND sp.erased_at IS NULL
     JOIN class_students cs    ON cs.student_id = sp.id
@@ -81,8 +81,8 @@ UPDATE activation_codes SET revoked_at = NOW()
 WHERE guardian_id = ANY(sqlc.arg('ids')::uuid[]) AND used_at IS NULL AND revoked_at IS NULL;
 
 -- name: InsertActivationCodes :copyfrom
-INSERT INTO activation_codes (batch_id, role, student_id, guardian_id, code_hash, expires_at, created_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7);
+INSERT INTO activation_codes (batch_id, role, student_id, guardian_id, code_hash, expires_at, created_by, code_encrypted)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 
 -- name: GetUsableActivationCode :one
 -- A code that is not used, revoked or expired, with the record it belongs to.
@@ -136,17 +136,18 @@ UPDATE activation_codes SET used_at = NULL WHERE id = $1;
 SELECT EXISTS (SELECT 1 FROM users WHERE lower(email) = lower(sqlc.arg('email')::text));
 
 -- name: ActivationStudentName :one
-SELECT full_name FROM student_profiles WHERE id = $1;
+SELECT full_name, name_with_initials, calling_name FROM student_profiles WHERE id = $1;
 
 -- name: ActivationGuardianName :one
-SELECT full_name FROM guardians WHERE id = $1;
+SELECT full_name, name_with_initials, calling_name FROM guardians WHERE id = $1;
 
 -- name: LinkActivatedStudent :execrows
 UPDATE student_profiles SET user_id = sqlc.arg('user_id'), updated_at = NOW()
 WHERE id = sqlc.arg('id') AND user_id IS NULL;
 
 -- name: LinkActivatedGuardian :execrows
-UPDATE guardians SET user_id = sqlc.arg('user_id'), email = sqlc.arg('email')
+-- The verified email fills the guardian's email only when none is on file.
+UPDATE guardians SET user_id = sqlc.arg('user_id'), email = COALESCE(NULLIF(email, ''), sqlc.arg('email'))
 WHERE id = sqlc.arg('id') AND user_id IS NULL;
 
 -- name: ListActivationBatches :many
@@ -156,7 +157,8 @@ SELECT batch_id, role,
        COUNT(*)                     AS total,
        COUNT(used_at)               AS used,
        COUNT(revoked_at)            AS revoked,
-       COUNT(*) FILTER (WHERE used_at IS NULL AND revoked_at IS NULL AND expires_at <= NOW()) AS expired
+       COUNT(*) FILTER (WHERE used_at IS NULL AND revoked_at IS NULL AND expires_at <= NOW()) AS expired,
+       COUNT(*) FILTER (WHERE code_encrypted IS NOT NULL AND used_at IS NULL AND revoked_at IS NULL AND expires_at > NOW()) AS reprintable
 FROM activation_codes
 GROUP BY batch_id, role
 ORDER BY MIN(created_at) DESC
@@ -165,3 +167,42 @@ LIMIT 50;
 -- name: RevokeActivationBatch :execrows
 UPDATE activation_codes SET revoked_at = NOW()
 WHERE batch_id = $1 AND used_at IS NULL AND revoked_at IS NULL;
+
+-- name: ActivationBatchCodes :many
+-- A batch's still-usable codes with each person's current name and class, for reprinting.
+SELECT ac.code_hash, ac.code_encrypted, ac.role, ac.expires_at,
+       COALESCE(NULLIF(COALESCE(sp.name_with_initials, g.name_with_initials), ''), COALESCE(sp.full_name, g.full_name))::text AS name,
+       COALESCE(sp.index_number, '')::text   AS index_number,
+       COALESCE(kids.children, '')::text     AS children,
+       COALESCE(cls.class_name, '')::text    AS class_name,
+       COALESCE(cls.grade_name, '')::text    AS grade_name,
+       COALESCE(cls.grade_order, 9999)::int  AS grade_order,
+       COALESCE(cls.form_teacher, '')::text  AS form_teacher
+FROM activation_codes ac
+LEFT JOIN student_profiles sp ON sp.id = ac.student_id
+LEFT JOIN guardians g         ON g.id  = ac.guardian_id
+LEFT JOIN LATERAL (
+    SELECT string_agg(COALESCE(NULLIF(c.name_with_initials, ''), c.full_name), ', ' ORDER BY c.full_name) AS children
+    FROM student_guardians sg
+    JOIN student_profiles c ON c.id = sg.student_id AND c.enrollment_status = 'active' AND c.erased_at IS NULL
+    WHERE sg.guardian_id = ac.guardian_id
+) kids ON TRUE
+LEFT JOIN LATERAL (
+    SELECT cl.name AS class_name, gr.name AS grade_name, gr.sort_order AS grade_order, NULLIF(concat_ws(' ', tp.title || '.', COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name)), '') AS form_teacher
+    FROM class_students cs
+    JOIN classes cl               ON cl.id = cs.class_id
+    JOIN academic_years ay        ON ay.id = cl.academic_year_id AND ay.is_current
+    JOIN grades gr                ON gr.id = cl.grade_id
+    LEFT JOIN teacher_profiles tp ON tp.id = cl.form_teacher_id
+    WHERE cs.student_id = ac.student_id
+       OR cs.student_id IN (SELECT sg.student_id FROM student_guardians sg WHERE sg.guardian_id = ac.guardian_id)
+    ORDER BY gr.sort_order, cl.name
+    LIMIT 1
+) cls ON TRUE
+WHERE ac.batch_id = $1
+  AND ac.used_at IS NULL AND ac.revoked_at IS NULL AND ac.expires_at > NOW()
+  AND ac.code_encrypted IS NOT NULL
+ORDER BY grade_order, class_name, name;
+
+-- name: ActivationBatchRole :one
+SELECT role, MAX(expires_at)::timestamptz AS expires_at FROM activation_codes WHERE batch_id = $1 GROUP BY role LIMIT 1;

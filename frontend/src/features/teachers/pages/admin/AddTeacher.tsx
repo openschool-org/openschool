@@ -17,10 +17,12 @@ import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "@/shared/lib/phone";
 import type { TeacherTitle } from "@/features/teachers/api/teacher";
 import { TITLES } from "@/features/teachers/constants";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
+import PersonNameFields from "@/shared/ui/PersonNameFields";
+import { EMPTY_PERSON_NAMES } from "@/shared/lib/name";
 import DateField from "@/shared/ui/DateField";
 
 type Touched = Partial<
-  Record<"givenName" | "familyName" | "email" | "phone" | "nicNumber" | "joinedDate", boolean>
+  Record<"fullName" | "email" | "phone" | "nicNumber" | "joinedDate", boolean>
 >;
 
 export default function AddTeacher() {
@@ -30,8 +32,7 @@ export default function AddTeacher() {
 
   const [title, setTitle] = useState<TeacherTitle | "">("");
   const [gender, setGender] = useState<"" | "male" | "female">("");
-  const [givenName, setGivenName] = useState("");
-  const [familyName, setFamilyName] = useState("");
+  const [names, setNames] = useState(EMPTY_PERSON_NAMES);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [nicNumber, setNicNumber] = useState("");
@@ -42,8 +43,7 @@ export default function AddTeacher() {
 
   const handleSubmit = () => {
     setTouched({
-      givenName: true,
-      familyName: true,
+      fullName: true,
       email: true,
       phone: true,
       nicNumber: true,
@@ -52,8 +52,9 @@ export default function AddTeacher() {
     if (!isValid) return;
     createTeacher.mutate(
       {
-        given_name: givenName.trim(),
-        family_name: familyName.trim(),
+        full_name: names.full_name.trim(),
+        name_with_initials: names.name_with_initials.trim() || undefined,
+        calling_name: names.calling_name.trim() || undefined,
         email: email.trim(),
         phone_number: phone.trim() || undefined,
         nic_number: nicNumber.trim(),
@@ -69,16 +70,14 @@ export default function AddTeacher() {
     ? getErrorMessage(createTeacher.error, "Failed to create teacher")
     : null;
 
-  const givenNameInvalid = !!touched.givenName && !givenName.trim();
-  const familyNameInvalid = !!touched.familyName && !familyName.trim();
+  const fullNameInvalid = !!touched.fullName && !names.full_name.trim();
   const emailInvalid = !!touched.email && !EMAIL_RE.test(email.trim());
   const phoneInvalid = !!touched.phone && !isValidSriLankanPhone(phone);
   const nicNumberInvalid = !!touched.nicNumber && !nicNumber.trim();
   const joinedDateInvalid = !!touched.joinedDate && !joinedDate;
 
   const isValid =
-    givenName.trim().length > 0 &&
-    familyName.trim().length > 0 &&
+    names.full_name.trim().length > 0 &&
     EMAIL_RE.test(email.trim()) &&
     isValidSriLankanPhone(phone) &&
     nicNumber.trim().length > 0 &&
@@ -130,25 +129,12 @@ export default function AddTeacher() {
               <RadioButton id="gender-male" labelText="Male" value="male" />
               <RadioButton id="gender-female" labelText="Female" value="female" />
             </RadioButtonGroup>
-            <TextInput
-              id="given-name"
-              labelText="First name"
-              placeholder="e.g. Priya"
-              value={givenName}
-              onChange={(e) => setGivenName(e.target.value)}
-              onBlur={() => markTouched("givenName")}
-              invalid={givenNameInvalid}
-              invalidText="First name is required."
-            />
-            <TextInput
-              id="family-name"
-              labelText="Last name"
-              placeholder="e.g. Rathnayake"
-              value={familyName}
-              onChange={(e) => setFamilyName(e.target.value)}
-              onBlur={() => markTouched("familyName")}
-              invalid={familyNameInvalid}
-              invalidText="Last name is required."
+            <PersonNameFields
+              idPrefix="teacher"
+              value={names}
+              onChange={setNames}
+              fullNameInvalid={fullNameInvalid}
+              onFullNameBlur={() => markTouched("fullName")}
             />
             <TextInput
               id="email"

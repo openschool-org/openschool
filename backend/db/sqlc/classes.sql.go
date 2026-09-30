@@ -862,7 +862,7 @@ SELECT
     s.name       AS subject_name,
     s.code       AS subject_code,
     tp.id        AS teacher_id,
-    tp.full_name AS teacher_name
+    COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS teacher_name
 FROM class_subject_teachers cst
 INNER JOIN subjects         s  ON s.id  = cst.subject_id
 INNER JOIN teacher_profiles tp ON tp.id = cst.teacher_id

@@ -7,9 +7,13 @@ import type { GuardianRelationship } from "@/features/guardians/api/guardian";
 import { useDebounced } from "@/shared/hooks/useDebounced";
 import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "@/shared/lib/phone";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import PersonNameFields from "@/shared/ui/PersonNameFields";
+import { displayName } from "@/shared/lib/name";
 
 const EMPTY_GUARDIAN_FORM = {
   full_name: "",
+  name_with_initials: "",
+  calling_name: "",
   relationship: "father" as GuardianRelationship,
   phone: "",
   email: "",
@@ -59,6 +63,8 @@ export default function AddGuardianModal({
       {
         data: {
           full_name: form.full_name.trim(),
+          name_with_initials: form.name_with_initials.trim() || undefined,
+          calling_name: form.calling_name.trim() || undefined,
           relationship: form.relationship,
           phone: form.phone.trim(),
           email: form.email.trim() || undefined,
@@ -120,7 +126,7 @@ export default function AddGuardianModal({
                     key={g.id} className="os-flex os-items-center os-justify-between os-py-2h os-px-3h os-border"
                   >
                     <div>
-                      <div className="os-fw-600 os-text-sm">{g.full_name}</div>
+                      <div className="os-fw-600 os-text-sm">{displayName(g)}</div>
                       <div className="os-text-xs os-c-tertiary">{g.phone}</div>
                     </div>
                     <Button size="sm" kind="tertiary" onClick={() => handleLink(g.id)} disabled={linkGuardian.isPending}>
@@ -147,15 +153,13 @@ export default function AddGuardianModal({
               title="Could not add guardian" fallback="Please try again." className="os-mb-4"
             />
             <div className="os-grid os-gap-4">
-              <TextInput
-                id="guardian-name"
-                labelText="Full name"
-                value={form.full_name}
-                onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
-                onBlur={() => setTouched((t) => ({ ...t, full_name: true }))}
-                invalid={!!touched.full_name && !form.full_name.trim()}
-                invalidText="A name is required."
-              />
+<PersonNameFields
+          idPrefix="guardian"
+          value={form}
+          onChange={(next) => setForm((f) => ({ ...f, ...next }))}
+          fullNameInvalid={!!touched.full_name && !form.full_name.trim()}
+          onFullNameBlur={() => setTouched((t) => ({ ...t, full_name: true }))}
+        />
               <Select
                 id="guardian-relationship"
                 labelText="Relationship"

@@ -64,17 +64,17 @@ func (s *Sender) send(ctx context.Context, to string, build func(Branding) email
 	return s.mail.Send(ctx, msg)
 }
 
-func (s *Sender) ActivationLink(ctx context.Context, to, name, link string, ttl time.Duration) error {
-	return s.send(ctx, to, func(b Branding) email { return activationLinkEmail(b.SchoolName, name, link, ttl) })
+func (s *Sender) ActivationLink(ctx context.Context, to, nameWithInitials, link string, ttl time.Duration) error {
+	return s.send(ctx, to, func(b Branding) email { return activationLinkEmail(b.SchoolName, nameWithInitials, link, ttl) })
 }
 
 func (s *Sender) EmailInUse(ctx context.Context, to string) error {
 	return s.send(ctx, to, func(b Branding) email { return emailInUseEmail(b.SchoolName, s.signInURL()) })
 }
 
-func (s *Sender) AccountActivated(ctx context.Context, to, name, username string) error {
+func (s *Sender) AccountActivated(ctx context.Context, to, nameWithInitials, username string) error {
 	return s.send(ctx, to, func(b Branding) email {
-		return accountActivatedEmail(b.SchoolName, name, username, s.signInURL(), s.now())
+		return accountActivatedEmail(b.SchoolName, nameWithInitials, username, s.signInURL(), s.now())
 	})
 }
 
@@ -118,13 +118,13 @@ var samples = []struct {
 	sample
 }{
 	{"activation_link", sample{"Activation link", func(s *Sender, b Branding) email {
-		return activationLinkEmail(b.SchoolName, "Nimali Perera", s.frontend()+"/activate#token=example", 30*time.Minute)
+		return activationLinkEmail(b.SchoolName, "H.A.N. Perera", s.frontend()+"/activate#token=example", 30*time.Minute)
 	}}},
 	{"email_in_use", sample{"Email already in use", func(s *Sender, b Branding) email {
 		return emailInUseEmail(b.SchoolName, s.signInURL())
 	}}},
 	{"account_activated", sample{"Account activated", func(s *Sender, b Branding) email {
-		return accountActivatedEmail(b.SchoolName, "Nimali Perera", "2026/0001", s.signInURL(), s.now())
+		return accountActivatedEmail(b.SchoolName, "H.A.N. Perera", "2026/0001", s.signInURL(), s.now())
 	}}},
 	{"password_reset", sample{"Password reset", func(s *Sender, b Branding) email {
 		return passwordResetEmail(b.SchoolName, s.frontend()+"/reset-password#token=example", 15*time.Minute)

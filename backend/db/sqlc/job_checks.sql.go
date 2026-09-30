@@ -474,7 +474,7 @@ func (q *Queries) ListGradesWithNoCurrentClasses(ctx context.Context) ([]ListGra
 
 const listInactiveTeachersStillAssigned = `-- name: ListInactiveTeachersStillAssigned :many
 
-SELECT DISTINCT tp.id, tp.full_name, tp.employment_status
+SELECT DISTINCT tp.id, COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS full_name, tp.employment_status
 FROM teacher_profiles tp
 INNER JOIN academic_years ay ON ay.is_current = TRUE
 WHERE tp.employment_status != 'active'

@@ -14,8 +14,10 @@ func TestGuardianCheckerSiblingsMustAgree(t *testing.T) {
 	if p, _ := g.check(row(2, "197512345678", "Sunil Perera", "sunil@example.com", "0712345678"), nil); p != "" {
 		t.Fatalf("first row: %s", p)
 	}
-	if p, notes := g.check(row(3, "197512345678", "SUNIL  perera.", "", "0712345678"), nil); p != "" || len(notes) != 0 {
-		t.Fatalf("case, dots and spaces must not count as a different name: %q %v", p, notes)
+	for i, spelling := range []string{"SUNIL  perera.", "S. Perera", "H.A. Sunil Perera"} {
+		if p, notes := g.check(row(10+i, "197512345678", spelling, "", "0712345678"), nil); p != "" || len(notes) != 0 {
+			t.Fatalf("%q is the same person as Sunil Perera: %q %v", spelling, p, notes)
+		}
 	}
 	if p, _ := g.check(row(4, "197512345678", "Kamal Perera", "", ""), nil); !strings.Contains(p, "is Sunil Perera on line 2 but Kamal Perera here") {
 		t.Fatalf("different name under one NIC must block, got %q", p)

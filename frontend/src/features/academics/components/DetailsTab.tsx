@@ -4,6 +4,7 @@ import type { Teacher } from "@/features/teachers/api/teacher";
 import type { Student } from "@/features/students/api/student";
 import Avatar from "@/shared/ui/Avatar";
 import SectionCard from "@/shared/ui/SectionCard";
+import { displayName } from "@/shared/lib/name";
 
 interface Props {
   cls: NonNullable<ReturnType<typeof useClass>["data"]>;
@@ -59,11 +60,11 @@ export default function DetailsTab({
             <Link
               to={`/teachers/${formTeacher.id}`} className="os-flex os-items-center os-gap-3 os-no-underline"
             >
-              <Avatar name={formTeacher.full_name} size="sm" />
+              <Avatar name={displayName(formTeacher)} size="sm" />
               <div>
                 <p className="os-mt-0 os-mx-0 os-mb-h os-fw-600 os-text-md os-c-primary"
                 >
-                  {formTeacher.full_name}
+                  {displayName(formTeacher)}
                 </p>
                 <p className="os-m-0 os-text-xs os-c-accent">View profile →</p>
               </div>

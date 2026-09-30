@@ -21,6 +21,7 @@ import UnsavedChangesModal from "@/shared/ui/UnsavedChangesModal";
 import ConfirmActionModal from "@/shared/ui/ConfirmActionModal";
 import { useToast } from "@/shared/ui/toast/useToast";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
+import { displayName } from "@/shared/lib/name";
 
 const HEADERS = ["#", "Student", "Index No.", "Attendance", "Note"];
 
@@ -55,7 +56,7 @@ export default function AttendanceMark() {
   const isOverride = locked && isAdmin;
   const backPath = role === "teacher" ? "/t/attendance" : "/attendance";
   const gradeName = grades?.find((g) => g.id === cls?.grade_id)?.name;
-  const teacherName = takenByTeacher?.full_name;
+  const teacherName = takenByTeacher ? displayName(takenByTeacher) : undefined;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

@@ -2,6 +2,8 @@ package activation
 
 import (
 	"context"
+	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -64,7 +66,14 @@ func (s *Service) Generate(ctx context.Context, req GenerateRequest, actor uuid.
 		if err != nil {
 			return GenerateResponse{}, err
 		}
-		codes = append(codes, newCode{RecordID: t.ID, Hash: hashSecret(normalizeCode(code))})
+		hash := hashSecret(normalizeCode(code))
+		var sealed []byte
+		if s.cipher != nil {
+			if sealed, err = s.cipher.encrypt(code, hash); err != nil {
+				return GenerateResponse{}, fmt.Errorf("encrypt activation code: %w", err)
+			}
+		}
+		codes = append(codes, newCode{RecordID: t.ID, Hash: hash, Encrypted: sealed})
 		resp.Codes = append(resp.Codes, IssuedCode{
 			Name: t.Name, Detail: t.Detail, Code: code, Index: t.Index,
 			ClassName: t.ClassName, GradeName: t.GradeName, GradeOrder: t.GradeOrder, FormTeacher: t.FormTeacher,
@@ -85,6 +94,35 @@ func (s *Service) Generate(ctx context.Context, req GenerateRequest, actor uuid.
 
 func (s *Service) Batches(ctx context.Context) ([]Batch, error) {
 	return s.store.batches(ctx)
+}
+
+// BatchCodes reopens a batch's unused codes for printing again. Every view is audited.
+func (s *Service) BatchCodes(ctx context.Context, batchID, actor uuid.UUID) (GenerateResponse, error) {
+	if s.cipher == nil {
+		return GenerateResponse{}, ErrReprintDisabled
+	}
+	role, expires, stored, err := s.store.batchCodes(ctx, batchID)
+	if err != nil {
+		return GenerateResponse{}, err
+	}
+	resp := GenerateResponse{BatchID: batchID, Role: role, ExpiresAt: expires, Codes: make([]IssuedCode, 0, len(stored))}
+	for _, st := range stored {
+		code, err := s.cipher.decrypt(st.Encrypted, st.Hash)
+		if err != nil {
+			// A code sealed under an older key cannot be shown; skip it rather than fail the batch.
+			slog.Warn("activation: stored code could not be decrypted", "batch_id", batchID, "error", err)
+			continue
+		}
+		issued := st.IssuedCode
+		issued.Code = code
+		resp.Codes = append(resp.Codes, issued)
+	}
+	if s.audit != nil {
+		_ = s.audit.Record(ctx, "activation_batch", batchID, "codes_viewed", actor, nil, struct {
+			Shown int `json:"shown"`
+		}{len(resp.Codes)}, "")
+	}
+	return resp, nil
 }
 
 // RevokeBatch cancels every unused code in a batch, for example when a printed sheet goes missing.

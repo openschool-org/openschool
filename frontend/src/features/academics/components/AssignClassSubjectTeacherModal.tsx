@@ -7,6 +7,7 @@ import { useTeachersBySubject } from "@/features/teachers/queries/useTeachers";
 import type { useSubjects } from "@/features/curriculum/queries/useSubjects";
 import FormModal from "@/shared/ui/FormModal";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
+import { displayName } from "@/shared/lib/name";
 
 interface Props {
   open: boolean;
@@ -75,7 +76,7 @@ export default function AssignClassSubjectTeacherModal({
             selectedId={teacherId}
             onSelect={setTeacherId}
             getId={(t) => t.id}
-            itemToString={(t) => `${t.full_name} - ${t.employee_number}`}
+            itemToString={(t) => `${displayName(t)} - ${t.employee_number}`}
             placeholder={subjectId ? "Search qualified teachers…" : "Choose a subject first…"}
             disabled={!subjectId}
           />

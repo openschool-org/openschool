@@ -8,6 +8,7 @@ import { useTeachers } from "@/features/teachers/queries/useTeachers";
 import { useCreateClassForm } from "@/features/academics/hooks/useCreateClassForm";
 import InfoTip from "@/shared/ui/InfoTip";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
+import { displayName } from "@/shared/lib/name";
 
 interface Props {
   open: boolean;
@@ -57,7 +58,7 @@ export default function ClassFormModal({ open, gradeId = "", onClose }: Props) {
             <SelectItem value="" text="Auto-create to match the class name" />
             {regularClassrooms?.map((classroom) => <SelectItem key={classroom.id} value={classroom.id} text={classroom.name} />)}
           </Select>
-          <EntityCombobox id="modal-class-teacher" labelText="Form teacher (optional)" items={teacherPage?.items ?? []} selectedId={form.form_teacher_id} onSelect={(id) => set("form_teacher_id", id)} onSearch={setTeacherSearch} getId={(teacher) => teacher.id} itemToString={(teacher) => `${teacher.full_name} - ${teacher.employee_number}`} placeholder="Search teachers…" />
+          <EntityCombobox id="modal-class-teacher" labelText="Form teacher (optional)" items={teacherPage?.items ?? []} selectedId={form.form_teacher_id} onSelect={(id) => set("form_teacher_id", id)} onSearch={setTeacherSearch} getId={(teacher) => teacher.id} itemToString={(teacher) => `${displayName(teacher)} - ${teacher.employee_number}`} placeholder="Search teachers…" />
           <Select id="modal-academic-year" labelText="Academic year" value={f.academicYearId} onChange={(e) => set("academic_year_id", e.target.value)} onBlur={() => f.markTouched("year")} invalid={!!touched.year && !f.academicYearId} invalidText="An academic year is required.">
             <SelectItem value="" text="Select academic year…" />
             {f.years?.map((year) => <SelectItem key={year.id} value={year.id} text={year.is_current ? `${year.label} (Current)` : year.label} />)}

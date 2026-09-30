@@ -10,6 +10,7 @@ import { useCreateClassForm } from "@/features/academics/hooks/useCreateClassFor
 import EntityCombobox from "@/shared/ui/EntityCombobox";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
 import InfoTip from "@/shared/ui/InfoTip";
+import { displayName } from "@/shared/lib/name";
 
 // Supports preselecting the grade via `?grade_id=`.
 export default function AddClass() {
@@ -74,7 +75,7 @@ export default function AddClass() {
               onSelect={(id) => set("form_teacher_id", id)}
               onSearch={setTeacherSearch}
               getId={(t) => t.id}
-              itemToString={(t) => `${t.full_name} - ${t.employee_number}`}
+              itemToString={(t) => `${displayName(t)} - ${t.employee_number}`}
               placeholder="Search teachers by name or employee number…"
             />
           </div>

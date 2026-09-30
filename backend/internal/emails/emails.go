@@ -5,17 +5,12 @@ import (
 	"time"
 )
 
-// greeting uses the first name only, which reads naturally for both students and parents.
-func greeting(name string) string {
-	for i, r := range name {
-		if r == ' ' {
-			return fmt.Sprintf("Hi %s,", name[:i])
-		}
+// greeting is formal and uses the name with initials (e.g. "Dear H.A.N. Perera,"), as school letters do.
+func greeting(nameWithInitials string) string {
+	if nameWithInitials == "" {
+		return "Dear parent or student,"
 	}
-	if name == "" {
-		return "Hello,"
-	}
-	return fmt.Sprintf("Hi %s,", name)
+	return fmt.Sprintf("Dear %s,", nameWithInitials)
 }
 
 func minutes(d time.Duration) string {

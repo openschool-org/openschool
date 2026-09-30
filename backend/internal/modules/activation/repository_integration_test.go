@@ -33,7 +33,7 @@ func seed(t *testing.T, pool *pgxpool.Pool) seeded {
 	mustScan("INSERT INTO classes (grade_id, academic_year_id, name) VALUES ($1, $2, '6-A') RETURNING id", &s.classID, gradeID, yearID)
 	mustScan("INSERT INTO student_profiles (full_name, index_number) VALUES ('Nimali Perera', '2026/0001') RETURNING id", &s.studentID)
 	mustScan("INSERT INTO student_profiles (full_name, index_number) VALUES ('Kasun Silva', '2026/0002') RETURNING id", &s.otherStudentID)
-	mustScan("INSERT INTO guardians (full_name, relationship, phone, nic_number) VALUES ('Sunil Perera', 'father', '0712345678', '197512345678') RETURNING id", &s.guardianID)
+	mustScan("INSERT INTO guardians (full_name, relationship, phone, nic_number, email) VALUES ('Sunil Perera', 'father', '0712345678', '197512345678', 'sunil.office@example.com') RETURNING id", &s.guardianID)
 	if _, err := pool.Exec(ctx, "INSERT INTO class_students (class_id, student_id) VALUES ($1, $2)", s.classID, s.studentID); err != nil {
 		t.Fatal(err)
 	}
@@ -52,6 +52,7 @@ func TestActivationFlowWithPostgres(t *testing.T) {
 	mail := &fakeMail{}
 	svc := NewService(repo, provider, mail, nil)
 	svc.frontend = func() string { return "https://school.example" }
+	svc.cipher = testCipher(t)
 	admin := uuid.Nil
 
 	// Everything starts switched off.
@@ -123,6 +124,17 @@ func TestActivationFlowWithPostgres(t *testing.T) {
 		t.Fatalf("reused link: err = %v, want ErrLinkInvalid", err)
 	}
 
+	// Reprinting shows only the batch's unused codes, exactly as issued.
+	reprint, err := svc.BatchCodes(ctx, all.BatchID, admin)
+	if err != nil || len(reprint.Codes) != 1 || reprint.Codes[0].Name != "Kasun Silva" {
+		t.Fatalf("reprint after one activation = %+v, %v", reprint, err)
+	}
+	for _, c := range all.Codes {
+		if c.Name == "Kasun Silva" && c.Code != reprint.Codes[0].Code {
+			t.Fatalf("reprinted %q, issued %q", reprint.Codes[0].Code, c.Code)
+		}
+	}
+
 	// Activated students drop out of later batches; guardians use their NIC.
 	again, err := svc.Generate(ctx, GenerateRequest{Role: "student"}, admin)
 	if err != nil || len(again.Codes) != 1 || again.Codes[0].Name != "Kasun Silva" {
@@ -142,7 +154,8 @@ func TestActivationFlowWithPostgres(t *testing.T) {
 		t.Fatalf("parent Complete: %v", err)
 	}
 	var guardianEmail string
-	if err := pool.QueryRow(ctx, "SELECT email FROM guardians WHERE id = $1 AND user_id IS NOT NULL", s.guardianID).Scan(&guardianEmail); err != nil || guardianEmail != "sunil@example.com" {
+	// The email already on file is kept; the verified one becomes the login email.
+	if err := pool.QueryRow(ctx, "SELECT email FROM guardians WHERE id = $1 AND user_id IS NOT NULL", s.guardianID).Scan(&guardianEmail); err != nil || guardianEmail != "sunil.office@example.com" {
 		t.Fatalf("guardian link: %q, %v", guardianEmail, err)
 	}
 

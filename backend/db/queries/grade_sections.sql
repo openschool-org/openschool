@@ -13,7 +13,7 @@ WHERE id = $1;
 -- name: ListGradeSectionsByYear :many
 SELECT
     gs.*,
-    tp.full_name AS section_head_name
+    COALESCE(display_name(tp.full_name, tp.name_with_initials), '')::text AS section_head_name
 FROM grade_sections gs
 LEFT JOIN teacher_profiles tp ON tp.id = gs.section_head_teacher_id
 WHERE gs.academic_year_id = $1

@@ -91,7 +91,7 @@ ORDER BY sp.full_name;
 -- a resigned/transferred teacher still wired in as a form teacher or
 -- subject teacher on a current-year class — attendance/marks/notifications
 -- would still route to them.
-SELECT DISTINCT tp.id, tp.full_name, tp.employment_status
+SELECT DISTINCT tp.id, COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS full_name, tp.employment_status
 FROM teacher_profiles tp
 INNER JOIN academic_years ay ON ay.is_current = TRUE
 WHERE tp.employment_status != 'active'

@@ -29,6 +29,7 @@ type staffCreate struct {
 }
 type staffUpdate struct{ FullName, Designation, Phone, Gender string }
 type staffRecord struct{ HouseID *uuid.UUID }
+
 // StaffListParams is the non-academic-staff pagination request: the shared
 // limit/offset/search contract plus the designation filter.
 type StaffListParams struct {

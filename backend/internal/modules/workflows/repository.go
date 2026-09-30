@@ -14,6 +14,7 @@ import (
 	db "github.com/openschool-org/openschool/db/sqlc"
 	academicsmodule "github.com/openschool-org/openschool/internal/modules/academics"
 	timetablemodule "github.com/openschool-org/openschool/internal/modules/timetable"
+	"github.com/openschool-org/openschool/internal/names"
 	"github.com/openschool-org/openschool/internal/validation"
 )
 
@@ -708,9 +709,11 @@ func optText(v string) pgtype.Text { return pgtype.Text{String: v, Valid: v != "
 // NewStudent is one imported student with their first guardian.
 type NewStudent struct {
 	Name, Index, Gender, Address, Phone string
-	GuardianName, Relationship          string
-	GuardianPhone, GuardianNIC          string
-	GuardianEmail                       string
+	// NameWithInitials and CallingName are optional; the name with initials is suggested when empty.
+	NameWithInitials, CallingName string
+	GuardianName, Relationship    string
+	GuardianPhone, GuardianNIC    string
+	GuardianEmail                 string
 }
 
 // leastUsedHouse returns nil when the school has no houses.
@@ -727,11 +730,13 @@ func (s *Store) createIntakeStudent(ctx context.Context, st NewStudent) (uuid.UU
 	if err != nil {
 		return uuid.Nil, err
 	}
-	return s.q.WfCreateIntakeStudent(ctx, db.WfCreateIntakeStudentParams{FullName: st.Name, IndexNumber: st.Index, Address: optText(st.Address), Phone: optText(st.Phone), Gender: optText(st.Gender), HouseID: house})
+	full, withInitials, calling := names.Normalize(st.Name, st.NameWithInitials, st.CallingName)
+	return s.q.WfCreateIntakeStudent(ctx, db.WfCreateIntakeStudentParams{FullName: full, NameWithInitials: withInitials, CallingName: calling, IndexNumber: st.Index, Address: optText(st.Address), Phone: optText(st.Phone), Gender: optText(st.Gender), HouseID: house})
 }
 
 func (s *Store) createGuardian(ctx context.Context, st NewStudent) (uuid.UUID, error) {
-	return s.q.WfCreateGuardian(ctx, db.WfCreateGuardianParams{FullName: st.GuardianName, Relationship: st.Relationship, Phone: st.GuardianPhone, Email: optText(st.GuardianEmail), NicNumber: st.GuardianNIC})
+	full, withInitials, _ := names.Normalize(st.GuardianName, "", "")
+	return s.q.WfCreateGuardian(ctx, db.WfCreateGuardianParams{FullName: full, NameWithInitials: withInitials, Relationship: st.Relationship, Phone: st.GuardianPhone, Email: optText(st.GuardianEmail), NicNumber: st.GuardianNIC})
 }
 
 func (s *Store) linkGuardian(ctx context.Context, student, guardian uuid.UUID) error {

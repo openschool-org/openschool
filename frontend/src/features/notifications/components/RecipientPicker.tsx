@@ -11,6 +11,7 @@ import { useGuardians } from "@/features/guardians/queries/useGuardians";
 import { useTeachers } from "@/features/teachers/queries/useTeachers";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
 import type { RecipientRule, RecipientRuleType } from "@/features/notifications/api/notification";
+import { displayName } from "@/shared/lib/name";
 
 const RULE_TYPES: { value: RecipientRuleType; label: string }[] = [
   { value: "everyone", label: "Everyone" },
@@ -87,7 +88,7 @@ export default function RecipientPicker({
       onAdd({ type: "guardian", guardian_id: selectedId, label: guardian?.full_name ?? "Guardian" });
     } else if (ruleType === "teacher") {
       const teacher = teachers?.find((t) => t.id === selectedId);
-      onAdd({ type: "teacher", teacher_id: selectedId, label: teacher?.full_name ?? "Teacher" });
+      onAdd({ type: "teacher", teacher_id: selectedId, label: teacher ? displayName(teacher) : "Teacher" });
     }
     reset();
   };
@@ -209,7 +210,7 @@ export default function RecipientPicker({
           onSelect={setSelectedId}
           onSearch={setTeacherSearch}
           getId={(t) => t.id}
-          itemToString={(t) => `${t.full_name} - ${t.employee_number}`}
+          itemToString={(t) => `${displayName(t)} - ${t.employee_number}`}
           placeholder="Search teachers…"
           disabled={disabled}
         />

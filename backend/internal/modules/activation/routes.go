@@ -22,5 +22,6 @@ func RegisterRoutes(public, admin *gin.RouterGroup, service *Service) {
 	admin.PUT("/activation/settings", h.UpdateSettings)
 	admin.POST("/activation/codes", h.Generate)
 	admin.GET("/activation/batches", h.Batches)
+	admin.GET("/activation/batches/:id/codes", h.BatchCodes)
 	admin.POST("/activation/batches/:id/revoke", h.RevokeBatch)
 }

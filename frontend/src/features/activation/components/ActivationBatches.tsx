@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Button, Tag } from "@carbon/react";
+import { View } from "@carbon/icons-react";
 import { useActivationBatches, useRevokeBatch } from "@/features/activation/queries/useActivation";
 import type { ActivationBatch } from "@/features/activation/api/activation";
+import BatchCodesModal from "@/features/activation/components/BatchCodesModal";
 import SectionCard from "@/shared/ui/SectionCard";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
@@ -11,11 +13,12 @@ import { formatDate } from "@/shared/lib/date";
 
 const live = (b: ActivationBatch) => b.total - b.used - b.revoked - b.expired;
 
-// Tracks how many codes from each run were used, and cancels a run if its sheet goes missing.
+// Tracks how many codes from each run were used, reopens unused codes for printing, and cancels a run if its sheet goes missing.
 export default function ActivationBatches() {
   const { data: batches, isLoading, isError, refetch } = useActivationBatches();
   const revoke = useRevokeBatch();
   const [toRevoke, setToRevoke] = useState<ActivationBatch | null>(null);
+  const [viewing, setViewing] = useState<ActivationBatch | null>(null);
 
   return (
     <SectionCard title="Issued batches" flush>
@@ -47,7 +50,11 @@ export default function ActivationBatches() {
                 <td>{formatDate(b.expires_at)}</td>
                 <td>
                   {live(b) > 0 && (
-                    <Button kind="danger--ghost" size="sm" onClick={() => setToRevoke(b)}>Cancel unused</Button>
+                    <div className="os-flex os-gap-2 os-justify-end">
+                      {/* Batches issued before reprinting was set up have no stored codes to show. */}
+                      {b.reprintable > 0 && <Button kind="ghost" size="sm" renderIcon={View} onClick={() => setViewing(b)}>View codes</Button>}
+                      <Button kind="danger--ghost" size="sm" onClick={() => setToRevoke(b)}>Cancel unused</Button>
+                    </div>
                   )}
                 </td>
               </tr>
@@ -55,6 +62,7 @@ export default function ActivationBatches() {
           </tbody>
         </table>
       )}
+      {viewing && <BatchCodesModal batch={viewing} onClose={() => setViewing(null)} />}
       <ConfirmActionModal
         open={!!toRevoke}
         title="Cancel unused codes?"

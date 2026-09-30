@@ -14,6 +14,7 @@ import SectionCard from "@/shared/ui/SectionCard";
 import Avatar from "@/shared/ui/Avatar";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
+import { displayName } from "@/shared/lib/name";
 
 interface Row {
   key: string;
@@ -165,7 +166,7 @@ function SectionHeadRow({ row, head, teachers, onSearch, onAssign, onRemoveClick
           onSelect={(teacher_id) => teacher_id && onAssign(teacher_id)}
           onSearch={onSearch}
           getId={(t) => t.id}
-          itemToString={(t) => `${t.full_name} - ${t.employee_number}`}
+          itemToString={(t) => `${displayName(t)} - ${t.employee_number}`}
           placeholder="Search teachers…"
         />
       </div>

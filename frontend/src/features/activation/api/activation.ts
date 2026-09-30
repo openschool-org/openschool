@@ -64,6 +64,8 @@ export interface ActivationBatch {
   used: number;
   revoked: number;
   expired: number;
+  // unused codes that can be opened again as PDF or CSV
+  reprintable: number;
 }
 
 export const activationApi = {
@@ -75,5 +77,7 @@ export const activationApi = {
   updateSettings: (data: ActivationSettings) => api.put<ActivationSettings>("/activation/settings", data).then((r) => r.data),
   generate: (data: GenerateCodesRequest) => api.post<GeneratedBatch>("/activation/codes", data).then((r) => r.data),
   batches: () => api.get<ActivationBatch[]>("/activation/batches").then((r) => r.data),
+  // Reopens a batch's unused codes; each call is audited on the server.
+  batchCodes: (batchId: string) => api.get<GeneratedBatch>(`/activation/batches/${batchId}/codes`).then((r) => r.data),
   revokeBatch: (batchId: string) => api.post<{ revoked: number }>(`/activation/batches/${batchId}/revoke`).then((r) => r.data),
 };

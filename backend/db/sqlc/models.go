@@ -32,6 +32,7 @@ type ActivationCode struct {
 	RevokedAt      pgtype.Timestamptz `json:"revoked_at"`
 	CreatedBy      pgtype.UUID        `json:"created_by"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	CodeEncrypted  []byte             `json:"code_encrypted"`
 }
 
 type ActivationEmailToken struct {
@@ -154,14 +155,16 @@ type GroupSubject struct {
 }
 
 type Guardian struct {
-	ID           uuid.UUID          `json:"id"`
-	UserID       pgtype.UUID        `json:"user_id"`
-	FullName     string             `json:"full_name"`
-	Relationship string             `json:"relationship"`
-	Phone        string             `json:"phone"`
-	Email        pgtype.Text        `json:"email"`
-	CreatedAt    pgtype.Timestamptz `json:"created_at"`
-	NicNumber    string             `json:"nic_number"`
+	ID               uuid.UUID          `json:"id"`
+	UserID           pgtype.UUID        `json:"user_id"`
+	FullName         string             `json:"full_name"`
+	Relationship     string             `json:"relationship"`
+	Phone            string             `json:"phone"`
+	Email            pgtype.Text        `json:"email"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	NicNumber        string             `json:"nic_number"`
+	NameWithInitials string             `json:"name_with_initials"`
+	CallingName      string             `json:"calling_name"`
 }
 
 type House struct {
@@ -431,6 +434,8 @@ type StudentProfile struct {
 	EnrollmentStatus string             `json:"enrollment_status"`
 	LeftAt           pgtype.Timestamptz `json:"left_at"`
 	ErasedAt         pgtype.Timestamptz `json:"erased_at"`
+	NameWithInitials string             `json:"name_with_initials"`
+	CallingName      string             `json:"calling_name"`
 }
 
 type StudentProgressReport struct {
@@ -510,6 +515,8 @@ type TeacherProfile struct {
 	HouseID          pgtype.UUID        `json:"house_id"`
 	EmploymentStatus string             `json:"employment_status"`
 	NicNumber        string             `json:"nic_number"`
+	NameWithInitials string             `json:"name_with_initials"`
+	CallingName      string             `json:"calling_name"`
 }
 
 type TeacherSubject struct {

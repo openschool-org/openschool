@@ -106,7 +106,7 @@ func (q *Queries) ListHouses(ctx context.Context) ([]House, error) {
 }
 
 const listStudentsMissingHouse = `-- name: ListStudentsMissingHouse :many
-SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status, left_at, erased_at FROM student_profiles
+SELECT id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status, left_at, erased_at, name_with_initials, calling_name FROM student_profiles
 WHERE house_id IS NULL
 ORDER BY index_number ASC
 `
@@ -136,6 +136,8 @@ func (q *Queries) ListStudentsMissingHouse(ctx context.Context) ([]StudentProfil
 			&i.EnrollmentStatus,
 			&i.LeftAt,
 			&i.ErasedAt,
+			&i.NameWithInitials,
+			&i.CallingName,
 		); err != nil {
 			return nil, err
 		}
@@ -148,7 +150,7 @@ func (q *Queries) ListStudentsMissingHouse(ctx context.Context) ([]StudentProfil
 }
 
 const listTeachersMissingHouse = `-- name: ListTeachersMissingHouse :many
-SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number FROM teacher_profiles
+SELECT id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number, name_with_initials, calling_name FROM teacher_profiles
 WHERE house_id IS NULL
 ORDER BY employee_number ASC
 `
@@ -177,6 +179,8 @@ func (q *Queries) ListTeachersMissingHouse(ctx context.Context) ([]TeacherProfil
 			&i.HouseID,
 			&i.EmploymentStatus,
 			&i.NicNumber,
+			&i.NameWithInitials,
+			&i.CallingName,
 		); err != nil {
 			return nil, err
 		}
@@ -272,7 +276,7 @@ SET
     house_id   = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status, left_at, erased_at
+RETURNING id, user_id, full_name, index_number, address, phone, whatsapp, special_remarks, created_at, updated_at, gender, house_id, enrollment_status, left_at, erased_at, name_with_initials, calling_name
 `
 
 type UpdateStudentHouseParams struct {
@@ -299,6 +303,8 @@ func (q *Queries) UpdateStudentHouse(ctx context.Context, arg UpdateStudentHouse
 		&i.EnrollmentStatus,
 		&i.LeftAt,
 		&i.ErasedAt,
+		&i.NameWithInitials,
+		&i.CallingName,
 	)
 	return i, err
 }
@@ -309,7 +315,7 @@ SET
     house_id   = $2,
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number
+RETURNING id, user_id, full_name, employee_number, joined_date, phone, created_at, updated_at, title, gender, is_active, house_id, employment_status, nic_number, name_with_initials, calling_name
 `
 
 type UpdateTeacherHouseParams struct {
@@ -335,6 +341,8 @@ func (q *Queries) UpdateTeacherHouse(ctx context.Context, arg UpdateTeacherHouse
 		&i.HouseID,
 		&i.EmploymentStatus,
 		&i.NicNumber,
+		&i.NameWithInitials,
+		&i.CallingName,
 	)
 	return i, err
 }

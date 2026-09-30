@@ -5,6 +5,7 @@ import { useCreateSociety, useUpdateSociety } from "@/features/portfolio/queries
 import FormModal from "@/shared/ui/FormModal";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
 import type { Society } from "@/features/portfolio/api/society";
+import { displayName } from "@/shared/lib/name";
 
 interface Props {
   society: Society | null;
@@ -78,7 +79,7 @@ export default function SocietyFormModal({ society, academicYearId, onClose }: P
           onSelect={setTeacherChoice}
           onSearch={setTeacherSearch}
           getId={(t) => t.id}
-          itemToString={(t) => `${t.full_name} - ${t.employee_number}`}
+          itemToString={(t) => `${displayName(t)} - ${t.employee_number}`}
           placeholder="Search teachers by name or employee number…"
         />
       </div>

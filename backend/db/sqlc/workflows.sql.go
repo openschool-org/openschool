@@ -605,22 +605,24 @@ func (q *Queries) WfCreateGradeSection(ctx context.Context, arg WfCreateGradeSec
 }
 
 const wfCreateGuardian = `-- name: WfCreateGuardian :one
-INSERT INTO guardians (full_name, relationship, phone, email, nic_number)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO guardians (full_name, name_with_initials, relationship, phone, email, nic_number)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id
 `
 
 type WfCreateGuardianParams struct {
-	FullName     string      `json:"full_name"`
-	Relationship string      `json:"relationship"`
-	Phone        string      `json:"phone"`
-	Email        pgtype.Text `json:"email"`
-	NicNumber    string      `json:"nic_number"`
+	FullName         string      `json:"full_name"`
+	NameWithInitials string      `json:"name_with_initials"`
+	Relationship     string      `json:"relationship"`
+	Phone            string      `json:"phone"`
+	Email            pgtype.Text `json:"email"`
+	NicNumber        string      `json:"nic_number"`
 }
 
 func (q *Queries) WfCreateGuardian(ctx context.Context, arg WfCreateGuardianParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, wfCreateGuardian,
 		arg.FullName,
+		arg.NameWithInitials,
 		arg.Relationship,
 		arg.Phone,
 		arg.Email,
@@ -653,23 +655,27 @@ func (q *Queries) WfCreateIntake(ctx context.Context, arg WfCreateIntakeParams) 
 }
 
 const wfCreateIntakeStudent = `-- name: WfCreateIntakeStudent :one
-INSERT INTO student_profiles (full_name, index_number, address, phone, gender, house_id)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO student_profiles (full_name, name_with_initials, calling_name, index_number, address, phone, gender, house_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id
 `
 
 type WfCreateIntakeStudentParams struct {
-	FullName    string      `json:"full_name"`
-	IndexNumber string      `json:"index_number"`
-	Address     pgtype.Text `json:"address"`
-	Phone       pgtype.Text `json:"phone"`
-	Gender      pgtype.Text `json:"gender"`
-	HouseID     pgtype.UUID `json:"house_id"`
+	FullName         string      `json:"full_name"`
+	NameWithInitials string      `json:"name_with_initials"`
+	CallingName      string      `json:"calling_name"`
+	IndexNumber      string      `json:"index_number"`
+	Address          pgtype.Text `json:"address"`
+	Phone            pgtype.Text `json:"phone"`
+	Gender           pgtype.Text `json:"gender"`
+	HouseID          pgtype.UUID `json:"house_id"`
 }
 
 func (q *Queries) WfCreateIntakeStudent(ctx context.Context, arg WfCreateIntakeStudentParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, wfCreateIntakeStudent,
 		arg.FullName,
+		arg.NameWithInitials,
+		arg.CallingName,
 		arg.IndexNumber,
 		arg.Address,
 		arg.Phone,

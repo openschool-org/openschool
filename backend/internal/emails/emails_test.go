@@ -36,11 +36,11 @@ var royal = Branding{SchoolName: "Royal College", Phone: "011 234 5678", Email: 
 
 func TestActivationLinkIsBrandedWithInlineLogo(t *testing.T) {
 	s, capture := newTestSender(mailer.Config{}, staticBrand{b: royal})
-	if err := s.ActivationLink(context.Background(), "nimali@example.com", "Nimali Perera", "https://school.example/activate#token=abc", 30*time.Minute); err != nil {
+	if err := s.ActivationLink(context.Background(), "nimali@example.com", "H.A.N. Perera", "https://school.example/activate#token=abc", 30*time.Minute); err != nil {
 		t.Fatal(err)
 	}
 	msg := capture.msgs[0]
-	for _, want := range []string{"Royal College", "Hi Nimali,", "Choose your password", "https://school.example/activate#token=abc", "30 minutes", "cid:openschool-logo", "011 234 5678"} {
+	for _, want := range []string{"Royal College", "Dear H.A.N. Perera,", "Choose your password", "https://school.example/activate#token=abc", "30 minutes", "cid:openschool-logo", "011 234 5678"} {
 		if !strings.Contains(msg.HTML, want) {
 			t.Errorf("HTML missing %q", want)
 		}
@@ -106,5 +106,15 @@ func TestEveryTemplatePreviewsWithEmbeddedLogo(t *testing.T) {
 	}
 	if _, err := s.Preview(context.Background(), "nope"); !errors.Is(err, ErrUnknownTemplate) {
 		t.Fatalf("unknown key: err = %v", err)
+	}
+}
+
+func TestGreetingFallsBackToAFormalSalutation(t *testing.T) {
+	s, capture := newTestSender(mailer.Config{}, staticBrand{b: royal})
+	if err := s.AccountActivated(context.Background(), "a@example.com", "", "2026/0001"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(capture.msgs[0].HTML, "Dear parent or student,") {
+		t.Fatal("without a name the greeting must stay formal")
 	}
 }

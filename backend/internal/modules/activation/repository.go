@@ -130,11 +130,13 @@ func (r *Repository) emailTaken(ctx context.Context, email string) (bool, error)
 	return r.queries.ActivationEmailTaken(ctx, email)
 }
 
-func (r *Repository) recordName(ctx context.Context, role string, id uuid.UUID) (string, error) {
+func (r *Repository) recordName(ctx context.Context, role string, id uuid.UUID) (personName, error) {
 	if role == authz.RoleStudent {
-		return r.queries.ActivationStudentName(ctx, id)
+		row, err := r.queries.ActivationStudentName(ctx, id)
+		return personName{Full: row.FullName, WithInitials: row.NameWithInitials, Calling: row.CallingName}, err
 	}
-	return r.queries.ActivationGuardianName(ctx, id)
+	row, err := r.queries.ActivationGuardianName(ctx, id)
+	return personName{Full: row.FullName, WithInitials: row.NameWithInitials, Calling: row.CallingName}, err
 }
 
 func (r *Repository) createUser(ctx context.Context, id uuid.UUID, email, name, role string) error {
@@ -201,7 +203,7 @@ func (r *Repository) issueCodes(ctx context.Context, batchID uuid.UUID, role str
 	for i, c := range codes {
 		ids[i] = c.RecordID
 		row := db.InsertActivationCodesParams{
-			BatchID: batchID, Role: role, CodeHash: c.Hash,
+			BatchID: batchID, Role: role, CodeHash: c.Hash, CodeEncrypted: c.Encrypted,
 			ExpiresAt: pgtype.Timestamptz{Time: expiresAt, Valid: true},
 			CreatedBy: pgtype.UUID{Bytes: actor, Valid: actor != uuid.Nil},
 		}
@@ -235,10 +237,29 @@ func (r *Repository) batches(ctx context.Context) ([]Batch, error) {
 	for i, row := range rows {
 		out[i] = Batch{
 			BatchID: row.BatchID, Role: row.Role, CreatedAt: row.CreatedAt.Time, ExpiresAt: row.ExpiresAt.Time,
-			Total: row.Total, Used: row.Used, Revoked: row.Revoked, Expired: row.Expired,
+			Total: row.Total, Used: row.Used, Revoked: row.Revoked, Expired: row.Expired, Reprintable: row.Reprintable,
 		}
 	}
 	return out, nil
+}
+
+func (r *Repository) batchCodes(ctx context.Context, batchID uuid.UUID) (string, time.Time, []storedCode, error) {
+	meta, err := r.queries.ActivationBatchRole(ctx, batchID)
+	if err != nil {
+		return "", time.Time{}, nil, err
+	}
+	rows, err := r.queries.ActivationBatchCodes(ctx, batchID)
+	if err != nil {
+		return "", time.Time{}, nil, err
+	}
+	out := make([]storedCode, len(rows))
+	for i, row := range rows {
+		out[i] = storedCode{Hash: row.CodeHash, Encrypted: row.CodeEncrypted, IssuedCode: IssuedCode{
+			Name: row.Name, Detail: row.Children, Index: row.IndexNumber,
+			ClassName: row.ClassName, GradeName: row.GradeName, GradeOrder: int(row.GradeOrder), FormTeacher: row.FormTeacher,
+		}}
+	}
+	return meta.Role, meta.ExpiresAt.Time, out, nil
 }
 
 func (r *Repository) revokeBatch(ctx context.Context, batchID uuid.UUID) (int64, error) {

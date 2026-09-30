@@ -78,8 +78,8 @@ func (f *fakeStore) releaseCode(context.Context, uuid.UUID) error {
 	return nil
 }
 func (f *fakeStore) emailTaken(context.Context, string) (bool, error) { return f.taken, nil }
-func (f *fakeStore) recordName(context.Context, string, uuid.UUID) (string, error) {
-	return "Nimali Perera", nil
+func (f *fakeStore) recordName(context.Context, string, uuid.UUID) (personName, error) {
+	return personName{Full: "Hettiwatta Arachchige Nimali Perera", WithInitials: "H.A.N. Perera", Calling: "Nimali"}, nil
 }
 func (f *fakeStore) createUser(_ context.Context, id uuid.UUID, _, _, _ string) error {
 	f.users = append(f.users, id)
@@ -101,6 +101,9 @@ func (f *fakeStore) issueCodes(_ context.Context, _ uuid.UUID, _ string, codes [
 }
 func (f *fakeStore) batches(context.Context) ([]Batch, error)              { return nil, nil }
 func (f *fakeStore) revokeBatch(context.Context, uuid.UUID) (int64, error) { return 0, nil }
+func (f *fakeStore) batchCodes(context.Context, uuid.UUID) (string, time.Time, []storedCode, error) {
+	return "", time.Time{}, nil, nil
+}
 
 type fakeIDP struct {
 	userID    string
@@ -125,9 +128,10 @@ func (f *fakeIDP) AssignRole(context.Context, string, string) error { return nil
 
 // fakeMail keeps activation links apart from notices, so link counts stay easy to assert.
 type fakeMail struct {
-	to, body  []string
-	inUse     []string
-	activated []string
+	to, body      []string
+	inUse         []string
+	activated     []string
+	activatedName string
 }
 
 func (f *fakeMail) ActivationLink(_ context.Context, to, _, link string, _ time.Duration) error {
@@ -140,8 +144,8 @@ func (f *fakeMail) EmailInUse(_ context.Context, to string) error {
 	return nil
 }
 
-func (f *fakeMail) AccountActivated(_ context.Context, to, _, username string) error {
-	f.activated = append(f.activated, to+" as "+username)
+func (f *fakeMail) AccountActivated(_ context.Context, to, name, username string) error {
+	f.activated, f.activatedName = append(f.activated, to+" as "+username), name
 	return nil
 }
 
@@ -262,10 +266,13 @@ func TestCompleteCreatesLinkedLogin(t *testing.T) {
 	if err := svc.Complete(context.Background(), CompleteRequest{Token: token, NewPassword: "a-Good-passphrase"}); err != nil {
 		t.Fatalf("Complete() error = %v", err)
 	}
+	if provider.attrs["given_name"] != "Nimali" || provider.attrs["family_name"] != "Perera" {
+		t.Fatalf("identity names should be the calling name and surname: %v", provider.attrs)
+	}
 	if provider.userType != "student" || provider.attrs["username"] != "2027/0001" || provider.attrs["password"] != "a-Good-passphrase" {
 		t.Fatalf("unexpected identity-provider call: %s %v", provider.userType, provider.attrs)
 	}
-	if len(mail.activated) != 1 || mail.activated[0] != "nimali@example.com as 2027/0001" {
+	if len(mail.activated) != 1 || mail.activated[0] != "nimali@example.com as 2027/0001" || mail.activatedName != "H.A.N. Perera" {
 		t.Fatalf("activation confirmation = %v", mail.activated)
 	}
 	if !store.consumed || !store.claimed || store.released || len(store.users) != 1 {

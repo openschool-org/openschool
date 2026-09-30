@@ -2,6 +2,7 @@ import { Button, Tag } from "@carbon/react";
 import { UserFollow, Locked } from "@carbon/icons-react";
 import { GUARDIAN_RELATIONSHIPS } from "@/features/guardians/constants";
 import type { GuardianWithPrimary } from "@/features/guardians/api/guardian";
+import { displayName } from "@/shared/lib/name";
 
 export default function GuardianRow({
   guardian,
@@ -23,7 +24,7 @@ export default function GuardianRow({
       <div className="os-flex-1 os-min-w-0">
         <div className="os-flex os-items-center os-gap-2 os-mb-1">
           <p className="os-m-0 os-fw-600 os-text-md os-c-primary">
-            {g.full_name}
+            {displayName(g)}
           </p>
           <Tag size="sm" type="gray">
             {GUARDIAN_RELATIONSHIPS.find((r) => r.value === g.relationship)?.label ?? g.relationship}

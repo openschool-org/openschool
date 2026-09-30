@@ -12,12 +12,15 @@ import (
 )
 
 type Querier interface {
+	// A batch's still-usable codes with each person's current name and class, for reprinting.
+	ActivationBatchCodes(ctx context.Context, batchID uuid.UUID) ([]ActivationBatchCodesRow, error)
+	ActivationBatchRole(ctx context.Context, batchID uuid.UUID) (ActivationBatchRoleRow, error)
 	ActivationEmailTaken(ctx context.Context, email string) (bool, error)
-	ActivationGuardianName(ctx context.Context, id uuid.UUID) (string, error)
+	ActivationGuardianName(ctx context.Context, id uuid.UUID) (ActivationGuardianNameRow, error)
 	// Guardians with no login and an NIC on file, linked to at least one active student. Each is filed under
 	// the class of their youngest-grade child (or the chosen class), so codes can go home with the child.
 	ActivationGuardianTargets(ctx context.Context, arg ActivationGuardianTargetsParams) ([]ActivationGuardianTargetsRow, error)
-	ActivationStudentName(ctx context.Context, id uuid.UUID) (string, error)
+	ActivationStudentName(ctx context.Context, id uuid.UUID) (ActivationStudentNameRow, error)
 	// Active students with no login, with their current class for class-wise code sheets.
 	ActivationStudentTargets(ctx context.Context, arg ActivationStudentTargetsParams) ([]ActivationStudentTargetsRow, error)
 	// ── group subjects ──────────────────────────────────────────────────────────
@@ -355,6 +358,7 @@ type Querier interface {
 	LeadershipOverviewCounts(ctx context.Context, gradeIds []uuid.UUID) (LeadershipOverviewCountsRow, error)
 	// Human-readable grade names for a grade-scoped caller's panel heading.
 	LeadershipOverviewGradeNames(ctx context.Context, dollar_1 []uuid.UUID) ([]string, error)
+	// The verified email fills the guardian's email only when none is on file.
 	LinkActivatedGuardian(ctx context.Context, arg LinkActivatedGuardianParams) (int64, error)
 	LinkActivatedStudent(ctx context.Context, arg LinkActivatedStudentParams) (int64, error)
 	LinkGuardianToStudent(ctx context.Context, arg LinkGuardianToStudentParams) error

@@ -179,7 +179,7 @@ SELECT
     tp.notify_whole_school,
     tp.scope_note,
     tp.created_at,
-    t.full_name AS teacher_name
+    COALESCE(NULLIF(t.name_with_initials, ''), t.full_name) AS teacher_name
 FROM teacher_positions tp
 INNER JOIN teacher_profiles t ON t.id = tp.teacher_id
 ORDER BY

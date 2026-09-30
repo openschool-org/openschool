@@ -3,6 +3,8 @@ package workflows
 import (
 	"fmt"
 	"strings"
+
+	"github.com/openschool-org/openschool/internal/names"
 )
 
 // guardianSeen is a guardian's first row in the file (line > 0), or someone already on record (line 0).
@@ -16,28 +18,20 @@ type guardianSeen struct {
 // guardianChecker catches guardian rows that disagree. A NIC is one person, so a NIC with a second name or
 // email is blocked: linking a child to the wrong parent would show that child's records to a stranger.
 type guardianChecker struct {
-	byNIC    map[string]guardianSeen
-	byPerson map[string]guardianSeen
-	byEmail  map[string]guardianSeen
+	byNIC   map[string]guardianSeen
+	byPhone map[string][]guardianSeen
+	byEmail map[string]guardianSeen
 }
 
 func newGuardianChecker() *guardianChecker {
-	return &guardianChecker{byNIC: map[string]guardianSeen{}, byPerson: map[string]guardianSeen{}, byEmail: map[string]guardianSeen{}}
-}
-
-// personKey ignores case, dots and extra spaces, so "S. Perera" and "s perera" compare equal.
-func personKey(name string) string {
-	return strings.Join(strings.Fields(strings.ToLower(strings.ReplaceAll(name, ".", " "))), " ")
+	return &guardianChecker{byNIC: map[string]guardianSeen{}, byPhone: map[string][]guardianSeen{}, byEmail: map[string]guardianSeen{}}
 }
 
 // seed adds guardians and logins already on record, so rows are compared with them as well as with each other.
 func (g *guardianChecker) seed(people, emailOwners []guardianSeen) {
 	for _, p := range people {
 		if p.phone != "" {
-			key := personKey(p.name) + "|" + p.phone
-			if _, seen := g.byPerson[key]; !seen {
-				g.byPerson[key] = p
-			}
+			g.byPhone[p.phone] = append(g.byPhone[p.phone], p)
 		}
 	}
 	for _, o := range emailOwners {
@@ -61,7 +55,7 @@ func (g *guardianChecker) check(row guardianSeen, onRecord *guardianSeen) (strin
 	email := strings.ToLower(row.email)
 
 	if onRecord != nil {
-		if personKey(onRecord.name) != personKey(row.name) {
+		if !names.SamePerson(onRecord.name, row.name) {
 			return fmt.Sprintf("Guardian NIC %s belongs to %s on record, not %s. Check the NIC or the name.", row.nic, onRecord.name, row.name), nil
 		}
 		if onRecord.email != "" && email != "" && !strings.EqualFold(onRecord.email, email) {
@@ -70,7 +64,7 @@ func (g *guardianChecker) check(row guardianSeen, onRecord *guardianSeen) (strin
 	}
 
 	if first, seen := g.byNIC[row.nic]; seen {
-		if personKey(first.name) != personKey(row.name) {
+		if !names.SamePerson(first.name, row.name) {
 			return fmt.Sprintf("Guardian NIC %s is %s on line %d but %s here. One NIC must be one person: fix the name or the NIC.", row.nic, first.name, first.line, row.name), nil
 		}
 		if first.email != "" && email != "" && first.email != email {
@@ -86,16 +80,17 @@ func (g *guardianChecker) check(row guardianSeen, onRecord *guardianSeen) (strin
 
 	// A new NIC: look for the same person entered under another NIC, and for a shared email.
 	if row.phone != "" {
-		key := personKey(row.name) + "|" + row.phone
-		if other, seen := g.byPerson[key]; seen && other.nic != row.nic {
-			nic := other.nic
-			if nic == "" {
-				nic = "no NIC"
+		for _, other := range g.byPhone[row.phone] {
+			if other.nic != row.nic && names.SamePerson(other.name, row.name) {
+				nic := other.nic
+				if nic == "" {
+					nic = "no NIC"
+				}
+				notes = append(notes, fmt.Sprintf("%s with phone %s is already %s with %s. If this is the same person, use that NIC so the children share one guardian.", row.name, row.phone, other.where(), nic))
+				break
 			}
-			notes = append(notes, fmt.Sprintf("%s with phone %s is already %s with %s. If this is the same person, use that NIC so the children share one guardian.", row.name, row.phone, other.where(), nic))
-		} else if !seen {
-			g.byPerson[key] = row
 		}
+		g.byPhone[row.phone] = append(g.byPhone[row.phone], row)
 	}
 	// A guardian's own email on record is not a clash.
 	ownEmail := onRecord != nil && email != "" && strings.EqualFold(onRecord.email, email)
