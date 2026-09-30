@@ -10,6 +10,7 @@ import TableSkeleton from "@/shared/ui/TableSkeleton";
 import ConfirmActionModal from "@/shared/ui/ConfirmActionModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import { formatDate } from "@/shared/lib/date";
+import { ROLE_LABELS } from "@/features/activation/lib/roles";
 
 const live = (b: ActivationBatch) => b.total - b.used - b.revoked - b.expired;
 
@@ -43,7 +44,7 @@ export default function ActivationBatches() {
             {batches.map((b) => (
               <tr key={b.batch_id}>
                 <td>{formatDate(b.created_at)}</td>
-                <td><Tag type={b.role === "student" ? "blue" : "purple"} size="sm">{b.role === "student" ? "Students" : "Parents"}</Tag></td>
+                <td><Tag type={b.role === "student" ? "blue" : "purple"} size="sm">{ROLE_LABELS[b.role].many}</Tag></td>
                 <td>{b.used} of {b.total}</td>
                 <td>{live(b)}</td>
                 <td>{b.revoked} / {b.expired}</td>

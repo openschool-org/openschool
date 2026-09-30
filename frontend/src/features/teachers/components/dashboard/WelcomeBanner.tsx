@@ -1,4 +1,5 @@
-import { Time } from "@carbon/icons-react";
+import { Link } from "react-router";
+import { CheckmarkFilled, Time } from "@carbon/icons-react";
 import RoleBadge from "@/features/teachers/components/dashboard/RoleBadge";
 import type { PositionRankLabel } from "@/features/positions/api/position";
 import type { Teacher } from "@/features/teachers/api/teacher";
@@ -10,6 +11,7 @@ export default function WelcomeBanner({
   currentYearLabel,
   currentTermName,
   pendingCount,
+  classCount,
   rankLabel,
 }: {
   profile: Teacher;
@@ -17,6 +19,7 @@ export default function WelcomeBanner({
   currentYearLabel?: string;
   currentTermName?: string;
   pendingCount: number;
+  classCount: number;
   rankLabel: PositionRankLabel;
 }) {
   const hour = new Date().getHours();
@@ -42,11 +45,11 @@ export default function WelcomeBanner({
           {currentTermName ? ` ${currentTermName}` : ""}
         </p>
       </div>
-      {pendingCount > 0 && (
-        <div className="os-flex os-items-center os-gap-2 os-py-2 os-px-3h os-bg-status-late os-border-warning os-text-sm os-c-warning-text">
-          <Time size={14} className="os-fill-warning" />
-          {pendingCount} session{pendingCount > 1 ? "s" : ""} pending today
-        </div>
+      {classCount > 0 && (
+        <Link to="/t/attendance" className={`os-teacher-banner__status${pendingCount > 0 ? " is-pending" : " is-done"}`}>
+          {pendingCount > 0 ? <Time size={16} /> : <CheckmarkFilled size={16} />}
+          {pendingCount > 0 ? `${pendingCount} of ${classCount} class${classCount > 1 ? "es" : ""} to mark today` : "All classes marked today"}
+        </Link>
       )}
     </div>
   );

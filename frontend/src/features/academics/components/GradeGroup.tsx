@@ -7,6 +7,7 @@ import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 import { gradeNameWarning } from "@/features/academics/lib/gradeName";
 import MediumTag from "@/shared/ui/MediumTag";
 import StreamTag from "@/shared/ui/StreamTag";
+import GradeAvatar from "@/shared/ui/GradeAvatar";
 
 export function GradeGroupSkeleton() {
   return (
@@ -44,7 +45,7 @@ export default function GradeGroup(p: Props) {
   const isALGrade = /^(?:grade\s*)?(?:12|13)\b/i.test(grade.name.trim());
 
   const columns: GridColumn<ClassWithDetails>[] = [
-    { key: "name", header: "Class", render: (c) => <Link to={`/classes/${c.id}`} className="os-table__link">{c.name}</Link> },
+    { key: "name", header: "Class", render: (c) => <span className="os-flex os-items-center os-gap-2"><GradeAvatar gradeName={grade.name} className={c.name} size="sm" /><Link to={`/classes/${c.id}`} className="os-table__link">{c.name}</Link></span> },
     { key: "teacher", header: "Form teacher", render: (c) => <span className="os-table__muted">{p.teacherName(c.form_teacher_id) ?? "No form teacher"}</span> },
     ...(isALGrade ? [{ key: "stream", header: "Stream", render: (c: ClassWithDetails) => p.streamName(c.stream_id) && <div className="os-flex os-items-center os-gap-1h os-wrap"><StreamTag name={p.streamName(c.stream_id)!} />{p.streamGroupName(c.stream_group_id) && <span className="os-text-xs os-c-tertiary">· {p.streamGroupName(c.stream_group_id)}</span>}</div> }] : []),
     { key: "medium", header: "Medium", render: (c) => c.medium_name && <MediumTag name={c.medium_name} /> },
@@ -69,9 +70,7 @@ export default function GradeGroup(p: Props) {
   return (
     <article className="os-border os-rounded-md os-bg-layer os-overflow-hidden" aria-label={`${grade.name} - ${classes.length} classes`}>
       <header className="os-flex os-items-center os-gap-4 os-wrap os-py-4 os-px-5 os-bg-layer-hover os-border-b">
-        <span className="os-w-2 os-h-2 os-rounded-md os-bg-accent os-c-layer os-text-sm os-fw-600 os-flex os-items-center os-justify-center os-shrink-0">
-          {index + 1}
-        </span>
+        <GradeAvatar gradeName={grade.name} />
         <div className="os-flex-1 os-min-w-0">
           <div className="os-flex os-items-center os-gap-2 os-wrap">
             <h3 className="os-m-0 os-fw-600 os-text-md os-c-primary">{grade.name}</h3>

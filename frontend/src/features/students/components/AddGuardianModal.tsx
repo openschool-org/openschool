@@ -76,7 +76,7 @@ export default function AddGuardianModal({
         onSuccess: (result) => {
           if (result.possible_duplicates.length > 0) {
             // Created and linked, but a matching phone or email exists; surface it instead of closing silently.
-            setCreated({ name: result.guardian.full_name, duplicates: result.possible_duplicates.length });
+            setCreated({ name: displayName(result.guardian), duplicates: result.possible_duplicates.length });
           } else {
             onClose();
           }

@@ -2,6 +2,7 @@ import { createPortal } from "react-dom";
 import type { ActivationRole } from "@/features/activation/api/activation";
 import type { ClassGroup } from "@/features/activation/lib/codeSheet";
 import { formatDate } from "@/shared/lib/date";
+import { ROLE_LABELS } from "@/features/activation/lib/roles";
 
 interface Props {
   role: ActivationRole;
@@ -39,7 +40,7 @@ export default function CodeSlips({ role, groups, schoolName, expiresAt, withHan
             {withHandOutList && (
               <div className="os-code-roster">
                 <Brand schoolName={schoolName} />
-                <h1>{isStudent ? "Student" : "Parent"} activation codes</h1>
+                <h1>{ROLE_LABELS[role].one} activation codes</h1>
                 <p><strong>Class:</strong> {group.title}</p>
                 {group.formTeacher && <p><strong>Class teacher:</strong> {group.formTeacher}</p>}
                 <p>{group.codes.length} {group.codes.length === 1 ? "slip" : "slips"} · valid until {expires}</p>
@@ -71,10 +72,10 @@ export default function CodeSlips({ role, groups, schoolName, expiresAt, withHan
                 <div key={c.code} className="os-slip">
                   <Brand schoolName={schoolName} small />
                   <strong>{c.name}</strong>
-                  {!isStudent && <span className="os-slip__detail">Parent of {c.detail}</span>}
+                  {!isStudent && <span className="os-slip__detail">Guardian of {c.detail}</span>}
                   <span className="os-slip__detail">Class: {classLine}</span>
                   <span className="os-slip__code">{c.code}</span>
-                  <span>Go to {url}, enter this code and your {isStudent ? "index number" : "NIC number"}, then choose a password.</span>
+                  <span>Go to {url}, enter this code and your {ROLE_LABELS[role].identifier}, then choose a password.</span>
                   <span className="os-slip__detail">Valid until {expires}. Keep this code private.</span>
                 </div>
               ))}

@@ -1,7 +1,7 @@
 import { POSITION_RANK } from "@/shared/lib/constants/people";
 import { useQueries } from "@tanstack/react-query";
 import { useMyClasses } from "@/features/teachers/queries/useTeachers";
-import { useDailySessions, classSessionsOptions } from "@/features/attendance/queries/useAttendance";
+import { classSessionsOptions } from "@/features/attendance/queries/useAttendance";
 import { studentsByClassOptions } from "@/features/students/queries/useStudents";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useTerms } from "@/features/school/queries/useTerms";
@@ -12,21 +12,18 @@ import WelcomeBanner from "@/features/teachers/components/dashboard/WelcomeBanne
 import TodaysClasses from "@/features/teachers/components/dashboard/TodaysClasses";
 import RecentSessions from "@/features/teachers/components/dashboard/RecentSessions";
 import QuickActions from "@/features/teachers/components/dashboard/QuickActions";
-import TodaySummary from "@/features/teachers/components/dashboard/TodaySummary";
-import MyClassesPanel from "@/features/teachers/components/dashboard/MyClassesPanel";
+import StatCard from "@/features/reports/components/dashboard/StatCard";
 import LeadershipPanel from "@/features/teachers/components/dashboard/LeadershipPanel";
 import LeadershipOverviewPanel from "@/features/teachers/components/dashboard/LeadershipOverviewPanel";
 import TimetableReviewPanel from "@/features/teachers/components/dashboard/TimetableReviewPanel";
 import { todayISODate } from "@/shared/lib/date";
-
-// Section Head and above get the extra Leadership panel.
-
+import { classLabel } from "@/shared/lib/classLabel";
+import { Building, UserMultiple, CheckmarkOutline, Time } from "@carbon/icons-react";
 
 export default function TeacherDashboard() {
   const { teacher: profile, classes: myClasses, isLoading: profileLoading, isError: profileError, refetch } = useMyClasses();
   const { data: currentYear } = useCurrentAcademicYear();
   const { data: terms } = useTerms(currentYear?.id);
-  const { data: dailySessions } = useDailySessions(todayISODate());
   const { data: positionSummary } = useMyPosition();
   const showLeadershipPanel = !!positionSummary && positionSummary.rank <= POSITION_RANK.sectionHead;
   const { data: leadershipOverview } = useMyLeadershipOverview(showLeadershipPanel);
@@ -38,18 +35,21 @@ export default function TeacherDashboard() {
   const sessionQueries = useQueries({ queries: classIds.map(classSessionsOptions) });
 
   const studentCountByClass = new Map(classIds.map((id, i) => [id, studentQueries[i]?.data?.length ?? 0]));
+  const studentsLoading = studentQueries.some((q) => q.isLoading);
   const totalStudents = [...studentCountByClass.values()].reduce((sum, n) => sum + n, 0);
 
+  // From each class's own sessions: the date-wide list is leadership-only and is empty for most teachers.
+  const today = todayISODate();
   const todaySessionByClass = new Map(
-    (dailySessions ?? []).filter((s) => classIds.includes(s.class_id)).map((s) => [s.class_id, s]),
+    classIds.flatMap((id, i) => (sessionQueries[i]?.data ?? []).filter((s) => s.date === today).map((s) => [id, s] as const)),
   );
-  const markedCount = [...todaySessionByClass.values()].filter((s) => s.marked_count > 0).length;
+  const markedCount = todaySessionByClass.size;
   const pendingCount = Math.max(myClasses.length - markedCount, 0);
 
   const recentSessions = classIds
     .flatMap((id, i) => {
       const cls = myClasses.find((c) => c.class_id === id);
-      return (sessionQueries[i]?.data ?? []).map((s) => ({ session: s, className: cls?.class_name ?? "" }));
+      return (sessionQueries[i]?.data ?? []).map((s) => ({ session: s, className: cls ? classLabel(cls.grade_name, cls.class_name) : "" }));
     })
     .sort((a, b) => b.session.date.localeCompare(a.session.date))
     .slice(0, 6);
@@ -76,16 +76,24 @@ export default function TeacherDashboard() {
         currentYearLabel={currentYear?.label}
         currentTermName={currentTerm?.name}
         pendingCount={pendingCount}
+        classCount={myClasses.length}
         rankLabel={rankLabel}
       />
+
+      <div className="os-stat-grid">
+        <StatCard label="My classes" value={myClasses.length} loading={false} Icon={Building} path="/t/classes" />
+        <StatCard label="Students" value={totalStudents} loading={studentsLoading} Icon={UserMultiple} path="/t/classes" />
+        <StatCard label="Marked today" value={markedCount} loading={false} Icon={CheckmarkOutline} path="/t/attendance" />
+        <StatCard label="Not marked yet" value={pendingCount} loading={false} Icon={Time} path="/t/attendance" />
+      </div>
 
       <div className="os-grid os-grid-cols-2-1 os-gap-6 os-items-grid-start">
         <div>
           <TodaysClasses
-            loading={profileLoading}
             myClasses={myClasses}
             studentCountByClass={studentCountByClass}
             todaySessionByClass={todaySessionByClass}
+            markedCount={markedCount}
           />
           <RecentSessions sessions={recentSessions} />
         </div>
@@ -95,17 +103,6 @@ export default function TeacherDashboard() {
           {showLeadershipPanel && positionSummary && <LeadershipPanel summary={positionSummary} />}
           {isSectionHead && currentYear && <TimetableReviewPanel academicYearId={currentYear.id} />}
           <QuickActions rankLabel={rankLabel} notifyWholeSchool={positionSummary?.notify_whole_school ?? false} />
-          <TodaySummary
-            markedCount={markedCount}
-            pendingCount={pendingCount}
-            myClassCount={myClasses.length}
-            totalStudents={totalStudents}
-          />
-          <MyClassesPanel
-            myClasses={myClasses}
-            studentCountByClass={studentCountByClass}
-            todaySessionByClass={todaySessionByClass}
-          />
         </div>
       </div>
     </div>

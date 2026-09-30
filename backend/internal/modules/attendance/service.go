@@ -34,6 +34,8 @@ type Session struct {
 	TakenBy   uuid.UUID          `json:"taken_by"`
 	Date      pgtype.Date        `json:"date"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	// TakenByName is filled only when one session is fetched by id.
+	TakenByName string `json:"taken_by_name,omitempty"`
 }
 
 type Record struct {

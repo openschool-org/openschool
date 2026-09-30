@@ -2,6 +2,7 @@ import type { useAssignMonitors } from "@/features/academics/queries/useClasses"
 import type { Student } from "@/features/students/api/student";
 import FormModal from "@/shared/ui/FormModal";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
+import { displayName } from "@/shared/lib/name";
 
 interface Props {
   open: boolean;
@@ -47,7 +48,7 @@ export default function AssignMonitorsModal({
           selectedId={girlMonitorChoice}
           onSelect={onGirlMonitorChoiceChange}
           getId={(s) => s.id}
-          itemToString={(s) => `${s.full_name} - ${s.index_number}`}
+          itemToString={(s) => `${displayName(s)} - ${s.index_number}`}
           placeholder="Search students by name or index number…"
         />
         <EntityCombobox
@@ -57,7 +58,7 @@ export default function AssignMonitorsModal({
           selectedId={boyMonitorChoice}
           onSelect={onBoyMonitorChoiceChange}
           getId={(s) => s.id}
-          itemToString={(s) => `${s.full_name} - ${s.index_number}`}
+          itemToString={(s) => `${displayName(s)} - ${s.index_number}`}
           placeholder="Search students by name or index number…"
         />
       </div>

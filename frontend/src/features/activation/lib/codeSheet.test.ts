@@ -18,7 +18,7 @@ describe("groupByClass", () => {
       code("Kasun", "Grade 6", 6, "6-A", { form_teacher: "Mrs. Silva" }),
       code("Loose", "", 0, ""),
     ]));
-    expect(groups.map((g) => g.title)).toEqual(["Grade 6 · 6-A", "Grade 6 · 6-B", "Grade 10 · 10-A", "Not in a class"]);
+    expect(groups.map((g) => g.title)).toEqual(["6-A", "6-B", "10-A", "Not in a class"]);
     expect(groups[0].codes.map((c) => c.name)).toEqual(["Amal", "Kasun"]);
   });
 });

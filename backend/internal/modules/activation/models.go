@@ -24,6 +24,8 @@ var (
 	ErrRoleDisabled = errors.New("turn on self-activation for this account type before generating codes")
 	// ErrBatchTooLarge asks the admin to narrow the selection, for example to one class.
 	ErrBatchTooLarge = errors.New("too many records in one batch - generate codes class by class")
+	// ErrMailUnavailable means the details matched but the email could not be sent; the user can retry.
+	ErrMailUnavailable = errors.New("we could not send the email right now - please try again in a few minutes or contact the school office")
 	// ErrInvalidSettings covers a bad window or code lifetime.
 	ErrInvalidSettings = errors.New("the closing date must be after the opening date, and codes must last 1 to 90 days")
 )

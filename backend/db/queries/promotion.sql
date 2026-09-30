@@ -14,7 +14,7 @@ LIMIT 1;
 -- year — the source list for a promotion/reassignment preview.
 SELECT
     sp.id           AS student_id,
-    sp.full_name    AS student_name,
+    display_name(sp.full_name, sp.name_with_initials)::text AS student_name,
     sp.index_number AS student_index,
     c.id            AS class_id,
     c.name          AS class_name,

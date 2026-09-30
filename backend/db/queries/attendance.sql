@@ -4,8 +4,12 @@ VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: GetAttendanceSessionByID :one
-SELECT * FROM attendance_sessions
-WHERE id = $1;
+-- taken_by is a user id; the name comes from the teacher profile when there is one (admins have none).
+SELECT ats.*, COALESCE(display_name(tp.full_name, tp.name_with_initials), u.full_name, '')::text AS taken_by_name
+FROM attendance_sessions ats
+LEFT JOIN users u            ON u.id = ats.taken_by
+LEFT JOIN teacher_profiles tp ON tp.user_id = ats.taken_by
+WHERE ats.id = $1;
 
 -- name: GetAttendanceSessionByClassAndDate :one
 SELECT * FROM attendance_sessions
@@ -36,13 +40,14 @@ SELECT
     ats.created_at,
     c.name                                    AS class_name,
     g.name                                     AS grade_name,
-    u.full_name                                AS teacher_name,
+    COALESCE(display_name(tp.full_name, tp.name_with_initials), u.full_name)::text AS teacher_name,
     (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.id) AS enrolled_count,
     (SELECT COUNT(*) FROM attendance_records ar WHERE ar.session_id = ats.id) AS marked_count
 FROM attendance_sessions ats
 INNER JOIN classes c ON c.id = ats.class_id
 INNER JOIN grades  g ON g.id = c.grade_id
 INNER JOIN users   u ON u.id = ats.taken_by
+LEFT JOIN teacher_profiles tp ON tp.user_id = ats.taken_by
 WHERE ats.date = $1
   AND (sqlc.narg(grade_ids)::uuid[] IS NULL OR g.id = ANY(sqlc.narg(grade_ids)::uuid[]))
 ORDER BY g.sort_order ASC, c.name ASC;
@@ -70,7 +75,7 @@ WHERE session_id = $1;
 -- name: ListAttendanceBySession :many
 SELECT
     ar.*,
-    sp.full_name     AS student_name,
+    display_name(sp.full_name, sp.name_with_initials)::text AS student_name,
     sp.index_number  AS student_index
 FROM attendance_records ar
 INNER JOIN student_profiles sp ON sp.id = ar.student_id
@@ -93,7 +98,7 @@ ORDER BY ats.date DESC;
 -- Phase 7 attendance report export.
 SELECT
     ar.id,
-    sp.full_name    AS student_name,
+    display_name(sp.full_name, sp.name_with_initials)::text AS student_name,
     sp.index_number AS student_index,
     ats.date        AS session_date,
     ar.status       AS status,

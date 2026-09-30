@@ -240,7 +240,7 @@
   &__contact-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
 }
 
-.os-guardian-contact-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.os-guardian-contact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 0.75rem; }
 .os-guardian-contact-card {
   display: flex;
   align-items: flex-start;
@@ -844,3 +844,53 @@
 
 // Settings > Email: a fixed-height frame showing the rendered email.
 .os-email-preview { background: var(--os-canvas); border: 1px solid var(--os-border-subtle); display: block; height: 46rem; width: 100%; }
+
+.os-grade-avatar {
+  --os-grade-band: var(--os-accent);
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid color-mix(in srgb, var(--os-grade-band) 35%, transparent);
+  background: color-mix(in srgb, var(--os-grade-band) 12%, var(--os-layer));
+  color: var(--os-grade-band);
+  line-height: 1;
+
+  &__grade { font-size: 1.125rem; font-weight: 700; }
+
+  &--sm { width: 2rem; height: 2rem; }
+  &--sm &__grade { font-size: 0.875rem; }
+  &--sm &__section { display: none; }
+  &--lg { width: 4rem; height: 4rem; }
+  &--lg &__grade { font-size: 1.5rem; }
+  &--lg &__section { font-size: 0.75rem; }
+  &__section { max-width: 100%; margin-top: 0.125rem; overflow: hidden; font-size: 0.625rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+
+  &--primary { --os-grade-band: var(--os-chart-teal); }
+  &--junior { --os-grade-band: var(--os-chart-blue); }
+  &--ol { --os-grade-band: var(--os-chart-purple); }
+  &--al { --os-grade-band: var(--os-chart-pink); }
+}
+
+.os-teacher-today__progress { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--os-border-subtle); }
+.os-teacher-today__progress > :first-child { flex: 1; }
+
+.os-teacher-banner__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border: 1px solid transparent;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 0.1s;
+
+  &.is-pending { border-color: var(--os-status-late-border); background: var(--os-status-late-bg); color: var(--os-status-late-text); }
+  &.is-done { border-color: var(--os-status-present-border); background: var(--os-status-present-bg); color: var(--os-status-present-text); }
+  svg { fill: currentColor; }
+  &:hover { text-decoration: underline; }
+}

@@ -31,7 +31,7 @@ func (r *Repository) createSession(ctx context.Context, classID, takenBy uuid.UU
 }
 func (r *Repository) getSession(ctx context.Context, id uuid.UUID) (Session, error) {
 	row, err := r.queries.GetAttendanceSessionByID(ctx, id)
-	return mapSession(row), err
+	return Session{ID: row.ID, ClassID: row.ClassID, TakenBy: row.TakenBy, Date: row.Date, CreatedAt: row.CreatedAt, TakenByName: row.TakenByName}, err
 }
 func (r *Repository) findSession(ctx context.Context, classID uuid.UUID, date time.Time) (Session, error) {
 	row, err := r.queries.GetAttendanceSessionByClassAndDate(ctx, db.GetAttendanceSessionByClassAndDateParams{ClassID: classID, Date: dateValue(date)})

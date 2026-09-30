@@ -383,6 +383,7 @@ WHERE (
     OR g.calling_name ILIKE '%' || $1 || '%'
     OR g.phone      ILIKE '%' || $1 || '%'
     OR g.email      ILIKE '%' || $1 || '%'
+    OR g.nic_number ILIKE '%' || $1 || '%'
   )
   AND (
     $2::bool IS NOT TRUE

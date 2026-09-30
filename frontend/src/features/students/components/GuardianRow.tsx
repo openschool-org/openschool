@@ -1,6 +1,6 @@
 import { Button, Tag } from "@carbon/react";
 import { UserFollow, Locked } from "@carbon/icons-react";
-import { GUARDIAN_RELATIONSHIPS } from "@/features/guardians/constants";
+import { relationshipLabel } from "@/features/guardians/constants";
 import type { GuardianWithPrimary } from "@/features/guardians/api/guardian";
 import { displayName } from "@/shared/lib/name";
 
@@ -27,7 +27,7 @@ export default function GuardianRow({
             {displayName(g)}
           </p>
           <Tag size="sm" type="gray">
-            {GUARDIAN_RELATIONSHIPS.find((r) => r.value === g.relationship)?.label ?? g.relationship}
+            {relationshipLabel(g.relationship)}
           </Tag>
           {g.is_primary_contact && (
             <Tag size="sm" type="teal">
@@ -44,6 +44,7 @@ export default function GuardianRow({
         <p className="os-m-0 os-text-sm os-c-secondary">
           {g.phone}
           {g.email ? ` · ${g.email}` : ""}
+          {g.nic_number ? ` · NIC ${g.nic_number}` : ""}
         </p>
       </div>
       <div className="os-flex os-gap-2 os-shrink-0">

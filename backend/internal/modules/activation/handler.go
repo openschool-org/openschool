@@ -22,6 +22,8 @@ const startMessage = "If the code and details match, we have emailed you a link 
 // respond maps known errors to client messages and hides everything else.
 func respond(c *gin.Context, err error) {
 	switch {
+	case errors.Is(err, ErrMailUnavailable):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
 	case errors.Is(err, ErrClosed), errors.Is(err, ErrRoleDisabled):
 		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 	case errors.Is(err, ErrLinkInvalid):
@@ -107,7 +109,7 @@ func (h *Handler) Generate(c *gin.Context) {
 	}
 	var req GenerateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "choose students or parents"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "choose students or guardians"})
 		return
 	}
 	resp, err := h.service.Generate(c.Request.Context(), req, actor)

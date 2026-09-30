@@ -1,5 +1,6 @@
 import type { GeneratedBatch, IssuedCode } from "@/features/activation/api/activation";
 import { formatDate } from "@/shared/lib/date";
+import { classLabel } from "@/shared/lib/classLabel";
 
 // One class's share of a batch: what one class teacher hands out.
 export interface ClassGroup {
@@ -18,7 +19,7 @@ export function groupByClass(batch: GeneratedBatch): ClassGroup[] {
     const key = c.class_name ? `${c.grade_name}|${c.class_name}` : NO_CLASS;
     let group = groups.get(key);
     if (!group) {
-      const title = c.class_name ? (c.grade_name ? `${c.grade_name} · ${c.class_name}` : c.class_name) : NO_CLASS;
+      const title = c.class_name ? classLabel(c.grade_name, c.class_name) : NO_CLASS;
       group = { key, title, formTeacher: c.form_teacher, codes: [], order: c.class_name ? c.grade_order : Number.MAX_SAFE_INTEGER };
       groups.set(key, group);
     }

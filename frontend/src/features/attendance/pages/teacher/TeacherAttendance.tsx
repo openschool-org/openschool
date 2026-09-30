@@ -11,6 +11,7 @@ import EmptyState from "@/shared/ui/EmptyState";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import { todayISODate } from "@/shared/lib/date";
+import { classLabel } from "@/shared/lib/classLabel";
 
 function PendingClassAction({ classId, className, gradeName }: { classId: string; className: string; gradeName: string }) {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ function PendingClassAction({ classId, className, gradeName }: { classId: string
       onClick={handleClick}
       disabled={createSession.isPending} className="os-py-2 os-px-4 os-bg-accent os-c-layer os-border-none os-pointer os-text-sm os-fw-500 os-nowrap os-flex os-items-center os-gap-1h"
     >
-      <EventSchedule size={14} /> {createSession.isPending ? "Starting…" : `${gradeName} - ${className}`}
+      <EventSchedule size={14} /> {createSession.isPending ? "Starting…" : classLabel(gradeName, className)}
     </button>
   );
 }

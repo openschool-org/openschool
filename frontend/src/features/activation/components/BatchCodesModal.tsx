@@ -6,6 +6,7 @@ import IssuedBatchPanel from "@/features/activation/components/IssuedBatchPanel"
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import { formatDate } from "@/shared/lib/date";
+import { ROLE_LABELS } from "@/features/activation/lib/roles";
 
 // Reopens a batch's unused codes so class sheets and the CSV can be printed again.
 export default function BatchCodesModal({ batch, onClose }: { batch: ActivationBatch; onClose: () => void }) {
@@ -18,7 +19,7 @@ export default function BatchCodesModal({ batch, onClose }: { batch: ActivationB
 
   return (
     <ComposedModal open size="lg" onClose={onClose} aria-label="Activation codes">
-      <ModalHeader title={`${batch.role === "student" ? "Student" : "Parent"} codes issued ${formatDate(batch.created_at)}`} />
+      <ModalHeader title={`${ROLE_LABELS[batch.role].one} codes issued ${formatDate(batch.created_at)}`} />
       <ModalBody>
         {codes.isPending && <LoadingSpinner />}
         <MutationErrorNotification isError={codes.isError} error={codes.error} title="Could not open these codes" />

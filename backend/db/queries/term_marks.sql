@@ -25,7 +25,7 @@ RETURNING *;
 -- grid, which needs to show blanks for students not yet marked.
 SELECT
     sp.id          AS student_id,
-    sp.full_name   AS student_name,
+    display_name(sp.full_name, sp.name_with_initials)::text AS student_name,
     sp.index_number,
     tm.id          AS term_mark_id,
     tm.marks,

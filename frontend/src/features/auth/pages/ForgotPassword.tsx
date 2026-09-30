@@ -9,7 +9,7 @@ import { getErrorMessage } from "@/shared/api/errors";
 const ROLES: { value: SelfServiceResetRole; label: string; secretLabel: string; secretHelp: string }[] = [
   { value: "teacher", label: "Teacher", secretLabel: "NIC number", secretHelp: "Your NIC number, as set when your account was created." },
   { value: "student", label: "Student", secretLabel: "Index number", secretHelp: "Your school index number." },
-  { value: "parent", label: "Parent / guardian", secretLabel: "NIC number", secretHelp: "Your NIC number, as set when your account was created." },
+  { value: "parent", label: "Guardian", secretLabel: "NIC number", secretHelp: "Your NIC number, as set when your account was created." },
 ];
 
 export default function ForgotPassword() {

@@ -114,7 +114,7 @@ func TestGreetingFallsBackToAFormalSalutation(t *testing.T) {
 	if err := s.AccountActivated(context.Background(), "a@example.com", "", "2026/0001"); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(capture.msgs[0].HTML, "Dear parent or student,") {
+	if !strings.Contains(capture.msgs[0].HTML, "Dear student or guardian,") {
 		t.Fatal("without a name the greeting must stay formal")
 	}
 }

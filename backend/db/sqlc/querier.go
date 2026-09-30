@@ -237,7 +237,8 @@ type Querier interface {
 	GetActivationSettings(ctx context.Context) (ActivationSetting, error)
 	GetAttendanceRecord(ctx context.Context, arg GetAttendanceRecordParams) (AttendanceRecord, error)
 	GetAttendanceSessionByClassAndDate(ctx context.Context, arg GetAttendanceSessionByClassAndDateParams) (AttendanceSession, error)
-	GetAttendanceSessionByID(ctx context.Context, id uuid.UUID) (AttendanceSession, error)
+	// taken_by is a user id; the name comes from the teacher profile when there is one (admins have none).
+	GetAttendanceSessionByID(ctx context.Context, id uuid.UUID) (GetAttendanceSessionByIDRow, error)
 	GetAttendanceSummaryByStudent(ctx context.Context, arg GetAttendanceSummaryByStudentParams) (GetAttendanceSummaryByStudentRow, error)
 	GetClassByID(ctx context.Context, id uuid.UUID) (Class, error)
 	GetClassStudentCount(ctx context.Context, classID uuid.UUID) (int64, error)

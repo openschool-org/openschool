@@ -7,8 +7,8 @@ import IssuedBatchPanel from "@/features/activation/components/IssuedBatchPanel"
 import SectionCard from "@/shared/ui/SectionCard";
 import ConfirmActionModal from "@/shared/ui/ConfirmActionModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import { ROLE_LABELS } from "@/features/activation/lib/roles";
 
-const ROLE_LABELS: Record<ActivationRole, string> = { student: "Students", parent: "Parents and guardians" };
 
 // Issues codes and shows them once; after leaving this card they can only be reissued, not viewed.
 export default function GenerateCodesCard() {
@@ -32,7 +32,7 @@ export default function GenerateCodesCard() {
   return (
     <SectionCard title="Activation codes">
       {!role ? (
-        <p className="os-text-sm os-c-secondary os-m-0">Turn on self-activation for students or parents above to generate codes.</p>
+        <p className="os-text-sm os-c-secondary os-m-0">Turn on self-activation for students or guardians above to generate codes.</p>
       ) : (
         <>
           <p className="os-text-sm os-c-secondary os-mt-0 os-mb-4">
@@ -40,9 +40,9 @@ export default function GenerateCodesCard() {
           </p>
           <div className="os-grid os-grid-cols-2 os-gap-5 os-mb-5">
             <Select id="codes-role" labelText="Account type" value={role} onChange={(e) => setChosenRole(e.target.value as ActivationRole)}>
-              {enabled.map((r) => <SelectItem key={r} value={r} text={ROLE_LABELS[r]} />)}
+              {enabled.map((r) => <SelectItem key={r} value={r} text={ROLE_LABELS[r].many} />)}
             </Select>
-            <Select id="codes-class" labelText="Class (current year)" helperText="For parents, the class of their child." value={classId} onChange={(e) => setClassId(e.target.value)}>
+            <Select id="codes-class" labelText="Class (current year)" helperText="For guardians, the class of their child." value={classId} onChange={(e) => setClassId(e.target.value)}>
               <SelectItem value="" text="Everyone without a login" />
               {classes?.map((c) => <SelectItem key={c.id} value={c.id} text={c.name} />)}
             </Select>
@@ -63,7 +63,7 @@ export default function GenerateCodesCard() {
       <ConfirmActionModal
         open={confirming}
         title="Generate activation codes?"
-        description={`New codes will be issued to ${role ? ROLE_LABELS[role].toLowerCase() : ""} without a login${classId ? " in the chosen class" : ""}. Any codes they already have stop working.`}
+        description={`New codes will be issued to ${role ? ROLE_LABELS[role].many.toLowerCase() : ""} without a login${classId ? " in the chosen class" : ""}. Any codes they already have stop working.`}
         confirmLabel="Generate"
         onClose={() => setConfirming(false)}
         onConfirm={run}

@@ -43,8 +43,8 @@ export default function DetailsTab({
             ["Medium", mediumName ?? "Not designated"],
             ["Home classroom", homeClassroomName ?? "Not assigned"],
             ["Academic year", academicYearLabel ?? "-"],
-            ["Girl monitor", girlMonitor?.full_name ?? "Unassigned"],
-            ["Boy monitor", boyMonitor?.full_name ?? "Unassigned"],
+            ["Girl monitor", girlMonitor ? displayName(girlMonitor) : "Unassigned"],
+            ["Boy monitor", boyMonitor ? displayName(boyMonitor) : "Unassigned"],
           ].map(([label, value]) => (
             <div key={label} className="os-kv-item">
               <p className="os-kv-item__label">{label}</p>

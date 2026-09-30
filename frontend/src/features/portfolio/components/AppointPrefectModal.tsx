@@ -6,6 +6,7 @@ import type { PrefectRank } from "@/features/portfolio/api/prefect";
 import FormModal from "@/shared/ui/FormModal";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
 import { PREFECT_RANKS } from "@/features/portfolio/constants";
+import { displayName } from "@/shared/lib/name";
 
 interface Props {
   academicYearId: string;
@@ -35,7 +36,7 @@ export default function AppointPrefectModal({ academicYearId, assignedStudentIds
       errorFallback="Failed to appoint prefect"
     >
       <div className="os-grid os-gap-4">
-        <EntityCombobox id="prefect-student" labelText="Student" items={available} selectedId={studentId} onSelect={setStudentId} onSearch={setSearch} getId={(s) => s.id} itemToString={(s) => `${s.full_name} - ${s.index_number}`} placeholder="Search students by name or index number…" />
+        <EntityCombobox id="prefect-student" labelText="Student" items={available} selectedId={studentId} onSelect={setStudentId} onSearch={setSearch} getId={(s) => s.id} itemToString={(s) => `${displayName(s)} - ${s.index_number}`} placeholder="Search students by name or index number…" />
         <Select id="prefect-rank" labelText="Rank" value={rank} onChange={(e) => setRank(e.target.value as PrefectRank)}>
           {PREFECT_RANKS.map((r) => <SelectItem key={r.value} value={r.value} text={r.label.replace(/s$/, "")} />)}
         </Select>

@@ -33,7 +33,7 @@ describe("IssuedBatchPanel printing", () => {
     render(<IssuedBatchPanel batch={batch} onDone={() => {}} />);
     // The summary table on screen, not the print sheet (jsdom does not apply the print CSS).
     const summary = document.querySelector<HTMLElement>("table.os-table")!;
-    const row = within(summary).getByText("Grade 6 · 6-B").closest("tr")!;
+    const row = within(summary).getByText("6-B").closest("tr")!;
     fireEvent.click(within(row).getByRole("button", { name: /Print/ }));
     expect(window.print).toHaveBeenCalledTimes(1);
     expect(atPrint).toEqual(["BBBBB-22222"]);

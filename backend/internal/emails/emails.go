@@ -8,7 +8,7 @@ import (
 // greeting is formal and uses the name with initials (e.g. "Dear H.A.N. Perera,"), as school letters do.
 func greeting(nameWithInitials string) string {
 	if nameWithInitials == "" {
-		return "Dear parent or student,"
+		return "Dear student or guardian,"
 	}
 	return fmt.Sprintf("Dear %s,", nameWithInitials)
 }

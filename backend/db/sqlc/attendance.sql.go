@@ -95,19 +95,33 @@ func (q *Queries) GetAttendanceSessionByClassAndDate(ctx context.Context, arg Ge
 }
 
 const getAttendanceSessionByID = `-- name: GetAttendanceSessionByID :one
-SELECT id, class_id, taken_by, date, created_at FROM attendance_sessions
-WHERE id = $1
+SELECT ats.id, ats.class_id, ats.taken_by, ats.date, ats.created_at, COALESCE(display_name(tp.full_name, tp.name_with_initials), u.full_name, '')::text AS taken_by_name
+FROM attendance_sessions ats
+LEFT JOIN users u            ON u.id = ats.taken_by
+LEFT JOIN teacher_profiles tp ON tp.user_id = ats.taken_by
+WHERE ats.id = $1
 `
 
-func (q *Queries) GetAttendanceSessionByID(ctx context.Context, id uuid.UUID) (AttendanceSession, error) {
+type GetAttendanceSessionByIDRow struct {
+	ID          uuid.UUID          `json:"id"`
+	ClassID     uuid.UUID          `json:"class_id"`
+	TakenBy     uuid.UUID          `json:"taken_by"`
+	Date        pgtype.Date        `json:"date"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	TakenByName string             `json:"taken_by_name"`
+}
+
+// taken_by is a user id; the name comes from the teacher profile when there is one (admins have none).
+func (q *Queries) GetAttendanceSessionByID(ctx context.Context, id uuid.UUID) (GetAttendanceSessionByIDRow, error) {
 	row := q.db.QueryRow(ctx, getAttendanceSessionByID, id)
-	var i AttendanceSession
+	var i GetAttendanceSessionByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.ClassID,
 		&i.TakenBy,
 		&i.Date,
 		&i.CreatedAt,
+		&i.TakenByName,
 	)
 	return i, err
 }
@@ -154,7 +168,7 @@ func (q *Queries) GetAttendanceSummaryByStudent(ctx context.Context, arg GetAtte
 const listAttendanceBySession = `-- name: ListAttendanceBySession :many
 SELECT
     ar.id, ar.session_id, ar.student_id, ar.status, ar.note,
-    sp.full_name     AS student_name,
+    display_name(sp.full_name, sp.name_with_initials)::text AS student_name,
     sp.index_number  AS student_index
 FROM attendance_records ar
 INNER JOIN student_profiles sp ON sp.id = ar.student_id
@@ -287,7 +301,7 @@ func (q *Queries) ListAttendanceRecordsBySession(ctx context.Context, sessionID 
 const listAttendanceRecordsForClassInRange = `-- name: ListAttendanceRecordsForClassInRange :many
 SELECT
     ar.id,
-    sp.full_name    AS student_name,
+    display_name(sp.full_name, sp.name_with_initials)::text AS student_name,
     sp.index_number AS student_index,
     ats.date        AS session_date,
     ar.status       AS status,
@@ -385,13 +399,14 @@ SELECT
     ats.created_at,
     c.name                                    AS class_name,
     g.name                                     AS grade_name,
-    u.full_name                                AS teacher_name,
+    COALESCE(display_name(tp.full_name, tp.name_with_initials), u.full_name)::text AS teacher_name,
     (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.id) AS enrolled_count,
     (SELECT COUNT(*) FROM attendance_records ar WHERE ar.session_id = ats.id) AS marked_count
 FROM attendance_sessions ats
 INNER JOIN classes c ON c.id = ats.class_id
 INNER JOIN grades  g ON g.id = c.grade_id
 INNER JOIN users   u ON u.id = ats.taken_by
+LEFT JOIN teacher_profiles tp ON tp.user_id = ats.taken_by
 WHERE ats.date = $1
   AND ($2::uuid[] IS NULL OR g.id = ANY($2::uuid[]))
 ORDER BY g.sort_order ASC, c.name ASC

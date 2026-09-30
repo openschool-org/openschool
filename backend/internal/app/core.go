@@ -3,6 +3,7 @@ package app
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -78,5 +79,8 @@ func newMailSender(pool *pgxpool.Pool) *emails.Sender {
 		}
 	}
 	log.Printf("mail: provider=%s from=%s test_redirect=%t", cfg.Provider, cfg.From.String(), cfg.RedirectTo != "")
+	if strings.HasSuffix(cfg.From.Address, "@resend.dev") && cfg.RedirectTo == "" {
+		log.Printf("mail: WARNING %s only delivers to your own Resend account inbox; set MAIL_REDIRECT_TO to it, or verify a domain", cfg.From.Address)
+	}
 	return emails.NewSender(mailer.New(cfg), cfg, mailmodule.NewRepository(pool))
 }

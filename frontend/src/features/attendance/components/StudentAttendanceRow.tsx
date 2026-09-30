@@ -3,6 +3,7 @@ import type { Student } from "@/features/students/api/student";
 import { STATUS_STYLES, type Status } from "@/features/attendance/constants";
 import StatusButton from "@/features/attendance/components/StatusButton";
 import Avatar from "@/shared/ui/Avatar";
+import { displayName } from "@/shared/lib/name";
 
 export default function StudentAttendanceRow({
   student,
@@ -29,7 +30,7 @@ export default function StudentAttendanceRow({
       <td>
         <div className="os-flex os-items-center os-gap-2h">
           <Avatar name={student.full_name} size="sm" />
-          <span className="os-fw-500 os-text-md">{student.full_name}</span>
+          <span className="os-fw-500 os-text-md" title={student.full_name}>{displayName(student)}</span>
         </div>
       </td>
       <td className="os-table__mono" data-label="Index no.">{student.index_number}</td>
@@ -55,7 +56,7 @@ export default function StudentAttendanceRow({
           <input
             className="os-note-input"
             placeholder="Optional note…"
-            aria-label={`Note for ${student.full_name}`}
+            aria-label={`Note for ${displayName(student)}`}
             value={note}
             onChange={(e) => onNoteChange(e.target.value)}
           />

@@ -10,7 +10,7 @@ import { EMAIL_RE } from "@/shared/lib/validation";
 
 const ROLES: { value: ActivationRole; label: string; idLabel: string; idHelp: string }[] = [
   { value: "student", label: "Student", idLabel: "Index number", idHelp: "Your school index number." },
-  { value: "parent", label: "Parent / guardian", idLabel: "NIC number", idHelp: "The NIC number the school has for you." },
+  { value: "parent", label: "Guardian", idLabel: "NIC number", idHelp: "The NIC number the school has for you." },
 ];
 
 export default function ActivateStartForm() {
@@ -35,7 +35,7 @@ export default function ActivateStartForm() {
 
   if (start.isSuccess) {
     return (
-      <AuthShell success title="Check your email" subtitle="If the code and details match, we have sent a link to finish activating your account. It expires in 30 minutes.">
+      <AuthShell success title="Check your email" subtitle="If the code and details match, we have sent a link to finish activating your account. It expires in 30 minutes. No email after a few minutes? Check the code and your index or NIC number, then try again.">
         <Button href="/signin" className="os-full-width-btn">Back to sign in</Button>
       </AuthShell>
     );

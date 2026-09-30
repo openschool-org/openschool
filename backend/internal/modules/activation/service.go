@@ -120,9 +120,14 @@ func (s *Service) Start(ctx context.Context, req StartRequest) error {
 		logAttempt("code locked")
 		return nil
 	}
-	if code.Role != req.Role || !sameIdentifier(code.Identifier, req.Identifier) {
+	// The code knows its own role, so a wrong "I am a" choice on the form does not block a real match.
+	if !sameIdentifier(code.Identifier, req.Identifier) {
 		logAttempt("identifier mismatch")
 		return s.store.recordFailure(ctx, code.ID)
+	}
+	if !settings.openFor(code.Role, s.now()) {
+		logAttempt("role closed")
+		return nil
 	}
 	if code.HasLogin {
 		logAttempt("already activated")
@@ -140,9 +145,17 @@ func (s *Service) Start(ctx context.Context, req StartRequest) error {
 	if taken {
 		// Told by email, not in the response, so the page never reveals which addresses have accounts.
 		logAttempt("email in use")
-		return s.mailer.EmailInUse(ctx, email)
+		if err := s.mailer.EmailInUse(ctx, email); err != nil {
+			slog.Error("activation: email-in-use notice not sent", "code_id", code.ID, "error", err)
+			return ErrMailUnavailable
+		}
+		return nil
 	}
 
+	name, err := s.store.recordName(ctx, code.Role, code.RecordID)
+	if err != nil {
+		return fmt.Errorf("load record: %w", err)
+	}
 	raw := make([]byte, 32)
 	if _, err := io.ReadFull(s.random, raw); err != nil {
 		return fmt.Errorf("generate activation token: %w", err)
@@ -153,13 +166,10 @@ func (s *Service) Start(ctx context.Context, req StartRequest) error {
 	}
 	// Token in the fragment so it never reaches a server or proxy access log (same as reset links).
 	link := fmt.Sprintf("%s/activate#token=%s", s.frontend(), token)
-	name, err := s.store.recordName(ctx, code.Role, code.RecordID)
-	if err != nil {
-		return fmt.Errorf("load record: %w", err)
-	}
 	// Emails address people formally by their name with initials.
 	if err := s.mailer.ActivationLink(ctx, email, greetingName(name), link, emailTokenTTL); err != nil {
-		return fmt.Errorf("send activation email: %w", err)
+		slog.Error("activation: link email not sent", "code_id", code.ID, "error", err)
+		return ErrMailUnavailable
 	}
 	logAttempt("link sent")
 	return nil

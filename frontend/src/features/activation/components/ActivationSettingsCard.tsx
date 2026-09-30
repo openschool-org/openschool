@@ -71,7 +71,7 @@ export default function ActivationSettingsCard() {
       <MutationErrorNotification isError={update.isError} error={update.error} title="Could not save settings" />
       <div className="os-grid os-grid-cols-2 os-gap-5 os-mb-5">
         <Toggle id="activation-students" labelText="Students" labelA="Off" labelB="On" toggled={form.student_enabled} onToggle={(on) => set("student_enabled", on)} />
-        <Toggle id="activation-parents" labelText="Parents and guardians" labelA="Off" labelB="On" toggled={form.parent_enabled} onToggle={(on) => set("parent_enabled", on)} />
+        <Toggle id="activation-parents" labelText="Guardians" labelA="Off" labelB="On" toggled={form.parent_enabled} onToggle={(on) => set("parent_enabled", on)} />
         <DateField id="activation-opens" labelText="Opens on (optional)" value={form.opens} onChange={(v) => set("opens", v)} />
         <DateField
           id="activation-closes"

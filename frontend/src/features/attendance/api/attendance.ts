@@ -5,6 +5,8 @@ export interface AttendanceSession {
   id: string;
   class_id: string;
   taken_by: string;
+  // name with initials of whoever opened the session; only on the single-session response
+  taken_by_name?: string;
   date: string;
   created_at: string | null;
 }

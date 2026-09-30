@@ -1,9 +1,9 @@
 import { Link } from "react-router";
-import { Tag } from "@carbon/react";
 import type { AttendanceSession } from "@/features/attendance/api/attendance";
 import DataGrid from "@/shared/ui/DataGrid";
 import SessionCountCell from "@/features/attendance/components/SessionCountCell";
 import EmptyState from "@/shared/ui/EmptyState";
+import { formatDayMonthYear } from "@/shared/lib/date";
 
 type Row = { session: AttendanceSession; className: string };
 
@@ -22,11 +22,10 @@ export default function RecentSessions({ sessions }: { sessions: Row[] }) {
           getRowId={(r) => r.session.id}
           pagination={false}
           columns={[
-            { key: "date", header: "Date", render: (r) => <span className="os-text-sm os-c-secondary">{r.session.date}</span> },
-            { key: "class", header: "Class", render: (r) => <span className="os-table__link">{r.className}</span> },
+            { key: "date", header: "Date", render: (r) => <span className="os-text-sm os-c-secondary">{formatDayMonthYear(r.session.date)}</span> },
+            { key: "class", header: "Class", render: (r) => <Link to={`/attendance/sessions/${r.session.id}/mark`} className="os-table__link">{r.className}</Link> },
             { key: "present", header: "Present", render: (r) => <SessionCountCell sessionId={r.session.id} status="present" /> },
             { key: "absent", header: "Absent", render: (r) => <SessionCountCell sessionId={r.session.id} status="absent" /> },
-            { key: "status", header: "Status", render: () => <Tag type="blue" size="sm">Marked</Tag> },
           ]}
         />
       )}

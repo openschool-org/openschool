@@ -42,6 +42,7 @@ WHERE (
     OR g.calling_name ILIKE '%' || sqlc.narg(search) || '%'
     OR g.phone      ILIKE '%' || sqlc.narg(search) || '%'
     OR g.email      ILIKE '%' || sqlc.narg(search) || '%'
+    OR g.nic_number ILIKE '%' || sqlc.narg(search) || '%'
   )
   AND (
     sqlc.narg(orphans_only)::bool IS NOT TRUE

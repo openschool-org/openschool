@@ -5,6 +5,7 @@ import type { Child, ChildSummary } from "@/features/parent/api/parent";
 import { getInitials } from "@/shared/lib/name";
 import { formatPercent } from "@/shared/lib/number";
 import { useT } from "@/shared/i18n/useT";
+import { displayName } from "@/shared/lib/name";
 
 interface Props {
   child: Child;
@@ -23,7 +24,7 @@ export default function ChildCard({ child, summary, summaryLoading }: Props) {
       <div className="os-flex os-items-center os-gap-3h">
         <div className="os-profile__avatar os-w-2t os-h-2t os-text-md">{getInitials(child.full_name)}</div>
         <div className="os-flex-1 os-min-w-0">
-          <p className="os-mt-0 os-mx-0 os-mb-h os-fw-600 os-text-md os-c-primary">{child.full_name}</p>
+          <p className="os-mt-0 os-mx-0 os-mb-h os-fw-600 os-text-md os-c-primary">{displayName(child)}</p>
           <p className="os-m-0 os-text-sm os-c-secondary">
             {child.index_number}
             {child.class_name ? ` · ${child.class_name}` : ""}

@@ -132,9 +132,13 @@ type fakeMail struct {
 	inUse         []string
 	activated     []string
 	activatedName string
+	err           error
 }
 
 func (f *fakeMail) ActivationLink(_ context.Context, to, _, link string, _ time.Duration) error {
+	if f.err != nil {
+		return f.err
+	}
 	f.to, f.body = append(f.to, to), append(f.body, link)
 	return nil
 }
@@ -204,7 +208,10 @@ func TestStartHidesMismatchesAndCountsFailures(t *testing.T) {
 	}{
 		{"unknown code", func(r *StartRequest, _ *fakeStore) { r.Code = "ZZZZZ-ZZZZZ" }, 0},
 		{"wrong identifier", func(r *StartRequest, _ *fakeStore) { r.Identifier = "2027/9999" }, 1},
-		{"wrong role", func(r *StartRequest, s *fakeStore) { r.Role = "parent"; s.cfg.ParentEnabled = true }, 1},
+		{"code's role closed", func(r *StartRequest, s *fakeStore) {
+			r.Role = "parent"
+			s.cfg.ParentEnabled, s.cfg.StudentEnabled = true, false
+		}, 0},
 		{"locked code", func(_ *StartRequest, s *fakeStore) { until := now.Add(time.Minute); s.code.LockedUntil = &until }, 0},
 		{"already has login", func(_ *StartRequest, s *fakeStore) { s.code.HasLogin = true }, 0},
 	}
@@ -223,6 +230,24 @@ func TestStartHidesMismatchesAndCountsFailures(t *testing.T) {
 				t.Fatalf("failures = %d, want %d", store.failures, tt.failures)
 			}
 		})
+	}
+}
+
+func TestStartUsesTheCodesRoleNotTheFormChoice(t *testing.T) {
+	svc, store, _, mail := newFixture()
+	store.cfg.ParentEnabled = true
+	req := startReq()
+	req.Role = "parent"
+	if err := svc.Start(context.Background(), req); err != nil || len(mail.to) != 1 {
+		t.Fatalf("err = %v, mails = %d; a matching code must send a link whatever role was picked", err, len(mail.to))
+	}
+}
+
+func TestStartReportsMailFailure(t *testing.T) {
+	svc, _, _, mail := newFixture()
+	mail.err = errors.New("smtp down")
+	if err := svc.Start(context.Background(), startReq()); !errors.Is(err, ErrMailUnavailable) {
+		t.Fatalf("err = %v, want ErrMailUnavailable", err)
 	}
 }
 

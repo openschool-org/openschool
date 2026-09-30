@@ -20,6 +20,7 @@ import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import RemoveIconButton from "@/shared/ui/RemoveIconButton";
 import type { SocietyMember, SocietyRole } from "@/features/portfolio/api/society";
+import { displayName } from "@/shared/lib/name";
 
 const ROLES: { value: SocietyRole; label: string }[] = [
   { value: "leader", label: "Leaders" },
@@ -144,7 +145,7 @@ export default function SocietyRoster({ societyId, readOnly }: Props) {
               onSelect={setStudentChoice}
               onSearch={setStudentSearch}
               getId={(s) => s.id}
-              itemToString={(s) => `${s.full_name} - ${s.index_number}`}
+              itemToString={(s) => `${displayName(s)} - ${s.index_number}`}
               placeholder="Search students by name or index number…"
             />
             <Select

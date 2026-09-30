@@ -29,16 +29,7 @@ export default function AssignClassSubjectTeacherModal({
 
   const handleAssign = () => {
     if (!subjectId || !teacherId) return;
-    assignSubjectTeacher.mutate(
-      { subject_id: subjectId, teacher_id: teacherId },
-      {
-        onSuccess: () => {
-          setSubjectId("");
-          setTeacherId("");
-          onClose();
-        },
-      }
-    );
+    assignSubjectTeacher.mutate({ subject_id: subjectId, teacher_id: teacherId }, { onSuccess: onClose });
   };
 
   return (
