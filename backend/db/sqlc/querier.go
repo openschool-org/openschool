@@ -121,6 +121,7 @@ type Querier interface {
 	CreateTimetableStatusHistory(ctx context.Context, arg CreateTimetableStatusHistoryParams) (TimetableStatusHistory, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	CreateWorkflowRun(ctx context.Context, arg CreateWorkflowRunParams) (WorkflowRun, error)
+	CurrentClassOfStudent(ctx context.Context, studentID uuid.UUID) (uuid.UUID, error)
 	DashboardAttendancePercentage(ctx context.Context) (DashboardAttendancePercentageRow, error)
 	DashboardClassWisePerformance(ctx context.Context) ([]DashboardClassWisePerformanceRow, error)
 	DashboardExaminationSummary(ctx context.Context) (DashboardExaminationSummaryRow, error)
@@ -165,6 +166,7 @@ type Querier interface {
 	DeleteDisciplinaryRecord(ctx context.Context, arg DeleteDisciplinaryRecordParams) (int64, error)
 	DeleteDraftNotification(ctx context.Context, id uuid.UUID) (int64, error)
 	DeleteDraftTimetable(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteExpiredActivationEmailTokens(ctx context.Context) (int64, error)
 	// ── Password reset token sweep ───────────────────────────────────────────────
 	DeleteExpiredPasswordResetTokens(ctx context.Context) (int64, error)
 	DeleteGrade(ctx context.Context, id uuid.UUID) (int64, error)
@@ -211,7 +213,8 @@ type Querier interface {
 	DeleteUser(ctx context.Context, id uuid.UUID) error
 	DeleteVicePrincipalScopes(ctx context.Context, positionID uuid.UUID) error
 	DiscardOpenWorkflowRuns(ctx context.Context, arg DiscardOpenWorkflowRunsParams) error
-	EnrollStudentInClass(ctx context.Context, arg EnrollStudentInClassParams) error
+	// Zero rows means the student is already in a class this year (one class per year).
+	EnrollStudentInClass(ctx context.Context, arg EnrollStudentInClassParams) (int64, error)
 	// Atomic get-or-create: used to provision the local row for an identity
 	// that just authenticated for the first time. The no-op DO UPDATE (rather
 	// than DO NOTHING) is required so RETURNING always yields a row, whether
@@ -402,7 +405,8 @@ type Querier interface {
 	// every attendance record for a class across a date range — for the
 	// Phase 7 attendance report export.
 	ListAttendanceRecordsForClassInRange(ctx context.Context, arg ListAttendanceRecordsForClassInRangeParams) ([]ListAttendanceRecordsForClassInRangeRow, error)
-	ListAttendanceSessionsByClass(ctx context.Context, classID uuid.UUID) ([]AttendanceSession, error)
+	// Counts come with each session so lists need no request per row.
+	ListAttendanceSessionsByClass(ctx context.Context, classID uuid.UUID) ([]ListAttendanceSessionsByClassRow, error)
 	// the cross-class daily dashboard: every session on one date, with the class,
 	// grade and teacher resolved, plus enough counts to show marked/pending and
 	// how many of the enrolled students have a record so far.
@@ -796,6 +800,8 @@ type Querier interface {
 	SetTeacherActiveStatus(ctx context.Context, arg SetTeacherActiveStatusParams) error
 	SetUserPreferredLanguage(ctx context.Context, arg SetUserPreferredLanguageParams) error
 	SubmitTimetableForReview(ctx context.Context, arg SubmitTimetableForReviewParams) (Timetable, error)
+	// The caller's teacher profile, the class's grade and year, and whether they teach the class.
+	TeacherClassAccess(ctx context.Context, arg TeacherClassAccessParams) (TeacherClassAccessRow, error)
 	UnenrollStudentFromClass(ctx context.Context, arg UnenrollStudentFromClassParams) error
 	UnlinkGuardianFromStudent(ctx context.Context, arg UnlinkGuardianFromStudentParams) error
 	UnlockStudentEnrollment(ctx context.Context, arg UnlockStudentEnrollmentParams) (int64, error)

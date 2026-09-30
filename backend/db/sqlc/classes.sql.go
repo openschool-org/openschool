@@ -280,7 +280,7 @@ func (q *Queries) DeleteStreamGroup(ctx context.Context, id uuid.UUID) (int64, e
 	return result.RowsAffected(), nil
 }
 
-const enrollStudentInClass = `-- name: EnrollStudentInClass :exec
+const enrollStudentInClass = `-- name: EnrollStudentInClass :execrows
 INSERT INTO class_students (class_id, student_id)
 VALUES ($1, $2)
 ON CONFLICT DO NOTHING
@@ -291,9 +291,13 @@ type EnrollStudentInClassParams struct {
 	StudentID uuid.UUID `json:"student_id"`
 }
 
-func (q *Queries) EnrollStudentInClass(ctx context.Context, arg EnrollStudentInClassParams) error {
-	_, err := q.db.Exec(ctx, enrollStudentInClass, arg.ClassID, arg.StudentID)
-	return err
+// Zero rows means the student is already in a class this year (one class per year).
+func (q *Queries) EnrollStudentInClass(ctx context.Context, arg EnrollStudentInClassParams) (int64, error) {
+	result, err := q.db.Exec(ctx, enrollStudentInClass, arg.ClassID, arg.StudentID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getClassByID = `-- name: GetClassByID :one
@@ -663,7 +667,8 @@ SELECT
     g.name   AS grade_name,
     ay.label AS academic_year_label,
     m.name   AS medium_name,
-    hc.name  AS home_classroom_name
+    hc.name  AS home_classroom_name,
+    (SELECT COUNT(*) FROM class_students cs WHERE cs.class_id = c.id) AS student_count
 FROM classes c
 INNER JOIN grades g          ON g.id = c.grade_id
 INNER JOIN academic_years ay ON ay.id = c.academic_year_id
@@ -691,6 +696,7 @@ type ListCurrentClassesRow struct {
 	AcademicYearLabel string             `json:"academic_year_label"`
 	MediumName        pgtype.Text        `json:"medium_name"`
 	HomeClassroomName pgtype.Text        `json:"home_classroom_name"`
+	StudentCount      int64              `json:"student_count"`
 }
 
 func (q *Queries) ListCurrentClasses(ctx context.Context) ([]ListCurrentClassesRow, error) {
@@ -720,6 +726,7 @@ func (q *Queries) ListCurrentClasses(ctx context.Context) ([]ListCurrentClassesR
 			&i.AcademicYearLabel,
 			&i.MediumName,
 			&i.HomeClassroomName,
+			&i.StudentCount,
 		); err != nil {
 			return nil, err
 		}

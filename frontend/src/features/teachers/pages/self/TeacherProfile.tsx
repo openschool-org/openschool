@@ -2,7 +2,6 @@ import { useQueries } from "@tanstack/react-query";
 import { Tag } from "@carbon/react";
 import { Book } from "@carbon/icons-react";
 import { useMyTeacherProfile, useTeacherSubjects, useMyClasses } from "@/features/teachers/queries/useTeachers";
-import { studentsByClassOptions } from "@/features/students/queries/useStudents";
 import { classSessionsOptions } from "@/features/attendance/queries/useAttendance";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
@@ -15,9 +14,9 @@ export default function TeacherProfile() {
   const { classes: myClasses } = useMyClasses();
 
   const classIds = myClasses.map((c) => c.class_id);
-  const studentQueries = useQueries({ queries: classIds.map(studentsByClassOptions) });
   const sessionQueries = useQueries({ queries: classIds.map(classSessionsOptions) });
-  const studentsTaught = new Set(studentQueries.flatMap((q) => (q.data ?? []).map((s) => s.id))).size;
+  // A student is in one class per year, so the class counts add up to distinct students.
+  const studentsTaught = myClasses.reduce((n, c) => n + c.studentCount, 0);
   const sessionsTaken = sessionQueries.reduce((sum, q) => sum + (q.data?.length ?? 0), 0);
 
   if (isLoading) return <LoadingSpinner />;

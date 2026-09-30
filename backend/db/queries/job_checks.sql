@@ -246,6 +246,10 @@ ORDER BY created_at;
 DELETE FROM password_reset_tokens
 WHERE used_at IS NULL AND expires_at < NOW();
 
+-- name: DeleteExpiredActivationEmailTokens :execrows
+DELETE FROM activation_email_tokens
+WHERE used_at IS NULL AND expires_at < NOW();
+
 -- ── Audit-log anomaly watcher ────────────────────────────────────────────────
 -- Replaces a single fixed threshold with a per-actor statistical baseline:
 -- SecurityAuditAgent computes each active actor's mean and standard

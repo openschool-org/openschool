@@ -44,7 +44,7 @@ func (r *Repository) listSessionsByClass(ctx context.Context, classID uuid.UUID)
 	}
 	out := make([]Session, len(rows))
 	for i, row := range rows {
-		out[i] = mapSession(row)
+		out[i] = Session{ID: row.ID, ClassID: row.ClassID, TakenBy: row.TakenBy, Date: row.Date, CreatedAt: row.CreatedAt, PresentCount: &row.PresentCount, AbsentCount: &row.AbsentCount}
 	}
 	return out, nil
 }

@@ -30,10 +30,11 @@ deployment rather than a multi-tenant model.
 - **Not multi-tenant.** Running more than one school on one OpenSchool
   deployment isn't supported; each school needs its own deployment
   (database + backend + frontend).
-- **The invariant is application-level, not DB-enforced.** Nothing stops
-  two `academic_years` rows from both having `is_current = true` at the
-  database level; behavior if that happens is undefined and untested.
-  `SetCurrentAcademicYear` is the only sanctioned way to change it.
+- **The invariant is enforced by the database** since migration 000054:
+  a deferred exclusion constraint allows only one current academic year
+  and one current term. `SetCurrentAcademicYear` and `SetCurrentTerm`
+  flip the old and new rows in one statement, which the deferred check
+  permits. Creating a year as current goes through the same toggle.
 - **Promotion's preview-then-commit flow gets a "draft" concept for
   free.** This was a deliberate reuse, not an oversight - see
   `docs/plan.md` Phase 5 for the original reasoning.

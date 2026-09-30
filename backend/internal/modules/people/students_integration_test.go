@@ -65,7 +65,7 @@ func TestStudentProvisioningAPIWithPostgres(t *testing.T) {
 		c.Set("userID", actorID.String())
 		c.Next()
 	})
-	RegisterStudentRoutes(group, group, service, store, service, nil)
+	RegisterStudentRoutes(group, group, service, store, service, nil, nil)
 
 	request := CreateStudentRequest{
 		Email: "student@example.test", FullName: "Test Student", CallingName: "Testy",
@@ -107,7 +107,7 @@ func TestStudentProvisioningAPIWithPostgres(t *testing.T) {
 
 	request.IndexNumber = "STU-002"
 	duplicateEmail := performStudentRequest(t, router, request)
-	if duplicateEmail.Code != http.StatusBadRequest || !slices.Contains(provider.deleted, duplicateEmailUserID.String()) {
+	if duplicateEmail.Code != http.StatusConflict || !slices.Contains(provider.deleted, duplicateEmailUserID.String()) {
 		t.Fatalf("duplicate email rollback: code=%d deleted=%v body=%s", duplicateEmail.Code, provider.deleted, duplicateEmail.Body.String())
 	}
 	assertUserAbsent(t, pool, duplicateEmailUserID)

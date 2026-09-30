@@ -98,3 +98,20 @@ SELECT EXISTS (
     INNER JOIN classes c ON c.id = cst.class_id
     WHERE cst.teacher_id = $1 AND c.academic_year_id = $2
 ) AS is_subject_teacher;
+
+-- name: TeacherClassAccess :one
+-- The caller's teacher profile, the class's grade and year, and whether they teach the class.
+SELECT tp.id AS teacher_id, c.grade_id, c.academic_year_id,
+       (c.form_teacher_id IS NOT DISTINCT FROM tp.id
+        OR EXISTS (SELECT 1 FROM class_subject_teachers cst WHERE cst.class_id = c.id AND cst.teacher_id = tp.id))::bool AS assigned
+FROM teacher_profiles tp
+CROSS JOIN classes c
+WHERE tp.user_id = sqlc.arg(user_id) AND c.id = sqlc.arg(class_id);
+
+-- name: CurrentClassOfStudent :one
+SELECT cs.class_id
+FROM class_students cs
+JOIN classes c         ON c.id = cs.class_id
+JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current
+WHERE cs.student_id = $1
+LIMIT 1;

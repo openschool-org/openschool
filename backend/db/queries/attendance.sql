@@ -21,9 +21,15 @@ DELETE FROM attendance_sessions
 WHERE id = $1;
 
 -- name: ListAttendanceSessionsByClass :many
-SELECT * FROM attendance_sessions
-WHERE class_id = $1
-ORDER BY date DESC;
+-- Counts come with each session so lists need no request per row.
+SELECT ats.*,
+       COUNT(ar.id) FILTER (WHERE ar.status = 'present') AS present_count,
+       COUNT(ar.id) FILTER (WHERE ar.status = 'absent')  AS absent_count
+FROM attendance_sessions ats
+LEFT JOIN attendance_records ar ON ar.session_id = ats.id
+WHERE ats.class_id = $1
+GROUP BY ats.id
+ORDER BY ats.date DESC;
 
 -- name: ListAttendanceSessionsByDate :many
 -- the cross-class daily dashboard: every session on one date, with the class,

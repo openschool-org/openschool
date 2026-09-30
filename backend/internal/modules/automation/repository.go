@@ -211,6 +211,10 @@ func (r *Repository) DeleteExpiredPasswordResetTokens(ctx context.Context) (int6
 	return r.queries.DeleteExpiredPasswordResetTokens(ctx)
 }
 
+func (r *Repository) DeleteExpiredActivationEmailTokens(ctx context.Context) (int64, error) {
+	return r.queries.DeleteExpiredActivationEmailTokens(ctx)
+}
+
 func (r *Repository) ListOpenTermMarksProgress(ctx context.Context) ([]termMarksProgress, error) {
 	return mapRows(func() ([]db.ListOpenTermMarksProgressRow, error) { return r.queries.ListOpenTermMarksProgress(ctx) }, func(row db.ListOpenTermMarksProgressRow) termMarksProgress {
 		return termMarksProgress{Name: row.Name, StartDate: row.StartDate.Time, EndDate: row.EndDate.Time, AcademicYearLabel: row.AcademicYearLabel, EnrolledStudents: row.EnrolledStudents, StudentsWithMarks: row.StudentsWithMarks}

@@ -9,6 +9,9 @@ export interface AttendanceSession {
   taken_by_name?: string;
   date: string;
   created_at: string | null;
+  // only on a class's session list
+  present_count?: number;
+  absent_count?: number;
 }
 
 export interface CreateSessionRequest {

@@ -10,8 +10,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/openschool-org/openschool/internal/apierror"
+	"github.com/openschool-org/openschool/internal/middleware"
 	"github.com/openschool-org/openschool/internal/platform/httpx"
+	"github.com/openschool-org/openschool/internal/ports"
 )
+
+// ErrAlreadyInClass stops a silent no-op: a student may be in only one class per academic year.
+var ErrAlreadyInClass = errors.New("this student is already in a class this academic year - remove them from it first")
 
 var ErrTeacherNotQualified = errors.New("teacher does not hold this subject as a qualification — assign it on the Teacher Subjects page first")
 
@@ -36,6 +41,8 @@ type ClassDetails struct {
 	AcademicYearLabel string  `json:"academic_year_label"`
 	MediumName        *string `json:"medium_name"`
 	HomeClassroomName *string `json:"home_classroom_name"`
+	// StudentCount is filled only on the current-year class list.
+	StudentCount *int64 `json:"student_count,omitempty"`
 }
 type SubjectTeacher struct {
 	SubjectID   uuid.UUID `json:"subject_id"`
@@ -87,11 +94,14 @@ type classStore interface {
 	qualified(context.Context, uuid.UUID, uuid.UUID) (bool, error)
 	assignSubjectTeacher(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error
 	listSubjectTeachers(context.Context, uuid.UUID) ([]SubjectTeacher, error)
-	enroll(context.Context, uuid.UUID, uuid.UUID) error
+	enroll(context.Context, uuid.UUID, uuid.UUID) (bool, error)
 	unenroll(context.Context, uuid.UUID, uuid.UUID) error
 }
 
-type classService struct{ store classStore }
+type classService struct {
+	store classStore
+	audit ports.AuditRecorder
+}
 
 func (s *classService) create(c context.Context, r createClassRequest) (Class, error) {
 	if r.Capacity != nil && *r.Capacity <= 0 {
@@ -136,10 +146,40 @@ func (s *classService) subjectTeacher(c context.Context, id uuid.UUID, r subject
 	return s.store.assignSubjectTeacher(c, id, r.SubjectID, r.TeacherID)
 }
 
+func (s *classService) enroll(c context.Context, id, student, actor uuid.UUID) error {
+	added, err := s.store.enroll(c, id, student)
+	if err != nil {
+		return err
+	}
+	if !added {
+		return ErrAlreadyInClass
+	}
+	s.record(c, id, "student_enrolled", actor, student)
+	return nil
+}
+func (s *classService) unenroll(c context.Context, id, student, actor uuid.UUID) error {
+	if err := s.store.unenroll(c, id, student); err != nil {
+		return err
+	}
+	s.record(c, id, "student_unenrolled", actor, student)
+	return nil
+}
+
+// record is best effort: a failed audit write must not undo a roster change that already happened.
+func (s *classService) record(c context.Context, classID uuid.UUID, action string, actor, student uuid.UUID) {
+	if s.audit == nil {
+		return
+	}
+	_ = s.audit.Record(c, "class", classID, action, actor, nil, struct {
+		StudentID uuid.UUID `json:"student_id"`
+	}{student}, "")
+}
+
 type classHandler struct{ service *classService }
 
-func RegisterClassRoutes(admin, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool) {
-	h := &classHandler{service: &classService{store: newClassRepository(pool)}}
+// RegisterClassRoutes lets teachers change only the rosters of classes they teach or lead.
+func RegisterClassRoutes(admin, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.Pool, access ports.ClassAccess, audit ports.AuditRecorder) {
+	h := &classHandler{service: &classService{store: newClassRepository(pool), audit: audit}}
 	admin.POST("/classes", h.create)
 	teacherOrAdmin.GET("/classes/current", h.current)
 	teacherOrAdmin.GET("/classes/:id", h.get)
@@ -151,8 +191,8 @@ func RegisterClassRoutes(admin, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.P
 	admin.GET("/classes/:id/subject-teachers", h.subjectTeachers)
 	teacherOrAdmin.GET("/academic-years/:academic_year_id/classes", h.byYear)
 	admin.POST("/academic-years/:academic_year_id/classes/homerooms", h.backfillHomerooms)
-	teacherOrAdmin.POST("/classes/:id/students/:student_id/enroll", h.enroll)
-	teacherOrAdmin.DELETE("/classes/:id/students/:student_id/unenroll", h.unenroll)
+	teacherOrAdmin.POST("/classes/:id/students/:student_id/enroll", middleware.RequireClassAccess(access, "id"), h.enroll)
+	teacherOrAdmin.DELETE("/classes/:id/students/:student_id/unenroll", middleware.RequireClassAccess(access, "id"), h.unenroll)
 }
 func classID(c *gin.Context, name string) (uuid.UUID, bool) {
 	id, err := uuid.Parse(c.Param(name))
@@ -170,7 +210,7 @@ func (h *classHandler) create(c *gin.Context) {
 	}
 	v, e := h.service.create(c, r)
 	if e != nil {
-		c.JSON(400, gin.H{"error": e.Error()})
+		apierror.Respond(c, e)
 		return
 	}
 	c.JSON(201, v)
@@ -204,7 +244,7 @@ func (h *classHandler) get(c *gin.Context) {
 func (h *classHandler) current(c *gin.Context) {
 	v, e := h.service.current(c)
 	if e != nil {
-		c.JSON(500, gin.H{"error": e.Error()})
+		apierror.Respond(c, e)
 		return
 	}
 	c.JSON(200, v)
@@ -216,7 +256,7 @@ func (h *classHandler) byYear(c *gin.Context) {
 	}
 	v, e := h.service.byYear(c, id)
 	if e != nil {
-		c.JSON(500, gin.H{"error": e.Error()})
+		apierror.Respond(c, e)
 		return
 	}
 	c.JSON(200, v)
@@ -233,7 +273,7 @@ func (h *classHandler) update(c *gin.Context) {
 	}
 	v, e := h.service.update(c, id, r)
 	if e != nil {
-		c.JSON(400, gin.H{"error": e.Error()})
+		apierror.Respond(c, e)
 		return
 	}
 	c.JSON(200, v)
@@ -244,7 +284,7 @@ func (h *classHandler) delete(c *gin.Context) {
 		return
 	}
 	if e := h.service.delete(c, id); e != nil {
-		c.JSON(400, gin.H{"error": e.Error()})
+		apierror.Respond(c, e)
 		return
 	}
 	c.JSON(200, gin.H{"message": "class deleted"})
@@ -261,7 +301,7 @@ func (h *classHandler) formTeacher(c *gin.Context) {
 	}
 	v, e := h.service.formTeacher(c, id, r.TeacherID)
 	if e != nil {
-		c.JSON(400, gin.H{"error": e.Error()})
+		apierror.Respond(c, e)
 		return
 	}
 	c.JSON(200, v)
@@ -278,7 +318,7 @@ func (h *classHandler) monitors(c *gin.Context) {
 	}
 	v, e := h.service.monitors(c, id, r)
 	if e != nil {
-		c.JSON(400, gin.H{"error": e.Error()})
+		apierror.Respond(c, e)
 		return
 	}
 	c.JSON(200, v)
@@ -294,7 +334,7 @@ func (h *classHandler) subjectTeacher(c *gin.Context) {
 		return
 	}
 	if e := h.service.subjectTeacher(c, id, r); e != nil {
-		c.JSON(400, gin.H{"error": e.Error()})
+		apierror.Respond(c, e)
 		return
 	}
 	c.JSON(200, gin.H{"message": "subject teacher assigned"})
@@ -306,7 +346,7 @@ func (h *classHandler) subjectTeachers(c *gin.Context) {
 	}
 	v, e := h.service.store.listSubjectTeachers(c, id)
 	if e != nil {
-		c.JSON(500, gin.H{"error": e.Error()})
+		apierror.Respond(c, e)
 		return
 	}
 	c.JSON(200, v)
@@ -320,8 +360,16 @@ func (h *classHandler) enroll(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if e := h.service.store.enroll(c, id, student); e != nil {
-		c.JSON(400, gin.H{"error": e.Error()})
+	actor, err := middleware.UserIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
+		return
+	}
+	if e := h.service.enroll(c, id, student, actor); errors.Is(e, ErrAlreadyInClass) {
+		c.JSON(http.StatusConflict, gin.H{"error": e.Error()})
+		return
+	} else if e != nil {
+		apierror.RespondInternal(c, e)
 		return
 	}
 	c.JSON(200, gin.H{"message": "student enrolled"})
@@ -335,8 +383,13 @@ func (h *classHandler) unenroll(c *gin.Context) {
 	if !ok {
 		return
 	}
-	if e := h.service.store.unenroll(c, id, student); e != nil {
-		c.JSON(400, gin.H{"error": e.Error()})
+	actor, err := middleware.UserIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
+		return
+	}
+	if e := h.service.unenroll(c, id, student, actor); e != nil {
+		apierror.RespondInternal(c, e)
 		return
 	}
 	c.JSON(200, gin.H{"message": "student unenrolled"})

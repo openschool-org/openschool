@@ -36,6 +36,9 @@ type Session struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	// TakenByName is filled only when one session is fetched by id.
 	TakenByName string `json:"taken_by_name,omitempty"`
+	// Counts are filled only on a class's session list.
+	PresentCount *int64 `json:"present_count,omitempty"`
+	AbsentCount  *int64 `json:"absent_count,omitempty"`
 }
 
 type Record struct {

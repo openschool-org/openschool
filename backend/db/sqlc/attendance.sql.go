@@ -359,26 +359,44 @@ func (q *Queries) ListAttendanceRecordsForClassInRange(ctx context.Context, arg 
 }
 
 const listAttendanceSessionsByClass = `-- name: ListAttendanceSessionsByClass :many
-SELECT id, class_id, taken_by, date, created_at FROM attendance_sessions
-WHERE class_id = $1
-ORDER BY date DESC
+SELECT ats.id, ats.class_id, ats.taken_by, ats.date, ats.created_at,
+       COUNT(ar.id) FILTER (WHERE ar.status = 'present') AS present_count,
+       COUNT(ar.id) FILTER (WHERE ar.status = 'absent')  AS absent_count
+FROM attendance_sessions ats
+LEFT JOIN attendance_records ar ON ar.session_id = ats.id
+WHERE ats.class_id = $1
+GROUP BY ats.id
+ORDER BY ats.date DESC
 `
 
-func (q *Queries) ListAttendanceSessionsByClass(ctx context.Context, classID uuid.UUID) ([]AttendanceSession, error) {
+type ListAttendanceSessionsByClassRow struct {
+	ID           uuid.UUID          `json:"id"`
+	ClassID      uuid.UUID          `json:"class_id"`
+	TakenBy      uuid.UUID          `json:"taken_by"`
+	Date         pgtype.Date        `json:"date"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	PresentCount int64              `json:"present_count"`
+	AbsentCount  int64              `json:"absent_count"`
+}
+
+// Counts come with each session so lists need no request per row.
+func (q *Queries) ListAttendanceSessionsByClass(ctx context.Context, classID uuid.UUID) ([]ListAttendanceSessionsByClassRow, error) {
 	rows, err := q.db.Query(ctx, listAttendanceSessionsByClass, classID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []AttendanceSession{}
+	items := []ListAttendanceSessionsByClassRow{}
 	for rows.Next() {
-		var i AttendanceSession
+		var i ListAttendanceSessionsByClassRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ClassID,
 			&i.TakenBy,
 			&i.Date,
 			&i.CreatedAt,
+			&i.PresentCount,
+			&i.AbsentCount,
 		); err != nil {
 			return nil, err
 		}

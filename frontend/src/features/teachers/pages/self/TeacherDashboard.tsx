@@ -2,7 +2,6 @@ import { POSITION_RANK } from "@/shared/lib/constants/people";
 import { useQueries } from "@tanstack/react-query";
 import { useMyClasses, useTeacherSubjects } from "@/features/teachers/queries/useTeachers";
 import { classSessionsOptions } from "@/features/attendance/queries/useAttendance";
-import { studentsByClassOptions } from "@/features/students/queries/useStudents";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useTerms } from "@/features/school/queries/useTerms";
 import { useMyPosition, useMyLeadershipOverview } from "@/features/positions/queries/usePositions";
@@ -32,11 +31,9 @@ export default function TeacherDashboard() {
 
   const classIds = myClasses.map((c) => c.class_id);
 
-  const studentQueries = useQueries({ queries: classIds.map(studentsByClassOptions) });
   const sessionQueries = useQueries({ queries: classIds.map(classSessionsOptions) });
 
-  const studentCountByClass = new Map(classIds.map((id, i) => [id, studentQueries[i]?.data?.length ?? 0]));
-  const studentsLoading = studentQueries.some((q) => q.isLoading);
+  const studentCountByClass = new Map(myClasses.map((c) => [c.class_id, c.studentCount]));
   const totalStudents = [...studentCountByClass.values()].reduce((sum, n) => sum + n, 0);
 
   // From each class's own sessions: the date-wide list is leadership-only and is empty for most teachers.
@@ -85,7 +82,7 @@ export default function TeacherDashboard() {
 
       <div className="os-stat-grid">
         <StatCard label="My classes" value={myClasses.length} loading={false} Icon={Building} path="/t/classes" />
-        <StatCard label="Students" value={totalStudents} loading={studentsLoading} Icon={UserMultiple} path="/t/classes" />
+        <StatCard label="Students" value={totalStudents} loading={false} Icon={UserMultiple} path="/t/classes" />
         <StatCard label="Marked today" value={markedCount} loading={false} Icon={CheckmarkOutline} path="/t/attendance" />
         <StatCard label="Not marked yet" value={pendingCount} loading={false} Icon={Time} path="/t/attendance" />
       </div>

@@ -12,6 +12,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const deleteExpiredActivationEmailTokens = `-- name: DeleteExpiredActivationEmailTokens :execrows
+DELETE FROM activation_email_tokens
+WHERE used_at IS NULL AND expires_at < NOW()
+`
+
+func (q *Queries) DeleteExpiredActivationEmailTokens(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredActivationEmailTokens)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteExpiredPasswordResetTokens = `-- name: DeleteExpiredPasswordResetTokens :execrows
 
 DELETE FROM password_reset_tokens

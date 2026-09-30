@@ -208,6 +208,7 @@ func (r *classRepository) listCurrent(ctx context.Context) ([]ClassDetails, erro
 	out := make([]ClassDetails, len(rows))
 	for i, v := range rows {
 		out[i] = mapDetails(v.ID, v.GradeID, v.AcademicYearID, v.FormTeacherID, v.StreamID, v.StreamGroupID, v.GirlMonitorID, v.BoyMonitorID, v.MediumID, v.HomeClassroomID, v.Capacity, v.Name, v.CreatedAt, v.GradeName, v.AcademicYearLabel, v.MediumName, v.HomeClassroomName)
+		out[i].StudentCount = &v.StudentCount
 	}
 	return out, nil
 }
@@ -266,8 +267,9 @@ func (r *classRepository) listSubjectTeachers(ctx context.Context, id uuid.UUID)
 	}
 	return out, nil
 }
-func (r *classRepository) enroll(ctx context.Context, id, student uuid.UUID) error {
-	return r.queries.EnrollStudentInClass(ctx, db.EnrollStudentInClassParams{ClassID: id, StudentID: student})
+func (r *classRepository) enroll(ctx context.Context, id, student uuid.UUID) (bool, error) {
+	n, err := r.queries.EnrollStudentInClass(ctx, db.EnrollStudentInClassParams{ClassID: id, StudentID: student})
+	return n == 1, err
 }
 func (r *classRepository) unenroll(ctx context.Context, id, student uuid.UUID) error {
 	return r.queries.UnenrollStudentFromClass(ctx, db.UnenrollStudentFromClassParams{ClassID: id, StudentID: student})

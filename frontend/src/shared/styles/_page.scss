@@ -195,18 +195,6 @@
 
 .os-dashboard-recent { width: 100%; }
 
-.os-current-period {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
-  background: var(--os-layer);
-  border: 1px solid var(--os-border-subtle);
-  border-left: 0.125rem solid $os-accent;
-  &__icon { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; flex-shrink: 0; color: $os-accent-dark; background: var(--os-layer-hover); }
-  &__title { margin: 0.125rem 0 0.25rem; color: $os-text-primary; font-size: 1.25rem; font-weight: 600; }
-}
-
 .os-terms-modal-intro { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 1.25rem; padding: 0.875rem 1rem; background: var(--os-layer-hover); border-left: 0.125rem solid $os-accent; }
 .os-terms-empty { padding: 1rem; background: var(--os-layer-hover); border: 1px dashed var(--os-border-strong); }
 .os-term-list { display: grid; gap: 0.625rem; }
@@ -216,18 +204,6 @@
 .os-term-form-panel { padding: 1rem; background: var(--os-layer-hover); border: 1px solid var(--os-border-subtle); }
 .os-term-form-panel__heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 
-.os-society-summary {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
-  background: var(--os-layer);
-  border: 1px solid var(--os-border-subtle);
-  border-left: 0.125rem solid $os-accent;
-  &__icon { display: grid; place-items: center; width: 2.5rem; height: 2.5rem; flex-shrink: 0; color: $os-accent-dark; background: var(--os-layer-hover); }
-  &__title { margin: 0.125rem 0 0.25rem; color: $os-text-primary; font-size: 1.25rem; font-weight: 600; }
-  &__stat { display: flex; flex-direction: column; align-items: flex-end; padding-right: 0.75rem; border-right: 1px solid var(--os-accent-border); strong { color: $os-accent-dark; font-size: 1.5rem; line-height: 1; } span { margin-top: 0.25rem; color: $os-text-tertiary; font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.05em; } }
-}
 .os-society-directory { overflow: hidden; }
 .os-society-list-row { display: flex; align-items: center; gap: 0.75rem; width: 100%; text-align: left; }
 .os-society-list-row__icon { display: grid; place-items: center; width: 2rem; height: 2rem; flex-shrink: 0; color: $os-accent-dark; background: var(--os-layer-hover); }
@@ -638,7 +614,7 @@
     flex-shrink: 0;
     font-size: 1.1rem;
     font-weight: 700;
-    color: #ffffff;
+    color: $os-text-on-color;
     letter-spacing: 0.02em;
   }
 

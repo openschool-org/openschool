@@ -172,13 +172,13 @@ func RegisterTeacherReadRoutes(teacherOrAdmin, admin *gin.RouterGroup, reader Te
 	teacherOrAdmin.GET("/teachers", func(c *gin.Context) {
 		params := TeacherListParams{PageParams: httpx.ParsePage(c), Sort: httpx.ParseSort(c, "name", "employee", "joined", "status"), Status: c.Query("status")}
 		value, err := reader.ListPage(c, params)
-		readTeachers(c, value, err)
+		readTeachers(c, hideNIC(c, value), err)
 	})
 	teacherOrAdmin.GET("/teachers/:id", func(c *gin.Context) {
 		id, ok := teacherID(c)
 		if ok {
 			value, err := reader.Get(c, id)
-			readTeachers(c, value, err)
+			readTeachers(c, hideNIC(c, value), err)
 		}
 	})
 	teacherOrAdmin.GET("/teachers/:id/subjects", func(c *gin.Context) {

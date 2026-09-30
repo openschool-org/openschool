@@ -509,3 +509,31 @@ func (r *teacherReader) Workload(c context.Context, id uuid.UUID) (any, error) {
 func (r *teacherReader) BySubject(c context.Context, id uuid.UUID) (any, error) {
 	return r.queries.ListTeachersBySubject(c, id)
 }
+
+// withoutNIC blanks the NIC on guardian and teacher read rows; see hideNIC.
+func withoutNIC(value any) any {
+	switch v := value.(type) {
+	case db.Guardian:
+		v.NicNumber = ""
+		return v
+	case httpx.Page[db.ListGuardiansRow]:
+		for i := range v.Items {
+			v.Items[i].NicNumber = ""
+		}
+		return v
+	case []db.ListGuardiansByStudentRow:
+		for i := range v {
+			v[i].NicNumber = ""
+		}
+		return v
+	case db.GetTeacherByIDRow:
+		v.NicNumber = ""
+		return v
+	case httpx.Page[db.ListTeachersPageRow]:
+		for i := range v.Items {
+			v.Items[i].NicNumber = ""
+		}
+		return v
+	}
+	return value
+}

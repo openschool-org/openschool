@@ -127,7 +127,7 @@ export default function TeacherClasses() {
               <InfoRow label="Your role" value={activeClass.isFormTeacher ? "Class teacher" : "Subject teacher"} />
               {/* Class subjects come from Class > Subjects in admin; qualifications from Teacher subjects. */}
               <InfoRow label="Subjects in this class" value={activeClass.subjects.length > 0 ? activeClass.subjects.join(", ") : "None assigned yet"} />
-              <InfoRow label="Your subjects" value={qualified && qualified.length > 0 ? qualified.map((q) => q.name).join(", ") : "-"} />
+              <InfoRow label="Your subjects" value={qualified && qualified.length > 0 ? qualified.map((q) => `${q.name} (${q.code})`).join(", ") : "-"} />
               <InfoRow label="Students" value={roster?.length ?? 0} divider={false} />
             </div>
           </div>
