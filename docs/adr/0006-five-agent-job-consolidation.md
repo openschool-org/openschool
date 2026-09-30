@@ -34,3 +34,8 @@ size-anomaly detection) were added during the same pass.
 - A new check for an existing concern is a method on that domain's agent,
   not a new file wired into the scheduler - fewer places to wire up, but
   larger agent files.
+- **Update (v0.3.0):** two more agents were added on the same pattern,
+  `data_retention_agent` and `identity_erasure_retry_agent`, so there are
+  now seven. The security audit agent's link sweep also removes expired
+  activation links. Year-end workflows are listed beside the agents on the
+  Automation page but are run by an admin, not on a schedule.

@@ -37,7 +37,8 @@ channel.
 - **Revisiting this decision** (adding email/SMS) is a substantial-enough
   scope change that it should get its own ADR rather than being folded
   into a notification-module bug fix.
-- **Not violated by the password-reset email** (`internal/mailer`, see
-  [ADR 0005](./0005-hand-rolled-password-reset.md)) - that's a one-time,
-  unauthenticated delivery for a user who can't yet see an in-app
-  notification, not a second channel for the notification feature itself.
+- **Not violated by account emails** (password reset, activation links and
+  their confirmations; see [ADR 0005](./0005-hand-rolled-password-reset.md)
+  and [ADR 0009](./0009-transactional-email.md)) - those are one-time
+  deliveries for a user who can't yet see an in-app notification, not a
+  second channel for the notification feature itself.
