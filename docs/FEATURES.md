@@ -259,6 +259,18 @@ teachers and guardians, so only admins see them.
   portal (`/me/teacher/attendance`, scoped to the caller's own profile -
   distinct from "Class Attendance", which is where a teacher marks *their
   students'* attendance).
+- **Teacher leave** - a teacher applies from **"My Leave"** in the teacher
+  portal for casual, medical, short, duty, maternity or no-pay leave,
+  including a morning or afternoon half day or a short leave of up to 90
+  minutes for the day they are already at school. The form lists the
+  timetabled periods they will miss and they name a relief teacher for
+  each from the colleagues free in that period. The Principal or a Vice
+  Principal approves or rejects it from **"Teacher Leave"** (admins from
+  the same page in the admin portal), which also shows each teacher's
+  balance for the year and the day's relief sheet. Approval marks the
+  leave days on staff attendance and notifies the teacher and their
+  relief teachers. Rules and limits are in
+  [ADR 0010](adr/0010-teacher-leave-rules.md).
 
 ## Academic records
 
@@ -583,7 +595,7 @@ by the `roles` claim on their token (never a separate URL per role):
 | Role | Landing experience |
 | --- | --- |
 | **Admin** | Full dashboard: everything above |
-| **Teacher** | Own dashboard (today's attendance with progress, stat tiles, recent sessions with present/absent/late, quick actions, rank badge), classes with class and qualified subjects, attendance marking, My Timetable, Review Timetables (if Section Head+), Notifications scoped to their own classes/grades/subjects |
+| **Teacher** | Own dashboard (today's attendance with progress, stat tiles, recent sessions with present/absent/late, quick actions, rank badge), classes with class and qualified subjects, attendance marking, My Timetable, Review Timetables (if Section Head+), My Leave (and Teacher Leave approvals for the Principal and Vice Principals), Notifications scoped to their own classes/grades/subjects |
 | **Student** | Own profile, attendance history, term marks, timetable (once published), Notification Center |
 | **Parent** | Overview with attendance this month across children, each child's attendance and latest average, and recent notices; per child, attendance/marks/timetable; own Notification Center |
 

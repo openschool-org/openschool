@@ -51,6 +51,7 @@ type Querier interface {
 	// Paired via WITH ORDINALITY rather than the two-array UNNEST(a, b) form,
 	// since sqlc's static analyzer doesn't resolve that overload.
 	BulkInsertClassStudents(ctx context.Context, arg BulkInsertClassStudentsParams) error
+	CancelLeaveRequest(ctx context.Context, arg CancelLeaveRequestParams) (int64, error)
 	// Marks the code used before any account is created, so two requests can't both activate.
 	ClaimActivationCode(ctx context.Context, id uuid.UUID) (int64, error)
 	// Removes marks the teacher un-set, so a cleared student goes back to "not marked".
@@ -74,6 +75,8 @@ type Querier interface {
 	CountGroupSubjects(ctx context.Context, groupID uuid.UUID) (int64, error)
 	CountMyNotificationBoxes(ctx context.Context, userID uuid.UUID) (CountMyNotificationBoxesRow, error)
 	CountMyUnreadNotifications(ctx context.Context, userID uuid.UUID) (int64, error)
+	CountOverlappingLeave(ctx context.Context, arg CountOverlappingLeaveParams) (int64, error)
+	CountShortLeaveInMonth(ctx context.Context, arg CountShortLeaveInMonthParams) (int64, error)
 	CountSubjectsByTeacher(ctx context.Context, teacherID uuid.UUID) (int64, error)
 	CountUsersByRole(ctx context.Context, role string) (int64, error)
 	CreateAcademicYear(ctx context.Context, arg CreateAcademicYearParams) (AcademicYear, error)
@@ -89,6 +92,7 @@ type Querier interface {
 	CreateGuardian(ctx context.Context, arg CreateGuardianParams) (Guardian, error)
 	CreateHouse(ctx context.Context, arg CreateHouseParams) (House, error)
 	CreateJobRun(ctx context.Context, arg CreateJobRunParams) (JobRun, error)
+	CreateLeaveRequest(ctx context.Context, arg CreateLeaveRequestParams) (uuid.UUID, error)
 	// ── levels ──────────────────────────────────────────────────────────────────
 	CreateLevel(ctx context.Context, arg CreateLevelParams) (Level, error)
 	// ── mediums ─────────────────────────────────────────────────────────────────
@@ -160,6 +164,9 @@ type Querier interface {
 	DashboardSubjectPerformance(ctx context.Context) ([]DashboardSubjectPerformanceRow, error)
 	DashboardTimetableCompletion(ctx context.Context) (DashboardTimetableCompletionRow, error)
 	DeactivateUser(ctx context.Context, id uuid.UUID) (User, error)
+	// only a pending request can be decided, so two approvers acting at once
+	// cannot both win
+	DecideLeaveRequest(ctx context.Context, arg DecideLeaveRequestParams) (int64, error)
 	DeleteAcademicYear(ctx context.Context, id uuid.UUID) (int64, error)
 	// attendance_records cascade with the session
 	DeleteAttendanceSession(ctx context.Context, id uuid.UUID) error
@@ -274,6 +281,7 @@ type Querier interface {
 	GetGuardianChildrenSummary(ctx context.Context, userID pgtype.UUID) ([]GetGuardianChildrenSummaryRow, error)
 	GetHouseByID(ctx context.Context, id uuid.UUID) (House, error)
 	GetJobSetting(ctx context.Context, jobName string) (JobSetting, error)
+	GetLeaveRequest(ctx context.Context, id uuid.UUID) (GetLeaveRequestRow, error)
 	GetLevelByID(ctx context.Context, id uuid.UUID) (Level, error)
 	GetMaxVersionForClass(ctx context.Context, arg GetMaxVersionForClassParams) (int32, error)
 	GetMediumByID(ctx context.Context, id uuid.UUID) (Medium, error)
@@ -325,6 +333,7 @@ type Querier interface {
 	GetWorkflowRun(ctx context.Context, id uuid.UUID) (WorkflowRun, error)
 	GetWorkflowRunForUpdate(ctx context.Context, id uuid.UUID) (WorkflowRun, error)
 	InsertActivationCodes(ctx context.Context, arg []InsertActivationCodesParams) (int64, error)
+	InsertLeaveRelief(ctx context.Context, arg InsertLeaveReliefParams) error
 	InsertVicePrincipalScope(ctx context.Context, arg InsertVicePrincipalScopeParams) error
 	// used by PositionService.RankForTeacher to detect "Class Teacher" rank,
 	// since that's classes.form_teacher_id rather than a teacher_positions row.
@@ -526,6 +535,15 @@ type Querier interface {
 	ListJobSettings(ctx context.Context) ([]JobSetting, error)
 	// one row per job_name: its most recent run, for the Automation panel.
 	ListLatestJobRuns(ctx context.Context) ([]JobRun, error)
+	// the Principal and every Vice Principal, who receive new applications
+	ListLeaveApproverUserIDs(ctx context.Context, excludeTeacherID uuid.UUID) ([]uuid.UUID, error)
+	// approved days per type for every active teacher in a leave year
+	ListLeaveBalances(ctx context.Context, arg ListLeaveBalancesParams) ([]ListLeaveBalancesRow, error)
+	ListLeaveRelief(ctx context.Context, leaveRequestID uuid.UUID) ([]ListLeaveReliefRow, error)
+	// The leave register. The caller-supplied search term is escaped by
+	// httpx.ParsePage before it reaches here.
+	// pending first, since that is the approver's queue
+	ListLeaveRequestsPage(ctx context.Context, arg ListLeaveRequestsPageParams) ([]ListLeaveRequestsPageRow, error)
 	ListLevels(ctx context.Context) ([]Level, error)
 	ListLevelsByGrade(ctx context.Context, gradeID pgtype.UUID) ([]Level, error)
 	ListMediums(ctx context.Context) ([]Medium, error)
@@ -538,6 +556,8 @@ type Querier interface {
 	// filtering happens client-side, matching this app's existing convention
 	// for list pages (see e.g. Subjects, Streams)
 	ListMyNotifications(ctx context.Context, userID uuid.UUID) ([]ListMyNotificationsRow, error)
+	// approved relief periods a teacher has been named for, from a date onward
+	ListMyReliefDuties(ctx context.Context, arg ListMyReliefDutiesParams) ([]ListMyReliefDutiesRow, error)
 	// Server-paginated (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 4).
 	// The caller-supplied search term is escaped by the service layer
 	// (httpx.EscapeLikeTerm) before it reaches here.
@@ -584,6 +604,12 @@ type Querier interface {
 	ListProgressReportsByStudent(ctx context.Context, studentID uuid.UUID) ([]ListProgressReportsByStudentRow, error)
 	// every published timetable (any class) the teacher has at least one entry in, for the given year
 	ListPublishedTimetablesForTeacher(ctx context.Context, arg ListPublishedTimetablesForTeacherParams) ([]Timetable, error)
+	// active teachers who are free in that period: not timetabled, not already
+	// relieving someone else, and not themselves away for the day. Fewest
+	// relief periods that day first, so relief duty is shared out.
+	ListReliefCandidates(ctx context.Context, arg ListReliefCandidatesParams) ([]ListReliefCandidatesRow, error)
+	// the day's relief sheet: every period someone on leave misses, and who covers it
+	ListReliefForDate(ctx context.Context, date pgtype.Date) ([]ListReliefForDateRow, error)
 	ListSectionHeadsByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListSectionHeadsByYearRow, error)
 	ListSelectionGroupsByLevel(ctx context.Context, levelID uuid.UUID) ([]SelectionGroup, error)
 	// everything needed to validate a set of picks against a level in one round trip
@@ -682,6 +708,9 @@ type Querier interface {
 	ListTeacherAttendanceByDate(ctx context.Context, date pgtype.Date) ([]ListTeacherAttendanceByDateRow, error)
 	ListTeacherAttendanceHistory(ctx context.Context, arg ListTeacherAttendanceHistoryParams) ([]StaffAttendanceRecord, error)
 	ListTeacherAvailabilityByTeacherYear(ctx context.Context, arg ListTeacherAvailabilityByTeacherYearParams) ([]TeacherAvailability, error)
+	// every period the teacher takes in a published timetable this year, with
+	// its clock time and whether it falls after the interval (the afternoon)
+	ListTeacherPeriodsForLeave(ctx context.Context, arg ListTeacherPeriodsForLeaveParams) ([]ListTeacherPeriodsForLeaveRow, error)
 	ListTeacherPositions(ctx context.Context) ([]ListTeacherPositionsRow, error)
 	// a teacher's full weekly schedule across every published timetable, for
 	// the teacher's own "My Timetable" view
@@ -717,6 +746,7 @@ type Querier interface {
 	ListUnderReviewTimetablesForGrades(ctx context.Context, arg ListUnderReviewTimetablesForGradesParams) ([]ListUnderReviewTimetablesForGradesRow, error)
 	// Latest unread, unarchived agent notice per title for one admin; drives the page banners.
 	ListUnreadFindingsByTitle(ctx context.Context, arg ListUnreadFindingsByTitleParams) ([]ListUnreadFindingsByTitleRow, error)
+	ListUserIDsForTeachers(ctx context.Context, teacherIds []uuid.UUID) ([]uuid.UUID, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	ListUsersByRole(ctx context.Context, role string) ([]User, error)
 	ListVicePrincipalScopeGrades(ctx context.Context, positionID uuid.UUID) ([]ListVicePrincipalScopeGradesRow, error)
@@ -802,6 +832,9 @@ type Querier interface {
 	SetTeacherActiveStatus(ctx context.Context, arg SetTeacherActiveStatusParams) error
 	SetUserPreferredLanguage(ctx context.Context, arg SetUserPreferredLanguageParams) error
 	SubmitTimetableForReview(ctx context.Context, arg SubmitTimetableForReviewParams) (Timetable, error)
+	// days charged per leave type in a leave (calendar) year, split by whether
+	// they are approved or still waiting, so a balance check can count both
+	SumLeaveDaysByType(ctx context.Context, arg SumLeaveDaysByTypeParams) ([]SumLeaveDaysByTypeRow, error)
 	// The caller's teacher profile, the class's grade and year, and whether they teach the class.
 	TeacherClassAccess(ctx context.Context, arg TeacherClassAccessParams) (TeacherClassAccessRow, error)
 	UnenrollStudentFromClass(ctx context.Context, arg UnenrollStudentFromClassParams) error

@@ -1,6 +1,6 @@
 import {
   Home, ChartLine, UserMultiple, Education, Building, Book, Language, EventSchedule, Settings, Calendar,
-  Notification, UserFollow, UserAdmin, UserRole, Trophy, Renew, Table, Group, DocumentPdf, Idea,
+  Notification, UserFollow, UserAdmin, UserRole, Trophy, Renew, Table, Group, DocumentPdf, Idea, Departure,
 } from "@carbon/icons-react";
 import type { NavGroup } from "@/layouts/nav/types";
 
@@ -44,6 +44,7 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { path: "/attendance", label: "Student Attendance", Icon: EventSchedule },
       { path: "/staff-attendance", label: "Staff Attendance", Icon: Group },
+      { path: "/teacher-leave", label: "Teacher Leave", Icon: Departure },
       { path: "/year-end", label: "Year-end", Icon: Renew },
       { path: "/notifications", label: "Notifications", Icon: Notification },
       { path: "/reports", label: "Reports", Icon: DocumentPdf },
