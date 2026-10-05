@@ -21,6 +21,7 @@ current behavior.
 | [0007](./0007-plain-comments-over-swaggo.md) | Plain one-line doc comments in handlers instead of swaggo annotations | Accepted |
 | [0008](./0008-self-service-account-activation.md) | Self-service account activation with school-issued codes | Accepted |
 | [0009](./0009-transactional-email.md) | Branded transactional email through Resend or SMTP | Accepted |
+| [0010](./0010-teacher-leave-rules.md) | Teacher leave follows the Sri Lankan public service scheme | Accepted |
 
 ## Adding a new ADR
 
