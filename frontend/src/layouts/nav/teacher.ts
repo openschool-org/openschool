@@ -1,5 +1,5 @@
 import {
-  Home, Building, Table, Renew, Idea, EventSchedule, Calendar, Notification, Settings, Report, ChartLine,
+  Home, Building, Table, Renew, Idea, EventSchedule, Calendar, Notification, Settings, Report, ChartLine, Departure, TaskApproved,
 } from "@carbon/icons-react";
 import type { NavGroup } from "@/layouts/nav/types";
 
@@ -21,6 +21,7 @@ function teachingGroups(isSectionHead: boolean): NavGroup[] {
       items: [
         { path: "/t/attendance", label: "Class Attendance", Icon: EventSchedule },
         { path: "/t/my-attendance", label: "My Attendance", Icon: Calendar, exact: true },
+        { path: "/t/leave", label: "My Leave", Icon: Departure, exact: true },
       ],
     },
   ];
@@ -33,6 +34,8 @@ const LEADERSHIP_GROUPS: NavGroup[] = [
     items: [
       { path: "/t/analytics", label: "Analytics", Icon: ChartLine, exact: true },
       { path: "/t/all-timetables", label: "All Timetables", Icon: Table, exact: true },
+      { path: "/t/leave-approvals", label: "Teacher Leave", Icon: TaskApproved, exact: true },
+      { path: "/t/leave", label: "My Leave", Icon: Departure, exact: true },
     ],
   },
 ];
