@@ -17,6 +17,8 @@ const TimetableEditor = page(() => import("@/features/timetable/pages/admin/Time
 const MySociety = page(() => import("@/features/portfolio/pages/teacher/MySociety"));
 const TeacherMarks = page(() => import("@/features/marks/pages/teacher/TeacherMarks"));
 const TeacherAnalytics = page(() => import("@/features/reports/pages/teacher/TeacherAnalytics"));
+const MyLeave = page(() => import("@/features/leave/pages/teacher/MyLeave"));
+const LeaveRegister = page(() => import("@/features/leave/pages/admin/LeaveRegister"));
 const NotificationComposer = page(() => import("@/features/notifications/pages/NotificationComposer"));
 const NotificationCenter = page(() => import("@/features/notifications/pages/NotificationCenter"));
 
@@ -27,6 +29,8 @@ export function teacherRoutes() {
       <Route path="/t/classes" element={<TeacherClasses />} />
       <Route path="/t/attendance" element={<TeacherAttendance />} />
       <Route path="/t/my-attendance" element={<TeacherMyAttendance />} />
+      <Route path="/t/leave" element={<MyLeave />} />
+      <Route path="/t/leave-approvals" element={<LeaveRegister />} />
       <Route path="/t/timetable" element={<TeacherTimetable />} />
       <Route path="/t/timetable/review" element={<TimetableReview />} />
       <Route path="/t/my-society" element={<MySociety />} />
