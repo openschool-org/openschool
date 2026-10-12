@@ -32,7 +32,7 @@ export default function MyLeave() {
     { key: "days", header: "Days", render: (r) => leaveDays(r) },
     { key: "reason", header: "Reason", render: (r) => <span className="os-table__muted">{r.reason}</span> },
     { key: "status", header: "Status", render: (r) => <LeaveStatusTag status={r.status} /> },
-    { key: "note", header: "Principal's note", render: (r) => <span className="os-table__muted">{r.decision_note || "-"}</span> },
+    { key: "note", header: "Decision note", render: (r) => <span className="os-table__muted">{r.decision_note || "-"}</span> },
     {
       key: "actions",
       header: "Actions",

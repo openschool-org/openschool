@@ -238,11 +238,17 @@ ORDER BY r.date, r.period_number
 LIMIT 100;
 
 -- name: ListLeaveApproverUserIDs :many
--- the Principal and every Vice Principal, who receive new applications
-SELECT DISTINCT tp.user_id
-FROM teacher_positions p
-INNER JOIN teacher_profiles tp ON tp.id = p.teacher_id
-WHERE p.position IN ('principal', 'vice_principal') AND tp.id <> @exclude_teacher_id;
+-- administrators review the Principal's applications; the Principal reviews a Vice Principal's.
+SELECT DISTINCT u.id
+FROM users u
+WHERE (u.role = 'admin' AND EXISTS (SELECT 1 FROM teacher_positions applicant WHERE applicant.teacher_id = @exclude_teacher_id AND applicant.position = 'principal'))
+   OR u.id IN (
+       SELECT tp.user_id
+       FROM teacher_positions p
+       INNER JOIN teacher_profiles tp ON tp.id = p.teacher_id
+       WHERE (p.position = 'principal' AND NOT EXISTS (SELECT 1 FROM teacher_positions applicant WHERE applicant.teacher_id = @exclude_teacher_id AND applicant.position = 'principal'))
+          OR (p.position = 'vice_principal' AND NOT EXISTS (SELECT 1 FROM teacher_positions applicant WHERE applicant.teacher_id = @exclude_teacher_id AND applicant.position IN ('principal', 'vice_principal')))
+   );
 
 -- name: ListUserIDsForTeachers :many
 SELECT user_id FROM teacher_profiles WHERE id = ANY(@teacher_ids::uuid[]);

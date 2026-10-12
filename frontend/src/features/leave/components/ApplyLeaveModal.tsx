@@ -42,7 +42,7 @@ export default function ApplyLeaveModal({ open, onClose }: Props) {
     if (!form.isValid) return;
     apply.mutate(form.toRequest(), {
       onSuccess: () => {
-        showToast({ kind: "success", title: "Leave applied", subtitle: "The Principal has been told and will approve it." });
+        showToast({ kind: "success", title: "Leave applied", subtitle: "The Principal and Vice Principals have been notified and will review your request." });
         close();
       },
     });

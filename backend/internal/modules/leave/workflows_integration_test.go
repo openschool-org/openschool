@@ -284,11 +284,14 @@ func (s sqlAttendance) MarkTeacherOnLeave(ctx context.Context, teacherID uuid.UU
 }
 
 type recordingNotifier struct {
+	mu        sync.Mutex
 	lastTitle string
 	lastUsers []uuid.UUID
 }
 
 func (n *recordingNotifier) SendDirect(_ context.Context, title, _, _, _ string, _ uuid.UUID, users []uuid.UUID) error {
+	n.mu.Lock()
+	defer n.mu.Unlock()
 	n.lastTitle, n.lastUsers = title, users
 	return nil
 }

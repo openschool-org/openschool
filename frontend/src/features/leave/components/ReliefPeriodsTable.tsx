@@ -52,7 +52,11 @@ export default function ReliefPeriodsTable({ periods, truncated, isLoading, reli
               <ReliefRow
                 key={periodKey(p)}
                 period={p}
-                candidates={bySlot.get(slotKey(p))}
+                candidates={(bySlot.get(slotKey(p)) ?? []).filter((candidate) =>
+                  candidate.id === relief[periodKey(p)] || !periods.some((other) =>
+                    slotKey(other) === slotKey(p) && periodKey(other) !== periodKey(p) && relief[periodKey(other)] === candidate.id,
+                  ),
+                )}
                 isLoading={candidates.isLoading}
                 value={relief[periodKey(p)] ?? ""}
                 onPick={(id) => onPick(periodKey(p), id)}

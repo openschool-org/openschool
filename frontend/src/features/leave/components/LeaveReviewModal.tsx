@@ -8,6 +8,8 @@ import { LEAVE_TYPE_LABELS } from "@/features/leave/constants";
 import { useDecideLeave, useLeaveDetail } from "@/features/leave/queries/useLeave";
 import LeaveStatusTag from "@/features/leave/components/LeaveStatusTag";
 import { leaveDates, leaveDays } from "@/features/leave/components/leaveText";
+import { useMyTeacherProfile } from "@/features/teachers/queries/useTeachers";
+import { useRole } from "@/shared/auth/useRole";
 
 interface Props {
   id: string;
@@ -17,6 +19,9 @@ interface Props {
 // The approver's view of one application: the request, its relief plan, and the decision.
 export default function LeaveReviewModal({ id, onClose }: Props) {
   const { data: leave, isLoading } = useLeaveDetail(id);
+  const { data: teacher } = useMyTeacherProfile();
+  const { role } = useRole();
+  const canDecideOwnRequest = role === "admin" || teacher?.id !== leave?.teacher_id;
   const decide = useDecideLeave();
   const { showToast } = useToast();
   const [note, setNote] = useState("");
@@ -83,7 +88,7 @@ export default function LeaveReviewModal({ id, onClose }: Props) {
                 <p className="os-text-sm os-c-warning-text os-mt-2">{uncovered} period{uncovered === 1 ? "" : "s"} still need a relief teacher.</p>
               )}
             </div>
-            {leave.status === "pending" && (
+            {leave.status === "pending" && canDecideOwnRequest && (
               <TextArea
                 id="leave-decision-note"
                 labelText={rejecting ? "Reason for not approving" : "Note to the teacher (optional)"}
@@ -100,7 +105,7 @@ export default function LeaveReviewModal({ id, onClose }: Props) {
       </ModalBody>
       <ModalFooter>
         <Button kind="secondary" onClick={onClose}>Close</Button>
-        {leave?.status === "pending" && (
+        {leave?.status === "pending" && canDecideOwnRequest && (
           <>
             <Button kind="danger" onClick={() => submit(false)} disabled={decide.isPending}>Not approve</Button>
             <Button kind="primary" onClick={() => submit(true)} disabled={decide.isPending}>{decide.isPending ? "Saving…" : "Approve"}</Button>

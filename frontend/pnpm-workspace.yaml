@@ -28,5 +28,5 @@ minimumReleaseAgeExclude:
 
 overrides:
   # Transitive fix until @thunderid/react bumps its own dompurify dependency.
-  dompurify: '>=3.4.13'
+  dompurify: '>=3.4.16'
   '@ibm/plex': npm:empty-npm-package@1.0.0

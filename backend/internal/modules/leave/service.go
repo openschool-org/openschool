@@ -19,6 +19,7 @@ var (
 	ErrOwnLeave       = errors.New("you cannot decide your own leave application")
 	ErrPrincipalLeave = errors.New("the Principal's leave is approved outside the school; an administrator records the decision")
 	ErrNoteRequired   = errors.New("give a reason when rejecting an application")
+	ErrInvalidRelief  = errors.New("relief row does not match the applicant's timetable or relief availability")
 )
 
 // InvalidError marks a rejected application, as opposed to a failure.
@@ -107,6 +108,12 @@ func (s *Service) Apply(ctx context.Context, teacherID, userID uuid.UUID, req Ap
 	if app.Days, err = chargedDays(app); err != nil {
 		return RequestDetail{}, invalid(err)
 	}
+	if err := s.validateRelief(ctx, app); err != nil {
+		if errors.Is(err, ErrInvalidRelief) {
+			return RequestDetail{}, invalid(err)
+		}
+		return RequestDetail{}, err
+	}
 	id, err := s.store.create(ctx, app, func(r limitReader) error { return checkLimits(ctx, r, app) })
 	if err != nil {
 		return RequestDetail{}, err
@@ -148,6 +155,57 @@ func checkLimits(ctx context.Context, r limitReader, app Application) error {
 	}
 	if err := checkEntitlement(app.LeaveType, app.Days, usage); err != nil {
 		return invalid(err)
+	}
+	return nil
+}
+
+func (s *Service) validateRelief(ctx context.Context, app Application) error {
+	if len(app.Relief) == 0 {
+		return nil
+	}
+	yearID, err := s.years.CurrentAcademicYearID(ctx)
+	if err != nil {
+		return err
+	}
+	timetable, err := s.store.teacherPeriods(ctx, app.TeacherID, yearID)
+	if err != nil {
+		return err
+	}
+	periods := expandPeriods(app, timetable).Items
+	assigned := map[string]bool{}
+	for _, row := range app.Relief {
+		validPeriod := false
+		for _, period := range periods {
+			if period.Date == row.Date.Format(time.DateOnly) && period.PeriodNumber == row.PeriodNumber && period.ClassID == row.ClassID {
+				validPeriod = true
+				break
+			}
+		}
+		if !validPeriod {
+			return ErrInvalidRelief
+		}
+		if row.ReliefTeacherID == uuid.Nil {
+			continue
+		}
+		key := row.Date.Format(time.DateOnly) + ":" + fmt.Sprint(row.PeriodNumber) + ":" + row.ReliefTeacherID.String()
+		if assigned[key] {
+			return ErrInvalidRelief
+		}
+		assigned[key] = true
+		candidates, err := s.store.reliefCandidates(ctx, row.Date, schoolDayOfWeek(row.Date), row.PeriodNumber, yearID, app.TeacherID)
+		if err != nil {
+			return err
+		}
+		eligible := false
+		for _, candidate := range candidates {
+			if candidate.ID == row.ReliefTeacherID {
+				eligible = true
+				break
+			}
+		}
+		if !eligible {
+			return ErrInvalidRelief
+		}
 	}
 	return nil
 }
@@ -360,7 +418,9 @@ func (s *Service) Decide(ctx context.Context, actor Actor, id uuid.UUID, approve
 		}{status, note}, "")
 	}
 	if approve {
-		s.afterApproval(ctx, actor.UserID, detail)
+		if err := s.afterApproval(ctx, actor.UserID, detail); err != nil {
+			return RequestDetail{}, fmt.Errorf("leave was approved, but follow-up attendance marking failed: %w", err)
+		}
 	} else {
 		s.send(ctx, "Leave not approved", fmt.Sprintf("Your %s leave (%s) was not approved: %s", typeLabel(detail.LeaveType), dateSpan(detail.Request), note), actor.UserID, []uuid.UUID{detail.teacherUserID})
 	}
@@ -390,9 +450,8 @@ func (s *Service) mayDecide(ctx context.Context, actor Actor, rank ApproverRank,
 	return nil
 }
 
-// afterApproval updates attendance and notifies; a failure here is logged
-// rather than undoing an approval that has already been recorded.
-func (s *Service) afterApproval(ctx context.Context, actorID uuid.UUID, detail RequestDetail) {
+// afterApproval updates attendance and notifies after the decision is committed.
+func (s *Service) afterApproval(ctx context.Context, actorID uuid.UUID, detail RequestDetail) error {
 	if detail.LeaveType != TypeShort && detail.DayPart == DayFull && s.attendance != nil {
 		start, _ := time.Parse(time.DateOnly, detail.StartDate)
 		end, _ := time.Parse(time.DateOnly, detail.EndDate)
@@ -402,7 +461,7 @@ func (s *Service) afterApproval(ctx context.Context, actorID uuid.UUID, detail R
 				continue
 			}
 			if err := s.attendance.MarkTeacherOnLeave(ctx, detail.TeacherID, d, note, actorID); err != nil {
-				log.Printf("leave %s: mark attendance for %s: %v", detail.ID, d.Format(time.DateOnly), err)
+				return fmt.Errorf("leave %s on %s: %w", detail.ID, d.Format(time.DateOnly), err)
 			}
 		}
 	}
@@ -418,7 +477,7 @@ func (s *Service) afterApproval(ctx context.Context, actorID uuid.UUID, detail R
 		relievers[*detail.ActingTeacherID] = true
 	}
 	if len(relievers) == 0 {
-		return
+		return nil
 	}
 	ids := make([]uuid.UUID, 0, len(relievers))
 	for id := range relievers {
@@ -427,9 +486,10 @@ func (s *Service) afterApproval(ctx context.Context, actorID uuid.UUID, detail R
 	users, err := s.store.userIDsForTeachers(ctx, ids)
 	if err != nil {
 		log.Printf("leave %s: resolve relief teachers: %v", detail.ID, err)
-		return
+		return nil
 	}
 	s.send(ctx, "Relief duty", fmt.Sprintf("You are covering for %s while they are on leave (%s). See My Leave for your periods.", detail.TeacherName, dateSpan(detail.Request)), actorID, users)
+	return nil
 }
 
 func (s *Service) send(ctx context.Context, title, message string, createdBy uuid.UUID, users []uuid.UUID) {
