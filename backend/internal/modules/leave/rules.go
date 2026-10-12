@@ -53,6 +53,8 @@ const (
 	// MaxReliefDays caps how many working days of periods are listed for
 	// relief. Longer leave is covered by an acting teacher instead.
 	MaxReliefDays = 10
+	// maxCandidateSlots caps one relief-candidates batch request.
+	maxCandidateSlots = 120
 )
 
 var (

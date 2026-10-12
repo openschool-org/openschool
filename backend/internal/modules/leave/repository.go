@@ -19,14 +19,20 @@ func NewRepository(pool *pgxpool.Pool) *Repository {
 	return &Repository{pool: pool, queries: db.New(pool)}
 }
 
-// create stores the application and its relief rows together.
-func (r *Repository) create(ctx context.Context, app Application) (uuid.UUID, error) {
+// create locks the teacher, runs check and stores the application with its relief in one transaction.
+func (r *Repository) create(ctx context.Context, app Application, check func(limitReader) error) (uuid.UUID, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return uuid.Nil, err
 	}
 	defer tx.Rollback(ctx)
 	qtx := r.queries.WithTx(tx)
+	if err := qtx.LockTeacherForLeave(ctx, app.TeacherID); err != nil {
+		return uuid.Nil, err
+	}
+	if err := check(limits{qtx}); err != nil {
+		return uuid.Nil, err
+	}
 	id, err := qtx.CreateLeaveRequest(ctx, db.CreateLeaveRequestParams{
 		TeacherID: app.TeacherID, LeaveType: app.LeaveType, StartDate: dateValue(app.Start), EndDate: dateValue(app.End),
 		DayPart: app.DayPart, StartTime: clockValue(app.StartTime), EndTime: clockValue(app.EndTime), Days: app.Days,
@@ -35,11 +41,15 @@ func (r *Repository) create(ctx context.Context, app Application) (uuid.UUID, er
 	if err != nil {
 		return uuid.Nil, err
 	}
-	for _, relief := range app.Relief {
-		if err := qtx.InsertLeaveRelief(ctx, db.InsertLeaveReliefParams{
-			LeaveRequestID: id, Date: dateValue(relief.Date), PeriodNumber: relief.PeriodNumber, ClassID: relief.ClassID,
-			SubjectID: uuidValue(relief.SubjectID), ReliefTeacherID: uuidValue(relief.ReliefTeacherID),
-		}); err != nil {
+	if len(app.Relief) > 0 {
+		rows := make([]db.InsertLeaveReliefParams, len(app.Relief))
+		for i, relief := range app.Relief {
+			rows[i] = db.InsertLeaveReliefParams{
+				LeaveRequestID: id, Date: dateValue(relief.Date), PeriodNumber: relief.PeriodNumber, ClassID: relief.ClassID,
+				SubjectID: uuidValue(relief.SubjectID), ReliefTeacherID: uuidValue(relief.ReliefTeacherID),
+			}
+		}
+		if _, err := qtx.InsertLeaveRelief(ctx, rows); err != nil {
 			return uuid.Nil, err
 		}
 	}
@@ -92,12 +102,15 @@ func (r *Repository) list(ctx context.Context, f RegisterFilter) (RequestPage, e
 	return page, nil
 }
 
-func (r *Repository) overlapping(ctx context.Context, teacherID uuid.UUID, start, end time.Time) (int64, error) {
-	return r.queries.CountOverlappingLeave(ctx, db.CountOverlappingLeaveParams{TeacherID: teacherID, StartDate: dateValue(start), EndDate: dateValue(end)})
+// limits implements limitReader over the pool or a transaction.
+type limits struct{ q *db.Queries }
+
+func (l limits) overlapping(ctx context.Context, teacherID uuid.UUID, start, end time.Time) (int64, error) {
+	return l.q.CountOverlappingLeave(ctx, db.CountOverlappingLeaveParams{TeacherID: teacherID, StartDate: dateValue(start), EndDate: dateValue(end)})
 }
 
-func (r *Repository) usage(ctx context.Context, teacherID uuid.UUID, year int) (map[string]Usage, error) {
-	rows, err := r.queries.SumLeaveDaysByType(ctx, db.SumLeaveDaysByTypeParams{TeacherID: teacherID, Year: int32(year)})
+func (l limits) usage(ctx context.Context, teacherID uuid.UUID, year int) (map[string]Usage, error) {
+	rows, err := l.q.SumLeaveDaysByType(ctx, db.SumLeaveDaysByTypeParams{TeacherID: teacherID, Year: int32(year)})
 	if err != nil {
 		return nil, err
 	}
@@ -108,11 +121,19 @@ func (r *Repository) usage(ctx context.Context, teacherID uuid.UUID, year int) (
 	return out, nil
 }
 
-func (r *Repository) shortLeaveInMonth(ctx context.Context, teacherID uuid.UUID, month time.Time) (int64, error) {
+func (l limits) shortLeaveInMonth(ctx context.Context, teacherID uuid.UUID, month time.Time) (int64, error) {
 	first := time.Date(month.Year(), month.Month(), 1, 0, 0, 0, 0, time.UTC)
-	return r.queries.CountShortLeaveInMonth(ctx, db.CountShortLeaveInMonthParams{
+	return l.q.CountShortLeaveInMonth(ctx, db.CountShortLeaveInMonthParams{
 		TeacherID: teacherID, MonthStart: dateValue(first), MonthEnd: dateValue(first.AddDate(0, 1, -1)),
 	})
+}
+
+func (r *Repository) usage(ctx context.Context, teacherID uuid.UUID, year int) (map[string]Usage, error) {
+	return limits{r.queries}.usage(ctx, teacherID, year)
+}
+
+func (r *Repository) shortLeaveInMonth(ctx context.Context, teacherID uuid.UUID, month time.Time) (int64, error) {
+	return limits{r.queries}.shortLeaveInMonth(ctx, teacherID, month)
 }
 
 func (r *Repository) decide(ctx context.Context, id uuid.UUID, status string, decidedBy uuid.UUID, note string) (int64, error) {

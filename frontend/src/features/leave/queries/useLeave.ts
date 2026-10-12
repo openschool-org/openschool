@@ -16,8 +16,9 @@ export const useMyReliefDuties = () => useQuery({ queryKey: leaveKeys.myReliefDu
 export const useAffectedPeriods = (params: PeriodsParams, enabled: boolean) =>
   useQuery({ queryKey: leaveKeys.periods(params), queryFn: () => leaveApi.affectedPeriods(params), enabled, retry: false });
 
-export const useReliefCandidates = (date: string, period: number) =>
-  useQuery({ queryKey: leaveKeys.candidates(date, period), queryFn: () => leaveApi.reliefCandidates(date, period) });
+// Fetches candidates for every "YYYY-MM-DD:period" slot in one request.
+export const useReliefCandidates = (slots: string[]) =>
+  useQuery({ queryKey: leaveKeys.candidates(slots), queryFn: () => leaveApi.reliefCandidates(slots), enabled: slots.length > 0 });
 
 export const useApplyLeave = () => {
   const invalidate = useInvalidate();

@@ -59,12 +59,18 @@ type Actor struct {
 	Admin             bool
 }
 
+// limitReader reads the counts an application is checked against.
+type limitReader interface {
+	overlapping(ctx context.Context, teacherID uuid.UUID, start, end time.Time) (int64, error)
+	usage(ctx context.Context, teacherID uuid.UUID, year int) (map[string]Usage, error)
+	shortLeaveInMonth(ctx context.Context, teacherID uuid.UUID, month time.Time) (int64, error)
+}
+
 type store interface {
-	create(context.Context, Application) (uuid.UUID, error)
+	create(ctx context.Context, app Application, check func(limitReader) error) (uuid.UUID, error)
 	get(context.Context, uuid.UUID) (Request, error)
 	relief(context.Context, uuid.UUID) ([]ReliefPeriod, error)
 	list(context.Context, RegisterFilter) (RequestPage, error)
-	overlapping(ctx context.Context, teacherID uuid.UUID, start, end time.Time) (int64, error)
 	usage(ctx context.Context, teacherID uuid.UUID, year int) (map[string]Usage, error)
 	shortLeaveInMonth(ctx context.Context, teacherID uuid.UUID, month time.Time) (int64, error)
 	decide(ctx context.Context, id uuid.UUID, status string, decidedBy uuid.UUID, note string) (int64, error)
@@ -101,10 +107,7 @@ func (s *Service) Apply(ctx context.Context, teacherID, userID uuid.UUID, req Ap
 	if app.Days, err = chargedDays(app); err != nil {
 		return RequestDetail{}, invalid(err)
 	}
-	if err := s.checkLimits(ctx, app); err != nil {
-		return RequestDetail{}, err
-	}
-	id, err := s.store.create(ctx, app)
+	id, err := s.store.create(ctx, app, func(r limitReader) error { return checkLimits(ctx, r, app) })
 	if err != nil {
 		return RequestDetail{}, err
 	}
@@ -121,8 +124,8 @@ func (s *Service) Apply(ctx context.Context, teacherID, userID uuid.UUID, req Ap
 	return detail, nil
 }
 
-func (s *Service) checkLimits(ctx context.Context, app Application) error {
-	overlaps, err := s.store.overlapping(ctx, app.TeacherID, app.Start, app.End)
+func checkLimits(ctx context.Context, r limitReader, app Application) error {
+	overlaps, err := r.overlapping(ctx, app.TeacherID, app.Start, app.End)
 	if err != nil {
 		return err
 	}
@@ -130,7 +133,7 @@ func (s *Service) checkLimits(ctx context.Context, app Application) error {
 		return invalid(ErrOverlap)
 	}
 	if app.LeaveType == TypeShort {
-		count, err := s.store.shortLeaveInMonth(ctx, app.TeacherID, app.Start)
+		count, err := r.shortLeaveInMonth(ctx, app.TeacherID, app.Start)
 		if err != nil {
 			return err
 		}
@@ -139,7 +142,7 @@ func (s *Service) checkLimits(ctx context.Context, app Application) error {
 		}
 		return nil
 	}
-	usage, err := s.store.usage(ctx, app.TeacherID, app.Start.Year())
+	usage, err := r.usage(ctx, app.TeacherID, app.Start.Year())
 	if err != nil {
 		return err
 	}
@@ -250,17 +253,31 @@ func expandPeriods(app Application, slots []periodSlot) AffectedPeriods {
 	return out
 }
 
-// ReliefCandidates lists teachers free to take a period on a date.
-func (s *Service) ReliefCandidates(ctx context.Context, date time.Time, period int16, exclude uuid.UUID) ([]ReliefCandidate, error) {
-	dow := schoolDayOfWeek(date)
-	if dow == 0 {
-		return []ReliefCandidate{}, nil
+// ReliefCandidates lists teachers free to take each slot, leaving out exclude.
+func (s *Service) ReliefCandidates(ctx context.Context, actor Actor, slots []Slot, exclude uuid.UUID) ([]SlotCandidates, error) {
+	if exclude == uuid.Nil {
+		exclude = actor.TeacherID
+	} else if exclude != actor.TeacherID {
+		if _, err := s.approverRank(ctx, actor); err != nil {
+			return nil, err
+		}
 	}
 	yearID, err := s.years.CurrentAcademicYearID(ctx)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
-	return s.store.reliefCandidates(ctx, date, dow, period, yearID, exclude)
+	out := make([]SlotCandidates, len(slots))
+	for i, slot := range slots {
+		out[i] = SlotCandidates{Date: slot.Date.Format(time.DateOnly), PeriodNumber: slot.Period, Candidates: []ReliefCandidate{}}
+		dow := schoolDayOfWeek(slot.Date)
+		if dow == 0 {
+			continue
+		}
+		if out[i].Candidates, err = s.store.reliefCandidates(ctx, slot.Date, dow, slot.Period, yearID, exclude); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
 }
 
 // MyReliefDuties lists the approved relief periods a teacher covers from a date.

@@ -112,6 +112,12 @@ export interface ReliefCandidate {
   relief_periods: number;
 }
 
+export interface SlotCandidates {
+  date: string;
+  period_number: number;
+  candidates: ReliefCandidate[];
+}
+
 export interface DailyRelief {
   id: string;
   period_number: number;
@@ -158,8 +164,8 @@ export const leaveApi = {
   apply: (data: ApplyLeaveRequest) => api.post<LeaveRequestDetail>("/me/teacher/leave", data).then((r) => r.data),
   cancel: (id: string) => api.post(`/me/teacher/leave/${id}/cancel`).then((r) => r.data),
 
-  reliefCandidates: (date: string, periodNumber: number) =>
-    api.get<ReliefCandidate[]>("/leave/relief-candidates", { params: { date, period_number: periodNumber } }).then((r) => r.data),
+  reliefCandidates: (slots: string[]) =>
+    api.get<SlotCandidates[]>("/leave/relief-candidates/batch", { params: new URLSearchParams(slots.map((s) => ["slot", s])) }).then((r) => r.data),
   register: (params: LeaveRegisterParams) =>
     api.get<Page<LeaveRequest>>("/leave/requests", { params: clean(params) }).then((r) => r.data),
   detail: (id: string) => api.get<LeaveRequestDetail>(`/leave/requests/${id}`).then((r) => r.data),

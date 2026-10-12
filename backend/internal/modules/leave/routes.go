@@ -3,8 +3,10 @@ package leave
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -37,6 +39,7 @@ func RegisterRoutes(teacher, teacherOrAdmin *gin.RouterGroup, service *Service, 
 	teacher.POST("/me/teacher/leave/:id/cancel", h.cancel)
 
 	teacherOrAdmin.GET("/leave/relief-candidates", h.reliefCandidates)
+	teacherOrAdmin.GET("/leave/relief-candidates/batch", h.reliefCandidatesBatch)
 	teacherOrAdmin.GET("/leave/requests", h.register)
 	teacherOrAdmin.GET("/leave/requests/:id", h.detail)
 	teacherOrAdmin.POST("/leave/requests/:id/approve", h.decide(true))
@@ -179,7 +182,7 @@ func (h *handler) cancel(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "leave application cancelled"})
 }
 
-// reliefCandidates leaves out the caller, or the applicant named by exclude_teacher_id.
+// reliefCandidates lists free teachers for one period; only an approver may set exclude_teacher_id.
 func (h *handler) reliefCandidates(c *gin.Context) {
 	date, err := time.Parse(time.DateOnly, c.Query("date"))
 	if err != nil {
@@ -191,23 +194,64 @@ func (h *handler) reliefCandidates(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or missing period_number"})
 		return
 	}
-	actor, ok := h.actor(c)
+	actor, exclude, ok := h.candidateCaller(c)
 	if !ok {
 		return
 	}
-	exclude := actor.TeacherID
-	if raw := c.Query("exclude_teacher_id"); raw != "" {
-		if exclude, err = uuid.Parse(raw); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid exclude_teacher_id"})
-			return
-		}
-	}
-	candidates, err := h.service.ReliefCandidates(c, date, int16(period), exclude)
+	result, err := h.service.ReliefCandidates(c, actor, []Slot{{Date: date, Period: int16(period)}}, exclude)
 	if err != nil {
 		respond(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, candidates)
+	c.JSON(http.StatusOK, result[0].Candidates)
+}
+
+// reliefCandidatesBatch lists free teachers for each ?slot=YYYY-MM-DD:N in one call.
+func (h *handler) reliefCandidatesBatch(c *gin.Context) {
+	raw := c.QueryArray("slot")
+	if len(raw) == 0 || len(raw) > maxCandidateSlots {
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("give between 1 and %d slots", maxCandidateSlots)})
+		return
+	}
+	slots := make([]Slot, len(raw))
+	for i, value := range raw {
+		datePart, periodPart, found := strings.Cut(value, ":")
+		date, dateErr := time.Parse(time.DateOnly, datePart)
+		period, periodErr := strconv.ParseInt(periodPart, 10, 16)
+		if !found || dateErr != nil || periodErr != nil || period < 1 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid slot (expected YYYY-MM-DD:period)"})
+			return
+		}
+		slots[i] = Slot{Date: date, Period: int16(period)}
+	}
+	actor, exclude, ok := h.candidateCaller(c)
+	if !ok {
+		return
+	}
+	result, err := h.service.ReliefCandidates(c, actor, slots, exclude)
+	if err != nil {
+		respond(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+// candidateCaller resolves the caller and the optional exclude_teacher_id.
+func (h *handler) candidateCaller(c *gin.Context) (Actor, uuid.UUID, bool) {
+	actor, ok := h.actor(c)
+	if !ok {
+		return Actor{}, uuid.Nil, false
+	}
+	raw := c.Query("exclude_teacher_id")
+	if raw == "" {
+		return actor, uuid.Nil, true
+	}
+	exclude, err := uuid.Parse(raw)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid exclude_teacher_id"})
+		return Actor{}, uuid.Nil, false
+	}
+	return actor, exclude, true
 }
 
 func (h *handler) register(c *gin.Context) {

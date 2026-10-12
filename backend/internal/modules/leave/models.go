@@ -197,6 +197,19 @@ type ReliefCandidate struct {
 	ReliefPeriods int64 `json:"relief_periods"`
 }
 
+// SlotCandidates is the relief candidate list for one dated period.
+type SlotCandidates struct {
+	Date         string            `json:"date"`
+	PeriodNumber int16             `json:"period_number"`
+	Candidates   []ReliefCandidate `json:"candidates"`
+}
+
+// Slot is one dated timetable period.
+type Slot struct {
+	Date   time.Time
+	Period int16
+}
+
 // DailyRelief is one line of the day's relief sheet.
 type DailyRelief struct {
 	ID                uuid.UUID  `json:"id"`

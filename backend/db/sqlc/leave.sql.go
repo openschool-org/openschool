@@ -210,11 +210,6 @@ func (q *Queries) GetLeaveRequest(ctx context.Context, id uuid.UUID) (GetLeaveRe
 	return i, err
 }
 
-const insertLeaveRelief = `-- name: InsertLeaveRelief :exec
-INSERT INTO teacher_leave_relief (leave_request_id, date, period_number, class_id, subject_id, relief_teacher_id)
-VALUES ($1, $2, $3, $4, $5::uuid, $6::uuid)
-`
-
 type InsertLeaveReliefParams struct {
 	LeaveRequestID  uuid.UUID   `json:"leave_request_id"`
 	Date            pgtype.Date `json:"date"`
@@ -222,18 +217,6 @@ type InsertLeaveReliefParams struct {
 	ClassID         uuid.UUID   `json:"class_id"`
 	SubjectID       pgtype.UUID `json:"subject_id"`
 	ReliefTeacherID pgtype.UUID `json:"relief_teacher_id"`
-}
-
-func (q *Queries) InsertLeaveRelief(ctx context.Context, arg InsertLeaveReliefParams) error {
-	_, err := q.db.Exec(ctx, insertLeaveRelief,
-		arg.LeaveRequestID,
-		arg.Date,
-		arg.PeriodNumber,
-		arg.ClassID,
-		arg.SubjectID,
-		arg.ReliefTeacherID,
-	)
-	return err
 }
 
 const listLeaveApproverUserIDs = `-- name: ListLeaveApproverUserIDs :many
@@ -276,7 +259,8 @@ SELECT
     COUNT(*) OVER () AS total
 FROM teacher_profiles tp
 LEFT JOIN teacher_leave_requests lr
-    ON lr.teacher_id = tp.id AND lr.status = 'approved' AND EXTRACT(YEAR FROM lr.start_date) = $1::int
+    ON lr.teacher_id = tp.id AND lr.status = 'approved'
+   AND lr.start_date >= make_date($1::int, 1, 1) AND lr.start_date < (make_date($1::int, 1, 1) + INTERVAL '1 year')::date
 WHERE tp.employment_status = 'active'
   AND ($2::text IS NULL OR tp.full_name ILIKE '%' || $2::text || '%' OR tp.name_with_initials ILIKE '%' || $2::text || '%' OR tp.employee_number ILIKE '%' || $2::text || '%')
 GROUP BY tp.id
@@ -413,7 +397,7 @@ FROM teacher_leave_requests lr
 INNER JOIN teacher_profiles tp ON tp.id = lr.teacher_id
 LEFT JOIN teacher_profiles at ON at.id = lr.acting_teacher_id
 LEFT JOIN users du ON du.id = lr.decided_by
-WHERE EXTRACT(YEAR FROM lr.start_date) = $1::int
+WHERE lr.start_date >= make_date($1::int, 1, 1) AND lr.start_date < (make_date($1::int, 1, 1) + INTERVAL '1 year')::date
   AND ($2::uuid IS NULL OR lr.teacher_id = $2::uuid)
   AND ($3::text IS NULL OR lr.status = $3::text)
   AND ($4::text IS NULL OR lr.leave_type = $4::text)
@@ -821,6 +805,16 @@ func (q *Queries) ListUserIDsForTeachers(ctx context.Context, teacherIds []uuid.
 	return items, nil
 }
 
+const lockTeacherForLeave = `-- name: LockTeacherForLeave :exec
+SELECT id FROM teacher_profiles WHERE id = $1 FOR NO KEY UPDATE
+`
+
+// serialises one teacher's applications without blocking foreign-key checks
+func (q *Queries) LockTeacherForLeave(ctx context.Context, teacherID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, lockTeacherForLeave, teacherID)
+	return err
+}
+
 const sumLeaveDaysByType = `-- name: SumLeaveDaysByType :many
 SELECT
     leave_type,
@@ -831,7 +825,7 @@ SELECT
 FROM teacher_leave_requests
 WHERE teacher_id = $1
   AND status IN ('pending', 'approved')
-  AND EXTRACT(YEAR FROM start_date) = $2::int
+  AND start_date >= make_date($2::int, 1, 1) AND start_date < (make_date($2::int, 1, 1) + INTERVAL '1 year')::date
 GROUP BY leave_type
 `
 

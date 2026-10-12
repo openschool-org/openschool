@@ -7,9 +7,13 @@ INSERT INTO teacher_leave_requests (
 )
 RETURNING id;
 
--- name: InsertLeaveRelief :exec
+-- name: InsertLeaveRelief :copyfrom
 INSERT INTO teacher_leave_relief (leave_request_id, date, period_number, class_id, subject_id, relief_teacher_id)
-VALUES (@leave_request_id, @date, @period_number, @class_id, sqlc.narg(subject_id)::uuid, sqlc.narg(relief_teacher_id)::uuid);
+VALUES ($1, $2, $3, $4, $5, $6);
+
+-- name: LockTeacherForLeave :exec
+-- serialises one teacher's applications without blocking foreign-key checks
+SELECT id FROM teacher_profiles WHERE id = @teacher_id FOR NO KEY UPDATE;
 
 -- name: GetLeaveRequest :one
 SELECT
@@ -46,7 +50,7 @@ FROM teacher_leave_requests lr
 INNER JOIN teacher_profiles tp ON tp.id = lr.teacher_id
 LEFT JOIN teacher_profiles at ON at.id = lr.acting_teacher_id
 LEFT JOIN users du ON du.id = lr.decided_by
-WHERE EXTRACT(YEAR FROM lr.start_date) = @year::int
+WHERE lr.start_date >= make_date(@year::int, 1, 1) AND lr.start_date < (make_date(@year::int, 1, 1) + INTERVAL '1 year')::date
   AND (sqlc.narg(teacher_id)::uuid IS NULL OR lr.teacher_id = sqlc.narg(teacher_id)::uuid)
   AND (sqlc.narg(status)::text IS NULL OR lr.status = sqlc.narg(status)::text)
   AND (sqlc.narg(leave_type)::text IS NULL OR lr.leave_type = sqlc.narg(leave_type)::text)
@@ -86,7 +90,7 @@ SELECT
 FROM teacher_leave_requests
 WHERE teacher_id = @teacher_id
   AND status IN ('pending', 'approved')
-  AND EXTRACT(YEAR FROM start_date) = @year::int
+  AND start_date >= make_date(@year::int, 1, 1) AND start_date < (make_date(@year::int, 1, 1) + INTERVAL '1 year')::date
 GROUP BY leave_type;
 
 -- name: CountShortLeaveInMonth :one
@@ -192,7 +196,8 @@ SELECT
     COUNT(*) OVER () AS total
 FROM teacher_profiles tp
 LEFT JOIN teacher_leave_requests lr
-    ON lr.teacher_id = tp.id AND lr.status = 'approved' AND EXTRACT(YEAR FROM lr.start_date) = @year::int
+    ON lr.teacher_id = tp.id AND lr.status = 'approved'
+   AND lr.start_date >= make_date(@year::int, 1, 1) AND lr.start_date < (make_date(@year::int, 1, 1) + INTERVAL '1 year')::date
 WHERE tp.employment_status = 'active'
   AND (sqlc.narg(search)::text IS NULL OR tp.full_name ILIKE '%' || sqlc.narg(search)::text || '%' OR tp.name_with_initials ILIKE '%' || sqlc.narg(search)::text || '%' OR tp.employee_number ILIKE '%' || sqlc.narg(search)::text || '%')
 GROUP BY tp.id

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -77,6 +78,15 @@ func TestLeaveWorkflowWithPostgres(t *testing.T) {
 	if strings.Contains(candidates.Body.String(), f.applicant.teacherID.String()) || !strings.Contains(candidates.Body.String(), f.reliever.teacherID.String()) {
 		t.Fatalf("relief candidates = %s", candidates.Body.String())
 	}
+	batch := call(f.applicant.userID, "teacher", http.MethodGet, "/leave/relief-candidates/batch?slot=2026-10-05:1&slot=2026-10-05:5", nil)
+	expect(batch, http.StatusOK, "batch relief candidates")
+	var slots []SlotCandidates
+	_ = json.Unmarshal(batch.Body.Bytes(), &slots)
+	if len(slots) != 2 || slots[1].PeriodNumber != 5 || strings.Contains(batch.Body.String(), f.applicant.teacherID.String()) {
+		t.Fatalf("batch relief candidates = %s", batch.Body.String())
+	}
+	expect(call(f.applicant.userID, "teacher", http.MethodGet, "/leave/relief-candidates?date=2026-10-05&period_number=1&exclude_teacher_id="+f.reliever.teacherID.String(), nil), http.StatusForbidden, "plain teacher sets exclude_teacher_id")
+	expect(call(f.vice.userID, "teacher", http.MethodGet, "/leave/relief-candidates?date=2026-10-05&period_number=1&exclude_teacher_id="+f.applicant.teacherID.String(), nil), http.StatusOK, "approver sets exclude_teacher_id")
 
 	applied := call(f.applicant.userID, "teacher", http.MethodPost, "/me/teacher/leave", ApplyRequest{
 		LeaveType: TypeCasual, StartDate: "2026-10-05", EndDate: "2026-10-05", Reason: "Family matter",
@@ -152,6 +162,33 @@ func TestLeaveWorkflowWithPostgres(t *testing.T) {
 	_ = json.Unmarshal(pending.Body.Bytes(), &pendingRequest)
 	expect(call(f.applicant.userID, "teacher", http.MethodPost, "/me/teacher/leave/"+pendingRequest.ID.String()+"/cancel", nil), http.StatusConflict, "cancel someone else's leave")
 	expect(call(f.reliever.userID, "teacher", http.MethodPost, "/me/teacher/leave/"+pendingRequest.ID.String()+"/cancel", nil), http.StatusOK, "cancel own pending leave")
+
+	var wg sync.WaitGroup
+	codes := make(chan int, 3)
+	for _, day := range []string{"2026-11-02", "2026-11-03", "2026-11-04"} {
+		wg.Add(1)
+		go func(day string) {
+			defer wg.Done()
+			body, _ := json.Marshal(ApplyRequest{LeaveType: TypeShort, StartDate: day, EndDate: day, StartTime: "12:00", EndTime: "13:00", Reason: "Errand"})
+			request := httptest.NewRequest(http.MethodPost, "/me/teacher/leave", bytes.NewReader(body))
+			request.Header.Set("X-User", f.reliever.userID.String())
+			request.Header.Set("X-Role", "teacher")
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+			codes <- response.Code
+		}(day)
+	}
+	wg.Wait()
+	close(codes)
+	created := 0
+	for code := range codes {
+		if code == http.StatusCreated {
+			created++
+		}
+	}
+	if created != ShortLeavePerMonth {
+		t.Fatalf("concurrent short leave created %d, want %d", created, ShortLeavePerMonth)
+	}
 
 	balances := call(f.principal.userID, "teacher", http.MethodGet, "/leave/balances?year=2026", nil)
 	expect(balances, http.StatusOK, "balances register")

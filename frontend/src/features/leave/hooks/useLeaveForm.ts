@@ -42,6 +42,7 @@ export function useLeaveForm() {
     setValues((prev) => {
       const next = { ...prev, [key]: value };
       if (key === "leaveType" && !HALF_DAY_TYPES.includes(value as LeaveType)) next.dayPart = "full";
+      if (next.leaveType === "short" || next.dayPart !== "full" || next.endDate < next.startDate) next.endDate = next.startDate;
       return next;
     });
     if (key !== "reason" && key !== "actingTeacherId") setRelief({});
@@ -92,7 +93,8 @@ export function useLeaveForm() {
   };
 
   return {
-    values, set, isShort, singleDay, errors, isValid: Object.keys(errors).length === 0,
+    values, set, isShort, singleDay, errors,
+    isValid: Object.keys(errors).length === 0 && (!datesReady || (periods.isSuccess && !periods.isFetching)),
     periods, relief, setRelief: (key: string, teacherId: string) => setRelief((prev) => ({ ...prev, [key]: teacherId })),
     toRequest, reset,
   };

@@ -333,7 +333,7 @@ type Querier interface {
 	GetWorkflowRun(ctx context.Context, id uuid.UUID) (WorkflowRun, error)
 	GetWorkflowRunForUpdate(ctx context.Context, id uuid.UUID) (WorkflowRun, error)
 	InsertActivationCodes(ctx context.Context, arg []InsertActivationCodesParams) (int64, error)
-	InsertLeaveRelief(ctx context.Context, arg InsertLeaveReliefParams) error
+	InsertLeaveRelief(ctx context.Context, arg []InsertLeaveReliefParams) (int64, error)
 	InsertVicePrincipalScope(ctx context.Context, arg InsertVicePrincipalScopeParams) error
 	// used by PositionService.RankForTeacher to detect "Class Teacher" rank,
 	// since that's classes.form_teacher_id rather than a teacher_positions row.
@@ -752,6 +752,8 @@ type Querier interface {
 	ListVicePrincipalScopeGrades(ctx context.Context, positionID uuid.UUID) ([]ListVicePrincipalScopeGradesRow, error)
 	ListWorkflowRuns(ctx context.Context, workflowKey string) ([]ListWorkflowRunsRow, error)
 	LockStudentEnrollment(ctx context.Context, arg LockStudentEnrollmentParams) error
+	// serialises one teacher's applications without blocking foreign-key checks
+	LockTeacherForLeave(ctx context.Context, teacherID uuid.UUID) error
 	MarkAllNotificationRecipientsRead(ctx context.Context, userID uuid.UUID) error
 	MarkAttendance(ctx context.Context, arg MarkAttendanceParams) (AttendanceRecord, error)
 	MarkNotificationRecipientRead(ctx context.Context, arg MarkNotificationRecipientReadParams) error
