@@ -137,9 +137,9 @@ Core entities, enough to orient yourself:
 - `Subject` / `Level` / `SelectionGroup` - curriculum; selection groups hold the optional subject choices for a level
 - `AttendanceSession` / `AttendanceRecord` - attendance tracking per class session
 
-The schema has grown well beyond this (54 migrations, ~67 tables - also
-covering timetable, notifications, prefects, staff/positions, student
-portfolio, and the audit log). Don't hand-maintain a full list here - see
+The schema has grown well beyond this (55 migrations, ~69 tables - also
+covering timetable, notifications, prefects, staff/positions, teacher
+leave, student portfolio, and the audit log). Don't hand-maintain a full list here - see
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#4-data-model) for the
 current, grouped breakdown, or `db/sqlc/models.go` (generated from the
 migrations) for exact columns/types.

@@ -491,6 +491,37 @@ type TeacherAvailability struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
+type TeacherLeaveRelief struct {
+	ID              uuid.UUID          `json:"id"`
+	LeaveRequestID  uuid.UUID          `json:"leave_request_id"`
+	Date            pgtype.Date        `json:"date"`
+	PeriodNumber    int16              `json:"period_number"`
+	ClassID         uuid.UUID          `json:"class_id"`
+	SubjectID       pgtype.UUID        `json:"subject_id"`
+	ReliefTeacherID pgtype.UUID        `json:"relief_teacher_id"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+type TeacherLeaveRequest struct {
+	ID              uuid.UUID          `json:"id"`
+	TeacherID       uuid.UUID          `json:"teacher_id"`
+	LeaveType       string             `json:"leave_type"`
+	StartDate       pgtype.Date        `json:"start_date"`
+	EndDate         pgtype.Date        `json:"end_date"`
+	DayPart         string             `json:"day_part"`
+	StartTime       pgtype.Time        `json:"start_time"`
+	EndTime         pgtype.Time        `json:"end_time"`
+	Days            pgtype.Numeric     `json:"days"`
+	Reason          string             `json:"reason"`
+	ActingTeacherID pgtype.UUID        `json:"acting_teacher_id"`
+	Status          string             `json:"status"`
+	DecidedBy       pgtype.UUID        `json:"decided_by"`
+	DecidedAt       pgtype.Timestamptz `json:"decided_at"`
+	DecisionNote    pgtype.Text        `json:"decision_note"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
+}
+
 type TeacherPosition struct {
 	ID                uuid.UUID          `json:"id"`
 	TeacherID         uuid.UUID          `json:"teacher_id"`
