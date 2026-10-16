@@ -39,10 +39,6 @@ export function setDateLocale(lang: string) {
   locale = LOCALES[lang] ?? LOCALES.en;
 }
 
-export function getDateLocale() {
-  return locale;
-}
-
 const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 // Parses a YYYY-MM-DD string as a local date; returns undefined for anything else.

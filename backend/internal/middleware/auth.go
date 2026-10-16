@@ -54,6 +54,8 @@ type Claims struct {
 // jwks holds the cached, auto-refreshing JWKS key set InitJWKS builds; AuthMiddleware validates every token's signature against it.
 var jwks keyfunc.Keyfunc
 
+const jwksFetchTimeout = 10 * time.Second
+
 // stripX5CTransport strips the x5c certificate chain from a JWKS response before keyfunc parses it.
 type stripX5CTransport struct {
 	base http.RoundTripper
@@ -111,7 +113,9 @@ func InitJWKS(jwksURL string) error {
 		}
 	}
 
+	// Bounded so a slow identity provider cannot hang startup or the background key refresh.
 	client := &http.Client{
+		Timeout: jwksFetchTimeout,
 		Transport: &stripX5CTransport{
 			base: baseTransport,
 		},
