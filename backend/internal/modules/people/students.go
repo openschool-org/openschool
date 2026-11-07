@@ -125,7 +125,7 @@ func (s *StudentService) Create(ctx context.Context, req CreateStudentRequest, a
 	}
 	req.FullName, req.NameWithInitials, req.CallingName = names.Normalize(req.FullName, req.NameWithInitials, req.CallingName)
 	given, family := names.ForIdentityProvider(req.FullName, req.NameWithInitials, req.CallingName)
-	idpUser, err := s.idp.CreateUser(ctx, authz.RoleStudent, map[string]any{"username": req.IndexNumber, "email": req.Email, "given_name": given, "family_name": family, "phone": req.PhoneNumber, "password": req.IndexNumber})
+	idpUser, err := s.idp.CreateUser(ctx, authz.RoleStudent, map[string]any{"username": req.IndexNumber, "email": req.Email, "given_name": given, "family_name": family, "phone_number": req.PhoneNumber, "password": req.IndexNumber})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create identity provider user: %w", err)
 	}
@@ -175,7 +175,7 @@ func (s *StudentService) Update(ctx context.Context, id uuid.UUID, req UpdateStu
 	}
 	req.FullName, req.NameWithInitials, req.CallingName = names.Normalize(req.FullName, req.NameWithInitials, req.CallingName)
 	given, family := names.ForIdentityProvider(req.FullName, req.NameWithInitials, req.CallingName)
-	if err := s.idp.UpdateUser(ctx, student.UserID.String(), authz.RoleStudent, map[string]any{"username": student.IndexNumber, "email": user.Email, "given_name": given, "family_name": family, "phone": req.PhoneNumber}); err != nil {
+	if err := s.idp.UpdateUser(ctx, student.UserID.String(), authz.RoleStudent, map[string]any{"username": student.IndexNumber, "email": user.Email, "given_name": given, "family_name": family, "phone_number": req.PhoneNumber}); err != nil {
 		log.Printf("UpdateStudent: failed to update identity provider user: %v", err)
 	}
 	return s.store.Update(ctx, id, studentUpdate{FullName: req.FullName, NameWithInitials: req.NameWithInitials, CallingName: req.CallingName, Address: req.Address, Phone: req.PhoneNumber, WhatsApp: req.WhatsApp, Remarks: req.SpecialRemarks, Gender: req.Gender})

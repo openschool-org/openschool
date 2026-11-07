@@ -77,7 +77,7 @@ func (s *TeacherService) Create(ctx context.Context, req CreateTeacherRequest, a
 	}
 	req.FullName, req.NameWithInitials, req.CallingName = names.Normalize(req.FullName, req.NameWithInitials, req.CallingName)
 	given, family := names.ForIdentityProvider(req.FullName, req.NameWithInitials, req.CallingName)
-	u, err := s.idp.CreateUser(ctx, authz.RoleTeacher, map[string]any{"username": req.Email, "email": req.Email, "given_name": given, "family_name": family, "phone": req.PhoneNumber, "employee_number": employee, "password": req.NICNumber})
+	u, err := s.idp.CreateUser(ctx, authz.RoleTeacher, map[string]any{"username": req.Email, "email": req.Email, "given_name": given, "family_name": family, "phone_number": req.PhoneNumber, "employee_number": employee, "password": req.NICNumber})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create identity provider user: %w", err)
 	}
@@ -123,7 +123,7 @@ func (s *TeacherService) Update(ctx context.Context, id uuid.UUID, req UpdateTea
 	}
 	req.FullName, req.NameWithInitials, req.CallingName = names.Normalize(req.FullName, req.NameWithInitials, req.CallingName)
 	given, family := names.ForIdentityProvider(req.FullName, req.NameWithInitials, req.CallingName)
-	if err := s.idp.UpdateUser(ctx, t.UserID.String(), authz.RoleTeacher, map[string]any{"username": email, "email": email, "given_name": given, "family_name": family, "phone": req.PhoneNumber}); err != nil {
+	if err := s.idp.UpdateUser(ctx, t.UserID.String(), authz.RoleTeacher, map[string]any{"username": email, "email": email, "given_name": given, "family_name": family, "phone_number": req.PhoneNumber}); err != nil {
 		log.Printf("UpdateTeacher: failed to update identity provider user: %v", err)
 	}
 	return s.store.UpdateTeacher(ctx, id, teacherUpdate{FullName: req.FullName, NameWithInitials: req.NameWithInitials, CallingName: req.CallingName, NIC: req.NICNumber, Phone: req.PhoneNumber, Title: req.Title, Gender: req.Gender})
