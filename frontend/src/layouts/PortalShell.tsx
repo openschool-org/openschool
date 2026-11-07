@@ -1,7 +1,8 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { Link, Outlet, useLocation } from "react-router";
-import { useQueryClient } from "@tanstack/react-query";
-import { Header, HeaderMenuButton, SideNav, SideNavItems, SideNavLink, SideNavDivider } from "@carbon/react";
+import { Outlet, useLocation } from "react-router";
+import { Button } from "antd";
+import { CloseOutlined, MenuOutlined } from "@ant-design/icons";
+import SidebarNav from "@/layouts/SidebarNav";
 import { AppHeaderBrand, AppHeaderActions } from "@/layouts/AppHeaderChrome";
 import Breadcrumbs from "@/layouts/Breadcrumbs";
 import BottomTabBar from "@/layouts/BottomTabBar";
@@ -12,7 +13,6 @@ import ToastStack from "@/shared/ui/toast/ToastStack";
 import OfflineBanner from "@/shared/ui/OfflineBanner";
 import { PageTitleContext } from "@/shared/hooks/usePageTitle";
 import { useMediaQuery, DRAWER_QUERY, PHONE_QUERY } from "@/shared/hooks/useMediaQuery";
-import { prefetchForPath } from "@/layouts/prefetchOnHover";
 import type { NavGroup } from "@/layouts/nav/types";
 import { useT } from "@/shared/i18n/useT";
 import type { Translate } from "@/shared/i18n/i18nContext";
@@ -40,7 +40,6 @@ export default function PortalShell({ navGroups: rawGroups, showSearch = false, 
   const { pathname } = useLocation();
   const { t } = useT();
   const navGroups = useMemo(() => translateNav(rawGroups, t), [rawGroups, t]);
-  const queryClient = useQueryClient();
   const isDrawer = useMediaQuery(DRAWER_QUERY);
   const isPhone = useMediaQuery(PHONE_QUERY);
   const [expanded, setExpanded] = useState(true);
@@ -72,44 +71,24 @@ export default function PortalShell({ navGroups: rawGroups, showSearch = false, 
     <PageTitleContext.Provider value={setTitleOverride}>
       <a href="#main-content" className="os-skip-link">{t("shell.skip")}</a>
       <ToastStack />
-      <Header aria-label="OpenSchool">
-        <HeaderMenuButton
+      <header className="os-topbar" aria-label="OpenSchool">
+        <Button
+          type="text"
+          shape="circle"
           className="os-sidebar-toggle"
           aria-label={sidebarOpen ? t("shell.closeMenu") : t("shell.openMenu")}
-          onClick={toggle}
-          isActive={sidebarOpen}
           aria-expanded={sidebarOpen}
-          isCollapsible
+          icon={sidebarOpen ? <CloseOutlined /> : <MenuOutlined />}
+          onClick={toggle}
         />
         <AppHeaderBrand />
         <AppHeaderActions showSearch={showSearch} showLanguage={showLanguage} />
-      </Header>
+      </header>
 
       <div className={`os-layout${isDrawer ? " is-drawer" : ""}${showTabs ? " has-bottom-tabs" : ""}`}>
         {isDrawer && drawerOpen && <div className="os-layout__scrim" onClick={() => setDrawerOpen(false)} aria-hidden="true" />}
         <aside className={`os-layout__sidebar${sidebarOpen ? "" : " is-collapsed"}`} aria-hidden={!sidebarOpen || undefined} inert={!sidebarOpen || undefined}>
-          <SideNav aria-label={t("shell.sideNav")} isFixedNav expanded={sidebarOpen} isPersistent>
-            <SideNavItems>
-              {navGroups.map((group, i) => (
-                <div key={group.label}>
-                  {i > 0 && <SideNavDivider />}
-                  <p className="os-nav-group__label">{group.label}</p>
-                  {group.items.map(({ path, label, Icon }) => (
-                    <SideNavLink
-                      key={path}
-                      as={Link}
-                      to={path}
-                      renderIcon={Icon}
-                      isActive={active?.path === path}
-                      onMouseEnter={() => prefetchForPath(queryClient, path)}
-                    >
-                      {label}
-                    </SideNavLink>
-                  ))}
-                </div>
-              ))}
-            </SideNavItems>
-          </SideNav>
+          <SidebarNav groups={navGroups} activePath={active?.path} aria-label={t("shell.sideNav")} />
         </aside>
 
         <main id="main-content" tabIndex={-1} className={`os-layout__content${sidebarOpen && !isDrawer ? "" : " is-expanded"}`}>

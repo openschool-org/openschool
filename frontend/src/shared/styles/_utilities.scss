@@ -79,7 +79,7 @@ $sizes: (2: 2rem, 2h: 2.5rem, 3: 3rem, 4: 4rem, 5: 5rem, 6: 6rem, 8: 8rem, 10: 1
 .os-max-w-full { max-width: 100%; }
 .os-full-width { width: 100%; max-width: 100%; }
 .os-full-height { min-height: 100vh; }
-.os-min-h-content { min-height: calc(100vh - 3rem); }
+.os-min-h-content { min-height: calc(100vh - var(--os-header-h)); }
 
 // Typography
 // 11 px is for uppercase labels only; body text never goes below os-text-xs.

@@ -1,7 +1,7 @@
 @use "tokens" as *;
 
-// App header (3rem) plus this bar's own height.
-$os-marks-context-bar-h: 5.5rem;
+// App header plus this bar's own height (2.5rem).
+$os-marks-context-bar-h: $os-header-h + 2.5rem;
 
 // Data Table
 .os-table {
@@ -54,9 +54,9 @@ $os-marks-context-bar-h: 5.5rem;
 
 .os-marks-context-bar {
   position: sticky;
-  top: 3rem;
+  top: $os-header-h;
   z-index: 51;
-  height: $os-marks-context-bar-h - 3rem;
+  height: $os-marks-context-bar-h - $os-header-h;
   display: flex;
   align-items: center;
   gap: 1rem;
