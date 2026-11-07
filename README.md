@@ -1,85 +1,76 @@
-<p align="center">
-  <img src="frontend/public/w-favicon.webp" alt="OpenSchool" width="96" />
-</p>
+# OpenSchool
 
-<h1 align="center">OpenSchool</h1>
+The open-source platform for digitising the day-to-day operations of Sri Lankan schools.
 
-<p align="center">
-  Open digital platform for Sri Lankan schools.
-</p>
+[![Backend CI](https://github.com/openschool-org/openschool/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/openschool-org/openschool/actions/workflows/backend-ci.yml)
+[![Frontend CI](https://github.com/openschool-org/openschool/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/openschool-org/openschool/actions/workflows/frontend-ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-<p align="center">
-  <a href="https://github.com/openschool-org/openschool/actions/workflows/backend-ci.yml"><img src="https://github.com/openschool-org/openschool/actions/workflows/backend-ci.yml/badge.svg" alt="Backend CI"></a>
-  <a href="https://github.com/openschool-org/openschool/actions/workflows/frontend-ci.yml"><img src="https://github.com/openschool-org/openschool/actions/workflows/frontend-ci.yml/badge.svg" alt="Frontend CI"></a>
-  <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="Apache 2.0 License"></a>
-  <a href="./CODE_OF_CONDUCT.md"><img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg" alt="Contributor Covenant"></a>
-</p>
+## Overview
 
----
+OpenSchool brings everyday school work into one system: student and staff records, classes, attendance, curriculum, timetables, marks, notifications, reports, and administration. It replaces paper records and disconnected tools with a single source of truth.
 
-## About OpenSchool
+It is designed to be self-hosted. A school or public-sector organisation can run it on infrastructure it controls, which keeps student and administrative data under local control. It is released under the Apache License 2.0, with no licence fees and no vendor lock-in.
 
-OpenSchool is an open-source school management platform for Sri Lankan government schools. It brings everyday school work into one place: student and staff records, classes, attendance, curriculum, timetables, marks, notifications, reports, and school administration.
-
-Many schools still depend on paper records or several disconnected tools. This makes information harder to find, update, and share safely. OpenSchool is built to give schools one clear system for managing that work.
-
-OpenSchool can be self-hosted, so a school or public-sector organisation can run it on infrastructure it controls. Student and administrative data can remain under local control instead of depending on a commercial foreign-hosted service. It is licensed under Apache License 2.0, with no licence fees and no vendor lock-in.
+> **Status:** OpenSchool is pre-1.0 and under active development. Interfaces and data models may change between releases. See the [changelog](CHANGELOG.md).
 
 ## Features
 
-- School setup, academic years, grades, classes, houses, and streams
-- Student, teacher, guardian, and non-academic staff records
-- Daily student and staff attendance
-- Subjects, curriculum choices, term marks, and promotions
-- Timetable planning, review, and publishing
-- In-app notifications, reports, dashboards, and automation checks
-- Separate portals for administrators, teachers, students, and parents
+- **School setup:** academic years, grades, classes, houses, and streams
+- **People:** student, teacher, guardian, and non-academic staff records
+- **Attendance:** daily student and staff attendance
+- **Academics:** subjects, curriculum choices, term marks, and promotions
+- **Timetables:** planning, review, and publishing
+- **Operations:** in-app notifications, reports, dashboards, and automation checks
+- **Portals:** separate interfaces for administrators, teachers, students, and parents
 
-Read the [feature guide](docs/FEATURES.md) for the full list.
+The [feature guide](docs/FEATURES.md) describes each module in detail.
 
-## Built with
+## Tech stack
 
-| Part | Technology |
+| Layer | Technology |
 | --- | --- |
-| Backend | Go and Gin |
-| Frontend | React, TypeScript, Vite, and Carbon Design System |
+| Backend | Go, [Gin](https://github.com/gin-gonic/gin) |
+| Frontend | React, TypeScript, Vite |
 | Database | PostgreSQL |
-| Identity and access management | [ThunderID](https://github.com/thunderid) |
+| Identity and access | [ThunderID](https://github.com/thunderid) |
 
-The backend is a modular monolith: one application, one database, and clear feature modules. See the [architecture guide](docs/ARCHITECTURE.md) for more detail.
+The backend is a modular monolith: one application, one database, and clear feature modules. See the [architecture guide](docs/ARCHITECTURE.md) for details.
 
-## Get started
+## Quick start
 
-You need Go, Node.js with pnpm, Docker, and Docker Compose.
+**Prerequisites:** Go 1.25+, Node.js 18+ with pnpm, Docker with Docker Compose.
 
 ```bash
 git clone https://github.com/openschool-org/openschool.git
 cd openschool
+
+make setup   # start PostgreSQL and ThunderID, configure environment, install dependencies
+make dev     # run the backend (:8080) and the frontend (:5173)
 ```
 
-Then follow these guides:
+Open <http://localhost:5173> and create the first administrator account.
 
-1. [Set up ThunderID](docs/THUNDERID.md).
-2. [Set up and run OpenSchool](docs/SETUP.md).
-3. Open `http://localhost:5173` and create the first administrator account.
+`make setup` starts ThunderID with OpenSchool's resources preloaded, generates a client secret, and writes the `.env` files. To configure ThunderID by hand, see the [ThunderID guide](docs/THUNDERID.md). For a step-by-step manual setup, see the [setup guide](docs/SETUP.md).
 
 ## Documentation
 
-| Guide | Use it for |
+| Document | Description |
 | --- | --- |
-| [Setup](docs/SETUP.md) | Running OpenSchool locally and setting up a new school |
-| [Features](docs/FEATURES.md) | Understanding what the system can do |
-| [Architecture](docs/ARCHITECTURE.md) | Understanding the project structure and data model |
-| [Architecture decisions](docs/adr/) | Understanding why key technical decisions were made |
-| [Contributing](CONTRIBUTING.md) | Setting up a development environment and opening a pull request |
+| [Setup](docs/SETUP.md) | Run OpenSchool locally and set up a new school |
+| [ThunderID](docs/THUNDERID.md) | Configure the identity provider |
+| [Features](docs/FEATURES.md) | What the system can do, by module |
+| [Architecture](docs/ARCHITECTURE.md) | Project structure and data model |
+| [Architecture decisions](docs/adr/) | Why key technical decisions were made |
+| [Changelog](CHANGELOG.md) | Release history |
 
 ## Contributing
 
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request, and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening an issue or pull request, and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Security
 
-If you find a security issue, please do not report it in a public issue. Follow [SECURITY.md](SECURITY.md).
+Do not report security issues in a public issue. Follow the process in [SECURITY.md](SECURITY.md).
 
 ## License
 
