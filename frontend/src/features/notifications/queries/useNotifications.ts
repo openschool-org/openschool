@@ -69,13 +69,6 @@ export const useUnarchiveNotification = () => {
 export const useDraftNotifications = () =>
   useQuery({ queryKey: keys.drafts(), queryFn: notificationApi.listDrafts });
 
-export const useNotificationStats = (id: string) =>
-  useQuery({
-    queryKey: keys.stats(id),
-    queryFn: () => notificationApi.stats(id),
-    enabled: !!id,
-  });
-
 const useInvalidateSent = () => {
   const invalidate = useInvalidate();
   return () => invalidate(keys.sent(), keys.drafts(), ["notifications", "history"]);

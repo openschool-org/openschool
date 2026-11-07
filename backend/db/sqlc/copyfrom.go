@@ -47,3 +47,40 @@ func (r iteratorForInsertActivationCodes) Err() error {
 func (q *Queries) InsertActivationCodes(ctx context.Context, arg []InsertActivationCodesParams) (int64, error) {
 	return q.db.CopyFrom(ctx, []string{"activation_codes"}, []string{"batch_id", "role", "student_id", "guardian_id", "code_hash", "expires_at", "created_by", "code_encrypted"}, &iteratorForInsertActivationCodes{rows: arg})
 }
+
+// iteratorForInsertLeaveRelief implements pgx.CopyFromSource.
+type iteratorForInsertLeaveRelief struct {
+	rows                 []InsertLeaveReliefParams
+	skippedFirstNextCall bool
+}
+
+func (r *iteratorForInsertLeaveRelief) Next() bool {
+	if len(r.rows) == 0 {
+		return false
+	}
+	if !r.skippedFirstNextCall {
+		r.skippedFirstNextCall = true
+		return true
+	}
+	r.rows = r.rows[1:]
+	return len(r.rows) > 0
+}
+
+func (r iteratorForInsertLeaveRelief) Values() ([]interface{}, error) {
+	return []interface{}{
+		r.rows[0].LeaveRequestID,
+		r.rows[0].Date,
+		r.rows[0].PeriodNumber,
+		r.rows[0].ClassID,
+		r.rows[0].SubjectID,
+		r.rows[0].ReliefTeacherID,
+	}, nil
+}
+
+func (r iteratorForInsertLeaveRelief) Err() error {
+	return nil
+}
+
+func (q *Queries) InsertLeaveRelief(ctx context.Context, arg []InsertLeaveReliefParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"teacher_leave_relief"}, []string{"leave_request_id", "date", "period_number", "class_id", "subject_id", "relief_teacher_id"}, &iteratorForInsertLeaveRelief{rows: arg})
+}

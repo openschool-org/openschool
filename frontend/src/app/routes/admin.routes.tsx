@@ -32,6 +32,7 @@ const Societies = page(() => import("@/features/portfolio/pages/admin/Societies"
 const Attendance = page(() => import("@/features/attendance/pages/admin/Attendance"));
 const AttendanceMark = page(() => import("@/features/attendance/pages/admin/AttendanceMark"));
 const StaffAttendance = page(() => import("@/features/attendance/pages/admin/StaffAttendance"));
+const LeaveRegister = page(() => import("@/features/leave/pages/admin/LeaveRegister"));
 const AcademicYears = page(() => import("@/features/school/pages/admin/AcademicYears"));
 const SettingsPage = page(() => import("@/features/school/pages/admin/Settings"));
 const SchoolSetup = page(() => import("@/features/school/pages/admin/SchoolSetup"));
@@ -56,6 +57,7 @@ export function adminRoutes() {
       <Route path="/guardians" element={<GuardiansDirectory />} />
       <Route path="/non-academic-staff" element={<NonAcademicStaff />} />
       <Route path="/staff-attendance" element={<StaffAttendance />} />
+      <Route path="/teacher-leave" element={<LeaveRegister />} />
       <Route path="/reports" element={<Reports />} />
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/teachers" element={<Teachers />} />

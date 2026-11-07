@@ -87,12 +87,6 @@ export interface Notification {
   created_at: string | null;
 }
 
-export interface NotificationStats {
-  total: number;
-  read: number;
-  unread: number;
-}
-
 export interface MyNotification {
   recipient_id: string;
   notification_id: string;
@@ -163,8 +157,6 @@ export const notificationApi = {
   inbox: (params: InboxParams) => api.get<InboxPage>("/me/notifications/inbox", { params: compact(params) }).then((r) => r.data),
 
   listDrafts: () => api.get<Notification[]>("/notifications/drafts").then((r) => r.data),
-
-  stats: (id: string) => api.get<NotificationStats>(`/notifications/${id}/stats`).then((r) => r.data),
 
   listMine: () => api.get<MyNotification[]>("/me/notifications").then((r) => r.data),
 

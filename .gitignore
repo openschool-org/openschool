@@ -18,3 +18,5 @@ Thumbs.db
 thunderid/environment.env
 .scannerwork
 sonar-project.properties
+
+scurity-audit-test/
