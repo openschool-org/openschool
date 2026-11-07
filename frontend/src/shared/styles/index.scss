@@ -17,7 +17,7 @@
 @forward "@carbon/react/scss/themes";
 @forward "@carbon/react/scss/theme";
 @use "@carbon/react/scss/reset";
-// IBM Plex is self-hosted in shared/styles/_fonts.scss. Carbon's font partial
+// Google Sans is self-hosted in shared/styles/_fonts.scss. Carbon's font partial
 // references the full package font tree and adds unused font-face declarations.
 @forward "@carbon/react/scss/grid";
 @forward "@carbon/react/scss/layer";
@@ -73,6 +73,7 @@
 @use "status";
 @use "layout";
 @use "page";
+@use "dashboard";
 @use "table";
 @use "forms";
 @use "carbon-overrides";
