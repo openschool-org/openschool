@@ -9,10 +9,12 @@ $os-accent-light:  #E6F7FA;
 $os-accent-border: #9DE5F3;
 $os-brand-orange:  $os-accent;
 $os-sidebar-w:     15rem;
+$os-header-h:      3.5rem;
 
-$os-canvas:        #F4F4F4; // Carbon gray 10
+$os-canvas:        #F6F7F9; // cool light neutral page background
 $os-layer:         #FFFFFF; // Carbon white
 $os-layer-selected: #E0E0E0; // Carbon gray 20
+$os-nav-selected:  #ECEEF1; // active sidebar item
 
 $os-chart-purple:  #8A3FFC; // Carbon purple 60
 $os-chart-blue:    #0F62FE;
@@ -57,6 +59,7 @@ $os-status-excused-border: $os-chart-purple;
 $os-status-excused-text:   #31135E; // Carbon purple 100
 
 :root {
+  --os-header-h: #{$os-header-h};
   --os-accent: #{$os-accent};
   --os-accent-dark: #{$os-accent-dark};
   --os-accent-light: #{$os-accent-light};
@@ -83,6 +86,7 @@ $os-status-excused-text:   #31135E; // Carbon purple 100
   --os-border-strong: #{$os-border-strong};
   --os-layer: #{$os-layer};
   --os-layer-selected: #{$os-layer-selected};
+  --os-nav-selected: #{$os-nav-selected};
   --os-layer-hover: #{$os-layer-hover};
   --os-danger: #{$os-danger};
   --os-success: #{$os-success};

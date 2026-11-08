@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { HeaderName, HeaderGlobalBar, HeaderGlobalAction, OverflowMenu, OverflowMenuItem } from "@carbon/react";
-import { Password, User, Search } from "@carbon/icons-react";
+import { Button, Dropdown } from "antd";
+import { KeyOutlined, LogoutOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import { UserDropdown } from "@thunderid/react";
 import NotificationsBell from "@/features/notifications/components/NotificationsBell";
 import ChangePasswordModal from "@/features/auth/components/ChangePasswordModal";
@@ -11,14 +11,10 @@ import { useT } from "@/shared/i18n/useT";
 
 export function AppHeaderBrand() {
   return (
-    <HeaderName as={Link} to="/" prefix="" className="os-header-brand">
-      <span className="os-header-brand__inner">
-        <span className="os-header-brand__logo">
-          <img src="/w-favicon.webp" alt="" width={20} height={20} />
-        </span>
-        <span>OpenSchool</span>
-      </span>
-    </HeaderName>
+    <Link to="/" className="os-topbar__brand">
+      <img src="/w-favicon.webp" alt="" width={24} height={24} />
+      <span className="os-topbar__brand-name">OpenSchool</span>
+    </Link>
   );
 }
 
@@ -40,46 +36,33 @@ export function AppHeaderActions({ showSearch = false, showLanguage = false }: {
   }, [showSearch]);
 
   return (
-    <HeaderGlobalBar className="os-flex os-items-center">
+    <div className="os-topbar__actions">
       {showSearch &&
         (searchExpanded ? (
           <GlobalSearch autoFocus onClose={() => setSearchExpanded(false)} />
         ) : (
-          <HeaderGlobalAction
-            aria-label="Search"
-            onClick={() => setSearchExpanded(true)}
-          >
-            <Search size={20} className="os-header-icon" />
-          </HeaderGlobalAction>
+          <Button type="text" shape="circle" aria-label="Search" icon={<SearchOutlined />} onClick={() => setSearchExpanded(true)} />
         ))}
       {showLanguage && <LanguageSwitcher />}
-      <HeaderGlobalAction aria-label={t("shell.changePassword")} onClick={() => setChangingPassword(true)}>
-        <Password size={20} className="os-header-icon" />
-      </HeaderGlobalAction>
+      <Button type="text" shape="circle" aria-label={t("shell.changePassword")} icon={<KeyOutlined />} onClick={() => setChangingPassword(true)} />
       <NotificationsBell />
       <UserDropdown>
         {({ openProfile, signOut }) => (
-          <OverflowMenu
-            renderIcon={User}
-            aria-label={t("shell.profileMenu")}
-            flipped
-            className="os-header-user-menu"
+          <Dropdown
+            trigger={["click"]}
+            placement="bottomRight"
+            menu={{
+              items: [
+                { key: "profile", icon: <UserOutlined />, label: t("shell.manageProfile"), onClick: openProfile },
+                { key: "signout", icon: <LogoutOutlined />, label: t("shell.signOut"), danger: true, onClick: signOut },
+              ],
+            }}
           >
-            <OverflowMenuItem
-              itemText={t("shell.manageProfile")}
-              onClick={openProfile}
-            />
-            <OverflowMenuItem
-              itemText={t("shell.signOut")}
-              onClick={signOut}
-              isDelete
-            />
-          </OverflowMenu>
+            <Button type="text" shape="circle" aria-label={t("shell.profileMenu")} icon={<UserOutlined />} />
+          </Dropdown>
         )}
       </UserDropdown>
-      {changingPassword && (
-        <ChangePasswordModal onClose={() => setChangingPassword(false)} />
-      )}
-    </HeaderGlobalBar>
+      {changingPassword && <ChangePasswordModal onClose={() => setChangingPassword(false)} />}
+    </div>
   );
 }

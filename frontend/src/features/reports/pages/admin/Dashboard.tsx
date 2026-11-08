@@ -11,9 +11,9 @@ import { useDailySessions } from "@/features/attendance/queries/useAttendance";
 import { useStaffAttendanceByDate } from "@/features/attendance/queries/useStaffAttendance";
 import type { DailySession } from "@/features/attendance/api/attendance";
 import { todayISODate } from "@/shared/lib/date";
-import { Add, ArrowRight, Calendar, UserMultiple, Education, Building, Book } from "@carbon/icons-react";
-import { Button } from "@carbon/react";
-import { Link } from "react-router";
+import { UserMultiple, Education, Building, Book } from "@carbon/icons-react";
+import { ArrowRightOutlined, BankOutlined, CalendarOutlined, PlusOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
 import StatCard from "@/features/reports/components/dashboard/StatCard";
 import AttendanceByClassSection from "@/features/reports/components/dashboard/AttendanceByClassSection";
 import DashboardSnapshotSection from "@/features/reports/components/dashboard/DashboardSnapshotSection";
@@ -69,34 +69,22 @@ export default function Dashboard() {
 
   return (
     <div className="os-page">
-      <div className="os-dashboard-hero">
-        <div className="os-dashboard-hero__copy">
-          <p className="os-eyebrow">School overview</p>
-          <h1 className="os-page__title">{title}</h1>
-          <p className="os-page__subtitle">A quick view of what is happening across your school today.</p>
+      <header className="os-dash-hero">
+        <div>
+          <h1 className="os-dash-hero__title">{title}</h1>
+          <p className="os-dash-hero__sub">A quick view of what is happening across your school today.</p>
         </div>
-
-        <div className="os-dashboard-hero__aside">
-          {currentYear && (
-            <div className="os-year-pill">
-              <Calendar size={16} className="os-shrink-0" />
-              <span><strong>{currentYear.label}</strong><small>Current academic year</small></span>
-            </div>
-          )}
-          {school?.logo_url && (
-            <img
-              src={school.logo_url}
-              alt={school.name ?? "School logo"} className="os-dashboard-hero__logo os-object-contain os-shrink-0"
-            />
-          )}
+        <div className="os-dash-hero__aside">
+          {currentYear && <span className="os-dash-year"><CalendarOutlined />Academic year <strong>{currentYear.label}</strong></span>}
+          {school?.logo_url && <img src={school.logo_url} alt={school.name ?? "School logo"} className="os-dash-hero__logo" />}
         </div>
-      </div>
+      </header>
 
-      <div className="os-dashboard-actions" aria-label="Quick actions">
-        <Button as={Link} to="/students/new" kind="primary" size="md" renderIcon={Add}>Add student</Button>
-        <Button as={Link} to="/classes/new" kind="tertiary" size="md" renderIcon={Building}>Create class</Button>
-        <Button as={Link} to="/attendance" kind="tertiary" size="md" renderIcon={Calendar}>Take attendance</Button>
-        <Button as={Link} to="/analytics" kind="ghost" size="md" renderIcon={ArrowRight}>View analytics</Button>
+      <div className="os-dash-actions" aria-label="Quick actions">
+        <LinkButton to="/students/new" size="large" type="primary" icon={<PlusOutlined />}>Add student</LinkButton>
+        <LinkButton to="/classes/new" size="large" icon={<BankOutlined />}>Create class</LinkButton>
+        <LinkButton to="/attendance" size="large" icon={<CalendarOutlined />}>Take attendance</LinkButton>
+        <LinkButton to="/analytics" size="large" type="link" icon={<ArrowRightOutlined />} iconPlacement="end" className="os-dash-actions__end">View analytics</LinkButton>
       </div>
 
       {!setupLoading && <SetupChecklistCard items={setupItems} />}
@@ -108,7 +96,7 @@ export default function Dashboard() {
         <StatCard label="Subjects" value={subjects?.length ?? 0} loading={subjectsLoading} Icon={Book} path="/subjects" />
       </div>
 
-      <div className="os-dashboard-lower-grid">
+      <div className="os-dash-lower">
         <AttendanceByClassSection
           classes={classes}
           loading={classAttendanceLoading}
@@ -122,9 +110,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="os-dashboard-recent">
-        <RecentActivitySection items={recentActivity} loading={analyticsLoading} />
-      </div>
+      <RecentActivitySection items={recentActivity} loading={analyticsLoading} />
     </div>
   );
 }

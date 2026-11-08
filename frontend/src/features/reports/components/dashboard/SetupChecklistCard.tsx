@@ -1,6 +1,6 @@
 import { Link } from "react-router";
-import { CheckmarkFilled, CircleOutline, ChevronRight } from "@carbon/icons-react";
-import ProgressBar from "@/shared/ui/ProgressBar";
+import { Card, Progress } from "antd";
+import { CheckCircleFilled } from "@ant-design/icons";
 
 export interface SetupChecklistItem {
   label: string;
@@ -10,36 +10,32 @@ export interface SetupChecklistItem {
 
 export default function SetupChecklistCard({ items }: { items: SetupChecklistItem[] }) {
   const doneCount = items.filter((i) => i.done).length;
-  const nextItem = items.find((item) => !item.done);
-  const progress = Math.round((doneCount / items.length) * 100);
   if (doneCount === items.length) return null;
+  const progress = Math.round((doneCount / items.length) * 100);
 
   return (
-    <div className="os-setup-checklist os-mb-6">
-      <div className="os-setup-checklist__header">
-        <div className="os-setup-checklist__heading">
-          <div className="os-setup-checklist__icon"><CheckmarkFilled size={20} /></div>
-          <div>
-            <p className="os-eyebrow">Getting started</p>
-            <h2>Finish setting up</h2>
-            <p>Complete these essentials to get your school ready for daily use.</p>
-          </div>
+    <Card className="os-dash-card">
+      <div className="os-dash-setup__head">
+        <div>
+          <h2 className="os-dash-setup__title">Finish setting up your school</h2>
+          <p className="os-dash-setup__desc">Complete these essentials to get ready for daily use.</p>
         </div>
-        <div className="os-setup-checklist__progress-label"><strong>{progress}%</strong><span>{doneCount} of {items.length} complete</span></div>
+        <span className="os-dash-setup__count"><strong>{doneCount}</strong> of {items.length} complete</span>
       </div>
-      <div className="os-setup-checklist__bar"><ProgressBar value={doneCount} max={items.length} label="Setup progress" /></div>
-      {nextItem && <p className="os-setup-checklist__next">Next up: <Link to={nextItem.path}>{nextItem.label}</Link></p>}
-      <div className="os-setup-checklist__items">
+      <div className="os-dash-setup__bar">
+        <Progress percent={progress} showInfo={false} size={{ height: 6 }} aria-label="Setup progress" />
+      </div>
+      <div className="os-dash-setup__items">
         {items.map((item) => (
-          <Link key={item.label} to={item.path} className={`os-setup-checklist__item${item.done ? " is-complete" : ""}`}>
-            <span className="os-setup-checklist__status">
-              {item.done ? <CheckmarkFilled size={16} /> : <CircleOutline size={16} />}
+          <Link key={item.label} to={item.path} className={`os-dash-setup__item${item.done ? " is-complete" : ""}`}>
+            <span className="os-dash-setup__item__mark">
+              {item.done ? <CheckCircleFilled /> : <span className="os-dash-setup__todo" />}
             </span>
-            <span className="os-setup-checklist__item-label">{item.label}</span>
-            {!item.done && <ChevronRight size={16} className="os-setup-checklist__arrow" />}
+            <span className="os-dash-setup__item__label">{item.label}</span>
+            {!item.done && <span className="os-dash-setup__item__go">Set up</span>}
           </Link>
         ))}
       </div>
-    </div>
+    </Card>
   );
 }

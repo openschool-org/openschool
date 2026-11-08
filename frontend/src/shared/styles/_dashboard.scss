@@ -1,0 +1,132 @@
+// Admin dashboard (Ant Design based). Scoped to `os-dash-*` so the shared
+// os-section / os-stat-card styles other pages rely on stay untouched.
+// Flat by design: 1px borders, no shadows, no hover decoration on cards.
+// Type scale: 14px body, 13px secondary, 16px card titles; weights 400 / 500 only.
+
+.os-dash-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+
+  &__title { margin: 0; color: var(--os-text-primary); font-size: 1.75rem; font-weight: 500; line-height: 1.2; }
+  &__sub { margin: 0.5rem 0 0; color: var(--os-text-tertiary); font-size: 1rem; }
+  &__aside { display: flex; align-items: center; gap: 1.5rem; flex-shrink: 0; }
+  &__logo { display: block; width: 7rem; max-width: 22vw; height: 3.5rem; object-fit: contain; }
+}
+
+.os-dash-year {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--os-text-tertiary);
+  font-size: 0.875rem;
+  strong { color: var(--os-text-primary); font-weight: 500; }
+}
+
+.os-dash-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem; &__end { margin-left: auto; } }
+
+// Card chrome
+.os-dash-card.ant-card,
+.os-form-card.ant-card {
+  margin-bottom: 1.5rem;
+  background: var(--os-layer);
+  border: 1px solid var(--os-border-subtle);
+  border-radius: 0.625rem;
+  box-shadow: none;
+
+  .ant-card-head { min-height: 3.5rem; padding: 0 1.5rem; border-bottom: 1px solid var(--os-border-subtle); }
+  .ant-card-head-title { font-size: 1rem; font-weight: 500; }
+  .ant-card-extra a { color: var(--os-accent-dark); font-size: 0.875rem; font-weight: 500; text-decoration: none; &:hover { text-decoration: underline; } }
+  .ant-card-body { padding: 1.5rem; }
+  &.is-flush .ant-card-body { padding: 0; }
+}
+
+.os-dash-lower { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 0.8fr); gap: 1.5rem; align-items: start; }
+@media (max-width: 1000px) { .os-dash-lower { display: block; } }
+
+// Stat cards: label + number, nothing else.
+.os-dash-stat.ant-card {
+  background: var(--os-layer);
+  border: 1px solid var(--os-border-subtle);
+  border-radius: 0.625rem;
+  box-shadow: none;
+  .ant-card-body { padding: 1.25rem 1.5rem; }
+}
+.os-dash-stat__label { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.75rem; color: var(--os-text-tertiary); font-size: 0.875rem; svg { fill: currentColor; } }
+.os-dash-stat__value { margin: 0; color: var(--os-text-primary); font-size: 2rem; font-weight: 500; line-height: 1.1; }
+
+// Setup checklist
+.os-dash-setup__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; }
+.os-dash-setup__title { margin: 0; color: var(--os-text-primary); font-size: 1.25rem; font-weight: 500; }
+.os-dash-setup__desc { margin: 0.375rem 0 0; color: var(--os-text-tertiary); font-size: 1rem; }
+.os-dash-setup__count { flex-shrink: 0; color: var(--os-text-tertiary); font-size: 0.875rem; strong { color: var(--os-text-primary); font-size: 1.25rem; font-weight: 500; } }
+.os-dash-setup__bar { margin: 1.25rem 0 1rem; .ant-progress { margin: 0; line-height: 1; } }
+.os-dash-setup__items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 2rem; @media (max-width: 700px) { grid-template-columns: 1fr; } }
+.os-dash-setup__item {
+  display: flex; align-items: center; gap: 0.875rem; min-height: 3rem; padding: 0 0.25rem;
+  color: var(--os-text-primary); font-size: 1rem; text-decoration: none;
+  border-bottom: 1px solid var(--os-border-subtle);
+  &.is-complete { color: var(--os-text-tertiary); }
+  &__mark { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 1.25rem; height: 1.25rem; color: var(--os-success); font-size: 1.25rem; }
+  &__label { flex: 1; min-width: 0; }
+  &__go { color: var(--os-accent-dark); font-size: 0.875rem; font-weight: 500; }
+}
+.os-dash-setup__todo { width: 1.125rem; height: 1.125rem; border: 1.5px solid var(--os-border-strong); border-radius: 50%; }
+
+// Attendance by grade: one dense row per grade.
+.os-dash-rows { margin: 0; padding: 0; list-style: none; }
+.os-dash-row {
+  display: grid; grid-template-columns: 6rem 5.5rem minmax(6rem, 1fr) 10rem 1rem; align-items: center; gap: 1.25rem;
+  width: 100%; min-height: 3.5rem; padding: 0 1.5rem;
+  font: inherit; color: var(--os-text-primary); text-align: left; cursor: pointer;
+  background: transparent; border: 0; border-bottom: 1px solid var(--os-border-subtle);
+  li:last-child > & { border-bottom: 0; }
+  &:hover { background: var(--os-canvas); }
+  &:focus-visible { outline: 2px solid var(--os-accent); outline-offset: -2px; }
+  &__name { font-size: 1rem; font-weight: 500; }
+  &__muted { color: var(--os-text-tertiary); font-size: 0.875rem; }
+  &__counts { color: var(--os-text-tertiary); font-size: 0.875rem; text-align: right; strong { color: var(--os-text-primary); font-weight: 500; } }
+  &__chev { color: var(--os-text-disabled); font-size: 0.75rem; }
+  .ant-progress { margin: 0; line-height: 1; }
+  @media (max-width: 700px) { grid-template-columns: 1fr 1fr; padding: 0.75rem 1rem; row-gap: 0.5rem; .ant-progress { grid-column: 1 / -1; } &__chev { display: none; } }
+}
+.os-dash-classes { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0.75rem; }
+.os-dash-class {
+  display: block; padding: 1rem; color: inherit; text-decoration: none;
+  border: 1px solid var(--os-border-subtle); border-radius: 0.625rem;
+  &__top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
+  &__name { min-width: 0; font-size: 1rem; font-weight: 500; }
+  &__row { display: flex; justify-content: space-between; margin-bottom: 0.375rem; color: var(--os-text-tertiary); font-size: 0.875rem; strong { color: var(--os-text-primary); font-weight: 500; } }
+  .ant-progress { margin: 0; line-height: 1; }
+}
+
+// Staff attendance
+.os-dash-staff__block { padding: 1.25rem 1.5rem; & + & { border-top: 1px solid var(--os-border-subtle); } }
+.os-dash-staff__head { margin-bottom: 0.875rem; strong { display: block; font-size: 1rem; font-weight: 500; } span { color: var(--os-text-tertiary); font-size: 0.875rem; } }
+.os-dash-staff__row { display: flex; justify-content: space-between; margin-bottom: 0.375rem; color: var(--os-text-tertiary); font-size: 0.875rem; strong { color: var(--os-text-primary); font-weight: 500; } }
+.os-dash-staff .ant-progress { margin: 0; line-height: 1; }
+
+// Recent activity
+.os-dash-activity { display: flex; align-items: center; gap: 1rem; min-height: 4rem; padding: 0.75rem 1.5rem; color: inherit; text-decoration: none; border-bottom: 1px solid var(--os-border-subtle); &:last-child { border-bottom: 0; } &:hover { background: var(--os-canvas); } }
+.os-dash-activity__body { flex: 1; min-width: 0; p { margin: 0; } }
+.os-dash-activity__text { font-size: 1rem; font-weight: 500; }
+.os-dash-activity__sub { margin-top: 0.125rem !important; color: var(--os-text-tertiary); font-size: 0.875rem; }
+.os-dash-activity__side { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; color: var(--os-text-tertiary); font-size: 0.875rem; }
+.os-dash-empty { padding: 2.5rem 1.5rem; }
+
+// Ant Design form pages (enrol student, ...)
+.os-form-columns > .ant-col { display: flex; flex-direction: column; margin-bottom: 1.5rem; }
+.os-form-columns .os-form-card.ant-card { flex: 1; margin-bottom: 0; }
+.os-form-card.ant-card .ant-form-item { margin-bottom: 1.5rem; }
+.os-form-card.ant-card .ant-form-item-label > label { font-size: 0.9375rem; }
+.os-form-card.ant-card .ant-form-item-extra { margin-top: 0.375rem; font-size: 0.8125rem; }
+.os-form-actions { display: flex; gap: 0.75rem; margin-bottom: 2rem; }
+.os-note.ant-typography {
+  display: flex; align-items: center; gap: 0.625rem; margin: 0 0 1.5rem; padding: 0.625rem 0.875rem;
+  color: var(--os-text-secondary); font-size: 0.875rem;
+  background: var(--os-accent-light); border: 1px solid var(--os-accent-border); border-radius: 0.5rem;
+  .anticon { color: var(--os-accent-dark); font-size: 1rem; }
+  .ant-typography strong { font-weight: 500; color: var(--os-accent-deeper); }
+}

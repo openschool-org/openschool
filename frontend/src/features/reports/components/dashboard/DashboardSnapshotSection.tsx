@@ -1,9 +1,6 @@
 import { Link } from "react-router";
-import { Education, UserMultiple } from "@carbon/icons-react";
-import { SkeletonText } from "@carbon/react";
+import { Card, Progress, Skeleton } from "antd";
 import type { StaffAttendanceRow } from "@/features/attendance/api/staffAttendance";
-import ProgressBar from "@/shared/ui/ProgressBar";
-import SectionHeader from "@/shared/ui/SectionHeader";
 
 type Props = {
   teachers?: StaffAttendanceRow[];
@@ -11,23 +8,21 @@ type Props = {
   staffLoading: boolean;
 };
 
-function StaffAttendanceBlock({ label, rows, Icon, loading }: { label: string; rows?: StaffAttendanceRow[]; Icon: typeof Education; loading: boolean }) {
+function StaffBlock({ label, rows, loading }: { label: string; rows?: StaffAttendanceRow[]; loading: boolean }) {
   const total = rows?.length ?? 0;
   const marked = rows?.filter((member) => !!member.status).length ?? 0;
+  const percent = total > 0 ? Math.round((marked / total) * 100) : 0;
 
   return (
-    <div className="os-snapshot-block">
-      <div className="os-snapshot-heading">
-        <div className="os-snapshot-icon"><Icon size={18} /></div>
-        <div><strong>{label}</strong><span>Attendance marked today</span></div>
+    <div className="os-dash-staff__block">
+      <div className="os-dash-staff__head">
+        <strong>{label}</strong>
+        <span>Attendance marked today</span>
       </div>
-      {loading ? <SkeletonText width="70%" /> : (
+      {loading ? <Skeleton title={false} paragraph={{ rows: 1 }} /> : (
         <>
-          <div className="os-flex os-justify-between os-text-xs os-mb-1h">
-            <span className="os-c-secondary">Marked today</span>
-            <strong>{marked} / {total}</strong>
-          </div>
-          <ProgressBar value={marked} max={total} label={`${label} marked today`} />
+          <div className="os-dash-staff__row"><span>Marked today</span><strong>{marked} / {total}</strong></div>
+          <Progress percent={percent} showInfo={false} size={{ height: 6 }} aria-label={`${label} marked today`} />
         </>
       )}
     </div>
@@ -36,15 +31,11 @@ function StaffAttendanceBlock({ label, rows, Icon, loading }: { label: string; r
 
 export default function DashboardSnapshotSection({ teachers, nonAcademicStaff, staffLoading }: Props) {
   return (
-    <div className="os-section os-dashboard-snapshot">
-      <SectionHeader
-        title="Staff attendance"
-        meta={<Link to="/staff-attendance" className="os-text-xs os-no-underline os-c-accent">Manage →</Link>}
-      />
-      <div className="os-snapshot-grid">
-        <StaffAttendanceBlock label="Teachers" rows={teachers} Icon={Education} loading={staffLoading} />
-        <StaffAttendanceBlock label="Non-academic staff" rows={nonAcademicStaff} Icon={UserMultiple} loading={staffLoading} />
+    <Card className="os-dash-card is-flush" title="Staff attendance" extra={<Link to="/staff-attendance">Manage</Link>}>
+      <div className="os-dash-staff">
+        <StaffBlock label="Teachers" rows={teachers} loading={staffLoading} />
+        <StaffBlock label="Non-academic staff" rows={nonAcademicStaff} loading={staffLoading} />
       </div>
-    </div>
+    </Card>
   );
 }

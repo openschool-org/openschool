@@ -1,231 +1,145 @@
-import { EMAIL_RE } from "@/shared/lib/validation";
-import { useState } from "react";
-import { Link, useNavigate } from "react-router";
-import {
-  Button,
-  TextInput,
-  TextArea,
-  RadioButtonGroup,
-  RadioButton,
-  InlineNotification,
-} from "@carbon/react";
-import { ArrowLeft, Save } from "@carbon/icons-react";
+import { Alert, Button, Card, Col, Form, Input, Radio, Row, Typography } from "antd";
+import { ArrowLeftOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router";
 import { useCreateStudent } from "@/features/students/queries/useStudents";
 import { getErrorMessage } from "@/shared/api/errors";
+import { EMAIL_RE } from "@/shared/lib/validation";
 import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "@/shared/lib/phone";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
-import PersonNameFields from "@/shared/ui/PersonNameFields";
-import { EMPTY_PERSON_NAMES } from "@/shared/lib/name";
+import LinkButton from "@/shared/ui/LinkButton";
+import PersonNameItems from "@/shared/ui/PersonNameItems";
 
-type Touched = Partial<
-  Record<"fullName" | "email" | "phone" | "indexNumber" | "whatsapp", boolean>
->;
+interface Values {
+  full_name: string;
+  name_with_initials?: string;
+  calling_name?: string;
+  email: string;
+  phone?: string;
+  index_number: string;
+  whatsapp?: string;
+  gender?: "male" | "female";
+  address?: string;
+  special_remarks?: string;
+}
+
+// Phone fields are optional; when filled they must be a valid Sri Lankan number.
+const phoneRule = {
+  validator: (_: unknown, value?: string) =>
+    isValidSriLankanPhone(value ?? "") ? Promise.resolve() : Promise.reject(new Error(PHONE_INVALID_TEXT)),
+};
+
+const clean = (value?: string) => value?.trim() || undefined;
 
 export default function AddStudent() {
   usePageTitle("Enrol student");
   const navigate = useNavigate();
   const createStudent = useCreateStudent();
+  const [form] = Form.useForm<Values>();
 
-  const [names, setNames] = useState(EMPTY_PERSON_NAMES);
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [indexNumber, setIndexNumber] = useState("");
-  const [address, setAddress] = useState("");
-  const [whatsapp, setWhatsapp] = useState("");
-  const [specialRemarks, setSpecialRemarks] = useState("");
-  const [gender, setGender] = useState<"" | "male" | "female">("");
-  const [touched, setTouched] = useState<Touched>({});
-
-  const markTouched = (field: keyof Touched) =>
-    setTouched((t) => ({ ...t, [field]: true }));
-
-  const handleSubmit = () => {
-    setTouched({
-      fullName: true,
-      email: true,
-      phone: true,
-      indexNumber: true,
-      whatsapp: true,
-    });
-    if (!isValid) return;
+  const handleFinish = (v: Values) =>
     createStudent.mutate(
       {
-        full_name: names.full_name.trim(),
-        name_with_initials: names.name_with_initials.trim() || undefined,
-        calling_name: names.calling_name.trim() || undefined,
-        email: email.trim(),
-        phone_number: phone.trim() || undefined,
-        index_number: indexNumber.trim(),
-        address: address.trim() || undefined,
-        whatsapp: whatsapp.trim() || undefined,
-        special_remarks: specialRemarks.trim() || undefined,
-        gender: gender || undefined,
+        full_name: v.full_name.trim(),
+        name_with_initials: clean(v.name_with_initials),
+        calling_name: clean(v.calling_name),
+        email: v.email.trim(),
+        phone_number: clean(v.phone),
+        index_number: v.index_number.trim(),
+        address: clean(v.address),
+        whatsapp: clean(v.whatsapp),
+        special_remarks: clean(v.special_remarks),
+        gender: v.gender,
       },
       { onSuccess: () => navigate("/students") },
     );
-  };
-
-  const errorMessage = createStudent.isError
-    ? getErrorMessage(createStudent.error, "Failed to enrol student")
-    : null;
-
-  const fullNameInvalid = !!touched.fullName && !names.full_name.trim();
-  const emailInvalid = !!touched.email && !EMAIL_RE.test(email.trim());
-  const phoneInvalid = !!touched.phone && !isValidSriLankanPhone(phone);
-  const indexNumberInvalid = !!touched.indexNumber && !indexNumber.trim();
-  const whatsappInvalid = !!touched.whatsapp && !isValidSriLankanPhone(whatsapp);
-
-  const isValid =
-    names.full_name.trim().length > 0 &&
-    EMAIL_RE.test(email.trim()) &&
-    isValidSriLankanPhone(phone) &&
-    indexNumber.trim().length > 0 &&
-    isValidSriLankanPhone(whatsapp);
 
   return (
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">Enrol new student</h1>
-          <p className="os-page__subtitle">
-            Create a student account and profile
-          </p>
+          <p className="os-page__subtitle">Create a student account and profile</p>
         </div>
-        <Button
-          renderIcon={ArrowLeft}
-          kind="ghost"
-          size="md"
-          as={Link}
-          to="/students"
-        >
-          Back
-        </Button>
+        <LinkButton to="/students" type="text" icon={<ArrowLeftOutlined />}>Back</LinkButton>
       </div>
 
-      <div className="os-form">
-        <InlineNotification
-          kind="info"
-          title="Initial password"
-          subtitle="The student's index number is their initial one-time password. They'll be prompted to change it on first sign-in."
-          lowContrast
-          hideCloseButton className="os-max-w-full os-mb-6"
-        />
+      <Typography.Paragraph type="secondary" className="os-note">
+        <InfoCircleOutlined />
+        <span><Typography.Text strong>Initial password:</Typography.Text> the student's index number. They'll be asked to change it on first sign-in.</span>
+      </Typography.Paragraph>
+      {createStudent.isError && (
+        <Alert type="error" showIcon className="os-mb-6" title="Error" description={getErrorMessage(createStudent.error, "Failed to enrol student")} />
+      )}
 
-        {errorMessage && (
-          <InlineNotification
-            kind="error"
-            title="Error"
-            subtitle={errorMessage}
-            lowContrast
-            hideCloseButton
-          />
-        )}
+      <Form form={form} layout="vertical" requiredMark={false} validateTrigger="onBlur" onFinish={handleFinish}>
+        <Row gutter={24} className="os-form-columns">
+          <Col xs={24} lg={12}>
+          <Card className="os-form-card" title="Account">
+            <Row gutter={24}>
+              <PersonNameItems form={form} />
+              <Col span={24}>
+                <Form.Item
+                  name="email"
+                  label="Email address"
+                  rules={[{ validator: (_, v?: string) => (EMAIL_RE.test((v ?? "").trim()) ? Promise.resolve() : Promise.reject(new Error("Enter a valid email address."))) }]}
+                >
+                  <Input size="large" placeholder="e.g. student@school.lk" />
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item name="phone" label="Phone (optional)" rules={[phoneRule]}>
+                  <Input size="large" placeholder="e.g. 077 123 4567" />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+          </Col>
 
-        <div className="os-form__section">
-          <div className="os-form__section-header">Account</div>
-          <div className="os-form__section-body">
-            <PersonNameFields
-              idPrefix="student"
-              value={names}
-              onChange={setNames}
-              fullNameInvalid={fullNameInvalid}
-              onFullNameBlur={() => markTouched("fullName")}
-            />
-            <TextInput
-              id="email"
-              labelText="Email address"
-              placeholder="e.g. student@school.lk"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onBlur={() => markTouched("email")}
-              invalid={emailInvalid}
-              invalidText="Enter a valid email address."
-            />
-            <TextInput
-              id="phone"
-              labelText="Phone (optional)"
-              placeholder="e.g. 077 123 4567"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              onBlur={() => markTouched("phone")}
-              invalid={phoneInvalid}
-              invalidText={PHONE_INVALID_TEXT}
-            />
-          </div>
+          <Col xs={24} lg={12}>
+          <Card className="os-form-card" title="Student profile">
+            <Row gutter={24}>
+              <Col span={24}>
+                <Form.Item
+                  name="index_number"
+                  label="Index number"
+                  rules={[{ required: true, whitespace: true, message: "Index number is required." }]}
+                >
+                  <Input size="large" placeholder="e.g. 2026/0145" />
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item name="whatsapp" label="WhatsApp (optional)" rules={[phoneRule]}>
+                  <Input size="large" placeholder="e.g. 077 123 4567" />
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item name="gender" label="Gender (optional)">
+                  <Radio.Group>
+                    <Radio value="male">Male</Radio>
+                    <Radio value="female">Female</Radio>
+                  </Radio.Group>
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item name="address" label="Address (optional)">
+                  <Input size="large" placeholder="e.g. 23, Kandy Road, Kelaniya" />
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item name="special_remarks" label="Special remarks (optional)">
+                  <Input.TextArea rows={3} placeholder="Any notes about the student" />
+                </Form.Item>
+              </Col>
+            </Row>
+          </Card>
+          </Col>
+        </Row>
+
+        <div className="os-form-actions">
+          <Button size="large" type="primary" htmlType="submit" loading={createStudent.isPending}>Save and enrol</Button>
+          <LinkButton to="/students" size="large">Cancel</LinkButton>
         </div>
-
-        <div className="os-form__section">
-          <div className="os-form__section-header">Student profile</div>
-          <div className="os-form__section-body">
-            <TextInput
-              id="index-number"
-              labelText="Index number"
-              placeholder="e.g. 2026/0145"
-              value={indexNumber}
-              onChange={(e) => setIndexNumber(e.target.value)}
-              onBlur={() => markTouched("indexNumber")}
-              invalid={indexNumberInvalid}
-              invalidText="Index number is required."
-            />
-            <TextInput
-              id="whatsapp"
-              labelText="WhatsApp (optional)"
-              placeholder="e.g. 077 123 4567"
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-              onBlur={() => markTouched("whatsapp")}
-              invalid={whatsappInvalid}
-              invalidText={PHONE_INVALID_TEXT}
-            />
-            <RadioButtonGroup
-              legendText="Gender (optional)"
-              name="gender"
-              valueSelected={gender}
-              onChange={(value) => setGender(value as "male" | "female")}
-            >
-              <RadioButton id="gender-male" labelText="Male" value="male" />
-              <RadioButton
-                id="gender-female"
-                labelText="Female"
-                value="female"
-              />
-            </RadioButtonGroup>
-            <div className="os-form__full-col">
-              <TextInput
-                id="address"
-                labelText="Address (optional)"
-                placeholder="e.g. 23, Kandy Road, Kelaniya"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-              />
-            </div>
-            <div className="os-form__full-col">
-              <TextArea
-                id="special-remarks"
-                labelText="Special remarks (optional)"
-                placeholder="Any notes about the student"
-                rows={3}
-                value={specialRemarks}
-                onChange={(e) => setSpecialRemarks(e.target.value)}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="os-form__actions">
-          <Button
-            renderIcon={Save}
-            kind="primary"
-            onClick={handleSubmit}
-            disabled={!isValid || createStudent.isPending}
-          >
-            {createStudent.isPending ? "Saving…" : "Save and enrol"}
-          </Button>
-          <Button kind="secondary" as={Link} to="/students">
-            Cancel
-          </Button>
-        </div>
-      </div>
+      </Form>
     </div>
   );
 }

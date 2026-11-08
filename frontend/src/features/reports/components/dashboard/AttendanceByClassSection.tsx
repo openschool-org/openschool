@@ -1,58 +1,34 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { Button, ComposedModal, ModalBody, ModalFooter, ModalHeader, SkeletonText } from "@carbon/react";
-import { CheckmarkFilled, ChevronRight, EventSchedule, WarningFilled } from "@carbon/icons-react";
+import { Card, Empty, Modal, Progress, Skeleton, Tag } from "antd";
+import { RightOutlined } from "@ant-design/icons";
 import type { ClassWithDetails } from "@/features/academics/api/class";
 import type { DailySession } from "@/features/attendance/api/attendance";
-import EmptyState from "@/shared/ui/EmptyState";
-import ProgressBar from "@/shared/ui/ProgressBar";
-import SectionHeader from "@/shared/ui/SectionHeader";
 import MediumTag from "@/shared/ui/MediumTag";
-import GradeAvatar from "@/shared/ui/GradeAvatar";
-import { gradeBand } from "@/shared/lib/gradeBand";
 
 function ClassAttendanceBox({ cls, session }: { cls: ClassWithDetails; session: DailySession | undefined }) {
-  const hasSession = !!session;
   const isMarked = !!session && session.marked_count > 0;
+  const tag = !session ? <Tag variant="filled">No session</Tag> : isMarked ? <Tag color="success" variant="filled">Marked</Tag> : <Tag color="warning" variant="filled">Pending</Tag>;
 
   return (
-    <Link
-      to={`/classes/${cls.id}`}
-      state={{ tab: "attendance" }}
-      className="os-attendance-class-card os-block os-no-underline os-bg-layer os-border os-transition"
-      style={{ borderTopColor: hasSession ? (isMarked ? "var(--os-success)" : "var(--os-warning)") : "var(--os-text-disabled)" }}
-    >
-      <div className="os-flex os-items-start os-justify-between os-mb-3">
-        <div className="os-flex os-items-center os-gap-3 os-min-w-0">
-          <GradeAvatar gradeName={cls.grade_name} className={cls.name} />
-          <div className="os-min-w-0">
-            <p className="os-mt-0 os-mx-0 os-mb-h os-text-md os-fw-600 os-c-primary">{cls.name}</p>
-            {cls.medium_name && <MediumTag name={cls.medium_name} />}
-          </div>
-        </div>
-        {hasSession ? (
-          isMarked ? <CheckmarkFilled size={18} className="os-fill-success os-shrink-0" aria-label="Attendance marked" /> : <WarningFilled size={18} className="os-fill-warning os-shrink-0" aria-label="Attendance pending" />
-        ) : <EventSchedule size={18} className="os-fill-disabled os-shrink-0" aria-label="No session" />}
+    <Link to={`/classes/${cls.id}`} state={{ tab: "attendance" }} className="os-dash-class">
+      <div className="os-dash-class__top">
+        <span className="os-dash-class__name">{cls.name}{cls.medium_name && <> <MediumTag name={cls.medium_name} /></>}</span>
+        {tag}
       </div>
-
-      {hasSession ? (
+      {session && (
         <>
-          <div className="os-flex os-justify-between os-text-xs os-mb-1h">
-            <span className="os-c-secondary">{isMarked ? "Marked today" : "Pending today"}</span>
-            <span className="os-fw-600 os-c-primary">{session.marked_count} / {session.enrolled_count}</span>
-          </div>
-          <ProgressBar size="sm" value={session.marked_count} max={session.enrolled_count} tone={isMarked ? "success" : "warning"} label={`${cls.name} students marked`} />
+          <div className="os-dash-class__row"><span>Marked today</span><strong>{session.marked_count} / {session.enrolled_count}</strong></div>
+          <Progress
+            size={{ height: 6 }}
+            showInfo={false}
+            percent={session.enrolled_count > 0 ? Math.round((session.marked_count / session.enrolled_count) * 100) : 0}
+            strokeColor={isMarked ? "var(--os-success)" : "var(--os-warning)"}
+            aria-label={`${cls.name} students marked`}
+          />
         </>
-      ) : <p className="os-m-0 os-text-xs os-c-tertiary">No session today</p>}
+      )}
     </Link>
-  );
-}
-
-function GradeGridSkeleton() {
-  return (
-    <div className="os-attendance-grade-grid os-py-5 os-px-6">
-      {Array.from({ length: 4 }).map((_, i) => <div key={i} className="os-attendance-grade-card"><SkeletonText width="55%" /><SkeletonText width="35%" /></div>)}
-    </div>
   );
 }
 
@@ -74,15 +50,15 @@ export default function AttendanceByClassSection({
   const selectedGrade = grades.find((grade) => grade.name === selectedGradeName) ?? null;
 
   return (
-    <div className="os-section">
-      <SectionHeader
-        title="Attendance by grade"
-        meta={<Link to="/attendance" className="os-text-xs os-no-underline os-c-accent">Manage →</Link>}
-      />
-      {loading ? <GradeGridSkeleton /> : !classes || classes.length === 0 ? (
-        <EmptyState title="No classes yet" description="Add a class to start taking attendance." action={<Link to="/classes/new" className="os-text-sm os-fw-500 os-c-accent">Add a class →</Link>} />
+    <Card className="os-dash-card is-flush" title="Attendance by grade" extra={<Link to="/attendance">Manage</Link>}>
+      {loading ? (
+        <div className="os-dash-empty"><Skeleton title={false} paragraph={{ rows: 5 }} /></div>
+      ) : !classes || classes.length === 0 ? (
+        <Empty className="os-dash-empty" description="No classes yet. Add a class to start taking attendance.">
+          <Link to="/classes/new">Add a class</Link>
+        </Empty>
       ) : (
-        <div className="os-attendance-grade-grid os-py-5 os-px-6">
+        <ul className="os-dash-rows">
           {grades.map((grade) => {
             const marked = grade.classes.filter((cls) => sessionByClassId.get(cls.id)?.marked_count).length;
             const pending = grade.classes.filter((cls) => {
@@ -90,30 +66,30 @@ export default function AttendanceByClassSection({
               return !!session && session.marked_count === 0;
             }).length;
             return (
-              <button key={grade.name} type="button" className={`os-attendance-grade-card os-grade-band--${gradeBand(grade.name)}`} onClick={() => setSelectedGradeName(grade.name)} aria-label={`View attendance for ${grade.name}`}>
-                <div className="os-flex os-items-start os-justify-between os-gap-3">
-                  <GradeAvatar gradeName={grade.name} size="lg" />
-                  <ChevronRight size={20} className="os-fill-accent os-shrink-0" />
-                </div>
-                <p className="os-attendance-grade-card__classes">{grade.classes.length} class{grade.classes.length === 1 ? "" : "es"}</p>
-                <div className="os-attendance-grade-card__summary">
-                  <span><strong>{marked}</strong> marked</span>
-                  <span><strong>{pending}</strong> pending</span>
-                </div>
-              </button>
+              <li key={grade.name}>
+                <button type="button" className="os-dash-row" onClick={() => setSelectedGradeName(grade.name)} aria-label={`View attendance for ${grade.name}`}>
+                  <span className="os-dash-row__name">{grade.name}</span>
+                  <span className="os-dash-row__muted">{grade.classes.length} class{grade.classes.length === 1 ? "" : "es"}</span>
+                  <Progress size={{ height: 6 }} showInfo={false} percent={Math.round((marked / grade.classes.length) * 100)} aria-label={`${grade.name} classes marked`} />
+                  <span className="os-dash-row__counts"><strong>{marked}</strong> marked · <strong>{pending}</strong> pending</span>
+                  <RightOutlined className="os-dash-row__chev" />
+                </button>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
 
-      <ComposedModal open={!!selectedGrade} size="lg" onClose={() => setSelectedGradeName(null)} aria-label={selectedGrade ? `${selectedGrade.name} attendance` : "Grade attendance"}>
-        <ModalHeader title={selectedGrade ? `${selectedGrade.name} attendance` : "Grade attendance"} />
-        <ModalBody>
-          <p className="os-mt-0 os-mb-4 os-text-sm os-c-secondary">Today’s attendance by class. Select a class to view or manage its attendance.</p>
-          {selectedGrade && <div className="os-attendance-class-grid">{selectedGrade.classes.map((cls) => <ClassAttendanceBox key={cls.id} cls={cls} session={sessionByClassId.get(cls.id)} />)}</div>}
-        </ModalBody>
-        <ModalFooter><Button kind="secondary" onClick={() => setSelectedGradeName(null)}>Close</Button></ModalFooter>
-      </ComposedModal>
-    </div>
+      <Modal
+        open={!!selectedGrade}
+        onCancel={() => setSelectedGradeName(null)}
+        footer={null}
+        width={760}
+        title={selectedGrade ? `${selectedGrade.name} attendance` : "Grade attendance"}
+      >
+        <p className="os-mt-0 os-mb-4 os-text-sm os-c-secondary">Today’s attendance by class. Select a class to view or manage its attendance.</p>
+        {selectedGrade && <div className="os-dash-classes">{selectedGrade.classes.map((cls) => <ClassAttendanceBox key={cls.id} cls={cls} session={sessionByClassId.get(cls.id)} />)}</div>}
+      </Modal>
+    </Card>
   );
 }
