@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { ActionableNotification } from "@carbon/react";
+import { Alert, Button } from "antd";
 import { useStaleData } from "@/shared/hooks/useStaleData";
 import { formatTime } from "@/shared/lib/date";
 import { useT } from "@/shared/i18n/useT";
@@ -26,15 +26,12 @@ export default function OfflineBanner() {
 
   return (
     <div className="os-offline-banner" role="status">
-      <ActionableNotification
-        kind="warning"
-        lowContrast
-        inline
-        hideCloseButton
+      <Alert
+        type="warning"
+        showIcon
         title={title}
-        subtitle={subtitle}
-        actionButtonLabel={t("common.retry")}
-        onActionButtonClick={() => void retry()}
+        description={subtitle}
+        action={<Button size="small" onClick={() => void retry()}>{t("common.retry")}</Button>}
       />
     </div>
   );

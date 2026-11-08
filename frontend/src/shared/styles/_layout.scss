@@ -29,9 +29,9 @@
   background-color: $os-accent-deeper;
 
   &__menu { width: 3rem; height: var(--os-header-h); flex-shrink: 0; }
-  &__brand { display: flex; align-items: center; gap: 0.5rem; .cds--skeleton__text { width: 6rem; } }
+  &__brand { display: flex; align-items: center; gap: 0.5rem; .os-skel-text { width: 6rem; } }
   &__logo { width: 1.25rem; height: 1.25rem; border-radius: 0.125rem; }
-  &__actions { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; .cds--skeleton__placeholder { width: 2.25rem; height: 2rem; } }
+  &__actions { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; .os-skel-block { width: 2.25rem; height: 2rem; } }
 }
 
 .os-skeleton-nav {
@@ -50,8 +50,8 @@
     gap: 0.75rem;
     min-height: 2.5rem;
     padding: 0.375rem 0;
-    .cds--skeleton__placeholder { width: 1rem; height: 1rem; flex-shrink: 0; }
-    .cds--skeleton__text { flex: 1; }
+    .os-skel-block { width: 1rem; height: 1rem; flex-shrink: 0; }
+    .os-skel-text { flex: 1; }
   }
 }
 
@@ -74,6 +74,10 @@
 .os-toast-stack__item {
   width: 100%;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 42rem) {
+  .os-toast-stack { left: 1rem; max-width: none; }
 }
 
 // Sidebar (Ant Design Menu, themed in shared/theme/antdTheme.ts): white rail, dark filled pill on the active page.
@@ -184,7 +188,6 @@
 
 .os-offline-banner {
   padding: 0.75rem 2rem 0;
-  .cds--actionable-notification { max-width: none; }
 }
 
 // Bottom tab bar for student and parent portals on phones.
@@ -210,6 +213,8 @@
     font-size: 0.75rem;
     color: $os-text-secondary;
     text-decoration: none;
+
+    .os-bottom-tabs__icon { font-size: 1.25rem; }
     svg { fill: currentColor; }
 
     &.is-active { color: $os-accent-dark; font-weight: 600; }

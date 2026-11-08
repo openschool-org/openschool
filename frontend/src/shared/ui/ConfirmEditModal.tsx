@@ -1,10 +1,4 @@
-import {
-  Button,
-  ComposedModal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-} from "@carbon/react";
+import { Button, Modal } from "antd";
 
 interface Props {
   open: boolean;
@@ -26,19 +20,21 @@ export default function ConfirmEditModal({
   onConfirm,
 }: Props) {
   return (
-    <ComposedModal open={open} size="sm" onClose={onClose} aria-label={title}>
-      <ModalHeader title={title} />
-      <ModalBody>
-        <p className="os-text-md">{description}</p>
-      </ModalBody>
-      <ModalFooter>
-        <Button kind="secondary" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button kind="primary" onClick={onConfirm} disabled={isPending}>
-          {isPending ? "Saving…" : confirmLabel}
-        </Button>
-      </ModalFooter>
-    </ComposedModal>
+    <Modal
+      open={open}
+      title={title}
+      width={520}
+      onCancel={onClose}
+      footer={
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button type="primary" onClick={onConfirm} loading={isPending}>
+            {isPending ? "Saving…" : confirmLabel}
+          </Button>
+        </>
+      }
+    >
+      <p className="os-text-md">{description}</p>
+    </Modal>
   );
 }

@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Button, Select, SelectItem, TextInput, Tag } from "@carbon/react";
-import { Add } from "@carbon/icons-react";
+import { Button, Tag } from "antd";
+import TextField from "@/shared/ui/TextField";
+import SelectField from "@/shared/ui/SelectField";
+import { PlusOutlined } from "@ant-design/icons";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import {
   useStudentActivities,
@@ -46,7 +48,7 @@ function StudentSocietyMemberships({ studentId }: { studentId: string }) {
       </h3>
       {memberships?.map((m) => (
         <div key={m.id} className="os-list-row os-list-row--compact os-gap-2h">
-          <Tag size="sm" type="purple">{SOCIETY_ROLE_LABELS[m.role] ?? m.role}</Tag>
+          <Tag color="purple" variant="filled">{SOCIETY_ROLE_LABELS[m.role] ?? m.role}</Tag>
           <span className="os-fw-500 os-text-md">{m.society_name}</span>
           <span className="os-text-sm os-c-tertiary">{m.academic_year_label}</span>
         </div>
@@ -95,15 +97,16 @@ export default function StudentActivities({ studentId }: { studentId: string }) 
         />
 
         <div className="os-grid os-grid-form-10-1-10-auto os-gap-3 os-items-grid-end os-mb-6">
-          <Select id="activity-category" labelText="Category" value={category} onChange={(e) => setCategory(e.target.value as ActivityCategory)}>
-            <SelectItem value="" text="Select…" />
-            {ACTIVITY_CATEGORIES.map((c) => (
-              <SelectItem key={c.value} value={c.value} text={c.label} />
-            ))}
-          </Select>
-          <TextInput id="activity-name" labelText="Name" value={name} onChange={(e) => setName(e.target.value)} />
-          <TextInput id="activity-role" labelText="Role (optional)" value={role} onChange={(e) => setRole(e.target.value)} />
-          <Button renderIcon={Add} kind="primary" size="md" onClick={handleAdd} disabled={!category || !name.trim() || createActivity.isPending}>
+          <SelectField
+            id="activity-category"
+            label="Category"
+            value={category}
+            onChange={(v) => setCategory(v as ActivityCategory)}
+            options={[{ value: "", label: "Select…" }, ...ACTIVITY_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))]}
+          />
+          <TextField id="activity-name" label="Name" value={name} onChange={(v) => setName(v)} />
+          <TextField id="activity-role" label="Role (optional)" value={role} onChange={(v) => setRole(v)} />
+          <Button icon={<PlusOutlined />} type="primary" onClick={handleAdd} disabled={!category || !name.trim() || createActivity.isPending}>
             Add
           </Button>
         </div>
@@ -115,7 +118,7 @@ export default function StudentActivities({ studentId }: { studentId: string }) 
         {activities?.map((a) => (
           <div key={a.id} className="os-list-row os-list-row--compact os-justify-between">
             <div className="os-flex os-items-center os-gap-2h">
-              <Tag size="sm" type="gray">{ACTIVITY_CATEGORIES.find((c) => c.value === a.category)?.label ?? a.category}</Tag>
+              <Tag variant="filled">{ACTIVITY_CATEGORIES.find((c) => c.value === a.category)?.label ?? a.category}</Tag>
               <span className="os-fw-500 os-text-md">{a.name}</span>
               {a.role && <span className="os-text-sm os-c-tertiary">{a.role}</span>}
             </div>

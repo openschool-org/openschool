@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button } from "@carbon/react";
-import { Add } from "@carbon/icons-react";
+import { Button } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import {
   useGuardiansByStudent,
   useUnlinkGuardian,
@@ -37,9 +37,8 @@ export default function StudentGuardians({ studentId }: { studentId: string }) {
       title="Guardians"
       meta={
         <Button
-          renderIcon={Add}
-          kind="ghost"
-          size="sm"
+          icon={<PlusOutlined />}
+          type="text"
           onClick={() => setAddOpen(true)}
           disabled={isLoading || isError || atMax}
         >

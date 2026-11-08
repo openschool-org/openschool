@@ -1,16 +1,7 @@
 import { useState } from "react";
-import {
-  Button,
-  TextInput,
-  Select,
-  SelectItem,
-  RadioButtonGroup,
-  RadioButton,
-  ComposedModal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-} from "@carbon/react";
+import { Button, Modal, Radio } from "antd";
+import TextField from "@/shared/ui/TextField";
+import SelectField from "@/shared/ui/SelectField";
 import { useCreateNonAcademicStaff, useUpdateNonAcademicStaff } from "@/features/staff/queries/useNonAcademicStaff";
 import { NON_ACADEMIC_DESIGNATIONS } from "@/features/staff/api/nonAcademicStaff";
 import type { NonAcademicStaff as StaffRow, NonAcademicDesignation } from "@/features/staff/api/nonAcademicStaff";
@@ -68,69 +59,67 @@ export default function StaffFormModal({ staff, onClose }: { staff: StaffRow | n
   };
 
   return (
-    <ComposedModal open size="sm" onClose={onClose} aria-label={isEdit ? "Edit staff member" : "Add staff member"}>
-      <ModalHeader title={isEdit ? "Edit staff member" : "Add staff member"} />
-      <ModalBody>
-        <MutationErrorNotification
-          isError={!!error}
-          error={error}
-          title="Could not save staff member" fallback="Please try again." className="os-mb-4"
+    <Modal
+      open
+      width={520}
+      onCancel={onClose}
+      title={isEdit ? "Edit staff member" : "Add staff member"}
+      footer={
+        <>
+          <Button onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="primary" onClick={handleSave} disabled={!isValid || pending}>
+            {pending ? "Saving…" : "Save"}
+          </Button>
+        </>
+      }
+    >
+      <MutationErrorNotification
+        isError={!!error}
+        error={error}
+        title="Could not save staff member" fallback="Please try again." className="os-mb-4"
+      />
+      <div className="os-grid os-gap-4">
+        <TextField
+          id="staff-name"
+          label="Full name"
+          value={form.full_name}
+          onChange={(v) => setForm((f) => ({ ...f, full_name: v }))}
+          onBlur={() => setTouched((t) => ({ ...t, full_name: true }))}
+          invalid={!!touched.full_name && !form.full_name.trim()}
+          invalidText="A name is required."
         />
-        <div className="os-grid os-gap-4">
-          <TextInput
-            id="staff-name"
-            labelText="Full name"
-            value={form.full_name}
-            onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
-            onBlur={() => setTouched((t) => ({ ...t, full_name: true }))}
-            invalid={!!touched.full_name && !form.full_name.trim()}
-            invalidText="A name is required."
-          />
-          <Select
-            id="staff-designation"
-            labelText="Designation"
-            value={form.designation}
-            onChange={(e) => setForm((f) => ({ ...f, designation: e.target.value as NonAcademicDesignation }))}
-            invalid={!!touched.designation && !form.designation}
-            invalidText="Select a designation."
-          >
-            <SelectItem value="" text="Select…" />
-            {NON_ACADEMIC_DESIGNATIONS.map((d) => (
-              <SelectItem key={d.value} value={d.value} text={d.label} />
-            ))}
-          </Select>
-          <RadioButtonGroup
-            legendText="Gender (optional)"
-            name="staff-gender"
-            valueSelected={form.gender}
-            onChange={(value) => setForm((f) => ({ ...f, gender: value as "male" | "female" }))}
-          >
-            <RadioButton id="staff-gender-male" labelText="Male" value="male" />
-            <RadioButton id="staff-gender-female" labelText="Female" value="female" />
-          </RadioButtonGroup>
-          <TextInput
-            id="staff-phone"
-            labelText="Phone (optional)"
-            value={form.phone}
-            onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-          />
-          {!isEdit && (
-            <DateField value={form.joined_date} onChange={(ymd) => {
-                if (ymd) {
-                  setForm((f) => ({ ...f, joined_date: ymd }));
-                }
-              }} id="staff-joined-date" labelText="Joining date" />
-          )}
-        </div>
-      </ModalBody>
-      <ModalFooter>
-        <Button kind="secondary" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button kind="primary" onClick={handleSave} disabled={!isValid || pending}>
-          {pending ? "Saving…" : "Save"}
-        </Button>
-      </ModalFooter>
-    </ComposedModal>
+        <SelectField
+          id="staff-designation"
+          label="Designation"
+          value={form.designation}
+          onChange={(v) => setForm((f) => ({ ...f, designation: v as NonAcademicDesignation }))}
+          invalid={!!touched.designation && !form.designation}
+          invalidText="Select a designation."
+          options={[{ value: "", label: "Select…" }, ...NON_ACADEMIC_DESIGNATIONS.map((d) => ({ value: d.value, label: d.label }))]}
+        />
+        <fieldset className="os-field">
+          <legend className="os-field__label">Gender (optional)</legend>
+          <Radio.Group name="staff-gender" value={form.gender} onChange={(e) => setForm((f) => ({ ...f, gender: e.target.value as "male" | "female" }))}>
+            <Radio value="male">Male</Radio>
+            <Radio value="female">Female</Radio>
+          </Radio.Group>
+        </fieldset>
+        <TextField
+          id="staff-phone"
+          label="Phone (optional)"
+          value={form.phone}
+          onChange={(v) => setForm((f) => ({ ...f, phone: v }))}
+        />
+        {!isEdit && (
+          <DateField value={form.joined_date} onChange={(ymd) => {
+              if (ymd) {
+                setForm((f) => ({ ...f, joined_date: ymd }));
+              }
+            }} id="staff-joined-date" labelText="Joining date" />
+        )}
+      </div>
+    </Modal>
   );
 }

@@ -5,6 +5,13 @@ export const SEVERITY_TAG = {
   severe: "red",
 } as const;
 
+// antd Tag colours for the same enums; undefined is the neutral default tag.
+export const SEVERITY_COLOR: Record<"minor" | "major" | "severe", string | undefined> = {
+  minor: undefined,
+  major: "warning",
+  severe: "error",
+};
+
 export const NOTIFICATION_PRIORITY_TAG = {
   normal: "gray",
   important: "warm-gray",

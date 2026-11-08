@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { ComboBox } from "@carbon/react";
+import { Select } from "antd";
 import { useDebounced } from "@/shared/hooks/useDebounced";
+import Field from "@/shared/ui/Field";
 
 const SEARCH_DEBOUNCE_MS = 300;
 const SEARCH_MIN_CHARS = 2;
@@ -20,7 +21,7 @@ interface EntityComboboxProps<T> {
   disabled?: boolean;
   // Server-search mode: typing debounces into this callback (300ms,
   // 2-character minimum; shorter input calls back with "") instead of
-  // Carbon filtering `items` client-side. Pass the current search results
+  // filtering `items` client-side. Pass the current search results
   // as `items`, not the full list - the parent owns the paginated/searched query.
   onSearch?: (term: string) => void;
 }
@@ -59,23 +60,26 @@ export default function EntityCombobox<T>({
     if (!items.some((item) => itemToString(item) === value)) setInputValue(value);
   };
 
+  const options = items.map((item) => ({ value: getId(item), label: itemToString(item) }));
+
   return (
-    <ComboBox
-      id={id}
-      items={items}
-      itemToString={(item) => (item ? itemToString(item as T) : "")}
-      selectedItem={selectedItem}
-      onChange={({ selectedItem }) => onSelect(selectedItem ? getId(selectedItem) : "")}
-      onInputChange={onSearch ? handleInput : undefined}
-      shouldFilterItem={onSearch
-        ? () => true
-        : ({ item, inputValue }) => itemToString(item as T).toLocaleLowerCase().includes((inputValue ?? "").trim().toLocaleLowerCase())}
-      titleText={labelText}
-      aria-label={labelText ? undefined : ariaLabel}
-      placeholder={placeholder ?? "Search by name or ID…"}
-      invalid={invalid}
-      invalidText={invalidText}
-      disabled={disabled}
-    />
+    <Field id={id} label={labelText} error={invalid ? invalidText : undefined}>
+      <Select
+        id={id}
+        className="os-w-full"
+        allowClear
+        options={options}
+        value={selectedItem ? selectedId : undefined}
+        onChange={(value?: string) => onSelect(value ?? "")}
+        showSearch={onSearch
+          ? { filterOption: false, onSearch: handleInput }
+          : { filterOption: (input, option) => String(option?.label ?? "").toLocaleLowerCase().includes(input.trim().toLocaleLowerCase()) }}
+        aria-label={labelText ? undefined : ariaLabel}
+        placeholder={placeholder ?? "Search by name or ID…"}
+        status={invalid ? "error" : undefined}
+        disabled={disabled}
+        notFoundContent={onSearch && inputValue.trim().length < SEARCH_MIN_CHARS ? "Type at least 2 characters" : "No matches"}
+      />
+    </Field>
   );
 }

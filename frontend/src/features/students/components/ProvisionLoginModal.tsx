@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { TextInput, InlineNotification } from "@carbon/react";
+import { Alert } from "antd";
+import TextField from "@/shared/ui/TextField";
 import { useProvisionGuardianLogin } from "@/features/guardians/queries/useGuardians";
 import type { GuardianWithPrimary } from "@/features/guardians/api/guardian";
 import FormModal from "@/shared/ui/FormModal";
@@ -42,27 +43,27 @@ export default function ProvisionLoginModal({
       errorFallback="Failed to create login"
     >
       {!guardian.email && (
-        <InlineNotification
-          kind="warning"
+        <Alert
+          type="warning"
+          showIcon
           title="No email on file"
-          subtitle="This guardian needs an email address before a login can be provisioned. Edit their details first."
-          lowContrast
-          hideCloseButton className="os-mb-4 os-max-w-full"
+          description="This guardian needs an email address before a login can be provisioned. Edit their details first."
+          className="os-mb-4"
         />
       )}
-      <InlineNotification
-        kind="info"
+      <Alert
+        type="info"
+        showIcon
         title="One-time password"
-        subtitle={`${name}'s NIC number on file becomes their initial portal password. They'll be prompted to change it on first sign-in.`}
-        lowContrast
-        hideCloseButton className="os-mb-4 os-max-w-full"
+        description={`${name}'s NIC number on file becomes their initial portal password. They'll be prompted to change it on first sign-in.`}
+        className="os-mb-4"
       />
-      <TextInput
+      <TextField
         id="guardian-login-username"
-        labelText="Username"
+        label="Username"
         helperText="What this guardian signs in with - separate from their email. Their name is taken from their guardian details."
         value={username}
-        onChange={(e) => setUsername(e.target.value)}
+        onChange={(v) => setUsername(v)}
         onBlur={() => setTouched(true)}
         invalid={touched && !username.trim()}
         invalidText="Required."

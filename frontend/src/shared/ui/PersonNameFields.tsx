@@ -1,4 +1,4 @@
-import { TextInput } from "@carbon/react";
+import TextField from "@/shared/ui/TextField";
 import { suggestNameWithInitials, type PersonNameValues } from "@/shared/lib/name";
 
 interface Props {
@@ -23,38 +23,38 @@ export default function PersonNameFields({ idPrefix, value, onChange, fullNameIn
   return (
     <>
       <div className="os-col-span-full">
-        <TextInput
+        <TextField
           id={`${idPrefix}-full-name`}
-          labelText="Full name"
+          label="Full name"
           helperText={readOnly ? undefined : "As on the birth certificate or NIC, e.g. Hettiwatta Arachchige Hasitha Erandika Wickramasinghe."}
           value={value.full_name}
           disabled={disabled}
           readOnly={readOnly}
           invalid={fullNameInvalid}
           invalidText="Full name is required."
-          onChange={(e) => setFullName(e.target.value)}
+          onChange={setFullName}
           onBlur={onFullNameBlur}
         />
       </div>
-      <TextInput
+      <TextField
         id={`${idPrefix}-name-with-initials`}
-        labelText="Name with initials"
+        label="Name with initials"
         helperText={readOnly ? undefined : "Filled in from the full name. Change it if needed, e.g. for Tamil or Muslim names."}
         placeholder="H.A.H.E. Wickramasinghe"
         value={value.name_with_initials}
         disabled={disabled}
         readOnly={readOnly}
-        onChange={(e) => onChange({ ...value, name_with_initials: e.target.value })}
+        onChange={(v) => onChange({ ...value, name_with_initials: v })}
       />
-      <TextInput
+      <TextField
         id={`${idPrefix}-calling-name`}
-        labelText="Calling name (optional)"
+        label="Calling name (optional)"
         helperText={readOnly ? undefined : "What they are usually called day to day, e.g. by teachers."}
         placeholder="Hasitha"
         value={value.calling_name}
         disabled={disabled}
         readOnly={readOnly}
-        onChange={(e) => onChange({ ...value, calling_name: e.target.value })}
+        onChange={(v) => onChange({ ...value, calling_name: v })}
       />
     </>
   );

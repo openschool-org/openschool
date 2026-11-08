@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { TableToolbarSearch } from "@carbon/react";
+import { Input } from "antd";
+import { SearchOutlined } from "@ant-design/icons";
 
 export interface FilterControl {
   label: string;
@@ -17,11 +18,14 @@ export default function FilterBar({ search, controls }: Props) {
   return (
     <div className="os-filter-bar">
       <div className="os-filter-bar__search">
-        <TableToolbarSearch
-          persistent
+        <Input
+          allowClear
+          type="search"
+          aria-label={search.placeholder ?? "Search"}
+          prefix={<SearchOutlined />}
           placeholder={search.placeholder ?? "Search…"}
           value={search.value}
-          onChange={(e) => search.onChange(typeof e === "string" ? e : e.target.value)}
+          onChange={(e) => search.onChange(e.target.value)}
         />
       </div>
       {controls?.map((c) => (

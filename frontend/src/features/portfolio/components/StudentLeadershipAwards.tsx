@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Button, TextInput } from "@carbon/react";
-import { Add } from "@carbon/icons-react";
+import { Button } from "antd";
+import TextField from "@/shared/ui/TextField";
+import { PlusOutlined } from "@ant-design/icons";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import {
   useLeadershipRoles,
@@ -63,9 +64,9 @@ export default function StudentLeadershipAwards({ studentId }: { studentId: stri
             title="Could not add role" fallback="Please try again." className="os-mb-4"
           />
           <div className="os-grid os-grid-form-2-auto os-gap-3 os-items-grid-end os-mb-6">
-            <TextInput id="leadership-title" labelText="Title" placeholder="e.g. Debate Club President" value={title} onChange={(e) => setTitle(e.target.value)} />
-            <TextInput id="leadership-scope" labelText="Scope (optional)" value={scope} onChange={(e) => setScope(e.target.value)} />
-            <Button renderIcon={Add} kind="primary" size="md" onClick={addRole} disabled={!title.trim() || createRole.isPending}>Add</Button>
+            <TextField id="leadership-title" label="Title" placeholder="e.g. Debate Club President" value={title} onChange={(v) => setTitle(v)} />
+            <TextField id="leadership-scope" label="Scope (optional)" value={scope} onChange={(v) => setScope(v)} />
+            <Button icon={<PlusOutlined />} type="primary" onClick={addRole} disabled={!title.trim() || createRole.isPending}>Add</Button>
           </div>
           {!rolesLoading && (roles?.length ?? 0) === 0 && <EmptyState title="No leadership roles yet" description="Roles outside the prefect board (club president, sports captain, etc.)." />}
           {roles?.map((r) => (
@@ -103,11 +104,11 @@ export default function StudentLeadershipAwards({ studentId }: { studentId: stri
             title="Could not add award" fallback="Please try again." className="os-mb-4"
           />
           <div className="os-grid os-grid-form-1-12-auto os-gap-3 os-items-grid-end os-mb-6">
-            <TextInput id="award-title" labelText="Title" value={awardTitle} onChange={(e) => setAwardTitle(e.target.value)} />
+            <TextField id="award-title" label="Title" value={awardTitle} onChange={(v) => setAwardTitle(v)} />
             <DateField value={awardDate} onChange={(ymd) => {
               if (ymd) setAwardDate(ymd);
             }} id="award-date" labelText="Date" />
-            <Button renderIcon={Add} kind="primary" size="md" onClick={addAward} disabled={!awardTitle.trim() || createAward.isPending}>Add</Button>
+            <Button icon={<PlusOutlined />} type="primary" onClick={addAward} disabled={!awardTitle.trim() || createAward.isPending}>Add</Button>
           </div>
           {!awardsLoading && (awards?.length ?? 0) === 0 && <EmptyState title="No awards yet" description="Add awards and achievements for this student." />}
           {awards?.map((a) => (

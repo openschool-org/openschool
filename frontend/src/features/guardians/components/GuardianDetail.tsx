@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import type { ReactNode } from "react";
-import { Locked, UserMultiple, Edit, TrashCan, Phone, Email, Identification, Notification } from "@carbon/icons-react";
-import { Tag, SkeletonText, Button, Pagination } from "@carbon/react";
+import { BellOutlined, DeleteOutlined, EditOutlined, IdcardOutlined, LockOutlined, MailOutlined, PhoneOutlined, TeamOutlined } from "@ant-design/icons";
+import { Button, Pagination, Tag } from "antd";
+import { SkeletonText } from "@/shared/ui/Skeleton";
 import { useGuardianStudents, useGuardianNotifications, useDeleteGuardian } from "@/features/guardians/queries/useGuardians";
 import type { Guardian } from "@/features/guardians/api/guardian";
 import { formatDateTime } from "@/shared/lib/date";
@@ -57,26 +58,26 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
         title={<span title={guardian.full_name}>{displayName(guardian)}</span>}
         meta={
           <div className="os-flex os-gap-2 os-items-center">
-            <Tag size="sm" type="gray">
+            <Tag variant="filled">
               {relationshipLabel(guardian.relationship)}
             </Tag>
             {guardian.user_id ? (
-              <Tag size="sm" type="green">
-                <Locked size={12} className="os-mr-1" />
+              <Tag color="success" variant="filled">
+                <LockOutlined className="os-mr-1" />
                 Portal access
               </Tag>
             ) : (
-              <Tag size="sm" type="cool-gray">
+              <Tag variant="filled">
                 No portal login
               </Tag>
             )}
-            <Button renderIcon={Edit} kind="ghost" size="sm" onClick={() => setEditing(true)}>
+            <Button icon={<EditOutlined />} type="text" onClick={() => setEditing(true)}>
               Edit
             </Button>
             <Button
-              renderIcon={TrashCan}
-              kind="danger--ghost"
-              size="sm"
+              icon={<DeleteOutlined />}
+              type="text"
+              danger
               onClick={() => {
                 deleteGuardian.reset();
                 setConfirmDelete(true);
@@ -97,9 +98,9 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
         />
 
         <div className="os-guardian-contact-grid os-mb-6">
-          <ContactCard icon={<Phone size={18} className="os-fill-accent" />} label="Phone" value={guardian.phone} />
-          <ContactCard icon={<Email size={18} className="os-fill-accent" />} label="Email" value={guardian.email || "Not provided"} />
-          <ContactCard icon={<Identification size={18} className="os-fill-accent" />} label="NIC number" value={guardian.nic_number || "Not provided"} />
+          <ContactCard icon={<PhoneOutlined className="os-fill-accent" />} label="Phone" value={guardian.phone} />
+          <ContactCard icon={<MailOutlined className="os-fill-accent" />} label="Email" value={guardian.email || "Not provided"} />
+          <ContactCard icon={<IdcardOutlined className="os-fill-accent" />} label="NIC number" value={guardian.nic_number || "Not provided"} />
         </div>
 
         <div className="os-guardian-section-heading">
@@ -107,7 +108,7 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
             <h3 className="os-text-sm os-fw-600 os-mt-0 os-mx-0">Linked students</h3>
             <p className="os-m-0 os-text-xs os-c-tertiary">Students connected to this guardian profile</p>
           </div>
-          {students && <Tag size="sm" type="cool-gray">{students.length}</Tag>}
+          {students && <Tag variant="filled">{students.length}</Tag>}
         </div>
         {studentsLoading ? (
           <SkeletonText width="60%" />
@@ -118,7 +119,7 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
                 key={s.id}
                 to={`/students/${s.id}`} className="os-flex os-items-center os-gap-1h os-py-1h os-px-3 os-border os-text-sm os-no-underline os-c-primary"
               >
-                <UserMultiple size={14} className="os-fill-accent" />
+                <TeamOutlined className="os-fill-accent" />
                 {displayName(s)}
               </Link>
             ))}
@@ -132,7 +133,7 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
             <h3 className="os-text-sm os-fw-600 os-mt-0 os-mx-0">Notification history</h3>
             <p className="os-m-0 os-text-xs os-c-tertiary">Messages delivered to this guardian’s portal</p>
           </div>
-          {notifications && <Notification size={18} className="os-fill-accent" />}
+          {notifications && <BellOutlined className="os-fill-accent" />}
         </div>
         {!guardian.user_id ? (
           <p className="os-text-sm os-c-tertiary">
@@ -147,7 +148,7 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
               <div key={n.recipient_id} className="os-guardian-notification os-py-2h os-px-0 os-border-b">
                 <div className="os-flex os-items-center os-gap-2">
                   <span className="os-fw-600 os-text-sm os-truncate">{n.title}</span>
-                  <Tag size="sm" type="cool-gray">
+                  <Tag variant="filled">
                     {n.category}
                   </Tag>
                   <div className="os-flex-1" />
@@ -162,12 +163,10 @@ export default function GuardianDetail({ guardian, onDeleted }: { guardian: Guar
             {notifications.length > NOTIFICATIONS_PAGE_SIZE && (
               <Pagination
                 className="os-guardian-notification-pagination"
-                totalItems={notifications.length}
-                page={notificationPage}
+                total={notifications.length}
+                current={notificationPage}
                 pageSize={NOTIFICATIONS_PAGE_SIZE}
-                pageSizes={[NOTIFICATIONS_PAGE_SIZE]}
-                onChange={({ page }) => setNotificationPage(page)}
-                size="sm"
+                onChange={(page) => setNotificationPage(page)}
               />
             )}
           </div>

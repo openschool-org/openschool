@@ -1,12 +1,12 @@
-import { Tag } from "@carbon/react";
+import { Tag } from "antd";
 
-const MEDIUM_TAG_TYPES = {
+const MEDIUM_TAG_COLORS = {
   sinhala: "blue",
   tamil: "purple",
-  english: "teal",
+  english: "cyan",
 } as const;
 
 export default function MediumTag({ name }: { name: string }) {
-  const type = MEDIUM_TAG_TYPES[name.trim().toLowerCase() as keyof typeof MEDIUM_TAG_TYPES] ?? "gray";
-  return <Tag type={type} size="sm">{name}</Tag>;
+  const color = MEDIUM_TAG_COLORS[name.trim().toLowerCase() as keyof typeof MEDIUM_TAG_COLORS];
+  return <Tag color={color} variant="filled">{name}</Tag>;
 }

@@ -9,15 +9,13 @@ $os-marks-context-bar-h: $os-header-h + 2.5rem;
   border-collapse: collapse;
 
   th {
-    padding: 0.625rem 1.5rem;
+    padding: 0.75rem 1.5rem;
     text-align: left;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--os-text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--os-text-primary);
     background-color: var(--os-layer-hover);
-    border-bottom: 2px solid var(--os-border-subtle);
+    border-bottom: 1px solid var(--os-border-subtle);
     white-space: nowrap;
   }
 
@@ -32,7 +30,8 @@ $os-marks-context-bar-h: $os-header-h + 2.5rem;
   tbody tr {
     cursor: pointer;
     transition: background-color 0.1s;
-    &:hover { background-color: $os-accent-light; }
+    &:hover { background-color: var(--os-layer-hover); }
+    &.is-selected { background-color: var(--os-layer-selected); }
     &:last-child td { border-bottom: none; }
   }
 
@@ -41,9 +40,6 @@ $os-marks-context-bar-h: $os-header-h + 2.5rem;
     &:hover { background-color: transparent; }
   }
 
-  .os-table__link  { color: var(--os-accent-dark); font-weight: 500; text-decoration: none; &:hover { text-decoration: underline; } }
-  .os-table__muted { color: var(--os-text-secondary); }
-  .os-table__mono  { font-family: 'IBM Plex Mono', monospace; font-size: 0.8125rem; color: var(--os-text-secondary); }
 
   &--sticky-head thead th {
     position: sticky;
@@ -51,6 +47,11 @@ $os-marks-context-bar-h: $os-header-h + 2.5rem;
     z-index: 50;
   }
 }
+
+// Cell helpers, shared by plain .os-table grids and the antd DataGrid.
+.os-table__link  { color: var(--os-accent-dark); font-weight: 500; text-decoration: none; &:hover { color: var(--os-accent-dark); text-decoration: underline; } }
+.os-table__muted { color: var(--os-text-secondary); }
+.os-table__mono  { font-family: 'IBM Plex Mono', monospace; font-size: 0.8125rem; color: var(--os-text-secondary); }
 
 .os-marks-context-bar {
   position: sticky;
@@ -105,6 +106,8 @@ $os-marks-context-bar-h: $os-header-h + 2.5rem;
   flex-wrap: wrap;
 }
 
+.os-table-container { overflow-x: auto; background: var(--os-layer); }
+
 // Filter bar, active-filter tags and DataGrid chrome
 .os-filter-bar {
   display: flex;
@@ -124,38 +127,49 @@ $os-marks-context-bar-h: $os-header-h + 2.5rem;
   flex-wrap: wrap;
   padding: 0 1.5rem 0.75rem;
 
-  &__label { font-size: 0.75rem; font-weight: 600; color: var(--os-text-tertiary); }
+  &__label { font-size: 0.875rem; color: var(--os-text-tertiary); }
 }
 
 .os-grid {
-  &__toolbar { background: var(--os-layer); }
-  &__count { font-size: 0.75rem; font-weight: 600; color: var(--os-text-tertiary); padding-right: 1rem; }
+  &__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.25rem 1.5rem 0.75rem; background: var(--os-layer); }
+  &__pager { display: flex; justify-content: flex-end; padding: 0.75rem 1.5rem; border-top: 1px solid var(--os-border-subtle); }
+  &__count { font-size: 0.875rem; color: var(--os-text-tertiary); }
   &__actions { display: flex; gap: 0.25rem; justify-content: flex-end; }
   &__cell--end { text-align: right; }
 }
 
 .os-section__notice { margin: 0 1.5rem 1rem; }
 
+.os-grid.ant-table-wrapper {
+  .ant-table-pagination.ant-pagination { margin: 0; padding: 0.75rem 1.5rem; border-top: 1px solid var(--os-border-subtle); }
+  .ant-table-thead > tr > th { font-weight: 500; }
+}
+
+.os-table--no-hover.ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td { background: transparent; }
+
 // Phones: every DataGrid row becomes a card with each cell labelled by its column header.
 @media (max-width: 42rem) {
-  .os-table.os-table--stack {
-    thead { display: none; }
-    tbody, tr, td { display: block; width: 100%; }
+  .os-table--stack.ant-table-wrapper {
+    .ant-table-thead { display: none; }
+    .ant-table-tbody, .ant-table-tbody > tr, .ant-table-tbody > tr > td { display: block; width: 100%; }
+    .ant-table-tbody { padding: 0 1rem; }
+    .ant-table-tbody > tr.ant-table-measure-row, .ant-table-tbody > tr[aria-hidden="true"] { display: none; }
 
-    tbody tr {
+    .ant-table-tbody > tr {
       border: 1px solid var(--os-border-subtle);
+      border-radius: $os-radius-sm;
       margin: 0 0 0.75rem;
       padding: 0.5rem 0.75rem;
       background: var(--os-layer);
     }
 
-    td {
+    .ant-table-tbody > tr > td {
       border: none;
       padding: 0.375rem 0;
       text-align: left;
     }
 
-    td[data-label] {
+    .ant-table-tbody > tr > td[data-label] {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
@@ -165,13 +179,13 @@ $os-marks-context-bar-h: $os-header-h + 2.5rem;
         content: attr(data-label);
         flex-shrink: 0;
         font-size: 0.75rem;
-        font-weight: 600;
+        font-weight: 500;
         color: var(--os-text-secondary);
       }
     }
 
-    // The checkbox cell has no label; keep it compact at the top of the card.
-    td.cds--table-column-checkbox { padding: 0; }
+    .ant-table-selection-column { padding: 0; }
+    .ant-table-content { overflow: visible !important; }
   }
 
   .os-table-container { overflow-x: visible; }

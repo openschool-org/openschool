@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Add, Edit, TrashCan, Upload } from "@carbon/icons-react";
-import { Button, IconButton, Select, SelectItem, Tag } from "@carbon/react";
+import { Button, Tag, Tooltip } from "antd";
+import { DeleteOutlined, EditOutlined, PlusOutlined, UploadOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
+import SelectField from "@/shared/ui/SelectField";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 import FilterBar from "@/shared/ui/FilterBar";
@@ -95,7 +97,7 @@ export default function Students() {
       key: "enrollment_status",
       header: "Status",
       render: (s) =>
-        s.enrollment_status === "active" ? <Tag type="green" size="sm">Active</Tag> : <Tag type="red" size="sm">Left</Tag>,
+        s.enrollment_status === "active" ? <Tag color="success" variant="filled">Active</Tag> : <Tag color="error" variant="filled">Left</Tag>,
     },
     {
       key: "actions",
@@ -103,12 +105,12 @@ export default function Students() {
       align: "end",
       render: (s) => (
         <div className="os-grid__actions">
-          <IconButton label="Edit profile" kind="ghost" size="sm" onClick={() => navigate(`/students/${s.id}`, { state: { edit: true } })}>
-            <Edit />
-          </IconButton>
-          <IconButton label="Delete student" kind="ghost" size="sm" onClick={() => setToDelete(s)}>
-            <TrashCan />
-          </IconButton>
+          <Tooltip title="Edit profile">
+            <Button type="text" size="small" aria-label="Edit profile" icon={<EditOutlined />} onClick={() => navigate(`/students/${s.id}`, { state: { edit: true } })} />
+          </Tooltip>
+          <Tooltip title="Delete student">
+            <Button type="text" size="small" danger aria-label="Delete student" icon={<DeleteOutlined />} onClick={() => setToDelete(s)} />
+          </Tooltip>
         </div>
       ),
     },
@@ -122,12 +124,12 @@ export default function Students() {
           <p className="os-page__subtitle">Manage student enrolment and profiles</p>
         </div>
         <div className="os-flex os-gap-2">
-          <Button renderIcon={Upload} kind="secondary" size="md" as={Link} to="/students/import">
+          <LinkButton to="/students/import" icon={<UploadOutlined />}>
             Import students
-          </Button>
-          <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/students/new">
+          </LinkButton>
+          <LinkButton to="/students/new" type="primary" icon={<PlusOutlined />}>
             Enrol student
-          </Button>
+          </LinkButton>
         </div>
       </div>
 
@@ -170,20 +172,27 @@ export default function Students() {
             {
               label: "Gender",
               node: (
-                <Select id="filter-gender" labelText="Gender" hideLabel size="md" value={filters.gender} onChange={(e) => setFilter("gender", e.target.value)}>
-                  <SelectItem value="" text="Any gender" />
-                  <SelectItem value="male" text="Male" />
-                  <SelectItem value="female" text="Female" />
-                </Select>
+                <SelectField
+                  id="filter-gender"
+                  label="Gender"
+                  hideLabel
+                  value={filters.gender}
+                  onChange={(v) => setFilter("gender", v)}
+                  options={[{ value: "", label: "Any gender" }, { value: "male", label: "Male" }, { value: "female", label: "Female" }]}
+                />
               ),
             },
             {
               label: "House",
               node: (
-                <Select id="filter-house" labelText="House" hideLabel size="md" value={filters.house} onChange={(e) => setFilter("house", e.target.value)}>
-                  <SelectItem value="" text="All houses" />
-                  {houses?.map((h) => <SelectItem key={h.id} value={h.name} text={h.name} />)}
-                </Select>
+                <SelectField
+                  id="filter-house"
+                  label="House"
+                  hideLabel
+                  value={filters.house}
+                  onChange={(v) => setFilter("house", v)}
+                  options={[{ value: "", label: "All houses" }, ...(houses ?? []).map((h) => ({ value: h.name, label: h.name }))]}
+                />
               ),
             },
           ]}

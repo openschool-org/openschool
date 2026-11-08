@@ -40,6 +40,7 @@ export function buildAntdTheme(): ThemeConfig {
       borderRadius: 8,
       boxShadow: "none",
       boxShadowSecondary: "none",
+      controlHeight: 36,
       controlHeightLG: 40,
     },
     components: {
@@ -62,6 +63,21 @@ export function buildAntdTheme(): ThemeConfig {
         activeBarBorderWidth: 0,
       },
       Button: { primaryShadow: "none", defaultShadow: "none", dangerShadow: "none", fontWeight: 500 },
+      // Tables sit inside rounded section cards, so the header needs no radius of its own.
+      Table: {
+        headerBg: token("--os-layer-hover", "transparent"),
+        headerColor: token("--os-text-primary", "currentColor"),
+        headerSplitColor: "transparent",
+        headerBorderRadius: 0,
+        rowHoverBg: token("--os-layer-hover", "transparent"),
+        bodySortBg: "transparent",
+        headerSortActiveBg: token("--os-layer-hover", "transparent"),
+        headerSortHoverBg: token("--os-layer-hover", "transparent"),
+        cellPaddingInline: 24,
+        cellPaddingBlock: 12,
+      },
+      Card: { headerFontSize: 16 },
+      Tabs: { horizontalMargin: "0 0 16px 0" },
     },
   };
 }

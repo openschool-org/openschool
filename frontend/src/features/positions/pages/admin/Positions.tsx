@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { UserRole, Add } from "@carbon/icons-react";
-import { Button, Tag } from "@carbon/react";
+import { PlusOutlined, SolutionOutlined } from "@ant-design/icons";
+import { Button, Tag } from "antd";
 import { usePositions, useRemovePosition } from "@/features/positions/queries/usePositions";
 import { AssignPrincipalModal, AddVicePrincipalModal } from "@/features/positions/components/PositionModals";
 import type { TeacherPosition } from "@/features/positions/api/position";
@@ -16,7 +16,7 @@ import Avatar from "@/shared/ui/Avatar";
 
 const Title = ({ text }: { text: string }) => (
   <span className="os-flex os-items-center os-gap-2">
-    <UserRole size={16} className="os-fill-accent" /> {text}
+    <SolutionOutlined className="os-fill-accent" /> {text}
   </span>
 );
 
@@ -38,7 +38,7 @@ export default function Positions() {
           <h1 className="os-page__title">Principal and VPs</h1>
           <p className="os-page__subtitle">Principal and vice principals. They decide who can send school-wide notices.</p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" onClick={() => setVpOpen(true)}>Add vice principal</Button>
+        <Button icon={<PlusOutlined />} type="primary" onClick={() => setVpOpen(true)}>Add vice principal</Button>
       </div>
 
       {isError && <div className="os-mb-6"><ErrorMessage message="Could not load positions." onRetry={refetch} /></div>}
@@ -53,7 +53,7 @@ export default function Positions() {
               <EmptyState
                 title="No principal assigned"
                 description="Assign the school's Principal."
-                action={<Button kind="tertiary" size="sm" onClick={() => setPrincipalOpen(true)}>Assign principal</Button>}
+                action={<Button onClick={() => setPrincipalOpen(true)}>Assign principal</Button>}
               />
             ) : (
               <div className="os-flex os-items-center os-gap-4 os-py-3 os-px-6">
@@ -62,7 +62,7 @@ export default function Positions() {
                   <Link to={`/teachers/${principal.teacher_id}`} className="os-table__link os-text-md os-fw-500">{principal.teacher_name}</Link>
                   <p className="os-mt-h os-mx-0 os-mb-0 os-text-xs os-c-secondary">Notifies the whole school</p>
                 </div>
-                <Button kind="ghost" size="sm" onClick={() => setPrincipalOpen(true)}>Change</Button>
+                <Button type="text" onClick={() => setPrincipalOpen(true)}>Change</Button>
               </div>
             )}
           </SectionCard>
@@ -79,7 +79,7 @@ export default function Positions() {
                   <div className="os-flex-1 os-min-w-0">
                     <Link to={`/teachers/${vp.teacher_id}`} className="os-table__link os-text-md os-fw-500">{vp.teacher_name}</Link>
                   </div>
-                  <Tag type={vp.notify_whole_school ? "blue" : "gray"} size="sm">{vp.notify_whole_school ? "Whole school" : "Scoped to assigned grades"}</Tag>
+                  <Tag color={vp.notify_whole_school ? "blue" : undefined} variant="filled">{vp.notify_whole_school ? "Whole school" : "Scoped to assigned grades"}</Tag>
                   <RemoveIconButton disabled={removePosition.isPending} onClick={() => setVpToRemove(vp)} />
                 </div>
               ))

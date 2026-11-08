@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Button, Select, SelectItem, TextArea } from "@carbon/react";
-import { Add } from "@carbon/icons-react";
+import SelectField from "@/shared/ui/SelectField";
+import { Button } from "antd";
+import TextAreaField from "@/shared/ui/TextAreaField";
+import { PlusOutlined } from "@ant-design/icons";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useCurrentTerm } from "@/features/school/queries/useTerms";
 import { useTerms } from "@/features/school/queries/useTerms";
@@ -51,23 +53,23 @@ export default function StudentProgressReports({ studentId }: { studentId: strin
         />
 
         <div className="os-grid os-grid-form-12-1-auto os-gap-3 os-items-grid-end os-mb-6">
-          <Select id="progress-report-term" labelText="Term" value={selectedTermId} onChange={(e) => setTermId(e.target.value)}>
-            <SelectItem value="" text="Select term…" />
-            {terms?.map((t) => (
-              <SelectItem key={t.id} value={t.id} text={t.id === currentTerm?.id ? `${t.name} (current)` : t.name} />
-            ))}
-          </Select>
-          <TextArea
+          <SelectField
+            id="progress-report-term"
+            label="Term"
+            value={selectedTermId}
+            onChange={setTermId}
+            options={[{ value: "", label: "Select term…" }, ...(terms ?? []).map((t) => ({ value: t.id, label: t.id === currentTerm?.id ? `${t.name} (current)` : t.name }))]}
+          />
+          <TextAreaField
             id="progress-report-narrative"
-            labelText="Narrative"
+            label="Narrative"
             rows={2}
             value={narrative}
-            onChange={(e) => setNarrative(e.target.value)}
+            onChange={(v) => setNarrative(v)}
           />
           <Button
-            renderIcon={Add}
-            kind="primary"
-            size="md"
+            icon={<PlusOutlined />}
+            type="primary"
             onClick={handleAdd}
             disabled={!selectedTermId || !narrative.trim() || createReport.isPending}
           >

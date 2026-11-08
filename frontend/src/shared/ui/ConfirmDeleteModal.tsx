@@ -1,11 +1,5 @@
 import { useEffect } from "react";
-import {
-  Button,
-  ComposedModal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-} from "@carbon/react";
+import { Button, Modal } from "antd";
 import { useToast } from "@/shared/ui/toast/useToast";
 
 interface MutationLike {
@@ -58,19 +52,21 @@ export default function ConfirmDeleteModal({
   }, [mutation.isSuccess]);
 
   return (
-    <ComposedModal open={open} size="sm" onClose={onClose} aria-label={title}>
-      <ModalHeader title={title} />
-      <ModalBody>
-        <p className="os-text-md">{description}</p>
-      </ModalBody>
-      <ModalFooter>
-        <Button kind="secondary" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button kind="danger" onClick={onConfirm} disabled={mutation.isPending || disabled}>
-          {mutation.isPending ? pendingLabel : confirmLabel}
-        </Button>
-      </ModalFooter>
-    </ComposedModal>
+    <Modal
+      open={open}
+      title={title}
+      width={520}
+      onCancel={onClose}
+      footer={
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button danger type="primary" onClick={onConfirm} disabled={disabled} loading={mutation.isPending}>
+            {mutation.isPending ? pendingLabel : confirmLabel}
+          </Button>
+        </>
+      }
+    >
+      <p className="os-text-md">{description}</p>
+    </Modal>
   );
 }

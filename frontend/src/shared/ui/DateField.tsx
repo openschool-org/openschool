@@ -1,5 +1,6 @@
-import { DatePicker, DatePickerInput } from "@carbon/react";
-import { fromYmd, toYmd } from "@/shared/lib/date";
+import { DatePicker } from "antd";
+import dayjs from "dayjs";
+import Field from "@/shared/ui/Field";
 
 interface Props {
   id: string;
@@ -17,19 +18,29 @@ interface Props {
   maxDate?: string;
 }
 
+const SIZE = { sm: "small", md: "middle", lg: "large" } as const;
+
+const toDay = (ymd?: string) => (ymd ? dayjs(ymd, "YYYY-MM-DD") : undefined);
+
 // Calendar-only date input: no free text, day-first display, ISO in and out.
-export default function DateField({ id, labelText, value, onChange, minDate, maxDate, placeholder = "dd/mm/yyyy", ...input }: Props) {
+export default function DateField({ id, labelText, value, onChange, hideLabel, placeholder = "dd/mm/yyyy", size = "md", invalid, invalidText, onBlur, minDate, maxDate }: Props) {
   return (
-    <DatePicker
-      datePickerType="single"
-      dateFormat="d/m/Y"
-      allowInput={false}
-      value={fromYmd(value)}
-      minDate={fromYmd(minDate)}
-      maxDate={fromYmd(maxDate)}
-      onChange={(dates) => onChange(toYmd(dates[0]))}
-    >
-      <DatePickerInput id={id} labelText={labelText} placeholder={placeholder} {...input} />
-    </DatePicker>
+    <Field id={id} label={labelText} hideLabel={hideLabel} error={invalid ? invalidText : undefined}>
+      <DatePicker
+        id={id}
+        format="DD/MM/YYYY"
+        inputReadOnly
+        size={SIZE[size]}
+        placeholder={placeholder}
+        status={invalid ? "error" : undefined}
+        value={toDay(value) ?? null}
+        minDate={toDay(minDate)}
+        maxDate={toDay(maxDate)}
+        onChange={(d) => onChange(d ? d.format("YYYY-MM-DD") : "")}
+        onBlur={onBlur}
+        aria-invalid={invalid || undefined}
+        aria-describedby={invalid ? `${id}-error` : undefined}
+      />
+    </Field>
   );
 }

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Add, Close } from "@carbon/icons-react";
-import { Button, Select, SelectItem, Pagination, Tile, Tag, TableToolbarSearch, ClickableTile } from "@carbon/react";
+import { CloseOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
+import { Button, Input, Pagination, Tag } from "antd";
+import SelectField from "@/shared/ui/SelectField";
 import { useNonAcademicStaffList } from "@/features/staff/queries/useNonAcademicStaff";
 import { NON_ACADEMIC_DESIGNATIONS, type NonAcademicDesignation } from "@/features/staff/api/nonAcademicStaff";
 import { useDebounced } from "@/shared/hooks/useDebounced";
@@ -45,7 +46,7 @@ export default function NonAcademicStaff() {
           <h1 className="os-page__title">Non-academic staff</h1>
           <p className="os-page__subtitle">Lab assistants, librarians, office and other staff without a login.</p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" onClick={() => setCreating(true)}>
+        <Button icon={<PlusOutlined />} type="primary" onClick={() => setCreating(true)}>
           Add staff
         </Button>
       </div>
@@ -53,27 +54,25 @@ export default function NonAcademicStaff() {
       <div className="os-section os-bg-layer os-mb-6 os-py-4 os-px-6">
         <div className="os-flex os-items-center os-gap-4 os-wrap">
           <div className="os-flex-basis-16 os-min-w-12">
-            <TableToolbarSearch
-              persistent
+            <Input
+              allowClear
+              type="search"
+              prefix={<SearchOutlined />}
+              aria-label="Search staff"
               placeholder="Search staff by name or employee number…"
               value={search}
-              onChange={(e) => { setSearch(typeof e === "string" ? e : e.target.value); setPage(1); }}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
           </div>
           <div className="os-min-w-14">
-            <Select
+            <SelectField
               id="staff-designation-filter"
-              labelText="Designation"
+              label="Designation"
               hideLabel
-              size="md"
               value={designation}
-              onChange={(e) => { setDesignation(e.target.value as NonAcademicDesignation | ""); setPage(1); }}
-            >
-              <SelectItem value="" text="All designations" />
-              {NON_ACADEMIC_DESIGNATIONS.map((d) => (
-                <SelectItem key={d.value} value={d.value} text={d.label} />
-              ))}
-            </Select>
+              onChange={(v) => { setDesignation(v as NonAcademicDesignation | ""); setPage(1); }}
+              options={[{ value: "", label: "All designations" }, ...NON_ACADEMIC_DESIGNATIONS.map((d) => ({ value: d.value, label: d.label }))]}
+            />
           </div>
         </div>
 
@@ -81,12 +80,12 @@ export default function NonAcademicStaff() {
           <div className="os-flex os-items-center os-gap-2 os-wrap os-mt-3">
             <span className="os-text-xs os-fw-600 os-c-tertiary">Active filters:</span>
             {designation && (
-              <Tag type="teal" filter onClose={() => { setDesignation(""); setPage(1); }}>
+              <Tag color="processing" closable onClose={(e) => { e.preventDefault(); setDesignation(""); setPage(1); }}>
                 Role: {designationLabel(designation)}
               </Tag>
             )}
-            {search && <Tag type="blue" filter onClose={() => { setSearch(""); setPage(1); }}>Search: "{search}"</Tag>}
-            <Button kind="ghost" size="sm" renderIcon={Close} onClick={() => { setSearch(""); setDesignation(""); setPage(1); }}>
+            {search && <Tag color="processing" closable onClose={(e) => { e.preventDefault(); setSearch(""); setPage(1); }}>Search: "{search}"</Tag>}
+            <Button type="text" icon={<CloseOutlined />} onClick={() => { setSearch(""); setDesignation(""); setPage(1); }}>
               Clear all
             </Button>
           </div>
@@ -118,10 +117,12 @@ export default function NonAcademicStaff() {
             ordered.map((s) => {
               const isSelected = selected?.id === s.id;
               return (
-                <ClickableTile
+                <button
+                  type="button"
                   key={s.id}
                   onClick={() => setSelectedId(s.id)}
-                  className={`${`os-list-row${isSelected ? " is-selected" : ""}`} os-flex os-items-center os-gap-3 os-py-3h os-px-5 os-rounded-0 os-border-b ${isSelected ? "os-bg-accent-light" : "os-bg-layer"}`}
+                  aria-pressed={isSelected}
+                  className={`os-list-row os-list-row--button${isSelected ? " is-selected" : ""} os-flex os-items-center os-gap-3 os-py-3h os-px-5 os-rounded-0 os-border-b ${isSelected ? "os-bg-accent-light" : "os-bg-layer"}`}
                 >
                   <Avatar name={s.full_name} size="sm" />
                   <div className="os-min-w-0 os-flex-1">
@@ -133,18 +134,19 @@ export default function NonAcademicStaff() {
                       {designationLabel(s.designation)} · {s.employee_number}
                     </div>
                   </div>
-                </ClickableTile>
+                </button>
               );
             })}
 
           {!isLoading && ordered.length > 0 && (
             <Pagination
-              totalItems={totalItems}
-              page={page}
+              total={totalItems}
+              current={page}
               pageSize={pageSize}
-              pageSizes={[10, 25, 50, 100]}
-              onChange={onChange}
-              size="sm"
+              pageSizeOptions={[10, 25, 50, 100]}
+              showSizeChanger
+              className="os-grid__pager"
+              onChange={(current, size) => onChange({ page: current, pageSize: size })}
             />
           )}
         </div>
@@ -152,9 +154,9 @@ export default function NonAcademicStaff() {
         {selected ? (
           <StaffDetail staff={selected} onDeleted={() => setSelectedId(null)} />
         ) : (
-          <Tile className="os-section os-bg-layer os-mt-0 os-text-center os-py-12 os-px-6">
+          <div className="os-section os-bg-layer os-mt-0 os-text-center os-py-12 os-px-6">
             <EmptyState title="Select a staff member" description="Choose a staff member from the left directory to view full profile details." />
-          </Tile>
+          </div>
         )}
       </div>
 

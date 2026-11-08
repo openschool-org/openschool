@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActionableNotification, Tag } from "@carbon/react";
+import { Alert, Button, Tag } from "antd";
 import { useLocation, useNavigate } from "react-router";
 import { useAgentFindings } from "@/features/system/queries/useJobs";
 
@@ -33,23 +33,19 @@ export default function AgentFindingsBanner() {
             const finding = formatFinding(f.message);
             return (
               <>
-                <ActionableNotification
-                  inline
-                  kind="warning"
-                  lowContrast
-                  hideCloseButton={false}
+                <Alert
+                  type="warning"
+                  showIcon
                   title={f.title}
-                  subtitle={finding.headline}
-                  actionButtonLabel="View automation"
-                  onActionButtonClick={() => navigate("/settings")}
-                  onClose={() => setDismissed((prev) => new Set(prev).add(f.notification_id))}
-                  className="os-max-w-full"
+                  description={finding.headline}
+                  action={<Button size="small" onClick={() => navigate("/settings")}>View automation</Button>}
+                  closable={{ onClose: () => setDismissed((prev) => new Set(prev).add(f.notification_id)), "aria-label": "Dismiss" }}
                 />
                 {finding.items.length > 0 && (
                   <details className="os-agent-finding__details">
                     <summary>
                       <span>Review affected classes</span>
-                      {finding.count && <Tag type="gray" size="sm">{finding.count} classes</Tag>}
+                      {finding.count && <Tag variant="filled">{finding.count} classes</Tag>}
                     </summary>
                     <div className="os-agent-finding__list">
                       {finding.items.map((item, index) => <span key={`${item}-${index}`}>{item}</span>)}

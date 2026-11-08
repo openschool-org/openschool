@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Button, TextInput, Select, SelectItem, InlineNotification, ComposedModal, ModalHeader, ModalBody, ModalFooter } from "@carbon/react";
-import { Search } from "@carbon/icons-react";
+import { Alert, Button, Input, Modal } from "antd";
+import SelectField from "@/shared/ui/SelectField";
+import TextField from "@/shared/ui/TextField";
+import { SearchOutlined } from "@ant-design/icons";
 import { useAddGuardian, useSearchGuardians, useLinkGuardian } from "@/features/guardians/queries/useGuardians";
 import { GUARDIAN_RELATIONSHIPS } from "@/features/guardians/constants";
 import type { GuardianRelationship } from "@/features/guardians/api/guardian";
@@ -85,17 +87,46 @@ export default function AddGuardianModal({
     );
   };
 
+  const footer =
+    created ? (
+      <Button type="primary" onClick={onClose}>
+        Done
+      </Button>
+    ) : step === "search" ? (
+      <>
+        <Button onClick={onClose}>
+          Cancel
+        </Button>
+        <Button onClick={() => setStep("create")}>
+          None of these - create new
+        </Button>
+      </>
+    ) : (
+      <>
+        <Button onClick={() => setStep("search")}>
+          Back to search
+        </Button>
+        <Button type="primary" onClick={handleAdd} disabled={!isValid} loading={addGuardian.isPending}>
+          {addGuardian.isPending ? "Adding…" : "Add guardian"}
+        </Button>
+      </>
+    );
+
   return (
-    <ComposedModal open size="sm" onClose={onClose} aria-label={step === "search" ? "Add guardian" : "Create new guardian"}>
-      <ModalHeader title={step === "search" ? "Add guardian" : "Create new guardian"} />
-      <ModalBody>
+    <Modal
+      open
+      width={520}
+      onCancel={onClose}
+      title={step === "search" ? "Add guardian" : "Create new guardian"}
+      footer={footer}
+    >
         {created && (
-          <InlineNotification
-            kind="warning"
+          <Alert
+            type="warning"
+            showIcon
             title="Possible duplicate"
-            subtitle={`${created.name} was added, but ${created.duplicates} existing guardian(s) share the same phone or email. Check the Guardians directory if this might be the same person.`}
-            lowContrast
-            hideCloseButton className="os-mb-4 os-max-w-full"
+            description={`${created.name} was added, but ${created.duplicates} existing guardian(s) share the same phone or email. Check the Guardians directory if this might be the same person.`}
+            className="os-mb-4"
           />
         )}
 
@@ -104,17 +135,16 @@ export default function AddGuardianModal({
             <p className="os-text-sm os-c-secondary os-mt-0 os-mx-0 os-mb-4">
               Search first - siblings often share a guardian already on file.
             </p>
-            <div className="os-search os-mb-4">
-              <Search size={16} className="os-search__icon" />
-              <input
-                className="os-search__input"
-                aria-label="Search guardians by name, phone, or email"
-                placeholder="Search by name, phone, or email…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                autoFocus
-              />
-            </div>
+            <Input
+              className="os-mb-4"
+              allowClear
+              prefix={<SearchOutlined />}
+              aria-label="Search guardians by name, phone, or email"
+              placeholder="Search by name, phone, or email…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              autoFocus
+            />
 
             {query.trim().length > 0 && (
               <div className="os-grid os-gap-2 os-mb-4">
@@ -129,7 +159,7 @@ export default function AddGuardianModal({
                       <div className="os-fw-600 os-text-sm">{displayName(g)}</div>
                       <div className="os-text-xs os-c-tertiary">{g.phone}</div>
                     </div>
-                    <Button size="sm" kind="tertiary" onClick={() => handleLink(g.id)} disabled={linkGuardian.isPending}>
+                    <Button onClick={() => handleLink(g.id)} disabled={linkGuardian.isPending}>
                       Link
                     </Button>
                   </div>
@@ -160,39 +190,34 @@ export default function AddGuardianModal({
           fullNameInvalid={!!touched.full_name && !form.full_name.trim()}
           onFullNameBlur={() => setTouched((t) => ({ ...t, full_name: true }))}
         />
-              <Select
+              <SelectField
                 id="guardian-relationship"
-                labelText="Relationship"
+                label="Relationship"
                 value={form.relationship}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, relationship: e.target.value as GuardianRelationship }))
-                }
-              >
-                {GUARDIAN_RELATIONSHIPS.map((r) => (
-                  <SelectItem key={r.value} value={r.value} text={r.label} />
-                ))}
-              </Select>
-              <TextInput
+                onChange={(v) => setForm((f) => ({ ...f, relationship: v as GuardianRelationship }))}
+                options={GUARDIAN_RELATIONSHIPS}
+              />
+              <TextField
                 id="guardian-phone"
-                labelText="Phone"
+                label="Phone"
                 value={form.phone}
-                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                onChange={(v) => setForm((f) => ({ ...f, phone: v }))}
                 onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
                 invalid={!!touched.phone && (!form.phone.trim() || !isValidSriLankanPhone(form.phone))}
                 invalidText={form.phone.trim() ? PHONE_INVALID_TEXT : "A phone number is required."}
               />
-              <TextInput
+              <TextField
                 id="guardian-email"
-                labelText="Email (optional, needed to provision a portal login later)"
+                label="Email (optional, needed to provision a portal login later)"
                 type="email"
                 value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                onChange={(v) => setForm((f) => ({ ...f, email: v }))}
               />
-              <TextInput
+              <TextField
                 id="guardian-nic"
-                labelText="NIC number"
+                label="NIC number"
                 value={form.nic_number}
-                onChange={(e) => setForm((f) => ({ ...f, nic_number: e.target.value }))}
+                onChange={(v) => setForm((f) => ({ ...f, nic_number: v }))}
                 onBlur={() => setTouched((t) => ({ ...t, nic_number: true }))}
                 invalid={!!touched.nic_number && !form.nic_number.trim()}
                 invalidText="NIC number is required."
@@ -201,32 +226,6 @@ export default function AddGuardianModal({
             </div>
           </>
         )}
-      </ModalBody>
-      <ModalFooter>
-        {created ? (
-          <Button kind="primary" onClick={onClose}>
-            Done
-          </Button>
-        ) : step === "search" ? (
-          <>
-            <Button kind="secondary" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button kind="tertiary" onClick={() => setStep("create")}>
-              None of these - create new
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button kind="secondary" onClick={() => setStep("search")}>
-              Back to search
-            </Button>
-            <Button kind="primary" onClick={handleAdd} disabled={!isValid || addGuardian.isPending}>
-              {addGuardian.isPending ? "Adding…" : "Add guardian"}
-            </Button>
-          </>
-        )}
-      </ModalFooter>
-    </ComposedModal>
+    </Modal>
   );
 }

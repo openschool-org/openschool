@@ -1,4 +1,4 @@
-import { TextInput, TextArea, Select, SelectItem, RadioButtonGroup, RadioButton, Tag } from "@carbon/react";
+import { Input, Radio, Tag } from "antd";
 import type { StudentWithClass, StudentEnrollmentStatus } from "@/features/students/api/student";
 import type { House } from "@/features/school/api/house";
 import type { UseMutationResult } from "@tanstack/react-query";
@@ -6,6 +6,9 @@ import InfoTip from "@/shared/ui/InfoTip";
 import SectionCard from "@/shared/ui/SectionCard";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import PersonNameFields from "@/shared/ui/PersonNameFields";
+import Field from "@/shared/ui/Field";
+import SelectField from "@/shared/ui/SelectField";
+import TextField from "@/shared/ui/TextField";
 
 type Gender = "" | "male" | "female";
 
@@ -64,56 +67,55 @@ export default function StudentProfileTab({
                 });
               }}
             />
-            <TextInput id="index-number" labelText="Index number" value={student.index_number} readOnly />
-            <TextInput id="email" labelText="Email" value={student.email ?? "-"} readOnly />
-            <TextInput
+            <TextField id="index-number" label="Index number" value={student.index_number} readOnly />
+            <TextField id="email" label="Email" value={student.email ?? "-"} readOnly />
+            <TextField
               id="phone"
-              labelText="Phone"
+              label="Phone"
               value={form.phone_number}
               readOnly={!editing}
-              onChange={(e) => onChange("phone_number", e.target.value)}
+              onChange={(v) => onChange("phone_number", v)}
             />
-            <TextInput
+            <TextField
               id="whatsapp"
-              labelText="WhatsApp"
+              label="WhatsApp"
               value={form.whatsapp}
               readOnly={!editing}
-              onChange={(e) => onChange("whatsapp", e.target.value)}
+              onChange={(v) => onChange("whatsapp", v)}
             />
-            <TextInput
+            <TextField
               id="address"
-              labelText="Address"
+              label="Address"
               value={form.address}
               readOnly={!editing}
-              onChange={(e) => onChange("address", e.target.value)}
+              onChange={(v) => onChange("address", v)}
             />
             {editing ? (
-              <RadioButtonGroup
-                legendText="Gender"
-                name="gender"
-                valueSelected={form.gender}
-                onChange={(value) => onGenderChange(value as Gender)}
-              >
-                <RadioButton id="gender-male" labelText="Male" value="male" />
-                <RadioButton id="gender-female" labelText="Female" value="female" />
-              </RadioButtonGroup>
+              <fieldset className="os-field">
+                <legend className="os-field__label">Gender</legend>
+                <Radio.Group name="gender" value={form.gender} onChange={(e) => onGenderChange(e.target.value as Gender)}>
+                  <Radio value="male">Male</Radio>
+                  <Radio value="female">Female</Radio>
+                </Radio.Group>
+              </fieldset>
             ) : (
-              <TextInput
+              <TextField
                 id="gender"
-                labelText="Gender"
+                label="Gender"
                 value={form.gender ? form.gender[0].toUpperCase() + form.gender.slice(1) : "-"}
                 readOnly
               />
             )}
             <div className="os-col-span-full">
-              <TextArea
-                id="special-remarks"
-                labelText="Special remarks"
-                rows={3}
-                value={form.special_remarks}
-                readOnly={!editing}
-                onChange={(e) => onChange("special_remarks", e.target.value)}
-              />
+              <Field id="special-remarks" label="Special remarks">
+                <Input.TextArea
+                  id="special-remarks"
+                  rows={3}
+                  value={form.special_remarks}
+                  readOnly={!editing}
+                  onChange={(e) => onChange("special_remarks", e.target.value)}
+                />
+              </Field>
             </div>
           </div>
       </SectionCard>
@@ -121,19 +123,9 @@ export default function StudentProfileTab({
       <SectionCard title="Current class">
           {student.class_name ? (
             <div className="os-flex os-gap-2 os-wrap">
-              <Tag type="blue" size="sm">
-                {student.class_name}
-              </Tag>
-              {student.grade_name && (
-                <Tag type="gray" size="sm">
-                  {student.grade_name}
-                </Tag>
-              )}
-              {student.academic_year && (
-                <Tag type="cool-gray" size="sm">
-                  {student.academic_year}
-                </Tag>
-              )}
+              <Tag color="blue" variant="filled">{student.class_name}</Tag>
+              {student.grade_name && <Tag variant="filled">{student.grade_name}</Tag>}
+              {student.academic_year && <Tag variant="filled">{student.academic_year}</Tag>}
             </div>
           ) : (
             <span className="os-text-md os-c-tertiary">Not enrolled in a class.</span>
@@ -148,34 +140,27 @@ export default function StudentProfileTab({
               <span className="os-text-md os-fw-600">{currentHouse.name}</span>
             </div>
           )}
-          <Select
+          <SelectField
             id="student-house"
-            labelText={<>Assigned house <InfoTip>Only a system administrator can change it. Every change is recorded in the audit log.</InfoTip></>}
+            label={<>Assigned house <InfoTip>Only a system administrator can change it. Every change is recorded in the audit log.</InfoTip></>}
             helperText="Assigned automatically to balance houses."
             value={student.house_id ?? ""}
             disabled={updateHouse.isPending}
-            onChange={(e) => updateHouse.mutate({ id: student.id, houseId: e.target.value })}
-          >
-            <SelectItem value="" text="No house" />
-            {houses?.map((h) => (
-              <SelectItem key={h.id} value={h.id} text={h.name} />
-            ))}
-          </Select>
+            onChange={(v) => updateHouse.mutate({ id: student.id, houseId: v })}
+            options={[{ value: "", label: "No house" }, ...(houses ?? []).map((h) => ({ value: h.id, label: h.name }))]}
+          />
       </SectionCard>
 
       <SectionCard title="Enrolment status">
-          <Select
+          <SelectField
             id="student-enrollment-status"
-            labelText="Status"
+            label="Status"
             helperText="Mark as left when a student leaves the school."
             value={student.enrollment_status}
             disabled={updateStatus.isPending}
-            onChange={(e) => updateStatus.mutate({ id: student.id, status: e.target.value as StudentEnrollmentStatus })}
-          >
-            {ENROLLMENT_STATUSES.map((s) => (
-              <SelectItem key={s.value} value={s.value} text={s.label} />
-            ))}
-          </Select>
+            onChange={(v) => updateStatus.mutate({ id: student.id, status: v as StudentEnrollmentStatus })}
+            options={ENROLLMENT_STATUSES}
+          />
       </SectionCard>
     </>
   );

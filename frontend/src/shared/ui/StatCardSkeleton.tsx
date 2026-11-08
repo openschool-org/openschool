@@ -1,4 +1,4 @@
-import { SkeletonText } from "@carbon/react";
+import { SkeletonText } from "@/shared/ui/Skeleton";
 
 // Placeholder for one `.os-stat-card` while its value is loading.
 export default function StatCardSkeleton() {

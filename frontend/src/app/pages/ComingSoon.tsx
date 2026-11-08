@@ -1,6 +1,5 @@
-import { Link } from "react-router";
-import { Button } from "@carbon/react";
-import { Rocket, ArrowLeft } from "@carbon/icons-react";
+import { ArrowLeftOutlined, RocketOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
 import StatusView from "@/shared/ui/StatusView";
 
 interface ComingSoonProps {
@@ -10,14 +9,14 @@ interface ComingSoonProps {
 export default function ComingSoon({ feature }: ComingSoonProps) {
   return (
     <StatusView
-      icon={Rocket}
+      icon={RocketOutlined}
       badge="Under construction"
       title={`${feature} is coming soon`}
       subtitle="We're actively building this module to bring you new capabilities. Check back in an upcoming release."
       actions={
-        <Button as={Link} to="/" renderIcon={ArrowLeft} kind="primary">
+        <LinkButton to="/" type="primary" icon={<ArrowLeftOutlined />}>
           Back to Dashboard
-        </Button>
+        </LinkButton>
       }
     />
   );

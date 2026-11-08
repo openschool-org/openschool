@@ -1,5 +1,6 @@
-import { Button, Select, SelectItem, Checkbox, Tag, InlineNotification, InlineLoading } from "@carbon/react";
-import { Save } from "@carbon/icons-react";
+import { Alert, Button, Checkbox, Spin, Tag } from "antd";
+import { SaveOutlined } from "@ant-design/icons";
+import SelectField from "@/shared/ui/SelectField";
 import { useEnrollmentPicker, isCompulsory } from "@/features/students/hooks/useEnrollmentPicker";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import SectionCard from "@/shared/ui/SectionCard";
@@ -13,16 +14,20 @@ export default function SubjectEnrollment({ studentId }: { studentId: string }) 
   return (
     <SectionCard title="Subject enrolment">
         {!p.academicYearId ? (
-          <InlineNotification kind="info" title="No current academic year" subtitle="Set a current academic year before assigning subjects." lowContrast hideCloseButton className="os-max-w-full" />
+          <Alert type="info" showIcon title="No current academic year" description="Set a current academic year before assigning subjects." />
         ) : (
           <>
-            <div className="os-mb-4"><Tag type="cool-gray" size="sm">{p.currentYear?.label}</Tag></div>
-            <Select id="enrollment-level" labelText="Curriculum level" value={p.selectedLevel} onChange={(e) => p.changeLevel(e.target.value)}>
-              <SelectItem value="" text="Select level…" />
-              {p.levels?.map((l) => <SelectItem key={l.id} value={l.id} text={l.label} />)}
-            </Select>
+            <div className="os-mb-4"><Tag variant="filled">{p.currentYear?.label}</Tag></div>
+            <SelectField
+              id="enrollment-level"
+              label="Curriculum level"
+              placeholder="Select level…"
+              value={p.selectedLevel}
+              onChange={p.changeLevel}
+              options={(p.levels ?? []).map((l) => ({ value: l.id, label: l.label }))}
+            />
 
-            {p.selectedLevel && p.treeLoading && <InlineLoading description="Loading subjects…" />}
+            {p.selectedLevel && p.treeLoading && <p className="os-mt-4 os-flex os-items-center os-gap-2"><Spin size="small" /> Loading subjects…</p>}
 
             {p.selectedLevel && p.tree && (
               <div className="os-mt-5">
@@ -34,20 +39,22 @@ export default function SubjectEnrollment({ studentId }: { studentId: string }) 
                     <div key={g.id} className="os-mb-6">
                       <div className="os-flex os-items-center os-gap-2 os-mb-2">
                         <strong>{g.label}</strong>
-                        <Tag type={compulsory ? "blue" : "gray"} size="sm">{compulsory ? "Compulsory" : pickRule(g.min_select, g.max_select)}</Tag>
+                        <Tag color={compulsory ? "blue" : undefined} variant="filled">{compulsory ? "Compulsory" : pickRule(g.min_select, g.max_select)}</Tag>
                         <span className="os-text-xs os-c-tertiary">{picks.length} selected</span>
                       </div>
                       {g.subjects.map((s) => {
                         const checked = picks.includes(s.subject_id);
                         return (
-                          <Checkbox
-                            key={s.subject_id}
-                            id={`${g.id}-${s.subject_id}`}
-                            labelText={s.medium_name ? `${s.subject_name} (${s.medium_name})` : s.subject_name}
-                            checked={checked || compulsory}
-                            disabled={compulsory || (!checked && atMax)}
-                            onChange={(_e, { checked: c }) => p.toggle(g.id, s.subject_id, c)}
-                          />
+                          <div key={s.subject_id} className="os-mb-2">
+                            <Checkbox
+                              id={`${g.id}-${s.subject_id}`}
+                              checked={checked || compulsory}
+                              disabled={compulsory || (!checked && atMax)}
+                              onChange={(e) => p.toggle(g.id, s.subject_id, e.target.checked)}
+                            >
+                              {s.medium_name ? `${s.subject_name} (${s.medium_name})` : s.subject_name}
+                            </Checkbox>
+                          </div>
                         );
                       })}
                     </div>
@@ -55,12 +62,12 @@ export default function SubjectEnrollment({ studentId }: { studentId: string }) 
                 })}
 
                 {validationErrors.length > 0 && (
-                  <InlineNotification kind="error" title="Some groups need attention" subtitle={validationErrors.map((e) => `${e.label}: ${e.message}`).join(" · ")} lowContrast hideCloseButton className="os-mb-4 os-max-w-full" />
+                  <Alert type="error" showIcon title="Some groups need attention" description={validationErrors.map((e) => `${e.label}: ${e.message}`).join(" · ")} className="os-mb-4" />
                 )}
                 <MutationErrorNotification isError={p.submit.isError} error={p.submit.error} title="Could not save enrolment" fallback="Please try again." />
-                {p.submit.data?.valid && <InlineNotification kind="success" title="Saved" subtitle="Subject enrolment updated." lowContrast hideCloseButton className="os-mb-4 os-max-w-full" />}
+                {p.submit.data?.valid && <Alert type="success" showIcon title="Saved" description="Subject enrolment updated." className="os-mb-4" />}
 
-                <Button renderIcon={Save} kind="primary" size="sm" onClick={p.save} disabled={p.submit.isPending}>
+                <Button type="primary" icon={<SaveOutlined />} onClick={p.save} loading={p.submit.isPending}>
                   {p.submit.isPending ? "Saving…" : "Save enrolment"}
                 </Button>
               </div>

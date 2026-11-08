@@ -45,11 +45,9 @@
     align-items: center;
     justify-content: center;
     margin-bottom: 1.5rem;
+    font-size: 2rem;
+    color: $os-accent;
     transition: transform 0.2s ease;
-
-    svg {
-      fill: $os-accent;
-    }
 
     &:hover {
       transform: translateY(-2px);

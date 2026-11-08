@@ -1,4 +1,4 @@
-import { InlineNotification } from "@carbon/react";
+import { Alert } from "antd";
 import { getErrorMessage } from "@/shared/api/errors";
 
 interface Props {
@@ -23,14 +23,13 @@ export default function MutationErrorNotification({
 }: Props) {
   if (!isError) return null;
   return (
-    <InlineNotification
-      kind="error"
-      lowContrast
-      hideCloseButton={!onClose}
+    <Alert
+      type="error"
+      showIcon
       title={title}
-      subtitle={getErrorMessage(error, fallback)}
-      onClose={onClose}
-      className={`os-mb-4 os-max-w-full${className ? ` ${className}` : ""}`}
+      description={getErrorMessage(error, fallback)}
+      closable={onClose ? { onClose } : false}
+      className={`os-mb-4${className ? ` ${className}` : ""}`}
       style={style}
     />
   );

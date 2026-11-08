@@ -8,7 +8,7 @@ const mutation = { isPending: false, isSuccess: false, reset: () => {} };
 
 describe("ConfirmDeleteModal", () => {
   it("has no accessibility violations when open", async () => {
-    const { container } = render(
+    render(
       <ToastProvider>
         <ConfirmDeleteModal
           open
@@ -21,6 +21,6 @@ describe("ConfirmDeleteModal", () => {
         />
       </ToastProvider>,
     );
-    await expectNoA11yViolations(container);
+    await expectNoA11yViolations(document.body);
   });
 });

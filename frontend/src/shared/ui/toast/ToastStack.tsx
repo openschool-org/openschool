@@ -1,4 +1,4 @@
-import { ToastNotification, ActionableNotification } from "@carbon/react";
+import { Alert, Button } from "antd";
 import { useToast } from "@/shared/ui/toast/useToast";
 
 export default function ToastStack() {
@@ -7,39 +7,31 @@ export default function ToastStack() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="os-toast-stack">
-      {toasts.map((t) =>
-        t.action ? (
-          <ActionableNotification
-            key={t.id}
-            kind={t.kind}
-            title={t.title}
-            subtitle={t.subtitle}
-            role="status"
-            lowContrast
-            inline={false}
-            hasFocus={false}
-            actionButtonLabel={t.action.label}
-            onActionButtonClick={() => {
-              t.action?.onClick();
-              dismissToast(t.id);
-            }}
-            onClose={() => dismissToast(t.id)}
-            className="os-toast-stack__item"
-          />
-        ) : (
-          <ToastNotification
-            key={t.id}
-            kind={t.kind}
-            title={t.title}
-            subtitle={t.subtitle}
-            role="status"
-            lowContrast
-            onClose={() => dismissToast(t.id)}
-            className="os-toast-stack__item"
-          />
-        ),
-      )}
+    <div className="os-toast-stack" role="status" aria-live="polite">
+      {toasts.map((t) => (
+        <Alert
+          key={t.id}
+          type={t.kind}
+          showIcon
+          title={t.title}
+          description={t.subtitle}
+          closable={{ onClose: () => dismissToast(t.id), "aria-label": "Dismiss" }}
+          className="os-toast-stack__item"
+          action={
+            t.action && (
+              <Button
+                size="small"
+                onClick={() => {
+                  t.action?.onClick();
+                  dismissToast(t.id);
+                }}
+              >
+                {t.action.label}
+              </Button>
+            )
+          }
+        />
+      ))}
     </div>
   );
 }

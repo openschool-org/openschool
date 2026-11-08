@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { TextInput, Select, SelectItem } from "@carbon/react";
+import TextField from "@/shared/ui/TextField";
+import SelectField from "@/shared/ui/SelectField";
 import { useUpdateGuardian } from "@/features/guardians/queries/useGuardians";
 import { GUARDIAN_RELATIONSHIPS } from "@/features/guardians/constants";
 import type { Guardian, GuardianRelationship } from "@/features/guardians/api/guardian";
@@ -69,37 +70,34 @@ export default function EditGuardianModal({ guardian, onClose }: { guardian: Gua
           fullNameInvalid={!!touched.full_name && !form.full_name.trim()}
           onFullNameBlur={() => setTouched((t) => ({ ...t, full_name: true }))}
         />
-        <Select
+        <SelectField
           id="edit-guardian-relationship"
-          labelText="Relationship"
+          label="Relationship"
           value={form.relationship}
-          onChange={(e) => setForm((f) => ({ ...f, relationship: e.target.value as GuardianRelationship }))}
-        >
-          {GUARDIAN_RELATIONSHIPS.map((r) => (
-            <SelectItem key={r.value} value={r.value} text={r.label} />
-          ))}
-        </Select>
-        <TextInput
+          onChange={(v) => setForm((f) => ({ ...f, relationship: v as GuardianRelationship }))}
+          options={GUARDIAN_RELATIONSHIPS.map((r) => ({ value: r.value, label: r.label }))}
+        />
+        <TextField
           id="edit-guardian-phone"
-          labelText="Phone"
+          label="Phone"
           value={form.phone}
-          onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+          onChange={(v) => setForm((f) => ({ ...f, phone: v }))}
           onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
           invalid={!!touched.phone && (!form.phone.trim() || !isValidSriLankanPhone(form.phone))}
           invalidText={form.phone.trim() ? PHONE_INVALID_TEXT : "A phone number is required."}
         />
-        <TextInput
+        <TextField
           id="edit-guardian-email"
-          labelText="Email"
+          label="Email"
           type="email"
           value={form.email}
-          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+          onChange={(v) => setForm((f) => ({ ...f, email: v }))}
         />
-        <TextInput
+        <TextField
           id="edit-guardian-nic"
-          labelText="NIC number"
+          label="NIC number"
           value={form.nic_number}
-          onChange={(e) => setForm((f) => ({ ...f, nic_number: e.target.value }))}
+          onChange={(v) => setForm((f) => ({ ...f, nic_number: v }))}
           onBlur={() => setTouched((t) => ({ ...t, nic_number: true }))}
           invalid={!!touched.nic_number && !form.nic_number.trim()}
           invalidText="NIC number is required."

@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Tag, Select, SelectItem, Button } from "@carbon/react";
-import { Edit, TrashCan } from "@carbon/icons-react";
+import { Button, Tag } from "antd";
+import SelectField from "@/shared/ui/SelectField";
+import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import {
   useUpdateNonAcademicStaffEmploymentStatus,
   useUpdateNonAcademicStaffHouse,
@@ -29,19 +30,19 @@ export default function StaffDetail({ staff, onDeleted }: { staff: StaffRow; onD
       <div className="os-section__header">
         <h2 className="os-section__title">{staff.full_name}</h2>
         <div className="os-flex os-gap-2 os-items-center">
-          <Tag size="sm" type="gray">
+          <Tag variant="filled">
             {designationLabel(staff.designation)}
           </Tag>
-          <Tag size="sm" type="blue">
+          <Tag color="blue" variant="filled">
             {staff.employee_number}
           </Tag>
-          <Button renderIcon={Edit} kind="ghost" size="sm" onClick={() => setEditing(true)}>
+          <Button icon={<EditOutlined />} type="text" onClick={() => setEditing(true)}>
             Edit
           </Button>
           <Button
-            renderIcon={TrashCan}
-            kind="danger--ghost"
-            size="sm"
+            icon={<DeleteOutlined />}
+            type="text"
+            danger
             onClick={() => {
               deleteStaff.reset();
               setConfirmDelete(true);
@@ -72,34 +73,26 @@ export default function StaffDetail({ staff, onDeleted }: { staff: StaffRow; onD
         </div>
 
         <div className="os-grid os-grid-cols-2 os-gap-4">
-          <Select
+          <SelectField
             id="staff-employment-status"
-            labelText="Employment status"
+            label="Employment status"
             value={staff.employment_status}
             disabled={updateStatus.isPending}
-            onChange={(e) =>
-              updateStatus.mutate({
+            onChange={(v) => updateStatus.mutate({
                 id: staff.id,
-                status: e.target.value as NonAcademicEmploymentStatus,
+                status: v as NonAcademicEmploymentStatus,
               })
             }
-          >
-            {EMPLOYMENT_STATUSES.map((s) => (
-              <SelectItem key={s.value} value={s.value} text={s.label} />
-            ))}
-          </Select>
-          <Select
+            options={EMPLOYMENT_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
+          />
+          <SelectField
             id="staff-house"
-            labelText="House"
+            label="House"
             value={staff.house_id ?? ""}
             disabled={updateHouse.isPending}
-            onChange={(e) => updateHouse.mutate({ id: staff.id, houseId: e.target.value })}
-          >
-            <SelectItem value="" text="No house" />
-            {houses?.map((h) => (
-              <SelectItem key={h.id} value={h.id} text={h.name} />
-            ))}
-          </Select>
+            onChange={(v) => updateHouse.mutate({ id: staff.id, houseId: v })}
+            options={[{ value: "", label: "No house" }, ...(houses ?? []).map((h) => ({ value: h.id, label: h.name }))]}
+          />
         </div>
         {currentHouse && (
           <div className="os-flex os-items-center os-gap-2 os-mt-3">

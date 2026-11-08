@@ -1,4 +1,4 @@
-import { Button, ComposedModal, ModalHeader, ModalBody, ModalFooter } from "@carbon/react";
+import { Button, Modal } from "antd";
 
 interface Props {
   open: boolean;
@@ -11,20 +11,23 @@ interface Props {
 // losing unsaved work with no warning.
 export default function IdleWarningModal({ open, onStaySignedIn, onSignOut }: Props) {
   return (
-    <ComposedModal open={open} size="sm" onClose={onStaySignedIn} preventCloseOnClickOutside aria-label="Still there?">
-      <ModalHeader title="Still there?" />
-      <ModalBody>
-        <p className="os-text-md">
-          You&apos;ve been inactive for a while. For your security, you&apos;ll be signed out in less than a minute
-          unless you choose to stay signed in.
-        </p>
-      </ModalBody>
-      <ModalFooter>
-        <Button kind="secondary" onClick={onSignOut}>
-          Sign out now
-        </Button>
-        <Button onClick={onStaySignedIn}>Stay signed in</Button>
-      </ModalFooter>
-    </ComposedModal>
+    <Modal
+      open={open}
+      title="Still there?"
+      width={520}
+      onCancel={onStaySignedIn}
+      mask={{ closable: false }}
+      footer={
+        <>
+          <Button onClick={onSignOut}>Sign out now</Button>
+          <Button type="primary" onClick={onStaySignedIn}>Stay signed in</Button>
+        </>
+      }
+    >
+      <p className="os-text-md">
+        You&apos;ve been inactive for a while. For your security, you&apos;ll be signed out in less than a minute
+        unless you choose to stay signed in.
+      </p>
+    </Modal>
   );
 }

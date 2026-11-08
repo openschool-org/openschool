@@ -1,7 +1,7 @@
 import type { ComponentType, ReactNode } from "react";
 
 interface StatusViewProps {
-  icon: ComponentType<{ size?: number }>;
+  icon: ComponentType<{ className?: string }>;
   title: string;
   subtitle: string;
   actions?: ReactNode;
@@ -19,7 +19,7 @@ function StatusBody({ icon: Icon, title, subtitle, actions, badge, code }: Omit<
       {code && <div className="os-status__code">{code}</div>}
       {badge && <div className="os-status__badge">{badge}</div>}
       <div className="os-status__icon">
-        <Icon size={32} />
+        <Icon />
       </div>
       <h1 className="os-status__title">{title}</h1>
       <p className="os-status__subtitle">{subtitle}</p>

@@ -1,8 +1,10 @@
-import { SEVERITY_TAG } from "@/shared/lib/constants/tags";
+import { SEVERITY_COLOR } from "@/shared/lib/constants/tags";
 import type { DisciplinarySeverity } from "@/features/portfolio/api/studentPortfolio";
 import { useState } from "react";
-import { Button, Select, SelectItem, TextArea, Tag } from "@carbon/react";
-import { Add } from "@carbon/icons-react";
+import { Button, Tag } from "antd";
+import TextAreaField from "@/shared/ui/TextAreaField";
+import SelectField from "@/shared/ui/SelectField";
+import { PlusOutlined } from "@ant-design/icons";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import {
   useDisciplinaryRecords,
@@ -59,15 +61,16 @@ export default function StudentDisciplinary({ studentId }: { studentId: string }
           <DateField value={date} onChange={(ymd) => {
             if (ymd) setDate(ymd);
           }} id="disciplinary-date" labelText="Date" />
-          <Select id="disciplinary-severity" labelText="Severity" value={severity} onChange={(e) => setSeverity(e.target.value as DisciplinarySeverity)}>
-            <SelectItem value="" text="Select…" />
-            {DISCIPLINARY_SEVERITIES.map((s) => (
-              <SelectItem key={s.value} value={s.value} text={s.label} />
-            ))}
-          </Select>
-          <TextArea id="disciplinary-description" labelText="Description" rows={1} value={description} onChange={(e) => setDescription(e.target.value)} />
-          <TextArea id="disciplinary-action" labelText="Action taken (optional)" rows={1} value={actionTaken} onChange={(e) => setActionTaken(e.target.value)} />
-          <Button renderIcon={Add} kind="primary" size="md" onClick={handleAdd} disabled={!description.trim() || !severity || createRecord.isPending}>Add</Button>
+          <SelectField
+            id="disciplinary-severity"
+            label="Severity"
+            value={severity}
+            onChange={(v) => setSeverity(v as DisciplinarySeverity)}
+            options={[{ value: "", label: "Select…" }, ...DISCIPLINARY_SEVERITIES.map((s) => ({ value: s.value, label: s.label }))]}
+          />
+          <TextAreaField id="disciplinary-description" label="Description" rows={1} value={description} onChange={(v) => setDescription(v)} />
+          <TextAreaField id="disciplinary-action" label="Action taken (optional)" rows={1} value={actionTaken} onChange={(v) => setActionTaken(v)} />
+          <Button icon={<PlusOutlined />} type="primary" onClick={handleAdd} disabled={!description.trim() || !severity || createRecord.isPending}>Add</Button>
         </div>
 
         {isLoading && <ListRowSkeleton leadingWidth={null} titleWidth="35%" subtitleWidth="70%" trailingWidth="2rem" />}
@@ -78,7 +81,7 @@ export default function StudentDisciplinary({ studentId }: { studentId: string }
           <div key={r.id} className="os-list-row os-justify-between os-items-start">
             <div>
               <div className="os-flex os-items-center os-gap-2 os-mb-1">
-                <Tag size="sm" type={SEVERITY_TAG[r.severity]}>{r.severity}</Tag>
+                <Tag color={SEVERITY_COLOR[r.severity]} variant="filled">{r.severity}</Tag>
                 <span className="os-text-xs os-c-tertiary">{formatISODate(r.incident_date)}</span>
               </div>
               <p className="os-m-0 os-text-md">{r.description}</p>

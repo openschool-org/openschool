@@ -1,12 +1,7 @@
-import {
-  Button,
-  ComposedModal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  InlineNotification,
-} from "@carbon/react";
+import { Alert, Button, Modal } from "antd";
 import { getErrorMessage as apiError } from "@/shared/api/errors";
+import { MODAL_WIDTH } from "@/shared/ui/modalWidth";
+import type { ModalSize } from "@/shared/ui/modalWidth";
 
 interface Props {
   open: boolean;
@@ -21,7 +16,7 @@ interface Props {
   error?: unknown;
   errorTitle?: string;
   errorFallback?: string;
-  size?: "xs" | "sm" | "md" | "lg";
+  size?: ModalSize;
   children: React.ReactNode;
 }
 
@@ -42,28 +37,25 @@ export default function FormModal({
   children,
 }: Props) {
   return (
-    <ComposedModal open={open} size={size} onClose={onClose} aria-label={title}>
-      <ModalHeader title={title} />
-      <ModalBody>
-        {isError && (
-          <InlineNotification
-            kind="error"
-            title={errorTitle}
-            subtitle={apiError(error, errorFallback)}
-            lowContrast
-            hideCloseButton className="os-mb-4 os-max-w-full"
-          />
-        )}
-        {children}
-      </ModalBody>
-      <ModalFooter>
-        <Button kind="secondary" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button kind="primary" onClick={onSubmit} disabled={submitDisabled || isPending}>
-          {isPending ? pendingLabel : submitLabel}
-        </Button>
-      </ModalFooter>
-    </ComposedModal>
+    <Modal
+      open={open}
+      title={title}
+      width={MODAL_WIDTH[size]}
+      onCancel={onClose}
+      destroyOnHidden
+      footer={
+        <>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button type="primary" onClick={onSubmit} disabled={submitDisabled} loading={isPending}>
+            {isPending ? pendingLabel : submitLabel}
+          </Button>
+        </>
+      }
+    >
+      {isError && (
+        <Alert type="error" showIcon title={errorTitle} description={apiError(error, errorFallback)} className="os-mb-4" />
+      )}
+      {children}
+    </Modal>
   );
 }

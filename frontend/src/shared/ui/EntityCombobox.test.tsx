@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
 
-// jsdom has no scrollIntoView, which Carbon calls on the highlighted item.
+// jsdom has no scrollIntoView, which the select list calls on the active item.
 Element.prototype.scrollIntoView = () => {};
 
 const teachers = [{ id: "t1", name: "H.A. Perera", no: "EMP001" }];
