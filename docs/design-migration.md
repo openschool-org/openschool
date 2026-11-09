@@ -25,7 +25,7 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `features/academics/` | 16 | 0 |
 | `features/activation/` | 8 | 3 |
 | `features/attendance/` | 9 | 0 |
-| `features/auth/` | 5 | 3 |
+| `features/auth/` | 5 | 5 |
 | `features/curriculum/` | 16 | 0 |
 | `features/email/` | 2 | 0 |
 | `features/guardians/` | 3 | 3 |
@@ -43,7 +43,7 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `features/teachers/` | 16 | 0 |
 | `features/timetable/` | 21 | 0 |
 | `features/workflows/` | 10 | 0 |
-| **Total** | **235** | **84 (36%)** |
+| **Total** | **235** | **86 (37%)** |
 
 Not counted above: [UI/UX issues](#uiux-issues), [SCSS cleanup](#scss-cleanup) and [build and docs cleanup](#build-and-docs-cleanup).
 
@@ -425,8 +425,8 @@ Paths are relative to `frontend/src/<area>/`.
 | --- | --- | --- | --- |
 | ✅ | `components/ChangePasswordModal.tsx` | - | - |
 | ✅ | `pages/ForgotPassword.tsx` | Button, TextInput, Select, SelectItem, InlineNotification | CheckmarkFilled |
-| ⬜ | `pages/PasswordInterstitial.tsx` | Button | Security |
-| ⬜ | `pages/ResetPassword.tsx` | Button, InlineNotification | CheckmarkFilled |
+| ✅ | `pages/PasswordInterstitial.tsx` | Button | Security |
+| ✅ | `pages/ResetPassword.tsx` | Button, InlineNotification | CheckmarkFilled |
 | ✅ | `pages/SignIn.tsx` | Button | - |
 
 ### `features/curriculum/`
