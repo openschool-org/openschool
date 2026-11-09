@@ -27,6 +27,10 @@ minimumReleaseAgeExclude:
   - jsdom@30.1.0
 
 overrides:
-  # Transitive fix until @thunderid/react bumps its own dompurify dependency.
-  dompurify: '>=3.4.16'
+  # Transitive security fixes (pnpm audit --prod in frontend CI is blocking).
+  # Drop each once the parent package ships the patched version itself.
+  dompurify: '>=3.4.17'          # via @thunderid/react
+  follow-redirects: '>=1.16.2'   # via axios
+  source-map-js: '>=1.2.2'       # via @carbon/react > sass (goes away with Carbon)
+  immutable: '>=5.1.8 <6'       # via @carbon/react > sass (goes away with Carbon)
   '@ibm/plex': npm:empty-npm-package@1.0.0
