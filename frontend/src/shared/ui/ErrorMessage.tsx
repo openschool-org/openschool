@@ -1,4 +1,4 @@
-import { InlineNotification, Button } from "@carbon/react";
+import { Alert, Button } from "antd";
 import { useT } from "@/shared/i18n/useT";
 
 interface ErrorMessageProps {
@@ -9,19 +9,12 @@ interface ErrorMessageProps {
 export default function ErrorMessage({ message, onRetry }: ErrorMessageProps) {
   const { t } = useT();
   return (
-    <div>
-      <InlineNotification
-        kind="error"
-        title={t("common.error")}
-        subtitle={message}
-        lowContrast
-        hideCloseButton
-      />
-      {onRetry && (
-        <Button kind="ghost" size="sm" onClick={onRetry} className="os-mt-2">
-          {t("common.retry")}
-        </Button>
-      )}
-    </div>
+    <Alert
+      type="error"
+      showIcon
+      title={t("common.error")}
+      description={message}
+      action={onRetry && <Button size="small" onClick={onRetry}>{t("common.retry")}</Button>}
+    />
   );
 }

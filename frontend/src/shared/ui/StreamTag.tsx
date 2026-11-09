@@ -1,13 +1,13 @@
-import { Tag } from "@carbon/react";
+import { Tag } from "antd";
 
-const STREAM_TAG_TYPES = {
+const STREAM_TAG_COLORS = {
   science: "blue",
   commerce: "green",
   arts: "purple",
-  technology: "teal",
+  technology: "cyan",
 } as const;
 
 export default function StreamTag({ name }: { name: string }) {
-  const type = STREAM_TAG_TYPES[name.trim().toLowerCase() as keyof typeof STREAM_TAG_TYPES] ?? "gray";
-  return <Tag type={type} size="sm">{name}</Tag>;
+  const color = STREAM_TAG_COLORS[name.trim().toLowerCase() as keyof typeof STREAM_TAG_COLORS];
+  return <Tag color={color} variant="filled">{name}</Tag>;
 }

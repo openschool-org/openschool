@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Select, SelectItem, SkeletonText } from "@carbon/react";
+import { SkeletonText } from "@/shared/ui/Skeleton";
+import SelectField from "@/shared/ui/SelectField";
 import { useStudentAttendanceHistory } from "@/features/attendance/queries/useAttendance";
 import { useStudentMarks } from "@/features/marks/queries/useTermMarks";
 import { usePrefectAppointmentsByStudent } from "@/features/portfolio/queries/useStudentPortfolio";
@@ -33,10 +34,14 @@ export default function StudentRecordsRollup({ studentId }: { studentId: string 
       </SectionCard>
 
       <SectionCard title="Examination results">
-        <Select id="rollup-term" labelText="Term" value={termId} onChange={(e) => setTermId(e.target.value)} className="os-max-w-16 os-mb-4">
-          <SelectItem value="" text="Select term…" />
-          {terms?.map((t) => <SelectItem key={t.id} value={t.id} text={t.name} />)}
-        </Select>
+        <SelectField
+          id="rollup-term"
+          label="Term"
+          value={termId}
+          onChange={(v) => setTermId(v)}
+          className="os-max-w-16 os-mb-4"
+          options={[{ value: "", label: "Select term…" }, ...(terms ?? []).map((t) => ({ value: t.id, label: t.name }))]}
+        />
         {!termId ? (
           <p className="os-text-sm os-c-tertiary">Select a term to see marks.</p>
         ) : marks.isLoading ? (

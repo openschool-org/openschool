@@ -23,3 +23,27 @@ html, body, #root {
   margin: 0;
   padding: 0;
 }
+
+// Loading placeholders (shared/ui/Skeleton.tsx), same shimmer as antd Skeleton.
+@keyframes os-skel-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+.os-skel {
+  display: block;
+  max-width: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--os-layer-hover) 25%, var(--os-border-subtle) 37%, var(--os-layer-hover) 63%);
+  background-size: 400% 100%;
+  animation: os-skel-shimmer 1.4s ease infinite;
+}
+
+.os-skel-text { height: 0.875rem; margin-bottom: 0.5rem; }
+.os-skel-text--heading { height: 1.5rem; }
+.os-skel-paragraph { display: block; }
+.os-skel-block { width: 6.25rem; height: 6.25rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .os-skel { animation: none; }
+}

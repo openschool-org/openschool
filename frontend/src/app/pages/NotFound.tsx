@@ -1,6 +1,7 @@
-import { Link, useNavigate } from "react-router";
-import { Button } from "@carbon/react";
-import { Compass, ArrowLeft, Home } from "@carbon/icons-react";
+import { useNavigate } from "react-router";
+import { Button } from "antd";
+import { ArrowLeftOutlined, CompassOutlined, HomeOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
 import StatusView from "@/shared/ui/StatusView";
 
 export default function NotFound() {
@@ -8,19 +9,19 @@ export default function NotFound() {
 
   return (
     <StatusView
-      icon={Compass}
+      icon={CompassOutlined}
       code="404"
       badge="Page not found"
       title="Lost in space?"
       subtitle="The page you are looking for doesn't exist, has been removed, or is temporarily unavailable."
       actions={
         <>
-          <Button kind="secondary" renderIcon={ArrowLeft} onClick={() => navigate(-1)}>
+          <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>
             Go back
           </Button>
-          <Button as={Link} to="/" renderIcon={Home} kind="primary">
+          <LinkButton to="/" type="primary" icon={<HomeOutlined />}>
             Back to Dashboard
-          </Button>
+          </LinkButton>
         </>
       }
     />

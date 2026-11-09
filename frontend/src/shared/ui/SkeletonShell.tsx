@@ -1,7 +1,4 @@
-import {
-  SkeletonText,
-  SkeletonPlaceholder,
-} from "@carbon/react";
+import { SkeletonText, SkeletonPlaceholder } from "@/shared/ui/Skeleton";
 import { useEffect, useState, type ReactNode } from "react";
 
 const SKELETON_DELAY_MS = 180;

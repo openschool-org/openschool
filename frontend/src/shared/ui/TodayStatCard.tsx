@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { SkeletonText } from "@carbon/react";
+import { SkeletonText } from "@/shared/ui/Skeleton";
 import type { ComponentType, ReactNode } from "react";
 
 interface Props {
@@ -7,7 +7,7 @@ interface Props {
   value: ReactNode;
   meta?: string;
   loading?: boolean;
-  Icon: ComponentType<{ size?: number }>;
+  Icon: ComponentType<{ className?: string }>;
   path: string;
 }
 
@@ -16,7 +16,7 @@ export default function TodayStatCard({ label, value, meta, loading, Icon, path 
     <Link to={path} className="os-no-underline">
       <div className="os-stat-card os-pointer">
         <p className="os-stat-card__label">
-          <Icon size={14} />
+          <Icon />
           {label}
         </p>
         {loading ? <SkeletonText width="40%" heading /> : <p className="os-stat-card__value">{value}</p>}

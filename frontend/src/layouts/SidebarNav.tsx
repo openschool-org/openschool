@@ -19,7 +19,7 @@ export default function SidebarNav({ groups, activePath, "aria-label": ariaLabel
   const items = useMemo<MenuProps["items"]>(() => groups.map((group) => {
     const children = group.items.map(({ path, label, Icon }) => ({
       key: path,
-      icon: <Icon size={18} />,
+      icon: <Icon />,
       label: <Link to={path} onMouseEnter={() => prefetchForPath(queryClient, path)}>{label}</Link>,
     }));
     // A group holding one item of the same name (Overview) needs no heading.

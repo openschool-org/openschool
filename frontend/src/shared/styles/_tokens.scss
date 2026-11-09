@@ -3,6 +3,10 @@
 // follow IBM Carbon's neutral and support colour roles.
 $os-accent:        #007D9C;
 $os-accent-dark:   #005F77;
+
+// Corner radius shared by cards and panels (matches the antd card look).
+$os-radius:    0.625rem;
+$os-radius-sm: 0.5rem;
 $os-accent-deeper: #004B5E;
 $os-accent-mid:    #1CB3D6;
 $os-accent-light:  #E6F7FA;

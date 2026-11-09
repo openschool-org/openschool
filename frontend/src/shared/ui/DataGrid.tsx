@@ -1,18 +1,6 @@
 import type { ReactNode } from "react";
-import {
-  Pagination,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableSelectAll,
-  TableSelectRow,
-  TableToolbar,
-  TableToolbarContent,
-} from "@carbon/react";
+import { Table } from "antd";
+import type { TableColumnsType, TablePaginationConfig } from "antd";
 import { usePagination } from "@/shared/hooks/usePagination";
 import { useT } from "@/shared/i18n/useT";
 
@@ -59,9 +47,9 @@ interface Props<T> {
   onSelectionChange?: (next: Set<string>) => void;
 }
 
-const SORT_STATE = { asc: "ASC", desc: "DESC" } as const;
+const SORT_ORDER = { asc: "ascend", desc: "descend" } as const;
 
-// Carbon table with pagination, count label and optional toolbar, sorting and selection.
+// antd Table with pagination, count label and optional toolbar, sorting and selection.
 // Under 42rem each row stacks into a labelled card (see .os-table--stack in _table.scss).
 export default function DataGrid<T>({
   rows,
@@ -87,117 +75,77 @@ export default function DataGrid<T>({
   const paging = server ?? client;
   const total = server ? server.totalItems : rows.length;
 
-  const pageIds = pageRows.map(getRowId);
   const selectable = !!selected && !!onSelectionChange;
-  const allOnPage = selectable && pageIds.length > 0 && pageIds.every((id) => selected.has(id));
-  const someOnPage = selectable && pageIds.some((id) => selected.has(id));
 
-  const toggleRow = (id: string) => {
-    if (!selectable) return;
-    const next = new Set(selected);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    onSelectionChange(next);
-  };
+  const tableColumns: TableColumnsType<T> = columns.map((c) => {
+    const sortable = !!c.sortable && !!onSortChange;
+    return {
+      key: c.key,
+      title: c.header,
+      align: c.align === "end" ? "right" : undefined,
+      render: (_: unknown, row: T) => c.render(row),
+      // data-label lets each cell carry its column name in the phone card layout.
+      onCell: () => ({ "data-label": c.header }) as React.HTMLAttributes<HTMLElement>,
+      sorter: sortable,
+      sortOrder: sortable ? (sort?.key === c.key ? SORT_ORDER[sort.direction] : null) : undefined,
+      sortDirections: sortable ? ["ascend", "descend", "ascend"] : undefined,
+    };
+  });
 
-  const togglePage = () => {
-    if (!selectable) return;
-    const next = new Set(selected);
-    for (const id of pageIds) {
-      if (allOnPage) next.delete(id);
-      else next.add(id);
-    }
-    onSelectionChange(next);
+  const pager: TablePaginationConfig | false = pagination && total > 0 && {
+    total,
+    current: paging.page,
+    pageSize: paging.pageSize,
+    pageSizeOptions: pageSizes,
+    showSizeChanger: true,
+    showTotal: (count, [min, max]) => t("pager.range", { min, max, total: count }),
+    onChange: (page, size) => paging.onChange({ page: size !== paging.pageSize ? 1 : page, pageSize: size }),
   };
 
   return (
-    <>
-      <TableContainer className="os-table-container">
-        {(countLabel || toolbar) && (
-          <TableToolbar className="os-grid__toolbar">
-            <TableToolbarContent>
-              {countLabel && <span className="os-grid__count">{countLabel(pageRows.length, total)}</span>}
-              {toolbar}
-            </TableToolbarContent>
-          </TableToolbar>
-        )}
-        <Table className={`os-table os-table--stack${noHover ? " os-table--no-hover" : ""}${className ? ` ${className}` : ""}`}>
-          <TableHead>
-            <TableRow>
-              {selectable && (
-                <TableSelectAll
-                  id="grid-select-all"
-                  name="grid-select-all"
-                  ariaLabel="Select all rows on this page"
-                  checked={allOnPage}
-                  indeterminate={someOnPage && !allOnPage}
-                  onSelect={togglePage}
-                />
-              )}
-              {columns.map((c) => (
-                <TableHeader
-                  key={c.key}
-                  className={c.align === "end" ? "os-grid__cell--end" : undefined}
-                  isSortable={!!c.sortable && !!onSortChange}
-                  isSortHeader={sort?.key === c.key}
-                  sortDirection={sort?.key === c.key ? SORT_STATE[sort.direction] : "NONE"}
-                  onClick={c.sortable && onSortChange ? () => onSortChange(c.key) : undefined}
-                >
-                  {c.header}
-                </TableHeader>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {pageRows.map((row) => {
-              const id = getRowId(row);
-              return (
-                <TableRow
-                  key={id}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  onKeyDown={onRowClick ? (e) => { if (e.key === "Enter") onRowClick(row); } : undefined}
-                  tabIndex={onRowClick ? 0 : undefined}
-                  className={onRowClick ? "os-pointer os-focus-ring" : undefined}
-                  isSelected={selectable ? selected.has(id) : undefined}
-                >
-                  {selectable && (
-                    <TableSelectRow
-                      id={`grid-select-${id}`}
-                      name={`grid-select-${id}`}
-                      ariaLabel="Select row"
-                      checked={selected.has(id)}
-                      onSelect={(e) => {
-                        e.stopPropagation();
-                        toggleRow(id);
-                      }}
-                    />
-                  )}
-                  {columns.map((c) => (
-                    <TableCell key={c.key} data-label={c.header} className={c.align === "end" ? "os-grid__cell--end" : undefined}>
-                      {c.render(row)}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      {pagination && (
-        <Pagination
-          totalItems={total}
-          page={paging.page}
-          pageSize={paging.pageSize}
-          pageSizes={pageSizes}
-          onChange={paging.onChange}
-          itemsPerPageText={t("pager.itemsPerPage")}
-          itemRangeText={(min, max, count) => t("pager.range", { min, max, total: count })}
-          pageRangeText={(_current, count) => t("pager.pageRange", { total: count })}
-          backwardText={t("pager.previous")}
-          forwardText={t("pager.next")}
-          pageNumberText={t("pager.pageNumber")}
-        />
+    <div className="os-table-container">
+      {(countLabel || toolbar) && (
+        <div className="os-grid__toolbar">
+          {countLabel && <span className="os-grid__count">{countLabel(pageRows.length, total)}</span>}
+          {toolbar}
+        </div>
       )}
-    </>
+      <Table<T>
+        className={`os-grid os-table--stack${noHover ? " os-table--no-hover" : ""}${className ? ` ${className}` : ""}`}
+        rowKey={getRowId}
+        columns={tableColumns}
+        dataSource={pageRows}
+        pagination={pager}
+        // Sorting is server-side; antd only reports which column was clicked.
+        onChange={(_p, _f, sorter) => {
+          const key = Array.isArray(sorter) ? sorter[0]?.columnKey : sorter.columnKey;
+          if (key && onSortChange) onSortChange(String(key));
+        }}
+        rowSelection={
+          selectable
+            ? {
+                selectedRowKeys: pageRows.map(getRowId).filter((id) => selected.has(id)),
+                onChange: (keys) => {
+                  const next = new Set(selected);
+                  for (const row of pageRows) next.delete(getRowId(row));
+                  for (const k of keys) next.add(String(k));
+                  onSelectionChange(next);
+                },
+              }
+            : undefined
+        }
+        onRow={
+          onRowClick
+            ? (row) => ({
+                onClick: () => onRowClick(row),
+                onKeyDown: (e) => { if (e.key === "Enter") onRowClick(row); },
+                tabIndex: 0,
+                className: "os-pointer os-focus-ring",
+              })
+            : undefined
+        }
+        scroll={{ x: "max-content" }}
+      />
+    </div>
   );
 }

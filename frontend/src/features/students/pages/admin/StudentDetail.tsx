@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link, useParams, useLocation } from "react-router";
-import { Button, Tabs, TabList, Tab, TabPanels, TabPanel } from "@carbon/react";
-import { ArrowLeft, TrashCan, Edit, Save } from "@carbon/icons-react";
+import { useParams, useLocation } from "react-router";
+import { Button, Tabs } from "antd";
+import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, SaveOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
 import { useStudentWithClass, useUpdateStudentHouse, useUpdateStudentEnrollmentStatus } from "@/features/students/queries/useStudents";
 import { useHouses } from "@/features/school/queries/useHouses";
 import { useStudentProfileEditor } from "@/features/students/hooks/useStudentProfileEditor";
@@ -34,7 +35,7 @@ export default function StudentDetail() {
   const unsavedGuard = useUnsavedChangesGuard(editor.hasUnsaved);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState("profile");
 
   if (isLoading) return <LoadingSpinner />;
   if (isError || !student) {
@@ -53,60 +54,57 @@ export default function StudentDetail() {
         name={student.full_name}
         meta={student.index_number + (student.class_name ? ` · ${student.class_name}` : "")}
         actions={
-          activeTab === 0 && editor.editing ? (
+          activeTab === "profile" && editor.editing ? (
             <>
-              <Button kind="secondary" size="sm" onClick={() => unsavedGuard.guard(editor.cancel)} disabled={pending}>Cancel</Button>
-              <Button renderIcon={Save} kind="primary" size="sm" onClick={() => setConfirmSave(true)} disabled={!editor.isValid || pending}>
+              <Button onClick={() => unsavedGuard.guard(editor.cancel)} disabled={pending}>Cancel</Button>
+              <Button type="primary" icon={<SaveOutlined />} onClick={() => setConfirmSave(true)} disabled={!editor.isValid} loading={pending}>
                 {pending ? "Saving…" : "Save changes"}
               </Button>
             </>
-          ) : activeTab === 0 ? (
+          ) : activeTab === "profile" ? (
             <>
-              <Button renderIcon={Edit} kind="ghost" size="sm" onClick={editor.startEdit}>Edit</Button>
-              <Button renderIcon={TrashCan} kind="danger--ghost" size="sm" onClick={() => setConfirmDelete(true)}>Delete</Button>
-              <Button renderIcon={ArrowLeft} kind="secondary" size="sm" as={Link} to="/students">Back</Button>
+              <Button type="text" icon={<EditOutlined />} onClick={editor.startEdit}>Edit</Button>
+              <Button type="text" danger icon={<DeleteOutlined />} onClick={() => setConfirmDelete(true)}>Delete</Button>
+              <LinkButton to="/students" icon={<ArrowLeftOutlined />}>Back</LinkButton>
             </>
           ) : (
-            <Button renderIcon={ArrowLeft} kind="secondary" size="sm" as={Link} to="/students">Back</Button>
+            <LinkButton to="/students" icon={<ArrowLeftOutlined />}>Back</LinkButton>
           )
         }
       />
 
       <div className="os-py-6 os-px-8">
-        <Tabs selectedIndex={activeTab} onChange={({ selectedIndex }) => setActiveTab(selectedIndex)}>
-          <TabList aria-label="Student sections">
-            <Tab>Profile</Tab>
-            <Tab>Guardians</Tab>
-            <Tab>Subject enrolment</Tab>
-            <Tab>Progress reports</Tab>
-            <Tab>Activities</Tab>
-            <Tab>Leadership &amp; awards</Tab>
-            <Tab>Disciplinary</Tab>
-            <Tab>Records</Tab>
-          </TabList>
-          <TabPanels>
-            <TabPanel className="os-p-0">
-              <StudentProfileTab
-                student={student}
-                form={editor.form}
-                editing={editor.editing}
-                onChange={editor.change}
-                onGenderChange={(value) => editor.change("gender", value)}
-                updateError={editor.updateError}
-                houses={houses}
-                updateHouse={updateHouse}
-                updateStatus={updateStatus}
-              />
-            </TabPanel>
-            <TabPanel className="os-p-0"><div className="os-mt-4"><StudentGuardians studentId={student.id} /></div></TabPanel>
-            <TabPanel className="os-p-0"><div className="os-mt-4"><SubjectEnrollment studentId={student.id} /></div></TabPanel>
-            <TabPanel className="os-p-0"><StudentProgressReports studentId={student.id} /></TabPanel>
-            <TabPanel className="os-p-0"><StudentActivities studentId={student.id} /></TabPanel>
-            <TabPanel className="os-p-0"><StudentLeadershipAwards studentId={student.id} /></TabPanel>
-            <TabPanel className="os-p-0"><StudentDisciplinary studentId={student.id} /></TabPanel>
-            <TabPanel className="os-p-0"><StudentRecordsRollup studentId={student.id} /></TabPanel>
-          </TabPanels>
-        </Tabs>
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          aria-label="Student sections"
+          items={[
+            {
+              key: "profile",
+              label: "Profile",
+              children: (
+                <StudentProfileTab
+                  student={student}
+                  form={editor.form}
+                  editing={editor.editing}
+                  onChange={editor.change}
+                  onGenderChange={(value) => editor.change("gender", value)}
+                  updateError={editor.updateError}
+                  houses={houses}
+                  updateHouse={updateHouse}
+                  updateStatus={updateStatus}
+                />
+              ),
+            },
+            { key: "guardians", label: "Guardians", children: <StudentGuardians studentId={student.id} /> },
+            { key: "subjects", label: "Subject enrolment", children: <SubjectEnrollment studentId={student.id} /> },
+            { key: "progress", label: "Progress reports", children: <StudentProgressReports studentId={student.id} /> },
+            { key: "activities", label: "Activities", children: <StudentActivities studentId={student.id} /> },
+            { key: "leadership", label: "Leadership & awards", children: <StudentLeadershipAwards studentId={student.id} /> },
+            { key: "disciplinary", label: "Disciplinary", children: <StudentDisciplinary studentId={student.id} /> },
+            { key: "records", label: "Records", children: <StudentRecordsRollup studentId={student.id} /> },
+          ]}
+        />
       </div>
 
       <ConfirmDeleteModal

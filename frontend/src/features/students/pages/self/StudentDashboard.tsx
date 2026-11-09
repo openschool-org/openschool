@@ -1,5 +1,5 @@
-import { Tag } from "@carbon/react";
-import { EventSchedule, Report, Table, Notification } from "@carbon/icons-react";
+import { Tag } from "antd";
+import { BellOutlined, FileDoneOutlined, ScheduleOutlined, TableOutlined } from "@ant-design/icons";
 import { useMemo } from "react";
 import { useMyStudentProfile, useMyAttendance, useMyMarks } from "@/features/students/queries/useStudentSelf";
 import { useMyClassTimetable } from "@/features/timetable/queries/useTimetables";
@@ -67,7 +67,7 @@ export default function StudentDashboard() {
         </div>
         {profile.house_name && (
           <div className="os-profile__actions">
-            <Tag type="blue" size="sm">
+            <Tag color="blue" variant="filled">
               {t("student.houseTag", { house: profile.house_name })}
             </Tag>
           </div>
@@ -80,7 +80,7 @@ export default function StudentDashboard() {
             label={t("student.attendanceThisMonth")}
             value={formatPercent(attendanceThisMonth)}
             loading={attendanceLoading}
-            Icon={EventSchedule}
+            Icon={ScheduleOutlined}
             path="/s/attendance"
           />
           <TodayStatCard
@@ -88,7 +88,7 @@ export default function StudentDashboard() {
             value={formatPercent(marksAverage)}
             meta={currentTerm?.name}
             loading={marksLoading || !currentTerm}
-            Icon={Report}
+            Icon={FileDoneOutlined}
             path="/s/marks"
           />
           <TodayStatCard
@@ -96,14 +96,14 @@ export default function StudentDashboard() {
             value={todayClasses.length}
             meta={todayClasses.length > 0 ? todayClasses[0].subject_name ?? undefined : undefined}
             loading={timetableLoading}
-            Icon={Table}
+            Icon={TableOutlined}
             path="/s/timetable"
           />
           <TodayStatCard
             label={t("student.unreadNotices")}
             value={unread ?? 0}
             loading={unreadLoading}
-            Icon={Notification}
+            Icon={BellOutlined}
             path="/notification-center"
           />
         </div>

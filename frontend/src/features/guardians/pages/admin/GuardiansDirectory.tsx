@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Close } from "@carbon/icons-react";
-import { Checkbox, Pagination, Tile, Tag, TableToolbarSearch, ClickableTile, Button } from "@carbon/react";
+import { CloseOutlined, SearchOutlined } from "@ant-design/icons";
+import { Button, Checkbox, Input, Pagination, Tag } from "antd";
 import { useGuardians } from "@/features/guardians/queries/useGuardians";
 import { useDebounced } from "@/shared/hooks/useDebounced";
 import EmptyState from "@/shared/ui/EmptyState";
@@ -54,27 +54,29 @@ export default function GuardiansDirectory() {
       <div className="os-section os-bg-layer os-mb-6 os-py-4 os-px-6">
         <div className="os-flex os-items-center os-gap-6 os-wrap">
           <div className="os-flex-basis-18 os-min-w-14">
-            <TableToolbarSearch
-              persistent
+            <Input
+              allowClear
+              type="search"
+              prefix={<SearchOutlined />}
+              aria-label="Search guardians"
               placeholder="Search guardians by name, phone, email or NIC…"
               value={search}
-              onChange={(e) => { setSearch(typeof e === "string" ? e : e.target.value); setPage(1); }}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             />
           </div>
           <Checkbox
             id="orphans-only"
-            labelText="Unlinked guardians only (orphans)"
             checked={orphansOnly}
-            onChange={(_e, { checked }) => { setOrphansOnly(checked); setPage(1); }}
-          />
+            onChange={(e) => { setOrphansOnly(e.target.checked); setPage(1); }}
+          >Unlinked guardians only (orphans)</Checkbox>
         </div>
 
         {(search || orphansOnly) && (
           <div className="os-flex os-items-center os-gap-2 os-wrap os-mt-3">
             <span className="os-text-xs os-fw-600 os-c-tertiary">Active filters:</span>
-            {orphansOnly && <Tag type="magenta" filter onClose={() => { setOrphansOnly(false); setPage(1); }}>Filter: Unlinked Only</Tag>}
-            {search && <Tag type="blue" filter onClose={() => { setSearch(""); setPage(1); }}>Search: "{search}"</Tag>}
-            <Button kind="ghost" size="sm" renderIcon={Close} onClick={() => { setSearch(""); setOrphansOnly(false); setPage(1); }}>
+            {orphansOnly && <Tag color="processing" closable onClose={(e) => { e.preventDefault(); setOrphansOnly(false); setPage(1); }}>Filter: Unlinked only</Tag>}
+            {search && <Tag color="processing" closable onClose={(e) => { e.preventDefault(); setSearch(""); setPage(1); }}>Search: "{search}"</Tag>}
+            <Button type="text" icon={<CloseOutlined />} onClick={() => { setSearch(""); setOrphansOnly(false); setPage(1); }}>
               Clear all
             </Button>
           </div>
@@ -110,10 +112,12 @@ export default function GuardiansDirectory() {
             ordered.map((g) => {
               const isSelected = selected?.id === g.id;
               return (
-                <ClickableTile
+                <button
+                  type="button"
                   key={g.id}
                   onClick={() => setSelectedId(g.id)}
-                  className={`${`os-list-row${isSelected ? " is-selected" : ""}`} os-flex os-items-center os-gap-3 os-py-3h os-px-5 os-rounded-0 os-border-b ${isSelected ? "os-bg-accent-light" : "os-bg-layer"}`}
+                  aria-pressed={isSelected}
+                  className={`os-list-row os-list-row--button${isSelected ? " is-selected" : ""} os-flex os-items-center os-gap-3 os-py-3h os-px-5 os-rounded-0 os-border-b ${isSelected ? "os-bg-accent-light" : "os-bg-layer"}`}
                 >
                   <Avatar name={g.full_name} size="sm" />
                   <div className="os-min-w-0 os-flex-1">
@@ -124,18 +128,19 @@ export default function GuardiansDirectory() {
                       {relationshipLabel(g.relationship)} · {g.phone}{g.nic_number ? ` · NIC ${g.nic_number}` : ""}
                     </div>
                   </div>
-                </ClickableTile>
+                </button>
               );
             })}
 
           {!isLoading && ordered.length > 0 && (
             <Pagination
-              totalItems={totalItems}
-              page={page}
+              total={totalItems}
+              current={page}
               pageSize={pageSize}
-              pageSizes={[10, 25, 50, 100]}
-              onChange={onChange}
-              size="sm"
+              pageSizeOptions={[10, 25, 50, 100]}
+              showSizeChanger
+              onChange={(current, size) => onChange({ page: current, pageSize: size })}
+              className="os-grid__pager"
             />
           )}
         </div>
@@ -143,9 +148,9 @@ export default function GuardiansDirectory() {
         {selected ? (
           <GuardianDetail key={selected.id} guardian={selected} onDeleted={() => setSelectedId(null)} />
         ) : (
-          <Tile className="os-section os-bg-layer os-mt-0 os-text-center os-py-12 os-px-6">
+          <div className="os-section os-bg-layer os-mt-0 os-text-center os-py-12 os-px-6">
             <EmptyState title="Select a guardian" description="Choose a guardian from the directory list to view contact info and linked students." />
-          </Tile>
+          </div>
         )}
       </div>
     </div>

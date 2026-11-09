@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Select, SelectItem } from "@carbon/react";
+import SelectField from "@/shared/ui/SelectField";
 import { useChildAttendance, useChildMarks } from "@/features/parent/queries/useParent";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useTerms } from "@/features/school/queries/useTerms";
@@ -50,10 +50,14 @@ export function ChildMarksTab({ studentId }: Props) {
 
   return (
     <div>
-      <Select id="child-marks-term" labelText={t("marks.term")} value={termId} onChange={(e) => setTermId(e.target.value)} className="os-max-w-20 os-mb-5">
-        <SelectItem value="" text={t("marks.chooseTerm")} />
-        {terms?.map((term) => <SelectItem key={term.id} value={term.id} text={term.name} />)}
-      </Select>
+      <SelectField
+        id="child-marks-term"
+        label={t("marks.term")}
+        value={termId}
+        onChange={(v) => setTermId(v)}
+        className="os-max-w-20 os-mb-5"
+        options={[{ value: "", label: t("marks.chooseTerm") }, ...(terms ?? []).map((term) => ({ value: term.id, label: term.name }))]}
+      />
       {!termId ? (
         <EmptyState title={t("marks.pickTitle")} description={t("marks.pickDesc")} />
       ) : isLoading ? (

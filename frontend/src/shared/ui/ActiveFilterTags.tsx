@@ -1,5 +1,5 @@
-import { Button, Tag } from "@carbon/react";
-import { Close } from "@carbon/icons-react";
+import { Button, Tag } from "antd";
+import { CloseOutlined } from "@ant-design/icons";
 
 export interface ActiveFilter {
   key: string;
@@ -13,19 +13,26 @@ interface Props {
   onClearAll: () => void;
 }
 
-const TAG_TYPES = ["cyan", "teal", "purple", "blue", "magenta"] as const;
-
 export default function ActiveFilterTags({ filters, onClear, onClearAll }: Props) {
   if (filters.length === 0) return null;
   return (
     <div className="os-filter-tags">
       <span className="os-filter-tags__label">Active filters:</span>
-      {filters.map((f, i) => (
-        <Tag key={f.key} type={TAG_TYPES[i % TAG_TYPES.length]} filter onClose={() => onClear(f.key)}>
+      {filters.map((f) => (
+        <Tag
+          key={f.key}
+          color="processing"
+          closable
+          closeIcon={<CloseOutlined aria-label={`Remove ${f.label} filter`} />}
+          onClose={(e) => {
+            e.preventDefault();
+            onClear(f.key);
+          }}
+        >
           {f.label}: {f.value}
         </Tag>
       ))}
-      <Button kind="ghost" size="sm" renderIcon={Close} onClick={onClearAll}>
+      <Button type="text" size="small" icon={<CloseOutlined />} onClick={onClearAll}>
         Clear all
       </Button>
     </div>

@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router";
-import { Tabs, TabList, Tab, TabPanels } from "@carbon/react";
-import { ArrowLeft } from "@carbon/icons-react";
+import { Tabs } from "antd";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useMyChildren } from "@/features/parent/queries/useParent";
 import {
   ChildAttendanceTab,
@@ -52,33 +52,25 @@ export default function ChildDetail() {
         </div>
         <div className="os-profile__actions">
           <Link to="/" className="os-table__link os-flex os-items-center os-gap-1h">
-            <ArrowLeft size={16} />
+            <ArrowLeftOutlined aria-hidden />
             {t("common.back")}
           </Link>
         </div>
       </div>
 
       <div className="os-py-6 os-px-8">
-        <Tabs>
-          <TabList aria-label={t("child.sections")}>
-            <Tab>{t("nav.attendance")}</Tab>
-            <Tab>{t("nav.marks")}</Tab>
-            <Tab>{t("nav.timetable")}</Tab>
-            <Tab>{t("child.tab.enrolments")}</Tab>
-            <Tab>{t("child.tab.progress")}</Tab>
-            <Tab>{t("child.tab.portfolio")}</Tab>
-            <Tab>{t("child.tab.guardians")}</Tab>
-          </TabList>
-          <TabPanels>
-            <TabSection title={t("nav.attendance")} padded={false}><ChildAttendanceTab studentId={child.id} /></TabSection>
-            <TabSection title={t("marks.termMarks")}><ChildMarksTab studentId={child.id} /></TabSection>
-            <TabSection title={t("nav.timetable")}><ChildTimetableTab studentId={child.id} /></TabSection>
-            <TabSection title={t("enrol.title")}><ChildEnrollmentsTab studentId={child.id} /></TabSection>
-            <TabSection title={t("progress.title")}><ChildProgressReportsTab studentId={child.id} /></TabSection>
-            <TabSection title={t("child.section.portfolio")}><StudentPortfolioSummary studentId={child.id} /></TabSection>
-            <TabSection title={t("child.section.guardians")}><ChildGuardiansTab studentId={child.id} /></TabSection>
-          </TabPanels>
-        </Tabs>
+        <Tabs
+          aria-label={t("child.sections")}
+          items={[
+            { key: "attendance", label: t("nav.attendance"), children: <TabSection title={t("nav.attendance")} padded={false}><ChildAttendanceTab studentId={child.id} /></TabSection> },
+            { key: "marks", label: t("nav.marks"), children: <TabSection title={t("marks.termMarks")}><ChildMarksTab studentId={child.id} /></TabSection> },
+            { key: "timetable", label: t("nav.timetable"), children: <TabSection title={t("nav.timetable")}><ChildTimetableTab studentId={child.id} /></TabSection> },
+            { key: "enrolments", label: t("child.tab.enrolments"), children: <TabSection title={t("enrol.title")}><ChildEnrollmentsTab studentId={child.id} /></TabSection> },
+            { key: "progress", label: t("child.tab.progress"), children: <TabSection title={t("progress.title")}><ChildProgressReportsTab studentId={child.id} /></TabSection> },
+            { key: "portfolio", label: t("child.tab.portfolio"), children: <TabSection title={t("child.section.portfolio")}><StudentPortfolioSummary studentId={child.id} /></TabSection> },
+            { key: "guardians", label: t("child.tab.guardians"), children: <TabSection title={t("child.section.guardians")}><ChildGuardiansTab studentId={child.id} /></TabSection> },
+          ]}
+        />
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
-import { Button, Tag } from "@carbon/react";
-import { UserFollow, Locked } from "@carbon/icons-react";
+import { Button, Tag } from "antd";
+import { LockOutlined, UserAddOutlined } from "@ant-design/icons";
 import { relationshipLabel } from "@/features/guardians/constants";
 import type { GuardianWithPrimary } from "@/features/guardians/api/guardian";
 import { displayName } from "@/shared/lib/name";
@@ -26,17 +26,17 @@ export default function GuardianRow({
           <p className="os-m-0 os-fw-600 os-text-md os-c-primary">
             {displayName(g)}
           </p>
-          <Tag size="sm" type="gray">
+          <Tag variant="filled">
             {relationshipLabel(g.relationship)}
           </Tag>
           {g.is_primary_contact && (
-            <Tag size="sm" type="teal">
+            <Tag color="cyan" variant="filled">
               Primary contact
             </Tag>
           )}
           {g.user_id && (
-            <Tag size="sm" type="green">
-              <Locked size={12} className="os-mr-1" />
+            <Tag color="success" variant="filled">
+              <LockOutlined className="os-mr-1" />
               Portal access
             </Tag>
           )}
@@ -49,16 +49,16 @@ export default function GuardianRow({
       </div>
       <div className="os-flex os-gap-2 os-shrink-0">
         {!g.is_primary_contact && (
-          <Button kind="ghost" size="sm" onClick={onSetPrimary} disabled={isSettingPrimary}>
+          <Button type="text" onClick={onSetPrimary} disabled={isSettingPrimary}>
             Set primary
           </Button>
         )}
         {!g.user_id && (
-          <Button renderIcon={UserFollow} kind="ghost" size="sm" onClick={onSetUpLogin}>
+          <Button icon={<UserAddOutlined />} type="text" onClick={onSetUpLogin}>
             Set up login
           </Button>
         )}
-        <Button kind="danger--ghost" size="sm" onClick={onRemove}>
+        <Button type="text" danger onClick={onRemove}>
           Remove
         </Button>
       </div>

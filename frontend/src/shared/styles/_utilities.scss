@@ -119,7 +119,7 @@ $colors: ("primary": var(--os-text-primary), "secondary": var(--os-text-secondar
           "blue": var(--os-chart-blue), "pink": var(--os-chart-pink));
 @each $k, $v in $colors {
   .os-c-#{$k} { color: $v; }
-  .os-fill-#{$k} { fill: $v; }
+  .os-fill-#{$k} { fill: $v; color: $v; }
 }
 .os-fill-none { fill: none; }
 $bgs: ("layer": var(--os-layer), "layer-hover": var(--os-layer-hover), "accent": var(--os-accent), "accent-dark": var(--os-accent-dark), "accent-light": var(--os-accent-light),
@@ -133,7 +133,7 @@ $bgs: ("layer": var(--os-layer), "layer-hover": var(--os-layer-hover), "accent":
 }
 
 // Borders
-.os-border { border: 1px solid var(--os-border-subtle); }
+.os-border { border: 1px solid var(--os-border-subtle); border-radius: $os-radius-sm; }
 .os-border-strong { border: 1px solid var(--os-border-strong); }
 .os-border-accent { border: 1px solid var(--os-accent); }
 .os-border-warning { border: 1px solid var(--os-warning); }
@@ -248,7 +248,7 @@ $small: ("0h": 0.625rem, "3q": 0.75rem, "1r": 1rem, "1t": 1.75rem, "2q": 2.25rem
 .os-max-h-full { max-height: 100%; }
 
 .os-stroke-border { stroke: var(--os-border-subtle); }
-.os-fill-border-subtle { fill: var(--os-border-subtle); }
+.os-fill-border-subtle { fill: var(--os-border-subtle); color: var(--os-border-subtle); }
 .os-border-faint { border: 1px solid rgba(0, 0, 0, 0.1); }
 .os-pill--solid.is-active { background: var(--os-accent); color: var(--os-layer); border-color: var(--os-accent); }
 .os-select-card { cursor: pointer; padding: 1rem 1.5rem; border: 1px solid var(--os-border-subtle); background: var(--os-layer); }

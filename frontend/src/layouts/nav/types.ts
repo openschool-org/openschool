@@ -6,7 +6,7 @@ export interface NavItem {
   label: string;
   // Set on portals that are translated; the label stays as the English fallback.
   labelKey?: MessageKey;
-  Icon: ComponentType<{ size?: number }>;
+  Icon: ComponentType<{ className?: string }>;
   // Match the path exactly instead of by prefix ("/" always matches exactly).
   exact?: boolean;
 }

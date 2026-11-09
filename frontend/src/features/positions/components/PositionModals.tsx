@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Checkbox, MultiSelect } from "@carbon/react";
+import { Checkbox, Select } from "antd";
+import Field from "@/shared/ui/Field";
 import { useTeacher, useTeachers } from "@/features/teachers/queries/useTeachers";
 import { useGrades } from "@/features/academics/queries/useGrades";
 import { useAssignPrincipal, useAssignVicePrincipal } from "@/features/positions/queries/usePositions";
@@ -62,17 +63,19 @@ export function AddVicePrincipalModal({ onClose }: { onClose: () => void }) {
     >
       <div className="os-grid os-gap-4">
         <EntityCombobox id="vp-teacher" labelText="Teacher" items={teachers ?? []} selectedId={teacherId} onSelect={setTeacherId} onSearch={setTeacherSearch} getId={(t) => t.id} itemToString={(t) => displayName(t)} placeholder="Search teachers by name…" />
-        <Checkbox id="vp-whole-school" labelText="Can notify the whole school" checked={wholeSchool} onChange={(_e, { checked }) => setWholeSchool(checked)} />
+        <Checkbox id="vp-whole-school" checked={wholeSchool} onChange={(e) => setWholeSchool(e.target.checked)}>Can notify the whole school</Checkbox>
         {!wholeSchool && (
-          <MultiSelect
-            id="vp-grades"
-            titleText="Grades this Vice Principal can notify"
-            label="Select grades…"
-            items={grades ?? []}
-            itemToString={(g) => g?.name ?? ""}
-            selectedItems={(grades ?? []).filter((g) => gradeIds.includes(g.id))}
-            onChange={({ selectedItems }) => setGradeIds((selectedItems ?? []).map((g) => g.id))}
-          />
+          <Field id="vp-grades" label="Grades this Vice Principal can notify">
+            <Select
+              id="vp-grades"
+              mode="multiple"
+              allowClear
+              placeholder="Select grades…"
+              value={gradeIds}
+              onChange={setGradeIds}
+              options={(grades ?? []).map((g) => ({ value: g.id, label: g.name }))}
+            />
+          </Field>
         )}
       </div>
     </FormModal>

@@ -1,5 +1,5 @@
-import { Button } from "@carbon/react";
-import { TrashCan } from "@carbon/icons-react";
+import { Button, Tooltip } from "antd";
+import { DeleteOutlined } from "@ant-design/icons";
 
 interface Props {
   label?: string;
@@ -8,17 +8,13 @@ interface Props {
   size?: "sm" | "md" | "lg";
 }
 
-// Ghost icon-only trash button, for the row-level remove action repeated across admin list pages.
+const SIZE = { sm: "small", md: "middle", lg: "large" } as const;
+
+// Icon-only trash button, for the row-level remove action repeated across admin list pages.
 export default function RemoveIconButton({ label = "Remove", onClick, disabled, size = "sm" }: Props) {
   return (
-    <Button
-      hasIconOnly
-      kind="ghost"
-      size={size}
-      iconDescription={label}
-      renderIcon={TrashCan}
-      disabled={disabled}
-      onClick={onClick}
-    />
+    <Tooltip title={label}>
+      <Button type="text" danger size={SIZE[size]} aria-label={label} icon={<DeleteOutlined />} disabled={disabled} onClick={onClick} />
+    </Tooltip>
   );
 }

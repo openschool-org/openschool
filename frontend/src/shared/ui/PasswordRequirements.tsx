@@ -1,4 +1,4 @@
-import { CheckmarkFilled, Information } from "@carbon/icons-react";
+import { CheckCircleFilled, InfoCircleOutlined } from "@ant-design/icons";
 import { validateNewPassword } from "@/shared/auth/password";
 
 interface Props {
@@ -22,11 +22,11 @@ export default function PasswordRequirements({ password, confirm }: Props) {
 
   return (
     <div className="os-password-guidance" aria-live="polite">
-      <div className="os-password-guidance__title"><Information size={16} /> Password requirements</div>
+      <div className="os-password-guidance__title"><InfoCircleOutlined aria-hidden /> Password requirements</div>
       <div className="os-password-guidance__checks">
         {checks.map(([valid, label]) => (
           <span key={label} className={valid ? "is-valid" : "is-invalid"}>
-            <CheckmarkFilled size={16} /> {label}
+            <CheckCircleFilled aria-hidden /> {label}
           </span>
         ))}
       </div>

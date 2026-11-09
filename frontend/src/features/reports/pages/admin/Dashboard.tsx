@@ -11,8 +11,7 @@ import { useDailySessions } from "@/features/attendance/queries/useAttendance";
 import { useStaffAttendanceByDate } from "@/features/attendance/queries/useStaffAttendance";
 import type { DailySession } from "@/features/attendance/api/attendance";
 import { todayISODate } from "@/shared/lib/date";
-import { UserMultiple, Education, Building, Book } from "@carbon/icons-react";
-import { ArrowRightOutlined, BankOutlined, CalendarOutlined, PlusOutlined } from "@ant-design/icons";
+import { ArrowRightOutlined, BankOutlined, BookOutlined, CalendarOutlined, PlusOutlined, ReadOutlined, TeamOutlined } from "@ant-design/icons";
 import LinkButton from "@/shared/ui/LinkButton";
 import StatCard from "@/features/reports/components/dashboard/StatCard";
 import AttendanceByClassSection from "@/features/reports/components/dashboard/AttendanceByClassSection";
@@ -90,10 +89,10 @@ export default function Dashboard() {
       {!setupLoading && <SetupChecklistCard items={setupItems} />}
 
       <div className="os-stat-grid">
-        <StatCard label="Total students" value={studentCount} loading={studentsLoading} Icon={UserMultiple} path="/students" />
-        <StatCard label="Teachers" value={teacherCount} loading={teachersLoading} Icon={Education} path="/teachers" />
-        <StatCard label="Classes" value={classes?.length ?? 0} loading={classesLoading} Icon={Building} path="/classes" />
-        <StatCard label="Subjects" value={subjects?.length ?? 0} loading={subjectsLoading} Icon={Book} path="/subjects" />
+        <StatCard label="Total students" value={studentCount} loading={studentsLoading} Icon={TeamOutlined} path="/students" />
+        <StatCard label="Teachers" value={teacherCount} loading={teachersLoading} Icon={ReadOutlined} path="/teachers" />
+        <StatCard label="Classes" value={classes?.length ?? 0} loading={classesLoading} Icon={BankOutlined} path="/classes" />
+        <StatCard label="Subjects" value={subjects?.length ?? 0} loading={subjectsLoading} Icon={BookOutlined} path="/subjects" />
       </div>
 
       <div className="os-dash-lower">

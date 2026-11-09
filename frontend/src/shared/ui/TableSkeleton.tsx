@@ -1,4 +1,4 @@
-import { SkeletonText } from "@carbon/react";
+import { SkeletonText } from "@/shared/ui/Skeleton";
 
 interface TableSkeletonProps {
   headers: string[];
