@@ -38,8 +38,9 @@ export function buildAntdTheme(): ThemeConfig {
       fontSize: 14,
       fontWeightStrong: 500,
       borderRadius: 8,
+      // Flat surfaces (cards, buttons). Popups keep antd's default shadow (boxShadowSecondary)
+      // so dropdown menus stand out from the card behind them.
       boxShadow: "none",
-      boxShadowSecondary: "none",
       controlHeight: 36,
       controlHeightLG: 40,
     },
@@ -77,6 +78,18 @@ export function buildAntdTheme(): ThemeConfig {
         cellPaddingBlock: 12,
       },
       Card: { headerFontSize: 16 },
+      // Select menus: all neutral greys, no teal. Hover is a light grey; the selected option is a
+      // slightly darker grey (also while it is the highlighted one, which antd otherwise paints a
+      // darker teal) plus bold text. No open/close animation.
+      Select: {
+        optionActiveBg: token("--os-layer-hover", "transparent"),
+        optionSelectedBg: token("--os-nav-selected", "transparent"),
+        controlItemBgActiveHover: token("--os-nav-selected", "transparent"),
+        optionSelectedColor: token("--os-text-primary", "currentColor"),
+        motionDurationFast: "0s",
+        motionDurationMid: "0s",
+        motionDurationSlow: "0s",
+      },
       Tabs: { horizontalMargin: "0 0 16px 0" },
     },
   };

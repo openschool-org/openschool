@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Button, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, Input, Select } from "antd";
 import { useActivationStatus, useStartActivation } from "@/features/activation/queries/useActivation";
 import type { ActivationRole } from "@/features/activation/api/activation";
-import AuthShell from "@/features/activation/components/AuthShell";
+import AuthCard from "@/shared/ui/AuthCard";
+import Field from "@/shared/ui/Field";
+import LinkButton from "@/shared/ui/LinkButton";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import { EMAIL_RE } from "@/shared/lib/validation";
@@ -35,49 +37,72 @@ export default function ActivateStartForm() {
 
   if (start.isSuccess) {
     return (
-      <AuthShell success title="Check your email" subtitle="If the code and details match, we have sent a link to finish activating your account. It expires in 30 minutes. No email after a few minutes? Check the code and your index or NIC number, then try again.">
-        <Button href="/signin" className="os-full-width-btn">Back to sign in</Button>
-      </AuthShell>
+      <AuthCard
+        success
+        title="Check your email"
+        subtitle="If the code and details match, we have sent a link to finish activating your account. It expires in 30 minutes. No email after a few minutes? Check the code and your index or NIC number, then try again."
+      >
+        <LinkButton to="/signin" type="primary" size="large" block>Back to sign in</LinkButton>
+      </AuthCard>
     );
   }
 
   if (!role) {
     return (
-      <AuthShell title="Activate your account" subtitle="Account activation is not open right now. Please contact the school office.">
-        <div className="os-auth-card__footer"><Link to="/signin">Back to sign in</Link></div>
-      </AuthShell>
+      <AuthCard
+        title="Activate your account"
+        subtitle="Account activation is not open right now. Please contact the school office."
+        footer={<Link to="/signin">Back to sign in</Link>}
+      />
     );
   }
 
   return (
-    <AuthShell title="Activate your account" subtitle="Use the activation code from your school to create your login.">
+    <AuthCard
+      title="Activate your account"
+      subtitle="Use the activation code from your school to create your login."
+      footer={<span>Already activated? <Link to="/signin">Sign in</Link></span>}
+    >
       <MutationErrorNotification isError={start.isError} error={start.error} title="Could not start activation" />
-      <div className="os-auth-card__form">
+      <form className="os-login__form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         {openRoles.length > 1 && (
-          <Select id="activate-role" labelText="I am a" value={role.value} onChange={(e) => setChosenRole(e.target.value as ActivationRole)}>
-            {openRoles.map((r) => <SelectItem key={r.value} value={r.value} text={r.label} />)}
-          </Select>
+          <Field id="activate-role" label="I am a">
+            <Select
+              id="activate-role"
+              size="large"
+              value={role.value}
+              onChange={setChosenRole}
+              options={openRoles.map((r) => ({ value: r.value, label: r.label }))}
+            />
+          </Field>
         )}
-        <TextInput id="activate-code" labelText="Activation code" placeholder="XXXXX-XXXXX" autoComplete="off" value={code} onChange={(e) => setCode(e.target.value)} />
-        <TextInput id="activate-identifier" labelText={role.idLabel} helperText={role.idHelp} autoComplete="off" value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
-        <TextInput
+        <Field id="activate-code" label="Activation code">
+          <Input id="activate-code" size="large" placeholder="XXXXX-XXXXX" autoComplete="off" value={code} onChange={(e) => setCode(e.target.value)} />
+        </Field>
+        <Field id="activate-identifier" label={role.idLabel} helper={role.idHelp}>
+          <Input id="activate-identifier" size="large" autoComplete="off" value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
+        </Field>
+        <Field
           id="activate-email"
-          type="email"
-          labelText="Your email"
-          helperText="We will send a link here. You will use it for password resets too."
-          autoComplete="email"
-          value={email}
-          invalid={emailInvalid}
-          invalidText="Enter a valid email address."
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
-      <div className="os-auth-card__actions">
-        <Button className="os-full-width-btn" onClick={submit} disabled={!canSubmit || start.isPending}>
-          {start.isPending ? "Checking…" : "Send activation link"}
+          label="Your email"
+          helper="We will send a link here. You will use it for password resets too."
+          error={emailInvalid ? "Enter a valid email address." : undefined}
+        >
+          <Input
+            id="activate-email"
+            size="large"
+            type="email"
+            autoComplete="email"
+            value={email}
+            status={emailInvalid ? "error" : undefined}
+            aria-invalid={emailInvalid || undefined}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </Field>
+        <Button type="primary" htmlType="submit" size="large" block loading={start.isPending} disabled={!canSubmit}>
+          Send activation link
         </Button>
-      </div>
-      <div className="os-auth-card__footer"><Link to="/signin">Already activated? Sign in</Link></div>
-    </AuthShell>
+      </form>
+    </AuthCard>
   );
 }

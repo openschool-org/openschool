@@ -23,9 +23,9 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `layouts/` | 7 | 7 |
 | `app/` | 3 | 3 |
 | `features/academics/` | 16 | 0 |
-| `features/activation/` | 8 | 0 |
+| `features/activation/` | 8 | 3 |
 | `features/attendance/` | 9 | 0 |
-| `features/auth/` | 5 | 1 |
+| `features/auth/` | 5 | 3 |
 | `features/curriculum/` | 16 | 0 |
 | `features/email/` | 2 | 0 |
 | `features/guardians/` | 3 | 3 |
@@ -43,7 +43,7 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `features/teachers/` | 16 | 0 |
 | `features/timetable/` | 21 | 0 |
 | `features/workflows/` | 10 | 0 |
-| **Total** | **235** | **79 (34%)** |
+| **Total** | **235** | **84 (36%)** |
 
 Not counted above: [UI/UX issues](#uiux-issues), [SCSS cleanup](#scss-cleanup) and [build and docs cleanup](#build-and-docs-cleanup).
 
@@ -396,11 +396,11 @@ Paths are relative to `frontend/src/<area>/`.
 
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
-| ⬜ | `components/ActivateCompleteForm.tsx` | Button | - |
-| ⬜ | `components/ActivateStartForm.tsx` | Button, Select, SelectItem, TextInput | - |
+| ✅ | `components/ActivateCompleteForm.tsx` | Button | - |
+| ✅ | `components/ActivateStartForm.tsx` | Button, Select, SelectItem, TextInput | - |
 | ⬜ | `components/ActivationBatches.tsx` | Button, Tag | View |
 | ⬜ | `components/ActivationSettingsCard.tsx` | Button, NumberInput, Toggle | Save |
-| ⬜ | `components/AuthShell.tsx` | - | CheckmarkFilled |
+| ✅ | `components/AuthShell.tsx` | - | CheckmarkFilled | Removed: replaced by `shared/ui/AuthCard.tsx` |
 | ⬜ | `components/BatchCodesModal.tsx` | ComposedModal, InlineNotification, ModalBody, ModalHeader | - |
 | ⬜ | `components/GenerateCodesCard.tsx` | Button, Select, SelectItem | - |
 | ⬜ | `components/IssuedBatchPanel.tsx` | Button, Checkbox, InlineNotification | Download, Printer |
@@ -424,10 +424,10 @@ Paths are relative to `frontend/src/<area>/`.
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
 | ✅ | `components/ChangePasswordModal.tsx` | - | - |
-| ⬜ | `pages/ForgotPassword.tsx` | Button, TextInput, Select, SelectItem, InlineNotification | CheckmarkFilled |
+| ✅ | `pages/ForgotPassword.tsx` | Button, TextInput, Select, SelectItem, InlineNotification | CheckmarkFilled |
 | ⬜ | `pages/PasswordInterstitial.tsx` | Button | Security |
 | ⬜ | `pages/ResetPassword.tsx` | Button, InlineNotification | CheckmarkFilled |
-| ⬜ | `pages/SignIn.tsx` | Button | - |
+| ✅ | `pages/SignIn.tsx` | Button | - |
 
 ### `features/curriculum/`
 
