@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Layers, Add } from "@carbon/icons-react";
-import { Button, TextInput, InlineNotification } from "@carbon/react";
+import { Alert, Button } from "antd";
+import { AppstoreOutlined, PlusOutlined } from "@ant-design/icons";
+import TextField from "@/shared/ui/TextField";
 import { useStreams, useCreateStream } from "@/features/academics/queries/useClasses";
 import StreamGroups from "@/features/academics/components/StreamGroups";
 import SectionHeadsPanel from "@/features/academics/components/SectionHeadsPanel";
@@ -29,20 +30,20 @@ export default function Streams() {
           <h1 className="os-page__title">Streams & section heads</h1>
           <p className="os-page__subtitle">A/L streams, their sub-groups and the teacher in charge.</p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" onClick={() => setCreateOpen(true)}>New stream</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>New stream</Button>
       </div>
 
       <AgentFindingsBanner />
 
       <SectionCard title="Streams" meta={!isLoading && <span className="os-section__meta">{streams?.length ?? 0} configured</span>} flush>
         {isLoading && <div className="os-py-4 os-px-6"><ListRowSkeleton trailingWidth={null} /></div>}
-        {isError && streams && streams.length > 0 && <div className="os-flex os-items-center os-gap-2 os-px-6 os-py-3"><InlineNotification kind="error" lowContrast hideCloseButton title="Could not refresh streams" subtitle="Showing the last available stream cards." className="os-flex-1 os-m-0" /><Button kind="ghost" size="sm" onClick={() => void refetch()}>Retry</Button></div>}
+        {isError && streams && streams.length > 0 && <div className="os-px-6 os-py-3"><Alert type="error" showIcon title="Could not refresh streams" description="Showing the last available stream cards." action={<Button size="small" onClick={() => void refetch()}>Retry</Button>} /></div>}
         {isError && !streams?.length && <ErrorMessage message="Could not load streams." onRetry={refetch} />}
         {!isLoading && !isError && !streams?.length && (
           <EmptyState
             title="No streams yet"
             description="Add A/L streams like Science, Commerce, Arts or Technology."
-            action={<Button renderIcon={Add} kind="primary" onClick={() => setCreateOpen(true)}>New stream</Button>}
+            action={<Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>New stream</Button>}
           />
         )}
         {!isLoading && streams && streams.length > 0 && (
@@ -50,7 +51,7 @@ export default function Streams() {
             {streams.map((s) => (
               <div key={s.id} className="os-border os-rounded-md os-bg-layer os-p-5">
                 <div className="os-flex os-items-center os-gap-2 os-mb-4">
-                  <Layers size={16} className="os-fill-accent" />
+                  <AppstoreOutlined className="os-c-accent" />
                   <span className="os-fw-600 os-text-md os-c-primary">{s.name}</span>
                 </div>
                 <StreamGroups stream={s} />
@@ -75,7 +76,7 @@ export default function Streams() {
         error={createStream.error}
         errorFallback="Failed to create stream"
       >
-        <TextInput id="new-stream-name" labelText="Stream name" placeholder="e.g. Science, Commerce, Arts, Technology" value={newName} onChange={(e) => setNewName(e.target.value)} />
+        <TextField id="new-stream-name" label="Stream name" placeholder="e.g. Science, Commerce, Arts, Technology" value={newName} onChange={setNewName} />
       </FormModal>
     </div>
   );

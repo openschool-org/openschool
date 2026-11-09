@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Button, Checkbox, Tag } from "@carbon/react";
-import { ArrowRight } from "@carbon/icons-react";
+import { Button, Tag, Tooltip } from "antd";
+import { ArrowRightOutlined } from "@ant-design/icons";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
 import type { PromotionPreviewRow } from "@/features/academics/api/promotion";
+import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 
 // Deals rows across targetClasses round-robin, so class sizes differ by at most 1 instead of being lopsided.
 function roundRobinAssign(orderedRows: PromotionPreviewRow[], targetClasses: { id: string }[]): Record<string, string> {
@@ -77,6 +78,72 @@ export default function PromotionGroup({
     onBulkAssign(roundRobinAssign(shuffled(shufflePool), shuffleTargets));
   };
 
+  const columns: GridColumn<PromotionPreviewRow>[] = [
+    {
+      key: "student",
+      header: "Student",
+      render: (r) => (
+        <>
+          <div className="os-fw-500 os-text-md">{r.student_name}</div>
+          <div className="os-text-xs os-c-tertiary">{r.student_index}</div>
+        </>
+      ),
+    },
+    {
+      key: "current",
+      header: "Current class",
+      render: (r) => (
+        <>
+          {r.current_class_name}
+          {r.medium_locked && (
+            <Tag color="purple" variant="filled" className="os-ml-2" title="Medium-designated class - carries over to the same medium and is left out of distribution">
+              {r.current_medium_name ?? "Medium"}
+            </Tag>
+          )}
+        </>
+      ),
+    },
+    ...(rankByMarks
+      ? [{
+          key: "marks",
+          header: "Marks",
+          render: (r: PromotionPreviewRow) =>
+            r.total_marks != null ? <Tag color="blue" variant="filled">{r.total_marks} / {r.total_max_marks}</Tag> : <span className="os-c-disabled">-</span>,
+        }]
+      : []),
+    ...(isGraduating
+      ? []
+      : [{
+          key: "target",
+          header: "Target class",
+          render: (r: PromotionPreviewRow) => (
+            <div className="os-flex os-items-center os-gap-2">
+              <div className="os-min-w-14">
+                <EntityCombobox
+                  id={`class-${r.student_id}`}
+                  items={targetClasses}
+                  selectedId={assignments[r.student_id] ?? ""}
+                  onSelect={(id) => onAssign(r.student_id, id)}
+                  getId={(c) => c.id}
+                  itemToString={(c) => c.name}
+                  placeholder="Choose class…"
+                />
+              </div>
+              {r.suggested_class_name && assignments[r.student_id] === r.suggested_class_id && (
+                <Tag color="success" variant="filled" icon={<ArrowRightOutlined />} title={r.medium_locked ? "Same-medium carryover suggestion" : "Same-name carryover suggestion"}>
+                  Suggested
+                </Tag>
+              )}
+            </div>
+          ),
+        }]),
+  ];
+
+  // DataGrid reports the whole new selection; PromotionGroup's parent toggles one student at a time.
+  const changeSelection = (next: Set<string>) => {
+    for (const r of rows) if (next.has(r.student_id) !== selected.has(r.student_id)) onToggleSelected(r.student_id);
+  };
+
   return (
     <div className="os-section">
       <div className="os-section__header">
@@ -89,16 +156,12 @@ export default function PromotionGroup({
                   {lockedCount} medium-locked, excluded from distribution
                 </span>
               )}
-              <Button
-                kind="ghost"
-                size="sm"
-                onClick={distributeByMarks}
-                disabled={!hasMarks || !canShuffle}
-                title={hasMarks ? undefined : "Pick a term and enable “Sort by total marks” above first"}
-              >
-                Distribute by marks
-              </Button>
-              <Button kind="ghost" size="sm" onClick={distributeRandomly} disabled={!canShuffle}>
+              <Tooltip title={hasMarks ? undefined : "Pick a term and enable “Sort by total marks” above first"}>
+                <Button type="text" size="small" onClick={distributeByMarks} disabled={!hasMarks || !canShuffle}>
+                  Distribute by marks
+                </Button>
+              </Tooltip>
+              <Button type="text" size="small" onClick={distributeRandomly} disabled={!canShuffle}>
                 Assign randomly
               </Button>
             </>
@@ -121,98 +184,21 @@ export default function PromotionGroup({
               placeholder="Move selected to…"
             />
           </div>
-          <Button kind="tertiary" size="sm" onClick={applyBulk} disabled={!bulkClassId}>
+          <Button size="small" onClick={applyBulk} disabled={!bulkClassId}>
             Apply
           </Button>
         </div>
       )}
 
-      <table className="os-table">
-        <thead>
-          <tr>
-            {!isGraduating && <th className="os-w-2h" />}
-            <th>Student</th>
-            <th>Current class</th>
-            {rankByMarks && <th>Marks</th>}
-            {!isGraduating && <th>Target class</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.student_id}>
-              {!isGraduating && (
-                <td>
-                  <Checkbox
-                    id={`select-${r.student_id}`}
-                    labelText={`Select ${r.student_name}`}
-                    hideLabel
-                    checked={selected.has(r.student_id)}
-                    onChange={() => onToggleSelected(r.student_id)}
-                  />
-                </td>
-              )}
-              <td>
-                <div className="os-fw-500 os-text-md">{r.student_name}</div>
-                <div className="os-text-xs os-c-tertiary">{r.student_index}</div>
-              </td>
-              <td>
-                {r.current_class_name}
-                {r.medium_locked && (
-                  <Tag
-                    type="purple"
-                    size="sm" className="os-ml-2"
-                    title="Medium-designated class - carries over to the same medium and is left out of distribution"
-                  >
-                    {r.current_medium_name ?? "Medium"}
-                  </Tag>
-                )}
-              </td>
-              {rankByMarks && (
-                <td>
-                  {r.total_marks != null ? (
-                    <Tag type="blue" size="sm">
-                      {r.total_marks} / {r.total_max_marks}
-                    </Tag>
-                  ) : (
-                    <span className="os-c-disabled">-</span>
-                  )}
-                </td>
-              )}
-              {isGraduating ? null : (
-                <td>
-                  <div className="os-flex os-items-center os-gap-2">
-                    <div className="os-min-w-14">
-                      <EntityCombobox
-                        id={`class-${r.student_id}`}
-                        items={targetClasses}
-                        selectedId={assignments[r.student_id] ?? ""}
-                        onSelect={(id) => onAssign(r.student_id, id)}
-                        getId={(c) => c.id}
-                        itemToString={(c) => c.name}
-                        placeholder="Choose class…"
-                      />
-                    </div>
-                    {r.suggested_class_name && assignments[r.student_id] === r.suggested_class_id && (
-                      <Tag
-                        type="green"
-                        size="sm"
-                        title={
-                          r.medium_locked
-                            ? "Same-medium carryover suggestion"
-                            : "Same-name carryover suggestion"
-                        }
-                      >
-                        <ArrowRight size={10} className="os-mr-h" />
-                        Suggested
-                      </Tag>
-                    )}
-                  </div>
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        getRowId={(r) => r.student_id}
+        pagination={false}
+        noHover
+        selected={isGraduating ? undefined : selected}
+        onSelectionChange={isGraduating ? undefined : changeSelection}
+      />
     </div>
   );
 }

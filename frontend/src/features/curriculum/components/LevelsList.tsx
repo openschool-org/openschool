@@ -1,6 +1,6 @@
-import { Link } from "react-router";
-import { Add, ChevronRight, Copy, Edit, Layers } from "@carbon/icons-react";
-import { Button, Tag } from "@carbon/react";
+import { Button, Tag } from "antd";
+import { AppstoreOutlined, CopyOutlined, EditOutlined, PlusOutlined, RightOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
 import type { useLevels, useDeleteLevel } from "@/features/curriculum/queries/useCurriculum";
 import type { useGrades } from "@/features/academics/queries/useGrades";
 import type { Level } from "@/features/curriculum/api/curriculum";
@@ -66,7 +66,7 @@ export default function LevelsList({
           title="No levels yet"
           description="Create a level for each place a distinct set of subject rules applies - for example one per grade, or one per stream."
           action={
-            <Button renderIcon={Add} kind="primary" onClick={onOpenCreate}>
+            <Button type="primary" icon={<PlusOutlined />} onClick={onOpenCreate}>
               New level
             </Button>
           }
@@ -77,7 +77,7 @@ export default function LevelsList({
         <div>
           {levels.map((l) => (
             <div key={l.id} className="os-list-row">
-              <Layers size={20} className="os-fill-accent os-shrink-0" />
+              <AppstoreOutlined className="os-c-accent os-shrink-0 os-text-lg" />
               <div className="os-flex-1">
                 <p className="os-mt-0 os-mx-0 os-mb-h os-fw-600 os-text-md os-c-primary">
                   {l.label}
@@ -85,24 +85,24 @@ export default function LevelsList({
                 <p className="os-m-0 os-text-xs os-c-secondary">Order {l.sort_order}</p>
               </div>
               {gradeName(l.grade_id) ? (
-                <Tag type="teal" size="sm">
+                <Tag color="cyan" variant="filled">
                   {gradeName(l.grade_id)}
                 </Tag>
               ) : (
-                <Tag type="gray" size="sm">
+                <Tag variant="filled">
                   No grade
                 </Tag>
               )}
-              <Button kind="ghost" size="sm" renderIcon={ChevronRight} as={Link} to={`/curriculum/${l.id}`}>
+              <LinkButton to={`/curriculum/${l.id}`} type="text" size="small" icon={<RightOutlined />} iconPlacement="end">
                 Configure
-              </Button>
-              <Button kind="ghost" size="sm" renderIcon={Edit} onClick={() => onEdit(l)}>
+              </LinkButton>
+              <Button type="text" size="small" icon={<EditOutlined />} onClick={() => onEdit(l)}>
                 Edit
               </Button>
-              <Button kind="ghost" size="sm" renderIcon={Copy} onClick={() => onDuplicate(l)}>
+              <Button type="text" size="small" icon={<CopyOutlined />} onClick={() => onDuplicate(l)}>
                 Duplicate
               </Button>
-              <Button kind="danger--ghost" size="sm" onClick={() => onRequestDelete(l)}>
+              <Button type="text" danger size="small" onClick={() => onRequestDelete(l)}>
                 Delete
               </Button>
             </div>

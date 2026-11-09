@@ -1,8 +1,8 @@
 /* eslint-disable max-lines */
 import { useMemo, useState } from "react";
 import { useBlocker, useNavigate, useParams } from "react-router";
-import { Add, ArrowLeft } from "@carbon/icons-react";
-import { Button, InlineNotification } from "@carbon/react";
+import { Alert, Button } from "antd";
+import { ArrowLeftOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
 import {
   useLevelTree,
   useMediums,
@@ -221,36 +221,36 @@ export default function LevelDetail() {
           </div>
         </div>
         <div className="os-flex os-gap-2">
-          <Button renderIcon={ArrowLeft} kind="ghost" size="md" onClick={() => navigate("/curriculum")}>
+          <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate("/curriculum")}>
             Back
           </Button>
-          <Button renderIcon={Add} kind="primary" size="md" onClick={openCreateGroup}>
+          <Button icon={<PlusOutlined />} onClick={openCreateGroup}>
             New group
           </Button>
-          <Button kind="primary" size="md" disabled={!subjectsDirty || savingSubjects} onClick={() => void saveSubjects()}>
+          <Button type="primary" icon={<SaveOutlined />} disabled={!subjectsDirty} loading={savingSubjects} onClick={() => void saveSubjects()}>
             {savingSubjects ? "Saving subjects…" : "Save subjects"}
           </Button>
         </div>
       </div>
 
       {subjectsDirty && (
-        <InlineNotification
-          kind="info"
-          title="Unsaved subject changes"
-          subtitle="Add or remove subjects from the groups below, then save them together."
-          lowContrast
-          hideCloseButton
+        <Alert
+          type="info"
+          showIcon
           className="os-mb-4"
+          title="Unsaved subject changes"
+          description="Add or remove subjects from the groups below, then save them together."
         />
       )}
       {subjectsSaveError && (
-        <InlineNotification
-          kind="error"
-          title="Could not save subjects"
-          subtitle="Some changes may not have been saved. Review the groups and try again."
-          lowContrast
+        <Alert
+          type="error"
+          showIcon
+          closable
           onClose={() => setSubjectsSaveError(false)}
           className="os-mb-4"
+          title="Could not save subjects"
+          description="Some changes may not have been saved. Review the groups and try again."
         />
       )}
 

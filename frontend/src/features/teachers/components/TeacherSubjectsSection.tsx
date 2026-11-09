@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Button, Select, SelectItem, Tag } from "@carbon/react";
-import { Book } from "@carbon/icons-react";
+import { Button, Tag } from "antd";
+import { BookOutlined } from "@ant-design/icons";
+import SelectField from "@/shared/ui/SelectField";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { TeacherSubject } from "@/features/teachers/api/teacher";
 import { useSubjects } from "@/features/curriculum/queries/useSubjects";
@@ -26,14 +27,21 @@ export default function TeacherSubjectsSection({ subjects, editing, assignSubjec
           {subjects?.length ? (
             subjects.map((s) =>
               editing ? (
-                <Tag key={s.id} type="blue" size="md" filter title="Unassign subject" onClose={() => removeSubject.mutate(s.id)} disabled={removeSubject.isPending}>
+                <Tag
+                  key={s.id}
+                  color="blue"
+                  variant="filled"
+                  closable={!removeSubject.isPending}
+                  closeIcon={<span aria-label={`Unassign ${s.name}`}>×</span>}
+                  onClose={(e) => { e.preventDefault(); removeSubject.mutate(s.id); }}
+                >
                   {s.name} ({s.code})
                 </Tag>
               ) : (
                 <div key={s.id} className="os-flex os-items-center os-gap-2 os-py-2 os-px-3h os-border os-bg-layer-hover">
-                  <Book size={14} className="os-fill-accent" />
+                  <BookOutlined className="os-c-accent" />
                   <span className="os-text-md os-fw-500">{s.name}</span>
-                  <Tag type="blue" size="sm">{s.code}</Tag>
+                  <Tag color="blue" variant="filled">{s.code}</Tag>
                 </div>
               ),
             )
@@ -44,13 +52,19 @@ export default function TeacherSubjectsSection({ subjects, editing, assignSubjec
         {editing && (
           <div className="os-flex os-gap-3 os-items-end os-max-w-28 os-border-t os-pt-4">
             <div className="os-flex-1">
-              <Select id="assign-subject-select" labelText="Assign new subject" value={selectedId} onChange={(e) => setSelectedId(e.target.value)} disabled={assignSubject.isPending}>
-                <SelectItem value="" text="Choose a subject..." />
-                {available.map((s) => <SelectItem key={s.id} value={s.id} text={`${s.name} (${s.code})`} />)}
-              </Select>
+              <SelectField
+                id="assign-subject-select"
+                label="Assign new subject"
+                placeholder="Choose a subject..."
+                showSearch
+                value={selectedId}
+                onChange={setSelectedId}
+                disabled={assignSubject.isPending}
+                options={available.map((s) => ({ value: s.id, label: `${s.name} (${s.code})` }))}
+              />
             </div>
-            <Button kind="primary" size="md" disabled={!selectedId || assignSubject.isPending} onClick={() => assignSubject.mutate(selectedId, { onSuccess: () => setSelectedId("") })}>
-              {assignSubject.isPending ? "Assigning…" : "Assign"}
+            <Button type="primary" disabled={!selectedId} loading={assignSubject.isPending} onClick={() => assignSubject.mutate(selectedId, { onSuccess: () => setSelectedId("") })}>
+              Assign
             </Button>
           </div>
         )}

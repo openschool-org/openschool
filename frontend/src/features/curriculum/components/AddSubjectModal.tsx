@@ -1,6 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import { Link } from "react-router";
-import { Select, SelectItem, TextArea, SkeletonText } from "@carbon/react";
+import { SkeletonText } from "@/shared/ui/Skeleton";
+import SelectField from "@/shared/ui/SelectField";
+import TextAreaField from "@/shared/ui/TextAreaField";
 import type { useAddGroupSubject, useMediums } from "@/features/curriculum/queries/useCurriculum";
 import type { useSubjects } from "@/features/curriculum/queries/useSubjects";
 import type { CurriculumTreeGroup } from "@/features/curriculum/api/curriculum";
@@ -80,25 +82,21 @@ export default function AddSubjectModal({
             itemToString={(s) => `${s.name} (${s.code})`}
             placeholder="Search subjects by name or code…"
           />
-          <Select
+          <SelectField
             id="gs-medium"
-            labelText="Medium restriction (optional)"
+            label="Medium restriction (optional)"
             helperText="Leave as any medium unless this subject is only offered in one."
             value={subjectForm.medium_id}
-            onChange={(e) => setSubjectForm((f) => ({ ...f, medium_id: e.target.value }))}
-          >
-            <SelectItem value="" text="Any medium" />
-            {mediums?.map((m) => (
-              <SelectItem key={m.id} value={m.id} text={m.name} />
-            ))}
-          </Select>
-          <TextArea
+            onChange={(v) => setSubjectForm((f) => ({ ...f, medium_id: v }))}
+            options={[{ value: "", label: "Any medium" }, ...(mediums ?? []).map((m) => ({ value: m.id, label: m.name }))]}
+          />
+          <TextAreaField
             id="gs-note"
-            labelText="Prerequisite note (optional)"
+            label="Prerequisite note (optional)"
             helperText="Guidance shown to admins and students. Not enforced."
             rows={2}
             value={subjectForm.prerequisite_note}
-            onChange={(e) => setSubjectForm((f) => ({ ...f, prerequisite_note: e.target.value }))}
+            onChange={(v) => setSubjectForm((f) => ({ ...f, prerequisite_note: v }))}
           />
         </div>
       )}

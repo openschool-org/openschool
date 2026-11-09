@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { NumberInput, TextInput } from "@carbon/react";
 import type { Subject } from "@/features/curriculum/api/subject";
 import { useCreateSubject } from "@/features/curriculum/queries/useSubjects";
 import FormModal from "@/shared/ui/FormModal";
+import NumberField from "@/shared/ui/NumberField";
+import TextField from "@/shared/ui/TextField";
 
 interface Props {
   open: boolean;
@@ -63,41 +64,41 @@ export default function CreateSubjectModal({ open, subjects, onClose }: Props) {
       errorFallback="Check the subject name and code, then try again."
     >
       <div className="os-grid os-gap-4">
-        <TextInput
+        <TextField
           id="create-subject-name"
-          labelText="Subject name"
+          label="Subject name"
           placeholder="e.g. Mathematics"
           value={name}
-          onChange={(event) => setName(event.target.value)}
+          onChange={(v) => setName(v)}
           onBlur={() => setTouched((value) => ({ ...value, name: true }))}
           invalid={nameInvalid || duplicateName}
           invalidText={duplicateName ? "A subject with this name already exists." : "Subject name is required."}
         />
-        <TextInput
+        <TextField
           id="create-subject-code"
-          labelText="Subject code"
+          label="Subject code"
           placeholder="e.g. MATH-01"
           helperText="Must be unique across the subject catalogue."
           value={code}
-          onChange={(event) => setCode(event.target.value)}
+          onChange={(v) => setCode(v)}
           onBlur={() => setTouched((value) => ({ ...value, code: true }))}
           invalid={codeInvalid || duplicateCode}
           invalidText={duplicateCode ? "This subject code is already in use." : "Subject code is required."}
         />
-        <TextInput
+        <TextField
           id="create-subject-type"
-          labelText="Type (optional)"
+          label="Type (optional)"
           placeholder="e.g. core, language, aesthetic"
           value={type}
-          onChange={(event) => setType(event.target.value)}
+          onChange={(v) => setType(v)}
         />
-        <NumberInput
+        <NumberField
           id="create-subject-max-marks"
           label="Max marks"
           min={1}
           max={999.99}
           value={maxMarks}
-          onChange={(_event, { value }) => setMaxMarks(Number(value ?? 100))}
+          onChange={(value) => setMaxMarks(Number(value ?? 100))}
           helperText="The maximum marks a student can receive for this subject."
         />
       </div>

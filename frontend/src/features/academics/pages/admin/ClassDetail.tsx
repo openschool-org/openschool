@@ -1,6 +1,7 @@
-import { Link, useParams, useLocation } from "react-router";
-import { Button, Tag, Tabs, Tab, TabList, TabPanels, TabPanel } from "@carbon/react";
-import { ArrowLeft, Edit, UserMultiple, EventSchedule, UserFollow } from "@carbon/icons-react";
+import { useParams, useLocation } from "react-router";
+import { Button, Tabs, Tag } from "antd";
+import { ArrowLeftOutlined, EditOutlined, ScheduleOutlined, TeamOutlined, UserAddOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
 import { useClassDetail } from "@/features/academics/hooks/useClassDetail";
 import { useClassDetailModals } from "@/features/academics/components/ClassDetailModals";
 import StudentsTab from "@/features/academics/components/StudentsTab";
@@ -28,7 +29,7 @@ function formatClassLabel(name: string) {
 export default function ClassDetail() {
   const { id = "" } = useParams();
   const location = useLocation();
-  const initialTab = (location.state as { tab?: string } | null)?.tab === "attendance" ? 1 : 0;
+  const initialTab = (location.state as { tab?: string } | null)?.tab === "attendance" ? "attendance" : "students";
   const detail = useClassDetail(id);
   const cls = detail.cls.data;
   usePageTitle(cls ? `Class ${cls.name}` : null);
@@ -58,15 +59,15 @@ export default function ClassDetail() {
           <>
           {names.stream && <StreamTag name={names.stream} />}
           {names.medium && <MediumTag name={names.medium} />}
-          {names.homeClassroom && <Tag type="teal" size="sm">{names.homeClassroom}</Tag>}
-          <Button renderIcon={Edit} kind="ghost" size="sm" onClick={m.openEdit}>Edit</Button>
-          <Button renderIcon={UserMultiple} kind="ghost" size="sm" onClick={m.openTeacher}>
+          {names.homeClassroom && <Tag color="cyan" variant="filled">{names.homeClassroom}</Tag>}
+          <Button type="text" icon={<EditOutlined />} onClick={m.openEdit}>Edit</Button>
+          <Button type="text" icon={<TeamOutlined />} onClick={m.openTeacher}>
             {formTeacher ? "Change teacher" : "Assign teacher"}
           </Button>
-          <Button renderIcon={UserFollow} kind="ghost" size="sm" onClick={m.openMonitors}>
+          <Button type="text" icon={<UserAddOutlined />} onClick={m.openMonitors}>
             {girlMonitor || boyMonitor ? "Change monitors" : "Assign monitors"}
           </Button>
-          <Button renderIcon={ArrowLeft} kind="secondary" size="sm" as={Link} to="/classes">Back</Button>
+          <LinkButton to="/classes" icon={<ArrowLeftOutlined />}>Back</LinkButton>
           </>
         )}
       />
@@ -74,59 +75,68 @@ export default function ClassDetail() {
       <div className="os-py-6 os-px-8">
         <div className="os-grid os-grid-cols-2-1 os-gap-6 os-items-grid-start">
           <div>
-            <Tabs defaultSelectedIndex={initialTab}>
-              <TabList aria-label="Class sections">
-                <Tab>Students</Tab>
-                <Tab>Attendance</Tab>
-                <Tab>Marks</Tab>
-                <Tab>Subjects & teachers</Tab>
-                <Tab>Details</Tab>
-              </TabList>
-              <TabPanels>
-                <TabPanel className="os-p-0">
-                  <StudentsTab
-                    cls={cls}
-                    students={students}
-                    studentsLoading={detail.roster.isLoading}
-                    unenrollStudent={m.unenrollStudent}
-                    onOpenEnrol={m.openEnrol}
-                    onRequestUnenroll={m.setToUnenroll}
-                  />
-                </TabPanel>
-                <TabPanel className="os-p-0">
-                  <AttendanceTab
-                    sessions={sessions}
-                    sessionsLoading={detail.sessions.isLoading}
-                    createSession={m.createSession}
-                    deleteSession={m.deleteSession}
-                    onOpenNewSession={m.openNewSession}
-                    onRequestDeleteSession={m.setToDeleteSession}
-                  />
-                </TabPanel>
-                <TabPanel className="os-p-0">
-                  <div className="os-mt-4">
-                    <ClassMarks classId={id} academicYearId={cls.academic_year_id} />
-                  </div>
-                </TabPanel>
-                <TabPanel className="os-p-0">
-                  <SubjectsTab classId={id} academicYearId={cls.academic_year_id} />
-                </TabPanel>
-                <TabPanel className="os-p-0">
-                  <DetailsTab
-                    cls={cls}
-                    gradeName={names.grade}
-                    streamName={names.stream}
-                    streamGroupName={names.streamGroup}
-                    mediumName={names.medium}
-                    homeClassroomName={names.homeClassroom}
-                    academicYearLabel={names.academicYear}
-                    girlMonitor={girlMonitor}
-                    boyMonitor={boyMonitor}
-                    formTeacher={formTeacher}
-                  />
-                </TabPanel>
-              </TabPanels>
-            </Tabs>
+            <Tabs
+              defaultActiveKey={initialTab}
+              aria-label="Class sections"
+              items={[
+                {
+                  key: "students",
+                  label: "Students",
+                  children: (
+                    <StudentsTab
+                      cls={cls}
+                      students={students}
+                      studentsLoading={detail.roster.isLoading}
+                      unenrollStudent={m.unenrollStudent}
+                      onOpenEnrol={m.openEnrol}
+                      onRequestUnenroll={m.setToUnenroll}
+                    />
+                  ),
+                },
+                {
+                  key: "attendance",
+                  label: "Attendance",
+                  children: (
+                    <AttendanceTab
+                      sessions={sessions}
+                      sessionsLoading={detail.sessions.isLoading}
+                      createSession={m.createSession}
+                      deleteSession={m.deleteSession}
+                      onOpenNewSession={m.openNewSession}
+                      onRequestDeleteSession={m.setToDeleteSession}
+                    />
+                  ),
+                },
+                {
+                  key: "marks",
+                  label: "Marks",
+                  children: <div className="os-mt-4"><ClassMarks classId={id} academicYearId={cls.academic_year_id} /></div>,
+                },
+                {
+                  key: "subjects",
+                  label: "Subjects & teachers",
+                  children: <SubjectsTab classId={id} academicYearId={cls.academic_year_id} />,
+                },
+                {
+                  key: "details",
+                  label: "Details",
+                  children: (
+                    <DetailsTab
+                      cls={cls}
+                      gradeName={names.grade}
+                      streamName={names.stream}
+                      streamGroupName={names.streamGroup}
+                      mediumName={names.medium}
+                      homeClassroomName={names.homeClassroom}
+                      academicYearLabel={names.academicYear}
+                      girlMonitor={girlMonitor}
+                      boyMonitor={boyMonitor}
+                      formTeacher={formTeacher}
+                    />
+                  ),
+                },
+              ]}
+            />
           </div>
 
           <div>
@@ -144,9 +154,8 @@ export default function ClassDetail() {
               <div className="os-py-3">
                 <InfoRow label="Total sessions" value={sessions?.length ?? 0} bold divider={false} />
                 <div className="os-mt-2">
-                  <Button kind="ghost" size="sm" onClick={m.openNewSession} className="os-c-accent os-p-0">
-                    <EventSchedule size={14} className="os-mr-1h" />
-                    New session →
+                  <Button type="link" size="small" icon={<ScheduleOutlined />} onClick={m.openNewSession} className="os-p-0">
+                    New session
                   </Button>
                 </div>
               </div>

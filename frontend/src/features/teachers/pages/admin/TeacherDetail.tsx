@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams, useNavigate, useLocation } from "react-router";
-import { Button } from "@carbon/react";
-import { ArrowLeft, TrashCan, Edit, Save } from "@carbon/icons-react";
+import { useParams, useNavigate, useLocation } from "react-router";
+import { Button } from "antd";
+import { ArrowLeftOutlined, DeleteOutlined, EditOutlined, SaveOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
 import {
   useTeacher,
   useTeacherSubjects,
@@ -134,54 +135,22 @@ export default function TeacherDetail() {
         actions={
           editing ? (
             <>
+              <Button onClick={handleCancel} disabled={updateTeacher.isPending}>Cancel</Button>
               <Button
-                kind="secondary"
-                size="sm"
-                onClick={handleCancel}
-                disabled={updateTeacher.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                renderIcon={Save}
-                kind="primary"
-                size="sm"
+                type="primary"
+                icon={<SaveOutlined />}
                 onClick={() => setConfirmEditOpen(true)}
-                disabled={!isValid || updateTeacher.isPending}
+                disabled={!isValid}
+                loading={updateTeacher.isPending}
               >
                 {updateTeacher.isPending ? "Saving…" : "Save changes"}
               </Button>
             </>
           ) : (
             <>
-              <Button
-                renderIcon={Edit}
-                kind="ghost"
-                size="sm"
-                onClick={() => setEditing(true)}
-              >
-                Edit
-              </Button>
-              <Button
-                renderIcon={TrashCan}
-                kind="danger--ghost"
-                size="sm"
-                onClick={() => {
-                  deleteTeacher.reset();
-                  setConfirmOpen(true);
-                }}
-              >
-                Delete
-              </Button>
-              <Button
-                renderIcon={ArrowLeft}
-                kind="secondary"
-                size="sm"
-                as={Link}
-                to="/teachers"
-              >
-                Back
-              </Button>
+              <Button type="text" icon={<EditOutlined />} onClick={() => setEditing(true)}>Edit</Button>
+              <Button type="text" danger icon={<DeleteOutlined />} onClick={() => { deleteTeacher.reset(); setConfirmOpen(true); }}>Delete</Button>
+              <LinkButton to="/teachers" icon={<ArrowLeftOutlined />}>Back</LinkButton>
             </>
           )
         }

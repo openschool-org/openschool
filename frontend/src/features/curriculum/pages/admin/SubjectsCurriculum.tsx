@@ -1,11 +1,11 @@
 import { useLocation } from "react-router";
-import { Tabs, TabList, Tab, TabPanels, TabPanel } from "@carbon/react";
+import { Tabs } from "antd";
 import SubjectsPanel from "@/features/curriculum/components/SubjectsPanel";
 import CurriculumPanel from "@/features/curriculum/components/CurriculumPanel";
 
 export default function SubjectsCurriculum() {
   const location = useLocation();
-  const defaultSelectedIndex = location.pathname.startsWith("/curriculum") ? 1 : 0;
+  const defaultTab = location.pathname.startsWith("/curriculum") ? "curriculum" : "subjects";
 
   return (
     <div className="os-page">
@@ -16,20 +16,14 @@ export default function SubjectsCurriculum() {
         </div>
       </div>
 
-      <Tabs defaultSelectedIndex={defaultSelectedIndex}>
-        <TabList aria-label="Subjects and curriculum sections">
-          <Tab>Subjects</Tab>
-          <Tab>Curriculum</Tab>
-        </TabList>
-        <TabPanels>
-          <TabPanel className="os-p-0">
-            <SubjectsPanel />
-          </TabPanel>
-          <TabPanel className="os-p-0">
-            <CurriculumPanel />
-          </TabPanel>
-        </TabPanels>
-      </Tabs>
+      <Tabs
+        defaultActiveKey={defaultTab}
+        aria-label="Subjects and curriculum sections"
+        items={[
+          { key: "subjects", label: "Subjects", children: <SubjectsPanel /> },
+          { key: "curriculum", label: "Curriculum", children: <CurriculumPanel /> },
+        ]}
+      />
     </div>
   );
 }

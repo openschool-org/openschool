@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Add, Edit, TrashCan } from "@carbon/icons-react";
-import { Button, IconButton, Select, SelectItem, Tag } from "@carbon/react";
+import { Button, Tag, Tooltip } from "antd";
+import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
+import SelectField from "@/shared/ui/SelectField";
 import { useTeachers, useDeleteTeacher } from "@/features/teachers/queries/useTeachers";
 import type { Teacher, TeacherEmploymentStatus } from "@/features/teachers/api/teacher";
 import { EMPLOYMENT_STATUSES } from "@/shared/lib/constants/people";
@@ -19,7 +21,7 @@ import Avatar from "@/shared/ui/Avatar";
 import { formatDateOnly } from "@/shared/lib/date";
 import { displayName } from "@/shared/lib/name";
 
-const STATUS_TAG: Record<string, "green" | "red" | "magenta"> = { active: "green", resigned: "red", transferred: "magenta" };
+const STATUS_TAG: Record<string, string> = { active: "success", resigned: "error", transferred: "magenta" };
 const FILTER_LABELS: Record<string, string> = { query: "Search", status: "Status" };
 
 export default function Teachers() {
@@ -60,7 +62,7 @@ export default function Teachers() {
     {
       key: "status",
       header: "Status",
-      render: (t) => <Tag type={STATUS_TAG[t.employment_status] ?? "gray"} size="sm">{EMPLOYMENT_STATUSES.find((s) => s.value === t.employment_status)?.label ?? t.employment_status}</Tag>,
+      render: (t) => <Tag color={STATUS_TAG[t.employment_status]} variant="filled">{EMPLOYMENT_STATUSES.find((s) => s.value === t.employment_status)?.label ?? t.employment_status}</Tag>,
     },
     {
       key: "actions",
@@ -68,8 +70,12 @@ export default function Teachers() {
       align: "end",
       render: (t) => (
         <div className="os-grid__actions">
-          <IconButton label="Edit" kind="ghost" size="sm" onClick={() => navigate(`/teachers/${t.id}`, { state: { edit: true } })}><Edit /></IconButton>
-          <IconButton label="Delete" kind="ghost" size="sm" onClick={() => { deleteTeacher.reset(); setToDelete(t); }}><TrashCan /></IconButton>
+          <Tooltip title="Edit profile">
+            <Button type="text" size="small" aria-label="Edit profile" icon={<EditOutlined />} onClick={() => navigate(`/teachers/${t.id}`, { state: { edit: true } })} />
+          </Tooltip>
+          <Tooltip title="Delete teacher">
+            <Button type="text" size="small" danger aria-label="Delete teacher" icon={<DeleteOutlined />} onClick={() => { deleteTeacher.reset(); setToDelete(t); }} />
+          </Tooltip>
         </div>
       ),
     },
@@ -82,7 +88,7 @@ export default function Teachers() {
           <h1 className="os-page__title">Teachers</h1>
           <p className="os-page__subtitle">Manage teacher profiles</p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" as={Link} to="/teachers/new">Add teacher</Button>
+        <LinkButton to="/teachers/new" type="primary" icon={<PlusOutlined />}>Add teacher</LinkButton>
       </div>
 
       <AgentFindingsBanner />
@@ -94,10 +100,14 @@ export default function Teachers() {
             {
               label: "Status",
               node: (
-                <Select id="filter-teacher-status" labelText="Status" hideLabel size="md" value={filters.status} onChange={(e) => setFilter("status", e.target.value)}>
-                  <SelectItem value="" text="All statuses" />
-                  {EMPLOYMENT_STATUSES.map((s) => <SelectItem key={s.value} value={s.value} text={s.label} />)}
-                </Select>
+                <SelectField
+                  id="filter-teacher-status"
+                  label="Status"
+                  hideLabel
+                  value={filters.status}
+                  onChange={(v) => setFilter("status", v)}
+                  options={[{ value: "", label: "All statuses" }, ...EMPLOYMENT_STATUSES.map((s) => ({ value: s.value, label: s.label }))]}
+                />
               ),
             },
           ]}

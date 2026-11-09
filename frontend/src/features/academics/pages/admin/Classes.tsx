@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Add } from "@carbon/icons-react";
-import { Button, InlineNotification } from "@carbon/react";
+import { Alert, Button, Card } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import type { Grade } from "@/features/academics/api/grade";
 import type { ClassWithDetails } from "@/features/academics/api/class";
 import { useGradesPage } from "@/features/academics/hooks/useGradesPage";
@@ -14,7 +14,6 @@ import { useClassrooms } from "@/features/timetable/queries/useClassrooms";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import EmptyState from "@/shared/ui/EmptyState";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
-import SectionCard from "@/shared/ui/SectionCard";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import AgentFindingsBanner from "@/features/notifications/components/AgentFindingsBanner";
 export default function Classes() {
@@ -62,21 +61,21 @@ export default function Classes() {
           <p className="os-page__subtitle">Grades and their classes for the current academic year.</p>
         </div>
         <div className="os-flex os-gap-3">
-          <Button renderIcon={Add} kind="secondary" size="md" onClick={page.openCreateGrade}>Add grade</Button>
-          <Button renderIcon={Add} kind="primary" size="md" onClick={() => setClassModalGradeId("")}>Add class</Button>
+          <Button icon={<PlusOutlined />} onClick={page.openCreateGrade}>Add grade</Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setClassModalGradeId("")}>Add class</Button>
         </div>
       </div>
 
       <AgentFindingsBanner />
 
-      <SectionCard
+      <Card
+        className="os-catalogue-card"
         title="Grade catalogue"
-        meta={!isLoading && !isError && <span className="os-section__meta">{orderedGrades.length} {orderedGrades.length === 1 ? "grade" : "grades"}</span>}
-        flush
+        extra={!isLoading && !isError && <span className="os-section__meta">{orderedGrades.length} {orderedGrades.length === 1 ? "grade" : "grades"}</span>}
       >
 
         {(deleteGrade.isError || deleteClass.isError || reorder.isError) && (
-          <div className="os-pt-4 os-px-6 os-pb-0">
+          <div className="os-stack os-mb-4">
             <MutationErrorNotification isError={deleteGrade.isError} error={deleteGrade.error} title="Could not delete grade" fallback="The grade may be used by a class or curriculum level." onClose={() => deleteGrade.reset()} />
             <MutationErrorNotification isError={deleteClass.isError} error={deleteClass.error} title="Could not delete class" fallback="The class may still have students enrolled." onClose={() => deleteClass.reset()} />
             <MutationErrorNotification isError={reorder.isError} error={reorder.error} title="Could not reorder" fallback="Please try again." onClose={() => reorder.reset()} />
@@ -84,29 +83,29 @@ export default function Classes() {
         )}
 
         {isError && (
-          <div className="os-py-5 os-px-6">
+          <div>
             <ErrorMessage message="Could not load grades and classes." onRetry={() => { page.grades.refetch(); page.classes.refetch(); }} />
           </div>
         )}
 
         {!isLoading && !isError && page.needsRenumber && orderedGrades.length > 0 && (
-          <div className="os-flex os-items-center os-gap-2 os-wrap os-pt-4 os-px-6 os-pb-0">
-            <InlineNotification
-              kind="warning"
+          <div className="os-stack os-mb-4">
+            <Alert
+              type="warning"
+              showIcon
               title={page.duplicateCount > 0 ? `${page.duplicateCount} grades share the same position` : "Positions have gaps"}
-              subtitle="Renumber them in the order shown below."
-              lowContrast
-              hideCloseButton
-              className="os-max-w-full os-m-0 os-flex-1"
+              description="Renumber them in the order shown below."
+              action={
+                <Button size="small" loading={busy} onClick={() => reorder.mutate(orderedGrades)}>
+                  {busy ? "Fixing…" : "Fix ordering"}
+                </Button>
+              }
             />
-            <Button kind="tertiary" size="sm" disabled={busy} onClick={() => reorder.mutate(orderedGrades)}>
-              {busy ? "Fixing…" : "Fix ordering"}
-            </Button>
           </div>
         )}
 
         {isLoading && (
-          <div className="os-py-4 os-px-6">
+          <div className="os-flex os-col os-gap-4">
             {Array.from({ length: 4 }).map((_, i) => <GradeGroupSkeleton key={i} />)}
           </div>
         )}
@@ -115,12 +114,12 @@ export default function Classes() {
           <EmptyState
             title="No grades yet"
             description="Add the grades this school runs, then create classes under each one."
-            action={<Button renderIcon={Add} kind="primary" onClick={page.openCreateGrade}>Add grade</Button>}
+            action={<Button type="primary" icon={<PlusOutlined />} onClick={page.openCreateGrade}>Add grade</Button>}
           />
         )}
 
         {!isLoading && orderedGrades.length > 0 && (
-          <div className={`os-flex os-col os-gap-4 os-py-4 os-px-6${busy ? " os-opacity-60" : ""}`}>
+          <div className={`os-flex os-col os-gap-4${busy ? " os-opacity-60" : ""}`}>
               {orderedGrades.map((g, i) => (
                 <GradeGroup
                   key={g.id}
@@ -145,7 +144,7 @@ export default function Classes() {
               ))}
           </div>
         )}
-      </SectionCard>
+      </Card>
 
       {form.gradeModal && (
         <GradeFormModal

@@ -1,5 +1,5 @@
-import { Add } from "@carbon/icons-react";
-import { Button, Tag, InlineNotification } from "@carbon/react";
+import { Alert, Button, Tag } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import type { useLevelTree, useDeleteSelectionGroup, useRemoveGroupSubject } from "@/features/curriculum/queries/useCurriculum";
 import type { CurriculumTreeGroup, GroupSubject } from "@/features/curriculum/api/curriculum";
 import EmptyState from "@/shared/ui/EmptyState";
@@ -67,7 +67,7 @@ export default function GroupsList({
             title="No selection groups"
             description="Add a group for each decision a student makes at this level - one for compulsory subjects, and one per elective pool."
             action={
-              <Button renderIcon={Add} kind="primary" onClick={onOpenCreateGroup}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={onOpenCreateGroup}>
                 New group
               </Button>
             }
@@ -86,26 +86,26 @@ export default function GroupsList({
                 <div className="os-py-3 os-px-4 os-bg-layer-hover os-border-b os-flex os-items-center os-gap-3"
                 >
                   <span className="os-fw-600 os-text-md os-c-primary">{g.label}</span>
-                  <Tag type={broken ? "red" : "blue"} size="sm">
+                  <Tag color={broken ? "error" : "blue"} variant="filled">
                     {ruleLabel(g.min_select, g.max_select, pool)}
                   </Tag>
                   <div className="os-ml-auto os-flex os-gap-1">
-                    <Button kind="ghost" size="sm" onClick={() => onEditGroup(g)}>
+                    <Button type="text" size="small" onClick={() => onEditGroup(g)}>
                       Edit
                     </Button>
-                    <Button kind="danger--ghost" size="sm" onClick={() => onRequestDeleteGroup(g)}>
+                    <Button type="text" danger size="small" onClick={() => onRequestDeleteGroup(g)}>
                       Delete
                     </Button>
                   </div>
                 </div>
 
                 {broken && (
-                  <InlineNotification
-                    kind="warning"
+                  <Alert
+                    type="warning"
+                    showIcon
+                    banner
                     title="Impossible rule"
-                    subtitle={`This group asks for ${g.min_select} subject(s) but only offers ${pool}. No student can satisfy it.`}
-                    lowContrast
-                    hideCloseButton className="os-max-w-full os-m-0"
+                    description={`This group asks for ${g.min_select} subject(s) but only offers ${pool}. No student can satisfy it.`}
                   />
                 )}
 
@@ -124,7 +124,7 @@ export default function GroupsList({
                     </div>
                   )}
 
-                  <Button kind="ghost" size="sm" renderIcon={Add} onClick={() => onAddSubject(g)} style={{ marginTop: "0.5rem" }}>
+                  <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => onAddSubject(g)} className="os-mt-2">
                     Add subject
                   </Button>
                 </div>

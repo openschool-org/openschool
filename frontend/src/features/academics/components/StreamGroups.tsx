@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Add } from "@carbon/icons-react";
-import { Button, SkeletonText, Tag, TextInput } from "@carbon/react";
+import { Button, Tag } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import { SkeletonText } from "@/shared/ui/Skeleton";
+import TextField from "@/shared/ui/TextField";
 import { useStreamGroups, useCreateStreamGroup } from "@/features/academics/queries/useClasses";
 import type { Stream } from "@/features/academics/api/stream";
 import FormModal from "@/shared/ui/FormModal";
@@ -26,12 +28,12 @@ export default function StreamGroups({ stream }: { stream: Stream }) {
         {isLoading ? (
           <SkeletonText width="30%" />
         ) : groups?.length ? (
-          groups.map((g) => <Tag key={g.id} type="teal" size="sm">{g.name}</Tag>)
+          groups.map((g) => <Tag key={g.id} color="cyan" variant="filled">{g.name}</Tag>)
         ) : (
           <span className="os-text-xs os-c-tertiary">No sub-groups</span>
         )}
       </div>
-      <Button kind="ghost" size="sm" renderIcon={Add} onClick={() => setCreateOpen(true)}>
+      <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
         Add subgroup
       </Button>
 
@@ -48,12 +50,12 @@ export default function StreamGroups({ stream }: { stream: Stream }) {
         error={createGroup.error}
         errorFallback="Could not add this subgroup. Please try again."
       >
-        <TextInput
+        <TextField
           id={`new-group-${stream.id}`}
-          labelText="Subgroup name"
+          label="Subgroup name"
           placeholder="e.g. Physical Science"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={setName}
         />
       </FormModal>
     </div>
