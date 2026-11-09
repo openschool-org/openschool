@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { Button, Select, SelectItem, Checkbox, InlineNotification, SkeletonText } from "@carbon/react";
-import { Renew } from "@carbon/icons-react";
+import { Alert, Button, Checkbox } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
+import { SkeletonText } from "@/shared/ui/Skeleton";
+import SelectField from "@/shared/ui/SelectField";
 import { useAcademicYears } from "@/features/school/queries/useAcademicYears";
 import { useTerms } from "@/features/school/queries/useTerms";
 import { useClassesByAcademicYear } from "@/features/academics/queries/useClasses";
@@ -107,13 +109,7 @@ export default function Promotion() {
       </div>
 
       {!yearsLoading && otherYears.length === 0 && (
-        <InlineNotification
-          kind="info"
-          lowContrast
-          hideCloseButton
-          title="No other academic year to promote into"
-          subtitle="Create the new academic year (and its classes) first, then come back here." className="os-mb-2 os-max-w-full"
-        />
+        <Alert type="info" showIcon className="os-mb-2" title="No other academic year to promote into" description="Create the new academic year (and its classes) first, then come back here." />
       )}
       {!yearsLoading && otherYears.length === 0 && (
         <div className="os-mb-6">
@@ -125,48 +121,22 @@ export default function Promotion() {
 
       <div className="os-section os-mb-6">
         <div className="os-section__body os-grid os-grid-form-3-auto os-gap-4 os-items-grid-end os-py-5 os-px-6">
-          <Select
+          <SelectField
             id="source-year"
-            labelText="Source year"
+            label="Source year"
             value={effectiveSourceYearId}
-            onChange={(e) => {
-              const nextSourceYearId = e.target.value;
+            onChange={(nextSourceYearId) => {
               setSourceYearId(nextSourceYearId);
               // Clear a target year that now matches the new source, so preview never runs with identical source/target.
-              if (targetYearId && targetYearId === (nextSourceYearId || currentYear?.id)) {
-                setTargetYearId("");
-              }
+              if (targetYearId && targetYearId === (nextSourceYearId || currentYear?.id)) setTargetYearId("");
             }}
-          >
-            <SelectItem value="" text={currentYear ? `${currentYear.label} (current)` : "Select…"} />
-            {(years ?? []).map((y) => (
-              <SelectItem key={y.id} value={y.id} text={y.label + (y.is_current ? " (current)" : "")} />
-            ))}
-          </Select>
-          <Select
-            id="target-year"
-            labelText="Target year"
-            value={targetYearId}
-            onChange={(e) => setTargetYearId(e.target.value)}
-          >
-            <SelectItem value="" text="Select…" />
-            {otherYears.map((y) => (
-              <SelectItem key={y.id} value={y.id} text={y.label} />
-            ))}
-          </Select>
-          <Select id="rank-term" labelText="Sort by marks (optional)" value={termId} onChange={(e) => setTermId(e.target.value)}>
-            <SelectItem value="" text="None" />
-            {(terms ?? []).map((t) => (
-              <SelectItem key={t.id} value={t.id} text={t.name} />
-            ))}
-          </Select>
-          <Checkbox
-            id="rank-by-marks"
-            labelText="Sort by total marks"
-            checked={rankByMarks}
-            disabled={!termId}
-            onChange={(_e, { checked }) => setRankByMarks(checked)}
+            options={[{ value: "", label: currentYear ? `${currentYear.label} (current)` : "Select…" }, ...(years ?? []).map((y) => ({ value: y.id, label: y.label + (y.is_current ? " (current)" : "") }))]}
           />
+          <SelectField id="target-year" label="Target year" placeholder="Select…" value={targetYearId} onChange={setTargetYearId} options={otherYears.map((y) => ({ value: y.id, label: y.label }))} />
+          <SelectField id="rank-term" label="Sort by marks (optional)" value={termId} onChange={setTermId} options={[{ value: "", label: "None" }, ...(terms ?? []).map((t) => ({ value: t.id, label: t.name }))]} />
+          <Checkbox id="rank-by-marks" checked={rankByMarks} disabled={!termId} onChange={(e) => setRankByMarks(e.target.checked)}>
+            Sort by total marks
+          </Checkbox>
         </div>
       </div>
 
@@ -183,12 +153,14 @@ export default function Promotion() {
         onClose={() => commit.reset()} className="os-mb-6"
       />
       {commit.isSuccess && (
-        <InlineNotification
-          kind="success"
-          lowContrast
+        <Alert
+          type="success"
+          showIcon
+          closable
+          onClose={() => commit.reset()}
+          className="os-mb-6"
           title="Assignments saved"
-          subtitle={`${commit.data?.assigned ?? 0} student${commit.data?.assigned === 1 ? "" : "s"} assigned in the target year. Set it as current from Academic Years when you're ready to publish.`}
-          onClose={() => commit.reset()} className="os-mb-6 os-max-w-full"
+          description={`${commit.data?.assigned ?? 0} student${commit.data?.assigned === 1 ? "" : "s"} assigned in the target year. Set it as current from Academic Years when you're ready to publish.`}
         />
       )}
 
@@ -232,12 +204,7 @@ export default function Promotion() {
             </span>
           )}
           <div className="os-flex-1" />
-          <Button
-            renderIcon={Renew}
-            kind="primary"
-            onClick={handleCommit}
-            disabled={!readyToCommit || commit.isPending}
-          >
+          <Button type="primary" icon={<ReloadOutlined />} onClick={handleCommit} disabled={!readyToCommit} loading={commit.isPending}>
             {commit.isPending ? "Saving…" : "Save assignments"}
           </Button>
         </div>

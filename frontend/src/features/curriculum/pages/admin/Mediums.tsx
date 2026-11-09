@@ -1,13 +1,8 @@
 import { useState } from "react";
-import { Add, Language } from "@carbon/icons-react";
-import {
-  Button,
-  TextInput,
-  ComposedModal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-} from "@carbon/react";
+import { Button } from "antd";
+import { GlobalOutlined, PlusOutlined } from "@ant-design/icons";
+import FormModal from "@/shared/ui/FormModal";
+import TextField from "@/shared/ui/TextField";
 import {
   useMediums,
   useCreateMedium,
@@ -80,7 +75,7 @@ export default function Mediums() {
             <InfoTip>Use these to limit a subject in a selection group to one language.</InfoTip>
           </div>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
           New medium
         </Button>
       </div>
@@ -115,7 +110,7 @@ export default function Mediums() {
             title="No mediums"
             description="Add the languages your school teaches in, for example Sinhala, Tamil or English."
             action={
-              <Button renderIcon={Add} kind="primary" onClick={openCreate}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                 New medium
               </Button>
             }
@@ -126,18 +121,14 @@ export default function Mediums() {
           <div>
             {mediums.map((m) => (
               <div key={m.id} className="os-list-row">
-                <Language size={20} className="os-fill-accent os-shrink-0" />
+                <GlobalOutlined className="os-c-accent os-shrink-0 os-text-lg" />
                 <span className="os-flex-1 os-fw-600 os-text-md os-c-primary">
                   {m.name}
                 </span>
-                <Button kind="ghost" size="sm" onClick={() => openEdit(m)}>
+                <Button type="text" size="small" onClick={() => openEdit(m)}>
                   Edit
                 </Button>
-                <Button
-                  kind="danger--ghost"
-                  size="sm"
-                  onClick={() => setToDelete(m)}
-                >
+                <Button type="text" danger size="small" onClick={() => setToDelete(m)}>
                   Delete
                 </Button>
               </div>
@@ -146,42 +137,29 @@ export default function Mediums() {
         )}
       </div>
 
-      <ComposedModal open={!!modal} size="sm" onClose={() => setModal(null)} aria-label={modal === "create" ? "New medium" : "Edit medium"}>
-        <ModalHeader title={modal === "create" ? "New medium" : "Edit medium"} />
-        <ModalBody>
-          <MutationErrorNotification
-            isError={createMedium.isError || updateMedium.isError}
-            error={createMedium.error ?? updateMedium.error}
-            title="Could not save medium" fallback="Please try again." className="os-mb-4"
-          />
-          <TextInput
-            id="medium-name"
-            labelText="Name"
-            placeholder="e.g. English"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => setNameTouched(true)}
-            invalid={nameTouched && !name.trim()}
-            invalidText="Medium name is required."
-          />
-        </ModalBody>
-        <ModalFooter>
-          <Button kind="secondary" onClick={() => setModal(null)}>
-            Cancel
-          </Button>
-          <Button
-            kind="primary"
-            onClick={handleSave}
-            disabled={
-              !name.trim() || createMedium.isPending || updateMedium.isPending
-            }
-          >
-            {createMedium.isPending || updateMedium.isPending
-              ? "Saving…"
-              : "Save"}
-          </Button>
-        </ModalFooter>
-      </ComposedModal>
+      <FormModal
+        open={!!modal}
+        title={modal === "create" ? "New medium" : "Edit medium"}
+        onClose={() => setModal(null)}
+        onSubmit={handleSave}
+        isPending={createMedium.isPending || updateMedium.isPending}
+        submitDisabled={!name.trim()}
+        isError={createMedium.isError || updateMedium.isError}
+        error={createMedium.error ?? updateMedium.error}
+        errorTitle="Could not save medium"
+        errorFallback="Please try again."
+      >
+        <TextField
+          id="medium-name"
+          label="Name"
+          placeholder="e.g. English"
+          value={name}
+          onChange={setName}
+          onBlur={() => setNameTouched(true)}
+          invalid={nameTouched && !name.trim()}
+          invalidText="Medium name is required."
+        />
+      </FormModal>
 
       <ConfirmDeleteModal
         open={!!toDelete}

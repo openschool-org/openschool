@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Button, Dropdown } from "antd";
-import { KeyOutlined, LogoutOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
+import { Avatar, Button, Dropdown } from "antd";
+import { LockOutlined, LogoutOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
 import { UserDropdown } from "@thunderid/react";
 import NotificationsBell from "@/features/notifications/components/NotificationsBell";
 import ChangePasswordModal from "@/features/auth/components/ChangePasswordModal";
@@ -44,7 +44,7 @@ export function AppHeaderActions({ showSearch = false, showLanguage = false }: {
           <Button type="text" shape="circle" aria-label="Search" icon={<SearchOutlined />} onClick={() => setSearchExpanded(true)} />
         ))}
       {showLanguage && <LanguageSwitcher />}
-      <Button type="text" shape="circle" aria-label={t("shell.changePassword")} icon={<KeyOutlined />} onClick={() => setChangingPassword(true)} />
+      <Button type="text" shape="circle" aria-label={t("shell.changePassword")} icon={<LockOutlined />} onClick={() => setChangingPassword(true)} />
       <NotificationsBell />
       <UserDropdown>
         {({ openProfile, signOut }) => (
@@ -58,7 +58,7 @@ export function AppHeaderActions({ showSearch = false, showLanguage = false }: {
               ],
             }}
           >
-            <Button type="text" shape="circle" aria-label={t("shell.profileMenu")} icon={<UserOutlined />} />
+            <Button type="text" shape="circle" aria-label={t("shell.profileMenu")} icon={<Avatar size={32} icon={<UserOutlined />} className="os-topbar__avatar" />} />
           </Dropdown>
         )}
       </UserDropdown>

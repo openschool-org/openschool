@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, Tag, InlineNotification } from "@carbon/react";
+import { Alert, Button, Tag } from "antd";
 import { useCurrentClasses, useStreams } from "@/features/academics/queries/useClasses";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useTeacher, useTeachers } from "@/features/teachers/queries/useTeachers";
@@ -84,9 +84,14 @@ export default function SectionHeadsPanel() {
       ) : (
         <>
           {(classesQuery.isError || streamsQuery.isError || isError) && (
-            <div className="os-flex os-items-center os-gap-2 os-px-6 os-py-3">
-              <InlineNotification kind="error" lowContrast hideCloseButton title="Some section-head data could not refresh" subtitle="Showing the last available rows. Retry to get the latest classes, streams, or assignments." className="os-flex-1 os-m-0" />
-              <Button kind="ghost" size="sm" onClick={() => { void classesQuery.refetch(); void streamsQuery.refetch(); void refetch(); }}>Retry</Button>
+            <div className="os-px-6 os-py-3">
+              <Alert
+                type="error"
+                showIcon
+                title="Some section-head data could not refresh"
+                description="Showing the last available rows. Retry to get the latest classes, streams, or assignments."
+                action={<Button size="small" onClick={() => { void classesQuery.refetch(); void streamsQuery.refetch(); void refetch(); }}>Retry</Button>}
+              />
             </div>
           )}
           {rows.map((row) => (
@@ -154,7 +159,7 @@ function SectionHeadRow({ row, head, teachers, onSearch, onAssign, onRemoveClick
       <div className="os-flex-1 os-min-w-0">
         <p className="os-m-0 os-text-md os-fw-500 os-c-primary">{row.gradeName}{row.streamName ? ` - ${row.streamName}` : ""}</p>
         <div className="os-flex os-items-center os-gap-2 os-mt-1">
-          <Tag type={head ? "green" : "gray"} size="sm">{head ? "Assigned" : "Vacant"}</Tag>
+          <Tag color={head ? "success" : undefined} variant="filled">{head ? "Assigned" : "Vacant"}</Tag>
           {head && <span className="os-text-xs os-c-secondary">{head.teacher_name}</span>}
         </div>
       </div>
@@ -171,7 +176,7 @@ function SectionHeadRow({ row, head, teachers, onSearch, onAssign, onRemoveClick
         />
       </div>
       {/* Vacating a post is only possible by removing the appointment. */}
-      <Button kind="danger--ghost" size="sm" onClick={() => head && onRemoveClick(head)} disabled={!head || removeDisabled}>Remove</Button>
+      <Button type="text" danger size="small" onClick={() => head && onRemoveClick(head)} disabled={!head || removeDisabled}>Remove</Button>
     </div>
   );
 }

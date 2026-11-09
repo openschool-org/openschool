@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Add, Rocket } from "@carbon/icons-react";
-import { Button, InlineNotification } from "@carbon/react";
+import { Alert, Button } from "antd";
+import { PlusOutlined, RocketOutlined } from "@ant-design/icons";
 import {
   useLevels,
   useCreateLevel,
@@ -131,9 +131,7 @@ export default function CurriculumPanel() {
         </p>
         <div className="os-flex os-gap-2">
           <Button
-            renderIcon={Rocket}
-            kind="secondary"
-            size="md"
+            icon={<RocketOutlined />}
             onClick={() => {
               runPreset.reset();
               setPresetConfirmOpen(true);
@@ -141,23 +139,25 @@ export default function CurriculumPanel() {
           >
             Load curriculum preset
           </Button>
-          <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
             New level
           </Button>
         </div>
       </div>
 
       {runPreset.isSuccess && (
-        <InlineNotification
-          kind="success"
+        <Alert
+          type="success"
+          showIcon
+          closable
+          onClose={() => runPreset.reset()}
+          className="os-mb-6"
           title="Curriculum synced"
-          subtitle={`${runPreset.data.subjects_created} subjects, ${runPreset.data.levels_created} levels, ${runPreset.data.groups_created} selection groups, and ${runPreset.data.links_created} subject links added for the grades currently configured in this school.${
+          description={`${runPreset.data.subjects_created} subjects, ${runPreset.data.levels_created} levels, ${runPreset.data.groups_created} selection groups, and ${runPreset.data.links_created} subject links added for the grades currently configured in this school.${
             runPreset.data.grades_covered?.length
               ? ` Checked Grade(s) ${runPreset.data.grades_covered.join(", ")}.`
               : " No configured grades matched the preset."
           }`}
-          lowContrast
-          onClose={() => runPreset.reset()} className="os-mb-6 os-max-w-full"
         />
       )}
       <MutationErrorNotification

@@ -18,41 +18,34 @@
   &__brand-name { font-size: 1.25rem; font-weight: 500; }
   &__actions { display: flex; align-items: center; gap: 0.375rem; margin-left: auto; }
   .ant-btn { color: $os-text-on-color; &:hover { color: $os-text-on-color; background: color-mix(in srgb, $os-text-on-color 14%, transparent) !important; } }
+  // Bigger icon buttons: 40px targets with 20px icons.
+  &__actions .ant-btn { width: 2.5rem; height: 2.5rem; .anticon { font-size: 1.25rem; } }
+  &__avatar.ant-avatar { color: $os-text-on-color; background: color-mix(in srgb, $os-text-on-color 18%, transparent); }
 }
 
+// App-shell placeholder (shared/ui/SkeletonShell.tsx): same bar as the real top bar.
 .os-skeleton-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 8000;
   display: flex;
   align-items: center;
-  height: var(--os-header-h);
   gap: 0.75rem;
-  padding-right: 1rem;
-  background-color: $os-accent-deeper;
+  height: var(--os-header-h);
+  padding: 0 1rem 0 4rem;
+  color: $os-text-on-color;
+  background: $os-accent-deeper;
 
-  &__menu { width: 3rem; height: var(--os-header-h); flex-shrink: 0; }
-  &__brand { display: flex; align-items: center; gap: 0.5rem; .os-skel-text { width: 6rem; } }
-  &__logo { width: 1.25rem; height: 1.25rem; border-radius: 0.125rem; }
-  &__actions { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; .os-skel-block { width: 2.25rem; height: 2rem; } }
+  &__name { font-size: 1.25rem; font-weight: 500; }
 }
 
 .os-skeleton-nav {
-  padding: 1rem;
-  background: var(--os-layer);
-
-  &__group {
-    padding: 0.75rem 0;
-    border-bottom: 1px solid $os-border-subtle;
-    &:last-child { border-bottom: 0; }
-  }
-
-  &__item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    min-height: 2.5rem;
-    padding: 0.375rem 0;
-    .os-skel-block { width: 1rem; height: 1rem; flex-shrink: 0; }
-    .os-skel-text { flex: 1; }
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem 1.25rem;
 }
 
 @media (max-width: 66rem) {
@@ -92,6 +85,10 @@
   .ant-menu-item { margin-block: 1px; }
   .ant-menu-item a { color: inherit; text-decoration: none; }
   .ant-menu-item-selected { font-weight: 500; }
+
+  // Hover only while the pointer is over the item (see the Menu tokens in antdTheme.ts).
+  .ant-menu.ant-menu-light .ant-menu-item:not(.ant-menu-item-selected):hover { color: $os-text-primary; background: var(--os-canvas); }
+  .ant-menu-item:focus-visible { outline: 2px solid $os-accent; outline-offset: -2px; }
 }
 
 // Page Layout
@@ -232,12 +229,6 @@
   .os-term-card__actions { width: calc(100% - 2.75rem); margin-left: 2.75rem; }
   .os-term-form-panel__heading { align-items: flex-start; flex-direction: column; }
   .os-guardian-contact-grid { grid-template-columns: 1fr; }
-  .os-content-skeleton { padding: 1rem; }
-  .os-content-skeleton__intro { flex-direction: column; padding: 1.25rem; }
-  .os-content-skeleton__actions { width: 100%; .os-skeleton__button { flex: 1; } }
-  .os-content-skeleton__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .os-content-skeleton__grid { display: block; }
-  .os-skeleton-panel { margin-bottom: 1rem; }
   .os-dashboard-hero { align-items: flex-start; flex-direction: column; gap: 1rem; padding: 1.25rem; }
   .os-dashboard-hero__aside { width: 100%; }
   .os-dashboard-actions { margin-bottom: 1rem; }

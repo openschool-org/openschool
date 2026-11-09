@@ -1,18 +1,10 @@
-import { EMAIL_RE } from "@/shared/lib/validation";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
-import {
-  Button,
-  TextInput,
-  Select,
-  SelectItem,
-  RadioButtonGroup,
-  RadioButton,
-  InlineNotification,
-} from "@carbon/react";
-import { ArrowLeft, Save } from "@carbon/icons-react";
+import { useNavigate } from "react-router";
+import { Alert, Button, Card, Col, Radio, Row } from "antd";
+import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
 import { useCreateTeacher } from "@/features/teachers/queries/useTeachers";
 import { getErrorMessage } from "@/shared/api/errors";
+import { EMAIL_RE } from "@/shared/lib/validation";
 import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "@/shared/lib/phone";
 import type { TeacherTitle } from "@/features/teachers/api/teacher";
 import { TITLES } from "@/features/teachers/constants";
@@ -20,6 +12,10 @@ import { usePageTitle } from "@/shared/hooks/usePageTitle";
 import PersonNameFields from "@/shared/ui/PersonNameFields";
 import { EMPTY_PERSON_NAMES } from "@/shared/lib/name";
 import DateField from "@/shared/ui/DateField";
+import Field from "@/shared/ui/Field";
+import LinkButton from "@/shared/ui/LinkButton";
+import SelectField from "@/shared/ui/SelectField";
+import TextField from "@/shared/ui/TextField";
 
 type Touched = Partial<
   Record<"fullName" | "email" | "phone" | "nicNumber" | "joinedDate", boolean>
@@ -90,110 +86,97 @@ export default function AddTeacher() {
           <h1 className="os-page__title">Add new teacher</h1>
           <p className="os-page__subtitle">Create a teacher account and profile</p>
         </div>
-        <Button renderIcon={ArrowLeft} kind="ghost" size="md" as={Link} to="/teachers">
-          Back
-        </Button>
+        <LinkButton to="/teachers" type="text" icon={<ArrowLeftOutlined />}>Back</LinkButton>
       </div>
 
-      <div className="os-form">
-        {errorMessage && (
-          <InlineNotification
-            kind="error"
-            title="Error"
-            subtitle={errorMessage}
-            lowContrast
-            hideCloseButton
-          />
-        )}
+      {errorMessage && <Alert type="error" showIcon className="os-mb-6" title="Error" description={errorMessage} />}
 
-        <div className="os-form__section">
-          <div className="os-form__section-header">Account</div>
-          <div className="os-form__section-body">
-            <Select
-              id="title"
-              labelText="Title (optional)"
-              value={title}
-              onChange={(e) => setTitle(e.target.value as TeacherTitle | "")}
-            >
-              <SelectItem value="" text="None" />
-              {TITLES.map((t) => (
-                <SelectItem key={t} value={t} text={t} />
-              ))}
-            </Select>
-            <RadioButtonGroup
-              legendText="Gender (optional)"
-              name="gender"
-              valueSelected={gender}
-              onChange={(value) => setGender(value as "male" | "female")}
-            >
-              <RadioButton id="gender-male" labelText="Male" value="male" />
-              <RadioButton id="gender-female" labelText="Female" value="female" />
-            </RadioButtonGroup>
-            <PersonNameFields
-              idPrefix="teacher"
-              value={names}
-              onChange={setNames}
-              fullNameInvalid={fullNameInvalid}
-              onFullNameBlur={() => markTouched("fullName")}
-            />
-            <TextInput
-              id="email"
-              labelText="Email address"
-              placeholder="e.g. teacher@school.lk"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onBlur={() => markTouched("email")}
-              invalid={emailInvalid}
-              invalidText="Enter a valid email address."
-            />
-            <TextInput
-              id="phone"
-              labelText="Phone (optional)"
-              placeholder="e.g. 077 123 4567"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              onBlur={() => markTouched("phone")}
-              invalid={phoneInvalid}
-              invalidText={PHONE_INVALID_TEXT}
-            />
-            <TextInput
-              id="nic-number"
-              labelText="NIC number"
-              placeholder="e.g. 199012345678 or 901234567V"
-              value={nicNumber}
-              onChange={(e) => setNicNumber(e.target.value)}
-              onBlur={() => markTouched("nicNumber")}
-              invalid={nicNumberInvalid}
-              invalidText="NIC number is required."
-              helperText="Used as the teacher's initial one-time password."
-            />
-          </div>
-        </div>
+      <Row gutter={24} className="os-form-columns">
+        <Col xs={24} lg={12}>
+          <Card className="os-form-card" title="Personal details">
+            <div className="os-stack os-gap-5">
+              <SelectField
+                id="title"
+                label="Title (optional)"
+                size="large"
+                value={title}
+                onChange={(v) => setTitle(v as TeacherTitle | "")}
+                options={[{ value: "", label: "None" }, ...TITLES.map((t) => ({ value: t, label: t }))]}
+              />
+              <Field id="gender" label="Gender (optional)">
+                <Radio.Group id="gender" value={gender || undefined} onChange={(e) => setGender(e.target.value)}>
+                  <Radio value="male">Male</Radio>
+                  <Radio value="female">Female</Radio>
+                </Radio.Group>
+              </Field>
+              <PersonNameFields
+                idPrefix="teacher"
+                value={names}
+                onChange={setNames}
+                fullNameInvalid={fullNameInvalid}
+                onFullNameBlur={() => markTouched("fullName")}
+              />
+            </div>
+          </Card>
+        </Col>
 
-        <div className="os-form__section">
-          <div className="os-form__section-header">Employment details</div>
-          <div className="os-form__section-body">
-            <DateField value={joinedDate} onChange={(ymd) => setJoinedDate(ymd)} id="joined-date"
+        <Col xs={24} lg={12}>
+          <Card className="os-form-card" title="Account and employment">
+            <div className="os-stack os-gap-5">
+              <TextField
+                id="email"
+                size="large"
+                label="Email address"
+                placeholder="e.g. teacher@school.lk"
+                value={email}
+                onChange={setEmail}
+                onBlur={() => markTouched("email")}
+                invalid={emailInvalid}
+                invalidText="Enter a valid email address."
+              />
+              <TextField
+                id="phone"
+                size="large"
+                label="Phone (optional)"
+                placeholder="e.g. 077 123 4567"
+                value={phone}
+                onChange={setPhone}
+                onBlur={() => markTouched("phone")}
+                invalid={phoneInvalid}
+                invalidText={PHONE_INVALID_TEXT}
+              />
+              <TextField
+                id="nic-number"
+                size="large"
+                label="NIC number"
+                placeholder="e.g. 199012345678 or 901234567V"
+                value={nicNumber}
+                onChange={setNicNumber}
+                onBlur={() => markTouched("nicNumber")}
+                invalid={nicNumberInvalid}
+                invalidText="NIC number is required."
+                helperText="Used as the teacher's initial one-time password."
+              />
+              <DateField
+                id="joined-date"
                 labelText="Joining date"
+                size="lg"
+                value={joinedDate}
+                onChange={setJoinedDate}
                 onBlur={() => markTouched("joinedDate")}
                 invalid={joinedDateInvalid}
-                invalidText="Joining date is required." />
-          </div>
-        </div>
+                invalidText="Joining date is required."
+              />
+            </div>
+          </Card>
+        </Col>
+      </Row>
 
-        <div className="os-form__actions">
-          <Button
-            renderIcon={Save}
-            kind="primary"
-            onClick={handleSubmit}
-            disabled={!isValid || createTeacher.isPending}
-          >
-            {createTeacher.isPending ? "Saving…" : "Save teacher"}
-          </Button>
-          <Button kind="secondary" as={Link} to="/teachers">
-            Cancel
-          </Button>
-        </div>
+      <div className="os-form-actions">
+        <Button size="large" type="primary" icon={<SaveOutlined />} onClick={handleSubmit} disabled={!isValid} loading={createTeacher.isPending}>
+          Save teacher
+        </Button>
+        <LinkButton to="/teachers" size="large">Cancel</LinkButton>
       </div>
     </div>
   );

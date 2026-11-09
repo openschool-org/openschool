@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
-import { Button, TextInput, NumberInput, InlineNotification } from "@carbon/react";
-import { ArrowLeft, Save } from "@carbon/icons-react";
+import { useNavigate } from "react-router";
+import { Alert, Button, Card } from "antd";
+import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
+import NumberField from "@/shared/ui/NumberField";
+import TextField from "@/shared/ui/TextField";
 import { useCreateSubject } from "@/features/curriculum/queries/useSubjects";
 import { getErrorMessage } from "@/shared/api/errors";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
@@ -50,85 +53,63 @@ export default function AddSubject() {
             <InfoTip>To offer it to students, add it to a selection group under Curriculum.</InfoTip>
           </div>
         </div>
-        <Button
-          renderIcon={ArrowLeft}
-          kind="ghost"
-          size="md"
-          as={Link}
-          to="/subjects"
-        >
-          Back
-        </Button>
+        <LinkButton to="/subjects" type="text" icon={<ArrowLeftOutlined />}>Back</LinkButton>
       </div>
 
-      <div className="os-form">
-        <div className="os-form__section">
-          <div className="os-form__section-header">Subject information</div>
-          <div className="os-form__section-body">
-            <TextInput
-              id="subject-name"
-              labelText="Subject name"
-              placeholder="e.g. Mathematics"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={() => markTouched("name")}
-              invalid={nameInvalid}
-              invalidText="Subject name is required."
-            />
-            <TextInput
-              id="subject-code"
-              labelText="Subject code"
-              placeholder="e.g. MATH-01"
-              helperText="Any code your school uses. Must be unique."
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              onBlur={() => markTouched("code")}
-              invalid={codeInvalid}
-              invalidText="Subject code is required."
-            />
-            <TextInput
-              id="subject-type"
-              labelText="Type (optional)"
-              placeholder="e.g. core"
-              helperText="A descriptive label only, e.g. core, language, aesthetic."
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-            />
-            <NumberInput
-              id="subject-max-marks"
-              label="Max marks"
-              min={1}
-              max={1000}
-              value={maxMarks}
-              onChange={(_e, { value }) => setMaxMarks(Number(value ?? 100))}
-              helperText="The maximum marks a student can get for this subject."
-            />
-          </div>
-        </div>
+      {error && <Alert type="error" showIcon closable onClose={() => createSubject.reset()} className="os-mb-6" title="Could not create subject" description={error} />}
 
-        {error && (
-          <InlineNotification
-            kind="error"
-            title="Could not create subject"
-            subtitle={error}
-            lowContrast
-            onClose={() => createSubject.reset()} className="os-max-w-full"
+      <Card className="os-form-card" title="Subject information">
+        <div className="os-modal-form">
+          <TextField
+            id="subject-name"
+            size="large"
+            label="Subject name"
+            placeholder="e.g. Mathematics"
+            value={name}
+            onChange={setName}
+            onBlur={() => markTouched("name")}
+            invalid={nameInvalid}
+            invalidText="Subject name is required."
           />
-        )}
-
-        <div className="os-form__actions">
-          <Button
-            renderIcon={Save}
-            kind="primary"
-            disabled={!isValid || createSubject.isPending}
-            onClick={handleSave}
-          >
-            {createSubject.isPending ? "Saving…" : "Save subject"}
-          </Button>
-          <Button kind="secondary" as={Link} to="/subjects">
-            Cancel
-          </Button>
+          <TextField
+            id="subject-code"
+            size="large"
+            label="Subject code"
+            placeholder="e.g. MATH-01"
+            helperText="Any code your school uses. Must be unique."
+            value={code}
+            onChange={setCode}
+            onBlur={() => markTouched("code")}
+            invalid={codeInvalid}
+            invalidText="Subject code is required."
+          />
+          <TextField
+            id="subject-type"
+            size="large"
+            label="Type (optional)"
+            placeholder="e.g. core"
+            helperText="A descriptive label only, e.g. core, language, aesthetic."
+            value={type}
+            onChange={setType}
+          />
+          <NumberField
+            id="subject-max-marks"
+            size="large"
+            label="Max marks"
+            min={1}
+            max={1000}
+            value={maxMarks}
+            onChange={(value) => setMaxMarks(Number(value ?? 100))}
+            helperText="The maximum marks a student can get for this subject."
+          />
         </div>
+      </Card>
+
+      <div className="os-form-actions">
+        <Button size="large" type="primary" icon={<SaveOutlined />} disabled={!isValid} loading={createSubject.isPending} onClick={handleSave}>
+          {createSubject.isPending ? "Saving…" : "Save subject"}
+        </Button>
+        <LinkButton to="/subjects" size="large">Cancel</LinkButton>
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 import { SignInButton, useThunderID } from "@thunderid/react";
 import { Navigate, Link } from "react-router";
-import { Button } from "@carbon/react";
+import { Button } from "antd";
 import { useSetupStatus } from "@/features/school/queries/useSetup";
+import AuthCard from "@/shared/ui/AuthCard";
 
 export default function SignIn() {
   const { isSignedIn, isLoading } = useThunderID();
@@ -12,39 +13,23 @@ export default function SignIn() {
   if (setupStatus?.needs_setup) return <Navigate to="/setup" replace />;
 
   return (
-    <div className="os-signin-wrapper">
-      <div className="os-auth-card">
-        <div className="os-auth-card__brand">
-          <img
-            src="/favicon.webp"
-            alt="OpenSchool"
-            width={36}
-            height={36}
-            className="os-auth-card__logo"
-          />
-          <span className="os-auth-card__brand-name">OpenSchool</span>
-        </div>
-        <h1 className="os-auth-card__title">Sign in</h1>
-        <p className="os-auth-card__subtitle">
-          Sign in to continue to your dashboard.
-        </p>
-        <div className="os-auth-card__actions">
-          <SignInButton>
-            {({ signIn, isLoading }) => (
-              <Button
-                onClick={() => signIn()}
-                disabled={isLoading}
-                className="os-full-width-btn"
-              >
-                {isLoading ? "Signing in…" : "Sign in"}
-              </Button>
-            )}
-          </SignInButton>
-        </div>
-        <div className="os-auth-card__footer">
-          <Link to="/forgot-password">Forgot password?</Link> · <Link to="/activate">First time? Activate your account</Link>
-        </div>
-      </div>
-    </div>
+    <AuthCard
+      title="Sign in"
+      subtitle="Use the account your school gave you to continue."
+      footer={
+        <>
+          <Link to="/forgot-password">Forgot password?</Link>
+          <span>First time here? <Link to="/activate">Activate your account</Link></span>
+        </>
+      }
+    >
+      <SignInButton>
+        {({ signIn, isLoading: signingIn }) => (
+          <Button type="primary" size="large" block loading={signingIn} onClick={() => signIn()}>
+            Sign in
+          </Button>
+        )}
+      </SignInButton>
+    </AuthCard>
   );
 }

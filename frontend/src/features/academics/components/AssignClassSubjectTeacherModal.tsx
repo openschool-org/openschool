@@ -1,7 +1,7 @@
 // Teacher picker is scoped to teachers already qualified for the subject, so a class assignment can't diverge from Teacher Subjects.
 import { useState } from "react";
 import { Link } from "react-router";
-import { InlineNotification } from "@carbon/react";
+import { Alert } from "antd";
 import type { useAssignSubjectTeacher } from "@/features/academics/queries/useClasses";
 import { useTeachersBySubject } from "@/features/teachers/queries/useTeachers";
 import type { useSubjects } from "@/features/curriculum/queries/useSubjects";
@@ -78,12 +78,11 @@ export default function AssignClassSubjectTeacherModal({
         </div>
 
         {subjectId && !teachersLoading && (qualifiedTeachers?.length ?? 0) === 0 && (
-          <InlineNotification
-            kind="warning"
+          <Alert
+            type="warning"
+            showIcon
             title="No qualified teachers"
-            subtitle="No teacher holds this subject as a qualification yet - assign it on the Teacher Subjects page first."
-            lowContrast
-            hideCloseButton className="os-max-w-full"
+            description="No teacher holds this subject as a qualification yet - assign it on the Teacher Subjects page first."
           />
         )}
       </div>

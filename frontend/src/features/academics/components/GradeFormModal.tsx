@@ -1,5 +1,5 @@
-import { TextInput } from "@carbon/react";
 import FormModal from "@/shared/ui/FormModal";
+import TextField from "@/shared/ui/TextField";
 
 export default function GradeFormModal({
   mode,
@@ -36,9 +36,9 @@ export default function GradeFormModal({
       error={error}
       errorFallback="Failed to save grade"
     >
-      <TextInput
+      <TextField
         id="grade-name"
-        labelText="Name"
+        label="Name"
         placeholder="e.g. Grade 6"
         helperText={
           mode === "create"
@@ -46,7 +46,7 @@ export default function GradeFormModal({
             : "Position is changed with the arrows, not here."
         }
         value={name}
-        onChange={(e) => onNameChange(e.target.value)}
+        onChange={onNameChange}
         onBlur={onNameBlur}
         invalid={nameTouched && !name.trim()}
         invalidText="Grade name is required."

@@ -22,11 +22,11 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `shared/i18n/` | 1 | 1 |
 | `layouts/` | 7 | 7 |
 | `app/` | 3 | 3 |
-| `features/academics/` | 16 | 0 |
-| `features/activation/` | 8 | 0 |
+| `features/academics/` | 16 | 16 |
+| `features/activation/` | 8 | 3 |
 | `features/attendance/` | 9 | 0 |
-| `features/auth/` | 5 | 1 |
-| `features/curriculum/` | 16 | 0 |
+| `features/auth/` | 5 | 5 |
+| `features/curriculum/` | 16 | 16 |
 | `features/email/` | 2 | 0 |
 | `features/guardians/` | 3 | 3 |
 | `features/leave/` | 8 | 0 |
@@ -40,10 +40,10 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `features/staff/` | 3 | 3 |
 | `features/students/` | 10 | 10 |
 | `features/system/` | 4 | 1 |
-| `features/teachers/` | 16 | 0 |
+| `features/teachers/` | 16 | 6 |
 | `features/timetable/` | 21 | 0 |
 | `features/workflows/` | 10 | 0 |
-| **Total** | **235** | **79 (34%)** |
+| **Total** | **235** | **124 (53%)** |
 
 Not counted above: [UI/UX issues](#uiux-issues), [SCSS cleanup](#scss-cleanup) and [build and docs cleanup](#build-and-docs-cleanup).
 
@@ -233,7 +233,7 @@ Shared pieces first, because most pages render through them.
 | 1 | App shell | ✅ Done |
 | 2 | Pilot screens (dashboard, enrol student) | ✅ Done |
 | 3 | `shared/ui`, `shared/auth`, `app/pages`, `layouts/nav` | ✅ Done. Every list page, modal, toast and skeleton comes from here |
-| 4 | Admin core: `students`, `teachers`, `guardians`, `staff`, `academics`, `curriculum` | 🟡 `students`, `guardians`, `staff`, `positions` done. Highest traffic admin screens |
+| 4 | Admin core: `students`, `teachers`, `guardians`, `staff`, `academics`, `curriculum` | ✅ Done (teacher portal files are Phase 6). Highest traffic admin screens |
 | 5 | Daily use: `attendance`, `marks`, `leave`, `timetable`, `notifications` | Teacher portal relies on these |
 | 6 | Portals: `parent`, `students/pages/self`, `teachers/pages/self`, `teachers/components/dashboard` | |
 | 7 | Admin settings: `school`, `system`, `positions`, `portfolio`, `reports`, `email`, `workflows` | |
@@ -375,32 +375,32 @@ Paths are relative to `frontend/src/<area>/`.
 
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
-| ⬜ | `components/AssignClassSubjectTeacherModal.tsx` | InlineNotification | - |
-| ⬜ | `components/AttendanceTab.tsx` | Button | Add |
-| ⬜ | `components/ClassFormModal.tsx` | Button, ComposedModal, InlineNotification, ModalBody, ModalFooter, ModalHeader, NumberInput, Select, SelectItem, TextInput | Save |
-| ⬜ | `components/EditClassModal.tsx` | TextInput, Select, SelectItem | - |
-| ⬜ | `components/GradeFormModal.tsx` | TextInput | - |
-| ⬜ | `components/GradeGroup.tsx` | Button, IconButton, SkeletonIcon, SkeletonText, Tag | Add, ArrowDown, ArrowUp, Edit, TrashCan, Warning |
-| ⬜ | `components/PromotionGroup.tsx` | Button, Checkbox, Tag | ArrowRight |
-| ⬜ | `components/SectionHeadsPanel.tsx` | Button, Tag, InlineNotification | - |
-| ⬜ | `components/StreamGroups.tsx` | Button, SkeletonText, Tag, TextInput | Add |
-| ⬜ | `components/StudentsTab.tsx` | Button, Tag | Add, UserMultiple |
-| ⬜ | `components/SubjectsTab.tsx` | Button, Tag | UserFollow |
-| ⬜ | `pages/admin/AddClass.tsx` | Button, Select, SelectItem, TextInput, InlineNotification | ArrowLeft, Save |
-| ⬜ | `pages/admin/ClassDetail.tsx` | Button, Tag, Tabs, Tab, TabList, TabPanels, TabPanel | ArrowLeft, Edit, UserMultiple, EventSchedule, UserFollow |
-| ⬜ | `pages/admin/Classes.tsx` | Button, InlineNotification | Add |
-| ⬜ | `pages/admin/Promotion.tsx` | Button, Select, SelectItem, Checkbox, InlineNotification, SkeletonText | Renew |
-| ⬜ | `pages/admin/Streams.tsx` | Button, TextInput, InlineNotification | Layers, Add |
+| ✅ | `components/AssignClassSubjectTeacherModal.tsx` | InlineNotification | - |
+| ✅ | `components/AttendanceTab.tsx` | Button | Add |
+| ✅ | `components/ClassFormModal.tsx` | Button, ComposedModal, InlineNotification, ModalBody, ModalFooter, ModalHeader, NumberInput, Select, SelectItem, TextInput | Save |
+| ✅ | `components/EditClassModal.tsx` | TextInput, Select, SelectItem | - |
+| ✅ | `components/GradeFormModal.tsx` | TextInput | - |
+| ✅ | `components/GradeGroup.tsx` | Button, IconButton, SkeletonIcon, SkeletonText, Tag | Add, ArrowDown, ArrowUp, Edit, TrashCan, Warning |
+| ✅ | `components/PromotionGroup.tsx` | Button, Checkbox, Tag | ArrowRight |
+| ✅ | `components/SectionHeadsPanel.tsx` | Button, Tag, InlineNotification | - |
+| ✅ | `components/StreamGroups.tsx` | Button, SkeletonText, Tag, TextInput | Add |
+| ✅ | `components/StudentsTab.tsx` | Button, Tag | Add, UserMultiple |
+| ✅ | `components/SubjectsTab.tsx` | Button, Tag | UserFollow |
+| ✅ | `pages/admin/AddClass.tsx` | Button, Select, SelectItem, TextInput, InlineNotification | ArrowLeft, Save |
+| ✅ | `pages/admin/ClassDetail.tsx` | Button, Tag, Tabs, Tab, TabList, TabPanels, TabPanel | ArrowLeft, Edit, UserMultiple, EventSchedule, UserFollow |
+| ✅ | `pages/admin/Classes.tsx` | Button, InlineNotification | Add |
+| ✅ | `pages/admin/Promotion.tsx` | Button, Select, SelectItem, Checkbox, InlineNotification, SkeletonText | Renew |
+| ✅ | `pages/admin/Streams.tsx` | Button, TextInput, InlineNotification | Layers, Add |
 
 ### `features/activation/`
 
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
-| ⬜ | `components/ActivateCompleteForm.tsx` | Button | - |
-| ⬜ | `components/ActivateStartForm.tsx` | Button, Select, SelectItem, TextInput | - |
+| ✅ | `components/ActivateCompleteForm.tsx` | Button | - |
+| ✅ | `components/ActivateStartForm.tsx` | Button, Select, SelectItem, TextInput | - |
 | ⬜ | `components/ActivationBatches.tsx` | Button, Tag | View |
 | ⬜ | `components/ActivationSettingsCard.tsx` | Button, NumberInput, Toggle | Save |
-| ⬜ | `components/AuthShell.tsx` | - | CheckmarkFilled |
+| ✅ | `components/AuthShell.tsx` | - | CheckmarkFilled | Removed: replaced by `shared/ui/AuthCard.tsx` |
 | ⬜ | `components/BatchCodesModal.tsx` | ComposedModal, InlineNotification, ModalBody, ModalHeader | - |
 | ⬜ | `components/GenerateCodesCard.tsx` | Button, Select, SelectItem | - |
 | ⬜ | `components/IssuedBatchPanel.tsx` | Button, Checkbox, InlineNotification | Download, Printer |
@@ -424,31 +424,31 @@ Paths are relative to `frontend/src/<area>/`.
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
 | ✅ | `components/ChangePasswordModal.tsx` | - | - |
-| ⬜ | `pages/ForgotPassword.tsx` | Button, TextInput, Select, SelectItem, InlineNotification | CheckmarkFilled |
-| ⬜ | `pages/PasswordInterstitial.tsx` | Button | Security |
-| ⬜ | `pages/ResetPassword.tsx` | Button, InlineNotification | CheckmarkFilled |
-| ⬜ | `pages/SignIn.tsx` | Button | - |
+| ✅ | `pages/ForgotPassword.tsx` | Button, TextInput, Select, SelectItem, InlineNotification | CheckmarkFilled |
+| ✅ | `pages/PasswordInterstitial.tsx` | Button | Security |
+| ✅ | `pages/ResetPassword.tsx` | Button, InlineNotification | CheckmarkFilled |
+| ✅ | `pages/SignIn.tsx` | Button | - |
 
 ### `features/curriculum/`
 
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
-| ⬜ | `components/AddSubjectModal.tsx` | Select, SelectItem, TextArea, SkeletonText | - |
-| ⬜ | `components/CreateLevelModal.tsx` | TextInput, Select, SelectItem, NumberInput | - |
-| ⬜ | `components/CreateSubjectModal.tsx` | NumberInput, TextInput | - |
-| ⬜ | `components/CurriculumPanel.tsx` | Button, InlineNotification | Add, Rocket |
-| ⬜ | `components/DuplicateLevelModal.tsx` | TextInput, Select, SelectItem, NumberInput | - |
-| ⬜ | `components/EditLevelModal.tsx` | TextInput, Select, SelectItem, NumberInput | - |
-| ⬜ | `components/EditSubjectModal.tsx` | NumberInput, TextInput | - |
-| ⬜ | `components/GroupFormModal.tsx` | TextInput, NumberInput | - |
-| ⬜ | `components/GroupsList.tsx` | Button, Tag, InlineNotification | Add |
-| ⬜ | `components/LevelsList.tsx` | Button, Tag | Add, ChevronRight, Copy, Edit, Layers |
-| ⬜ | `components/SubjectCard.tsx` | Tag | Book, Warning |
-| ⬜ | `components/SubjectsPanel.tsx` | Button, IconButton, Tag | Add, Edit, TrashCan |
-| ⬜ | `pages/admin/AddSubject.tsx` | Button, TextInput, NumberInput, InlineNotification | ArrowLeft, Save |
-| ⬜ | `pages/admin/LevelDetail.tsx` | Button, InlineNotification | Add, ArrowLeft |
-| ⬜ | `pages/admin/Mediums.tsx` | Button, TextInput, ComposedModal, ModalHeader, ModalBody, ModalFooter | Add, Language |
-| ⬜ | `pages/admin/SubjectsCurriculum.tsx` | Tabs, TabList, Tab, TabPanels, TabPanel | - |
+| ✅ | `components/AddSubjectModal.tsx` | Select, SelectItem, TextArea, SkeletonText | - |
+| ✅ | `components/CreateLevelModal.tsx` | TextInput, Select, SelectItem, NumberInput | - |
+| ✅ | `components/CreateSubjectModal.tsx` | NumberInput, TextInput | - |
+| ✅ | `components/CurriculumPanel.tsx` | Button, InlineNotification | Add, Rocket |
+| ✅ | `components/DuplicateLevelModal.tsx` | TextInput, Select, SelectItem, NumberInput | - |
+| ✅ | `components/EditLevelModal.tsx` | TextInput, Select, SelectItem, NumberInput | - |
+| ✅ | `components/EditSubjectModal.tsx` | NumberInput, TextInput | - |
+| ✅ | `components/GroupFormModal.tsx` | TextInput, NumberInput | - |
+| ✅ | `components/GroupsList.tsx` | Button, Tag, InlineNotification | Add |
+| ✅ | `components/LevelsList.tsx` | Button, Tag | Add, ChevronRight, Copy, Edit, Layers |
+| ✅ | `components/SubjectCard.tsx` | Tag | Book, Warning |
+| ✅ | `components/SubjectsPanel.tsx` | Button, IconButton, Tag | Add, Edit, TrashCan |
+| ✅ | `pages/admin/AddSubject.tsx` | Button, TextInput, NumberInput, InlineNotification | ArrowLeft, Save |
+| ✅ | `pages/admin/LevelDetail.tsx` | Button, InlineNotification | Add, ArrowLeft |
+| ✅ | `pages/admin/Mediums.tsx` | Button, TextInput, ComposedModal, ModalHeader, ModalBody, ModalFooter | Add, Language |
+| ✅ | `pages/admin/SubjectsCurriculum.tsx` | Tabs, TabList, Tab, TabPanels, TabPanel | - |
 
 ### `features/email/`
 
@@ -609,8 +609,8 @@ Paths are relative to `frontend/src/<area>/`.
 
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
-| ⬜ | `components/TeacherProfileSections.tsx` | TextInput, Select, SelectItem, RadioButtonGroup, RadioButton | - |
-| ⬜ | `components/TeacherSubjectsSection.tsx` | Button, Select, SelectItem, Tag | Book |
+| ✅ | `components/TeacherProfileSections.tsx` | TextInput, Select, SelectItem, RadioButtonGroup, RadioButton | - |
+| ✅ | `components/TeacherSubjectsSection.tsx` | Button, Select, SelectItem, Tag | Book |
 | ⬜ | `components/dashboard/LeadershipOverviewPanel.tsx` | - | Location |
 | ⬜ | `components/dashboard/LeadershipPanel.tsx` | - | UserRole |
 | ⬜ | `components/dashboard/QuickActions.tsx` | - | EventSchedule, UserMultiple, Notification, ArrowRight |
@@ -618,10 +618,10 @@ Paths are relative to `frontend/src/<area>/`.
 | ⬜ | `components/dashboard/TimetableReviewPanel.tsx` | SkeletonText, Button | Renew |
 | ⬜ | `components/dashboard/TodaysClasses.tsx` | Button, Tag | ArrowRight |
 | ⬜ | `components/dashboard/WelcomeBanner.tsx` | - | CheckmarkFilled, Time |
-| ⬜ | `pages/admin/AddTeacher.tsx` | Button, TextInput, Select, SelectItem, RadioButtonGroup, RadioButton, InlineNotification | ArrowLeft, Save |
-| ⬜ | `pages/admin/TeacherDetail.tsx` | Button | ArrowLeft, TrashCan, Edit, Save |
-| ⬜ | `pages/admin/TeacherSubjects.tsx` | Tag, SkeletonText, Pagination, Button, IconButton, InlineNotification | Add, Close |
-| ⬜ | `pages/admin/Teachers.tsx` | Button, IconButton, Select, SelectItem, Tag | Add, Edit, TrashCan |
+| ✅ | `pages/admin/AddTeacher.tsx` | Button, TextInput, Select, SelectItem, RadioButtonGroup, RadioButton, InlineNotification | ArrowLeft, Save |
+| ✅ | `pages/admin/TeacherDetail.tsx` | Button | ArrowLeft, TrashCan, Edit, Save |
+| ✅ | `pages/admin/TeacherSubjects.tsx` | Tag, SkeletonText, Pagination, Button, IconButton, InlineNotification | Add, Close |
+| ✅ | `pages/admin/Teachers.tsx` | Button, IconButton, Select, SelectItem, Tag | Add, Edit, TrashCan |
 | ⬜ | `pages/self/TeacherClasses.tsx` | Button | Search, EventSchedule |
 | ⬜ | `pages/self/TeacherDashboard.tsx` | - | Building, UserMultiple, CheckmarkOutline, Time |
 | ⬜ | `pages/self/TeacherProfile.tsx` | Tag | Book |

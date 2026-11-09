@@ -1,9 +1,10 @@
-import { TextInput, Select, SelectItem } from "@carbon/react";
 import type { useUpdateClass } from "@/features/academics/queries/useClasses";
 import type { Medium } from "@/features/curriculum/api/curriculum";
 import type { Classroom } from "@/features/timetable/api/classroom";
 import FormModal from "@/shared/ui/FormModal";
 import InfoTip from "@/shared/ui/InfoTip";
+import SelectField from "@/shared/ui/SelectField";
+import TextField from "@/shared/ui/TextField";
 
 interface Props {
   open: boolean;
@@ -47,39 +48,31 @@ export default function EditClassModal({
       error={updateClass.error}
       errorFallback="Failed to update class"
     >
-      <TextInput
-        id="class-name-edit"
-        labelText="Class name"
-        value={nameEdit}
-        maxLength={20}
-        onChange={(e) => onNameEditChange(e.target.value)}
-      />
-
-      <Select
-        id="class-medium-edit"
-        labelText={<>Medium (optional) <InfoTip>Classes tied to one medium keep their students together at promotion instead of being reshuffled.</InfoTip></>}
-        helperText="Only for single-language classes."
-        value={mediumEdit}
-        onChange={(e) => onMediumEditChange(e.target.value)}
-      >
-        <SelectItem value="" text="No medium" />
-        {mediums?.map((m) => (
-          <SelectItem key={m.id} value={m.id} text={m.name} />
-        ))}
-      </Select>
-
-      <Select
-        id="class-home-classroom-edit"
-        labelText="Home classroom (optional)"
-        helperText="Students stay in this room all day; teachers rotate in."
-        value={homeClassroomEdit}
-        onChange={(e) => onHomeClassroomEditChange(e.target.value)}
-      >
-        <SelectItem value="" text="No home classroom" />
-        {regularClassrooms?.map((c) => (
-          <SelectItem key={c.id} value={c.id} text={c.name} />
-        ))}
-      </Select>
+      <div className="os-stack os-gap-4">
+        <TextField
+          id="class-name-edit"
+          label="Class name"
+          value={nameEdit}
+          maxLength={20}
+          onChange={onNameEditChange}
+        />
+        <SelectField
+          id="class-medium-edit"
+          label={<>Medium (optional) <InfoTip>Classes tied to one medium keep their students together at promotion instead of being reshuffled.</InfoTip></>}
+          helperText="Only for single-language classes."
+          value={mediumEdit}
+          onChange={onMediumEditChange}
+          options={[{ value: "", label: "No medium" }, ...(mediums ?? []).map((m) => ({ value: m.id, label: m.name }))]}
+        />
+        <SelectField
+          id="class-home-classroom-edit"
+          label="Home classroom (optional)"
+          helperText="Students stay in this room all day; teachers rotate in."
+          value={homeClassroomEdit}
+          onChange={onHomeClassroomEditChange}
+          options={[{ value: "", label: "No home classroom" }, ...(regularClassrooms ?? []).map((c) => ({ value: c.id, label: c.name }))]}
+        />
+      </div>
     </FormModal>
   );
 }

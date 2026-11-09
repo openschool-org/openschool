@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router";
-import { Button, Select, SelectItem, TextInput, InlineNotification } from "@carbon/react";
-import { ArrowLeft, Save } from "@carbon/icons-react";
+import { useSearchParams } from "react-router";
+import { Alert, Button, Card, Col, Row } from "antd";
+import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
+import SelectField from "@/shared/ui/SelectField";
+import TextField from "@/shared/ui/TextField";
 import { useStreams } from "@/features/academics/queries/useClasses";
 import { useGrades } from "@/features/academics/queries/useGrades";
 import { useMediums } from "@/features/curriculum/queries/useCurriculum";
@@ -39,67 +42,113 @@ export default function AddClass() {
           <h1 className="os-page__title">Add new class</h1>
           <p className="os-page__subtitle">Create a class for an academic year</p>
         </div>
-        <Button renderIcon={ArrowLeft} kind="ghost" size="md" as={Link} to="/classes">Back</Button>
+        <LinkButton to="/classes" type="text" icon={<ArrowLeftOutlined />}>Back</LinkButton>
       </div>
 
-      <div className="os-form">
-        <div className="os-form__section">
-          <div className="os-form__section-header">Class details</div>
-          <div className="os-form__section-body">
-            <Select id="grade" labelText="Grade" value={form.grade_id} onChange={(e) => set("grade_id", e.target.value)} onBlur={() => f.markTouched("grade")} invalid={!!touched.grade && !form.grade_id} invalidText="A grade is required.">
-              <SelectItem value="" text={gradesLoading ? "Loading grades…" : "Select grade…"} />
-              {grades?.map((g) => <SelectItem key={g.id} value={g.id} text={g.name} />)}
-            </Select>
-            <TextInput id="class-name" labelText="Class name" placeholder="e.g. 10-A" maxLength={20} value={form.name} onChange={(e) => set("name", e.target.value)} onBlur={() => f.markTouched("name")} invalid={!!touched.name && !form.name.trim()} invalidText="A class name is required." />
-            <Select id="stream" labelText="Stream (optional)" value={form.stream_id} onChange={(e) => set("stream_id", e.target.value)}>
-              <SelectItem value="" text="No stream" />
-              {streams?.map((s) => <SelectItem key={s.id} value={s.id} text={s.name} />)}
-            </Select>
-            <Select id="stream-group" labelText="Sub-stream (optional)" helperText={form.stream_id ? undefined : "Choose a stream first to pick a sub-stream."} disabled={!form.stream_id} value={form.stream_group_id} onChange={(e) => set("stream_group_id", e.target.value)}>
-              <SelectItem value="" text="No sub-stream" />
-              {f.streamGroups?.map((g) => <SelectItem key={g.id} value={g.id} text={g.name} />)}
-            </Select>
-            <Select id="medium" labelText={<>Medium (optional) <InfoTip>Classes tied to one medium keep their students together at promotion instead of being reshuffled.</InfoTip></>} helperText="Only for single-language classes." value={form.medium_id} onChange={(e) => set("medium_id", e.target.value)}>
-              <SelectItem value="" text="No medium" />
-              {mediums?.map((m) => <SelectItem key={m.id} value={m.id} text={m.name} />)}
-            </Select>
-            <Select id="home-classroom" labelText="Home classroom (optional)" helperText={roomHelp} value={f.effectiveHomeClassroomId} onChange={(e) => set("home_classroom_id", e.target.value)}>
-              <SelectItem value="" text="Auto-create to match the class name" />
-              {regularClassrooms?.map((c) => <SelectItem key={c.id} value={c.id} text={c.name} />)}
-            </Select>
-            <EntityCombobox
-              id="class-teacher"
-              labelText="Form teacher (optional)"
-              items={teachers ?? []}
-              selectedId={form.form_teacher_id}
-              onSelect={(id) => set("form_teacher_id", id)}
-              onSearch={setTeacherSearch}
-              getId={(t) => t.id}
-              itemToString={(t) => `${displayName(t)} - ${t.employee_number}`}
-              placeholder="Search teachers by name or employee number…"
-            />
-          </div>
-        </div>
+      {f.error && <Alert type="error" showIcon closable onClose={f.clearError} className="os-mb-6" title="Could not create class" description={f.error} />}
 
-        <div className="os-form__section">
-          <div className="os-form__section-header">Academic year</div>
-          <div className="os-form__section-body">
-            <Select id="academic-year" labelText="Academic year" value={f.academicYearId} onChange={(e) => set("academic_year_id", e.target.value)} onBlur={() => f.markTouched("year")} invalid={!!touched.year && !f.academicYearId} invalidText="An academic year is required.">
-              <SelectItem value="" text="Select academic year…" />
-              {f.years?.map((y) => <SelectItem key={y.id} value={y.id} text={y.is_current ? `${y.label} (Current)` : y.label} />)}
-            </Select>
-            <div />
-          </div>
-        </div>
+      <Row gutter={24} className="os-form-columns">
+        <Col xs={24} lg={12}>
+          <Card className="os-form-card" title="Class details">
+            <div className="os-stack os-gap-5">
+              <SelectField
+                id="grade"
+                label="Grade"
+                size="large"
+                placeholder={gradesLoading ? "Loading grades…" : "Select grade…"}
+                value={form.grade_id}
+                onChange={(v) => { set("grade_id", v); f.markTouched("grade"); }}
+                invalid={!!touched.grade && !form.grade_id}
+                invalidText="A grade is required."
+                options={(grades ?? []).map((g) => ({ value: g.id, label: g.name }))}
+              />
+              <SelectField
+                id="academic-year"
+                label="Academic year"
+                size="large"
+                placeholder="Select academic year…"
+                value={f.academicYearId}
+                onChange={(v) => { set("academic_year_id", v); f.markTouched("year"); }}
+                invalid={!!touched.year && !f.academicYearId}
+                invalidText="An academic year is required."
+                options={(f.years ?? []).map((y) => ({ value: y.id, label: y.is_current ? `${y.label} (Current)` : y.label }))}
+              />
+              <TextField
+                id="class-name"
+                size="large"
+                label="Class name"
+                placeholder="e.g. 10-A"
+                maxLength={20}
+                value={form.name}
+                onChange={(v) => set("name", v)}
+                onBlur={() => f.markTouched("name")}
+                invalid={!!touched.name && !form.name.trim()}
+                invalidText="A class name is required."
+              />
+              <EntityCombobox
+                id="class-teacher"
+                labelText="Form teacher (optional)"
+                items={teachers ?? []}
+                selectedId={form.form_teacher_id}
+                onSelect={(id) => set("form_teacher_id", id)}
+                onSearch={setTeacherSearch}
+                getId={(t) => t.id}
+                itemToString={(t) => `${displayName(t)} - ${t.employee_number}`}
+                placeholder="Search teachers by name or employee number…"
+              />
+            </div>
+          </Card>
+        </Col>
 
-        {f.error && <InlineNotification kind="error" title="Could not create class" subtitle={f.error} lowContrast onClose={f.clearError} className="os-max-w-full" />}
+        <Col xs={24} lg={12}>
+          <Card className="os-form-card" title="Stream, medium and room">
+            <div className="os-stack os-gap-5">
+              <SelectField
+                id="stream"
+                label="Stream (optional)"
+                size="large"
+                value={form.stream_id}
+                onChange={(v) => set("stream_id", v)}
+                options={[{ value: "", label: "No stream" }, ...(streams ?? []).map((st) => ({ value: st.id, label: st.name }))]}
+              />
+              <SelectField
+                id="stream-group"
+                label="Sub-stream (optional)"
+                size="large"
+                helperText={form.stream_id ? undefined : "Choose a stream first to pick a sub-stream."}
+                disabled={!form.stream_id}
+                value={form.stream_group_id}
+                onChange={(v) => set("stream_group_id", v)}
+                options={[{ value: "", label: "No sub-stream" }, ...(f.streamGroups ?? []).map((g) => ({ value: g.id, label: g.name }))]}
+              />
+              <SelectField
+                id="medium"
+                label={<>Medium (optional) <InfoTip>Classes tied to one medium keep their students together at promotion instead of being reshuffled.</InfoTip></>}
+                size="large"
+                helperText="Only for single-language classes."
+                value={form.medium_id}
+                onChange={(v) => set("medium_id", v)}
+                options={[{ value: "", label: "No medium" }, ...(mediums ?? []).map((m) => ({ value: m.id, label: m.name }))]}
+              />
+              <SelectField
+                id="home-classroom"
+                label="Home classroom (optional)"
+                size="large"
+                helperText={roomHelp}
+                value={f.effectiveHomeClassroomId}
+                onChange={(v) => set("home_classroom_id", v)}
+                options={[{ value: "", label: "Auto-create to match the class name" }, ...(regularClassrooms ?? []).map((c) => ({ value: c.id, label: c.name }))]}
+              />
+            </div>
+          </Card>
+        </Col>
+      </Row>
 
-        <div className="os-form__actions">
-          <Button renderIcon={Save} kind="primary" disabled={!f.isValid || f.isSaving} onClick={f.save}>
-            {f.isSaving ? "Creating…" : "Create class"}
-          </Button>
-          <Button kind="secondary" as={Link} to="/classes">Cancel</Button>
-        </div>
+      <div className="os-form-actions">
+        <Button size="large" type="primary" icon={<SaveOutlined />} disabled={!f.isValid} loading={f.isSaving} onClick={f.save}>
+          {f.isSaving ? "Creating…" : "Create class"}
+        </Button>
+        <LinkButton to="/classes" size="large">Cancel</LinkButton>
       </div>
     </div>
   );

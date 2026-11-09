@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Add, Edit, TrashCan } from "@carbon/icons-react";
-import { Button, IconButton, Tag } from "@carbon/react";
+import { Button, Tag, Tooltip } from "antd";
+import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
 import { useSubjects, useUpdateSubject, useDeleteSubject } from "@/features/curriculum/queries/useSubjects";
 import type { Subject } from "@/features/curriculum/api/subject";
 import EditSubjectModal, { type SubjectForm } from "@/features/curriculum/components/EditSubjectModal";
@@ -14,17 +14,16 @@ import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import { useListFilters } from "@/shared/hooks/useListFilters";
 
-type SubjectTagType = "blue" | "cyan" | "teal" | "purple" | "magenta" | "green" | "gray";
-
-function subjectTypeTag(type: string): SubjectTagType {
+// antd preset tag colour for a free-text subject type; undefined is the neutral default tag.
+function subjectTypeTag(type: string): string | undefined {
   const value = type.trim().toLowerCase();
   if (value.includes("core") || value.includes("compulsory")) return "blue";
   if (value.includes("language")) return "purple";
   if (value.includes("aesthetic") || value.includes("art") || value.includes("music")) return "magenta";
-  if (value.includes("practical") || value.includes("technical")) return "teal";
-  if (value.includes("elective")) return "cyan";
+  if (value.includes("practical") || value.includes("technical")) return "cyan";
+  if (value.includes("elective")) return "geekblue";
   if (value.includes("religion") || value.includes("ethic")) return "green";
-  return "gray";
+  return undefined;
 }
 
 export default function SubjectsPanel() {
@@ -64,7 +63,7 @@ export default function SubjectsPanel() {
   const columns: GridColumn<Subject>[] = [
     { key: "code", header: "Code", render: (s) => <span className="os-table__mono">{s.code}</span> },
     { key: "name", header: "Subject", render: (s) => s.name },
-    { key: "type", header: "Type", render: (s) => (s.type ? <Tag type={subjectTypeTag(s.type)} size="sm">{s.type}</Tag> : <span className="os-table__muted">-</span>) },
+    { key: "type", header: "Type", render: (s) => (s.type ? <Tag color={subjectTypeTag(s.type)} variant="filled">{s.type}</Tag> : <span className="os-table__muted">-</span>) },
     { key: "max", header: "Max marks", render: (s) => s.max_marks },
     {
       key: "actions",
@@ -72,8 +71,12 @@ export default function SubjectsPanel() {
       align: "end",
       render: (s) => (
         <div className="os-grid__actions">
-          <IconButton label="Edit" kind="ghost" size="sm" onClick={() => openEdit(s)}><Edit /></IconButton>
-          <IconButton label="Delete" kind="ghost" size="sm" onClick={() => setToDelete(s)}><TrashCan /></IconButton>
+          <Tooltip title="Edit subject">
+            <Button type="text" size="small" aria-label="Edit subject" icon={<EditOutlined />} onClick={() => openEdit(s)} />
+          </Tooltip>
+          <Tooltip title="Delete subject">
+            <Button type="text" size="small" danger aria-label="Delete subject" icon={<DeleteOutlined />} onClick={() => setToDelete(s)} />
+          </Tooltip>
         </div>
       ),
     },
@@ -83,7 +86,7 @@ export default function SubjectsPanel() {
     <div>
       <div className="os-flex os-items-center os-justify-between os-gap-4 os-wrap os-my-4">
         <p className="os-m-0 os-text-sm os-c-secondary">The school's subject catalogue. Offer a subject to students by adding it to a selection group under the curriculum tab.</p>
-        <Button renderIcon={Add} kind="primary" size="md" onClick={() => setCreateOpen(true)}>Add subject</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>Add subject</Button>
       </div>
 
       <div className="os-section">
@@ -103,7 +106,7 @@ export default function SubjectsPanel() {
           empty={{
             title: searching ? "No subjects found" : "No subjects yet",
             description: searching ? `No subject matches "${debouncedSearch}".` : "Add the subjects your school teaches before configuring curriculum groups.",
-            action: searching ? undefined : <Button renderIcon={Add} kind="primary" onClick={() => setCreateOpen(true)}>Add subject</Button>,
+            action: searching ? undefined : <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>Add subject</Button>,
           }}
         >
           <DataGrid rows={filtered} columns={columns} getRowId={(s) => s.id} countLabel={(shown, total) => `Showing ${shown} of ${total} subjects`} />

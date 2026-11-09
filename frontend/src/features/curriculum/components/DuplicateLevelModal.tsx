@@ -1,9 +1,11 @@
 import type { Dispatch, SetStateAction } from "react";
-import { TextInput, Select, SelectItem, NumberInput } from "@carbon/react";
 import type { useDuplicateLevel } from "@/features/curriculum/queries/useCurriculum";
 import type { useGrades } from "@/features/academics/queries/useGrades";
 import type { Level } from "@/features/curriculum/api/curriculum";
 import FormModal from "@/shared/ui/FormModal";
+import NumberField from "@/shared/ui/NumberField";
+import SelectField from "@/shared/ui/SelectField";
+import TextField from "@/shared/ui/TextField";
 import type { LevelForm } from "@/features/curriculum/constants";
 
 interface Props {
@@ -49,34 +51,30 @@ export default function DuplicateLevelModal({
         the other.
       </p>
       <div className="os-grid os-gap-5">
-        <TextInput
+        <TextField
           id="dup-label"
-          labelText="New label"
+          label="New label"
           helperText="Must differ from every existing level."
           value={dupForm.label}
-          onChange={(e) => setDupForm((f) => ({ ...f, label: e.target.value }))}
+          onChange={(v) => setDupForm((f) => ({ ...f, label: v }))}
           onBlur={() => setDupLabelTouched(true)}
           invalid={dupLabelTouched && !dupForm.label.trim()}
           invalidText="A label is required."
         />
         <div className="os-grid os-grid-cols-2-1 os-gap-4">
-          <Select
+          <SelectField
             id="dup-grade"
-            labelText="Grade (optional)"
+            label="Grade (optional)"
             value={dupForm.grade_id}
-            onChange={(e) => setDupForm((f) => ({ ...f, grade_id: e.target.value }))}
-          >
-            <SelectItem value="" text="No grade" />
-            {grades?.map((g) => (
-              <SelectItem key={g.id} value={g.id} text={g.name} />
-            ))}
-          </Select>
-          <NumberInput
+            onChange={(v) => setDupForm((f) => ({ ...f, grade_id: v }))}
+            options={[{ value: "", label: "No grade" }, ...(grades ?? []).map((g) => ({ value: g.id, label: g.name }))]}
+          />
+          <NumberField
             id="dup-sort"
             label="Sort order"
             min={0}
             value={dupForm.sort_order}
-            onChange={(_e, { value }) => setDupForm((f) => ({ ...f, sort_order: Number(value) || 0 }))}
+            onChange={(value) => setDupForm((f) => ({ ...f, sort_order: Number(value) || 0 }))}
           />
         </div>
       </div>

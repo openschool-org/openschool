@@ -1,114 +1,20 @@
 import { useState } from "react";
-import { Tag, SkeletonText, Pagination, Button, IconButton, InlineNotification } from "@carbon/react";
-import { Add, Close } from "@carbon/icons-react";
-import { Link } from "react-router";
-import { useTeachers, useTeacherSubjects, useAssignTeacherSubject, useRemoveTeacherSubject } from "@/features/teachers/queries/useTeachers";
+import { Alert, Button } from "antd";
+import { useTeachers } from "@/features/teachers/queries/useTeachers";
 import { useSubjects } from "@/features/curriculum/queries/useSubjects";
 import { useDebounced } from "@/shared/hooks/useDebounced";
-import type { Teacher, TeacherSubject } from "@/features/teachers/api/teacher";
-import type { Subject } from "@/features/curriculum/api/subject";
+import type { Teacher } from "@/features/teachers/api/teacher";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
-import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
-import AssignTeacherSubjectModal from "@/features/teachers/components/AssignTeacherSubjectModal";
+import LinkButton from "@/shared/ui/LinkButton";
 import FilterBar from "@/shared/ui/FilterBar";
 import SectionCard from "@/shared/ui/SectionCard";
 import Avatar from "@/shared/ui/Avatar";
+import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
+import ListState from "@/shared/ui/ListState";
+import TableSkeleton from "@/shared/ui/TableSkeleton";
+import { AssignedSubjectsCell, AssignSubjectCell } from "@/features/teachers/components/TeacherSubjectCells";
 import { displayName } from "@/shared/lib/name";
-
-function TeacherSubjectRow({ teacher, allSubjects }: { teacher: Teacher; allSubjects: Subject[] }) {
-  const { data: assignedSubjects, isLoading, isError } = useTeacherSubjects(teacher.id);
-  const assignMutation = useAssignTeacherSubject(teacher.id);
-  const removeMutation = useRemoveTeacherSubject(teacher.id);
-  const [subjectToRemove, setSubjectToRemove] = useState<TeacherSubject | null>(null);
-  const [assignOpen, setAssignOpen] = useState(false);
-
-  const confirmRemove = () => {
-    if (!subjectToRemove) return;
-    removeMutation.mutate(subjectToRemove.id);
-  };
-
-  const assignedIds = new Set(assignedSubjects?.map((s) => s.id) ?? []);
-  const assignableSubjects = allSubjects.filter((s) => !assignedIds.has(s.id));
-
-  return (
-    <tr>
-      <td>
-        <div className="os-flex os-items-center os-gap-2">
-          <Avatar name={teacher.full_name} size="sm" />
-          <span className="os-fw-500" title={teacher.full_name}>{displayName(teacher)}</span>
-        </div>
-      </td>
-      <td className="os-table__mono">{teacher.employee_number}</td>
-      <td>
-        {isLoading ? (
-          <SkeletonText width="6rem" />
-        ) : isError ? (
-          <span className="os-c-danger os-text-md">Error loading subjects</span>
-        ) : !assignedSubjects || assignedSubjects.length === 0 ? (
-          <span className="os-text-md os-c-tertiary">No subjects assigned</span>
-        ) : (
-          <div className="os-flex os-items-center os-wrap os-gap-2">
-            {assignedSubjects.map((s) => (
-              <div key={s.id} className="os-flex os-items-center os-gap-1">
-                <Tag type="blue" size="sm">{s.name}</Tag>
-                <IconButton
-                  label={`Remove ${s.name}`}
-                  kind="ghost"
-                  size="sm"
-                  onClick={() => setSubjectToRemove(s)}
-                >
-                  <Close size={14} />
-                </IconButton>
-              </div>
-            ))}
-          </div>
-        )}
-      </td>
-      <td>
-        <Button kind="ghost" size="sm" renderIcon={Add} onClick={() => setAssignOpen(true)} disabled={assignableSubjects.length === 0}>
-          Assign subject
-        </Button>
-        {assignableSubjects.length === 0 && !isLoading && !isError && (
-          <p role="status" className="os-m-0 os-mt-1 os-text-xs os-c-tertiary">All subjects assigned</p>
-        )}
-        {assignMutation.isError && (
-          <div className="os-c-danger os-text-xs os-mt-1">
-            Failed to assign
-          </div>
-        )}
-        {removeMutation.isError && (
-          <div className="os-c-danger os-text-xs os-mt-1">
-            Failed to remove
-          </div>
-        )}
-      </td>
-      <ConfirmDeleteModal
-        open={!!subjectToRemove}
-        title="Remove subject"
-        description={
-          <>
-            Remove <strong>{subjectToRemove?.name}</strong> from {displayName(teacher)}&apos;s assigned subjects?
-          </>
-        }
-        confirmLabel="Remove"
-        pendingLabel="Removing…"
-        subject="Subject"
-        successVerb="removed"
-        mutation={removeMutation}
-        onClose={() => setSubjectToRemove(null)}
-        onConfirm={confirmRemove}
-      />
-      <AssignTeacherSubjectModal
-        open={assignOpen}
-        teacher={teacher}
-        subjects={assignableSubjects}
-        mutation={assignMutation}
-        onClose={() => setAssignOpen(false)}
-      />
-    </tr>
-  );
-}
 
 export default function TeacherSubjects() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -132,6 +38,22 @@ export default function TeacherSubjects() {
   const totalItems = teacherPage?.total ?? 0;
   const { data: subjects, isLoading: loadingSubjects, isError: subjectsError, refetch: refetchSubjects } = useSubjects();
 
+  const columns: GridColumn<Teacher>[] = [
+    {
+      key: "teacher",
+      header: "Teacher",
+      render: (t) => (
+        <div className="os-flex os-items-center os-gap-2">
+          <Avatar name={t.full_name} size="sm" />
+          <span className="os-fw-500" title={t.full_name}>{displayName(t)}</span>
+        </div>
+      ),
+    },
+    { key: "employee_number", header: "Employee #", render: (t) => <span className="os-table__mono">{t.employee_number}</span> },
+    { key: "subjects", header: "Assigned subjects", render: (t) => <AssignedSubjectsCell teacher={t} /> },
+    { key: "actions", header: "Actions", render: (t) => <AssignSubjectCell teacher={t} allSubjects={subjects ?? []} /> },
+  ];
+
   if (loadingSubjects) {
     return <LoadingSpinner />;
   }
@@ -150,27 +72,23 @@ export default function TeacherSubjects() {
       </div>
 
       {subjectsError ? (
-        <div className="os-flex os-items-start os-gap-3 os-mb-6">
-          <InlineNotification
-            kind="error"
-            title="Could not load the subject catalogue"
-            subtitle="Teacher records are still available below. Retry the catalogue, or open Subjects & curriculum to configure and save subjects first."
-            lowContrast
-            className="os-flex-1 os-m-0"
-          />
-          <Button kind="ghost" size="sm" onClick={() => refetchSubjects()}>Retry</Button>
-        </div>
+        <Alert
+          type="error"
+          showIcon
+          className="os-mb-6"
+          title="Could not load the subject catalogue"
+          description="Teacher records are still available below. Retry the catalogue, or open Subjects & curriculum to configure and save subjects first."
+          action={<Button size="small" onClick={() => refetchSubjects()}>Retry</Button>}
+        />
       ) : subjects && subjects.length === 0 ? (
-        <div className="os-flex os-items-start os-gap-3 os-mb-6">
-          <InlineNotification
-            kind="info"
-            title="Add subjects before assigning teachers"
-            subtitle="Open Subjects & curriculum, configure the relevant grade groups, and save the subjects. They will then be available here for teacher assignments."
-            lowContrast
-            className="os-flex-1 os-m-0"
-          />
-          <Button kind="ghost" size="sm" as={Link} to="/subjects">Open Subjects & curriculum</Button>
-        </div>
+        <Alert
+          type="info"
+          showIcon
+          className="os-mb-6"
+          title="Add subjects before assigning teachers"
+          description="Open Subjects & curriculum, configure the relevant grade groups, and save the subjects. They will then be available here for teacher assignments."
+          action={<LinkButton to="/subjects" size="small">Open Subjects & curriculum</LinkButton>}
+        />
       ) : null}
 
       <FilterBar
@@ -190,46 +108,23 @@ export default function TeacherSubjects() {
         )}
         flush
       >
-        <table className="os-table">
-          <thead>
-            <tr>
-              <th>Teacher</th>
-              <th>Employee #</th>
-              <th>Assigned subjects</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loadingTeachers ? (
-              <tr>
-                <td colSpan={4} className="os-text-center os-c-tertiary os-p-8">
-                  <SkeletonText width="8rem" />
-                </td>
-              </tr>
-            ) : visibleTeachers.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="os-text-center os-c-tertiary os-p-8">
-                  No teachers found matching your search.
-                </td>
-              </tr>
-            ) : (
-              visibleTeachers.map((t) => (
-                <TeacherSubjectRow key={t.id} teacher={t} allSubjects={subjects ?? []} />
-              ))
-            )}
-          </tbody>
-        </table>
-
-        {!loadingTeachers && totalItems > 0 && (
-          <Pagination
-            totalItems={totalItems}
-            page={page}
-            pageSize={pageSize}
+        <ListState
+          isLoading={loadingTeachers}
+          isError={false}
+          isEmpty={visibleTeachers.length === 0}
+          errorMessage="Could not load teachers."
+          onRetry={refetchTeachers}
+          skeleton={<TableSkeleton headers={columns.map((c) => c.header)} />}
+          empty={{ title: "No teachers found", description: "No teachers found matching your search." }}
+        >
+          <DataGrid
+            rows={visibleTeachers}
+            columns={columns}
+            getRowId={(t) => t.id}
             pageSizes={[25, 50, 100]}
-            onChange={({ page: p, pageSize: ps }) => { setPage(p); setPageSize(ps); }}
-            size="sm"
+            server={{ page, pageSize, totalItems, onChange: ({ page: p, pageSize: ps }) => { setPage(p); setPageSize(ps); } }}
           />
-        )}
+        </ListState>
       </SectionCard>
     </div>
   );

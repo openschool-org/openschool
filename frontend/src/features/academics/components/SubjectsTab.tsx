@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button, Tag } from "@carbon/react";
-import { UserFollow } from "@carbon/icons-react";
+import { Button, Tag } from "antd";
+import { UserAddOutlined } from "@ant-design/icons";
 import { useClassSubjectTeachers, useAssignSubjectTeacher } from "@/features/academics/queries/useClasses";
 import { useSubjects } from "@/features/curriculum/queries/useSubjects";
 import { usePublishedTimetableForClass } from "@/features/timetable/queries/useTimetables";
@@ -30,7 +30,7 @@ export default function SubjectsTab({ classId, academicYearId }: { classId: stri
         flush
         title="Subjects & teachers"
         meta={
-          <Button renderIcon={UserFollow} size="sm" onClick={() => { assignSubjectTeacher.reset(); setModalOpen(true); }}>
+          <Button size="small" icon={<UserAddOutlined />} onClick={() => { assignSubjectTeacher.reset(); setModalOpen(true); }}>
             Assign subject teacher
           </Button>
         }
@@ -52,7 +52,7 @@ export default function SubjectsTab({ classId, academicYearId }: { classId: stri
                 { key: "subject", header: "Subject", render: (a) => <span className="os-fw-500">{a.subject_name}</span> },
                 { key: "code", header: "Subject code", render: (a) => <span className="os-table__mono">{a.subject_code}</span> },
                 { key: "teacher", header: "Assigned teacher", render: (a) => a.teacher_name },
-                { key: "timetable", header: "Timetable", render: (a) => (scheduledSubjectIds.has(a.subject_id) ? <Tag type="green" size="sm">Scheduled</Tag> : <Tag type="gray" size="sm">Not scheduled</Tag>) },
+                { key: "timetable", header: "Timetable", render: (a) => (scheduledSubjectIds.has(a.subject_id) ? <Tag color="success" variant="filled">Scheduled</Tag> : <Tag variant="filled">Not scheduled</Tag>) },
               ]}
             />
           )}

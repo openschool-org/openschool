@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
-import { TextInput, NumberInput } from "@carbon/react";
+import NumberField from "@/shared/ui/NumberField";
+import TextField from "@/shared/ui/TextField";
 import type { useCreateSelectionGroup, useUpdateSelectionGroup } from "@/features/curriculum/queries/useCurriculum";
 import FormModal from "@/shared/ui/FormModal";
 
@@ -44,35 +45,35 @@ export default function GroupFormModal({
       errorFallback="Failed to save group"
     >
       <div className="os-grid os-gap-4">
-        <TextInput
+        <TextField
           id="group-label"
-          labelText="Label"
+          label="Label"
           placeholder="e.g. Compulsory, or Basket 1"
           value={groupForm.label}
-          onChange={(e) => setGroupForm((f) => ({ ...f, label: e.target.value }))}
+          onChange={(v) => setGroupForm((f) => ({ ...f, label: v }))}
         />
-        <NumberInput
+        <NumberField
           id="group-min"
           label="Minimum subjects"
           min={0}
           value={groupForm.min_select}
-          onChange={(_e, { value }) => setGroupForm((f) => ({ ...f, min_select: Number(value) || 0 }))}
+          onChange={(value) => setGroupForm((f) => ({ ...f, min_select: Number(value) || 0 }))}
         />
-        <NumberInput
+        <NumberField
           id="group-max"
           label="Maximum subjects"
           min={0}
           invalid={groupForm.max_select < groupForm.min_select}
           invalidText="Maximum must be greater than or equal to minimum."
           value={groupForm.max_select}
-          onChange={(_e, { value }) => setGroupForm((f) => ({ ...f, max_select: Number(value) || 0 }))}
+          onChange={(value) => setGroupForm((f) => ({ ...f, max_select: Number(value) || 0 }))}
         />
-        <NumberInput
+        <NumberField
           id="group-sort"
           label="Sort order"
           min={0}
           value={groupForm.sort_order}
-          onChange={(_e, { value }) => setGroupForm((f) => ({ ...f, sort_order: Number(value) || 0 }))}
+          onChange={(value) => setGroupForm((f) => ({ ...f, sort_order: Number(value) || 0 }))}
         />
       </div>
     </FormModal>

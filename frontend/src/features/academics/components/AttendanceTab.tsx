@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
-import { Button } from "@carbon/react";
-import { Add } from "@carbon/icons-react";
+import { Button } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
 import type { useClassSessions, useCreateSession, useDeleteSession } from "@/features/attendance/queries/useAttendance";
 import type { AttendanceSession } from "@/features/attendance/api/attendance";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
@@ -51,15 +51,11 @@ export default function AttendanceTab({
               }} id="session-date-filter" labelText="Filter by date" hideLabel placeholder="Filter by date" size="sm" />
           </div>
           {sessionDateFilter && (
-            <Button
-              kind="ghost"
-              size="sm"
-              onClick={() => setSessionDateFilter("")}
-            >
+            <Button type="text" size="small" onClick={() => setSessionDateFilter("")}>
               Clear
             </Button>
           )}
-          <Button renderIcon={Add} kind="ghost" size="sm" onClick={onOpenNewSession}>
+          <Button type="text" size="small" icon={<PlusOutlined />} onClick={onOpenNewSession}>
             New session
           </Button>
         </div>
@@ -97,8 +93,8 @@ export default function AttendanceTab({
               align: "end",
               render: (s) => (
                 <div className="os-grid__actions os-nowrap-flex">
-                  <Button kind="ghost" size="sm" as={Link} to={`/attendance/sessions/${s.id}/mark`} className="os-c-accent os-nowrap">Mark / view</Button>
-                  <Button kind="danger--ghost" size="sm" className="os-nowrap" onClick={() => onRequestDeleteSession(s)}>Delete</Button>
+                  <LinkButton to={`/attendance/sessions/${s.id}/mark`} type="link" size="small">Mark / view</LinkButton>
+                  <Button type="text" danger size="small" onClick={() => onRequestDeleteSession(s)}>Delete</Button>
                 </div>
               ),
             },
@@ -114,7 +110,7 @@ export default function AttendanceTab({
           }
           action={
             sessionDateFilter ? undefined : (
-              <Button renderIcon={Add} kind="primary" onClick={onOpenNewSession}>
+              <Button type="primary" icon={<PlusOutlined />} onClick={onOpenNewSession}>
                 New session
               </Button>
             )
