@@ -50,8 +50,15 @@ export function buildAntdTheme(): ThemeConfig {
       Menu: {
         itemBg: "transparent",
         itemColor: token("--os-text-secondary", "currentColor"),
-        itemHoverColor: token("--os-text-primary", "currentColor"),
-        itemHoverBg: token("--os-canvas", "transparent"),
+        // Hover is plain CSS :hover in _layout.scss (.os-sidenav). antd's own hover colours also
+        // paint the last-hovered item while the menu has focus after a click, which left a grey
+        // highlight behind, so they are neutralised here.
+        itemHoverColor: token("--os-text-secondary", "currentColor"),
+        itemHoverBg: "transparent",
+        itemActiveBg: token("--os-canvas", "transparent"),
+        motionDurationFast: "0s",
+        motionDurationMid: "0s",
+        motionDurationSlow: "0s",
         itemSelectedColor: token("--os-layer", "currentColor"),
         itemSelectedBg: token("--os-accent-deeper", "transparent"),
         groupTitleColor: token("--os-text-tertiary", "currentColor"),
