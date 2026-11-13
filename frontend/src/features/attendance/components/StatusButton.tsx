@@ -1,7 +1,7 @@
-import { CheckmarkFilled, CloseFilled, Time, Certificate } from "@carbon/icons-react";
+import { CheckCircleFilled, ClockCircleOutlined, CloseCircleFilled, SafetyCertificateOutlined } from "@ant-design/icons";
 import { STATUS_STYLES, type Status } from "@/features/attendance/constants";
 
-const STATUS_ICONS = { present: CheckmarkFilled, absent: CloseFilled, late: Time, excused: Certificate };
+const STATUS_ICONS = { present: CheckCircleFilled, absent: CloseCircleFilled, late: ClockCircleOutlined, excused: SafetyCertificateOutlined };
 
 export default function StatusButton({
   value,
@@ -15,8 +15,8 @@ export default function StatusButton({
   const Icon = STATUS_ICONS[value];
   const className = selected ? `os-status-toggle os-status-toggle--selected os-status-toggle--${value}` : "os-status-toggle";
   return (
-    <button className={className} onClick={onClick} aria-pressed={selected}>
-      <Icon size={12} />
+    <button type="button" className={className} onClick={onClick} aria-pressed={selected}>
+      <Icon />
       {STATUS_STYLES[value].label}
     </button>
   );

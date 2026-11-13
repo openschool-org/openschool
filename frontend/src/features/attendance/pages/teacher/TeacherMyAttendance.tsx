@@ -1,18 +1,19 @@
 import { STAFF_ATTENDANCE_STYLES } from "@/shared/lib/constants/attendance";
 import { useState } from "react";
-import { Button, Tag } from "@carbon/react";
-import { ChevronLeft, ChevronRight, CheckmarkFilled, CloseFilled, Time, Renew } from "@carbon/icons-react";
+import type { ReactNode } from "react";
+import { Button, Tag, Tooltip } from "antd";
+import { CarryOutOutlined, CheckCircleFilled, ClockCircleOutlined, CloseCircleFilled, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { useMyStaffAttendanceHistory } from "@/features/attendance/queries/useStaffAttendance";
 import type { StaffAttendanceStatus } from "@/features/attendance/api/staffAttendance";
 import DataGrid from "@/shared/ui/DataGrid";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
 
-const STATUS_ICONS: Record<StaffAttendanceStatus, typeof CheckmarkFilled> = {
-  present: CheckmarkFilled,
-  absent: CloseFilled,
-  late: Time,
-  leave: Renew,
+const STATUS_ICONS: Record<StaffAttendanceStatus, ReactNode> = {
+  present: <CheckCircleFilled />,
+  absent: <CloseCircleFilled />,
+  late: <ClockCircleOutlined />,
+  leave: <CarryOutOutlined />,
 };
 
 const MONTH_NAMES = [
@@ -55,11 +56,11 @@ export default function TeacherMyAttendance() {
 
       <div className="os-section os-mb-6">
         <div className="os-section__header os-flex os-items-center os-gap-3">
-          <Button hasIconOnly iconDescription="Previous month" renderIcon={ChevronLeft} kind="ghost" size="sm" onClick={goPrevMonth} />
+          <Tooltip title="Previous month"><Button type="text" size="small" aria-label="Previous month" icon={<LeftOutlined />} onClick={goPrevMonth} /></Tooltip>
           <h2 className="os-section__title os-min-w-10 os-text-center">
             {MONTH_NAMES[month - 1]} {year}
           </h2>
-          <Button hasIconOnly iconDescription="Next month" renderIcon={ChevronRight} kind="ghost" size="sm" onClick={goNextMonth} />
+          <Tooltip title="Next month"><Button type="text" size="small" aria-label="Next month" icon={<RightOutlined />} onClick={goNextMonth} /></Tooltip>
         </div>
 
         <div className="os-section__body os-flex os-gap-4 os-wrap">
@@ -97,7 +98,7 @@ export default function TeacherMyAttendance() {
                 header: "Status",
                 render: (r) => {
                   const cfg = STAFF_ATTENDANCE_STYLES[r.status];
-                  return <Tag renderIcon={STATUS_ICONS[r.status]} size="sm" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</Tag>;
+                  return <Tag icon={STATUS_ICONS[r.status]} variant="filled" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</Tag>;
                 },
               },
               { key: "note", header: "Note", render: (r) => <span className="os-table__muted">{r.note ?? "-"}</span> },

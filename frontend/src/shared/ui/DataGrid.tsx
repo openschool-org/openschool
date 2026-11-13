@@ -40,6 +40,8 @@ interface Props<T> {
   pagination?: boolean;
   className?: string;
   onRowClick?: (row: T) => void;
+  // Extra class per row, e.g. a status tint on a marking grid.
+  rowClassName?: (row: T) => string;
   sort?: GridSort;
   onSortChange?: (key: string) => void;
   // Row ids currently ticked; passing this turns on the checkbox column.
@@ -64,6 +66,7 @@ export default function DataGrid<T>({
   pagination = true,
   className,
   onRowClick,
+  rowClassName,
   sort,
   onSortChange,
   selected,
@@ -113,6 +116,7 @@ export default function DataGrid<T>({
       <Table<T>
         className={`os-grid os-table--stack${noHover ? " os-table--no-hover" : ""}${className ? ` ${className}` : ""}`}
         rowKey={getRowId}
+        rowClassName={rowClassName ? (row) => rowClassName(row) : undefined}
         columns={tableColumns}
         dataSource={pageRows}
         pagination={pager}
