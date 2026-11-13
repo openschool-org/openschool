@@ -11,7 +11,6 @@ import EntityCombobox from "@/shared/ui/EntityCombobox";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import SectionCard from "@/shared/ui/SectionCard";
-import Avatar from "@/shared/ui/Avatar";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
 import { displayName } from "@/shared/lib/name";
@@ -155,7 +154,6 @@ function SectionHeadRow({ row, head, teachers, onSearch, onAssign, onRemoveClick
 
   return (
     <div className="os-list-row os-py-3 os-px-6">
-      <Avatar name={`${row.gradeName} ${row.streamName ?? ""}`} size="sm" />
       <div className="os-flex-1 os-min-w-0">
         <p className="os-m-0 os-text-md os-fw-500 os-c-primary">{row.gradeName}{row.streamName ? ` - ${row.streamName}` : ""}</p>
         <div className="os-flex os-items-center os-gap-2 os-mt-1">

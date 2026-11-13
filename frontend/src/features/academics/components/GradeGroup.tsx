@@ -1,6 +1,6 @@
 import { Link } from "react-router";
-import { Alert, Button, Card, Empty, Skeleton, Tag, Tooltip } from "antd";
-import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button, Card, Dropdown, Skeleton, Tag, Tooltip } from "antd";
+import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, EditOutlined, MoreOutlined, PlusOutlined, WarningOutlined } from "@ant-design/icons";
 import type { Grade } from "@/features/academics/api/grade";
 import type { ClassWithDetails } from "@/features/academics/api/class";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
@@ -66,9 +66,19 @@ export default function GradeGroup(p: Props) {
     },
   ];
 
+  // Grade actions live in one menu so the header stays calm: name, count, Add class, ⋮.
+  const menu = {
+    items: [
+      { key: "up", icon: <ArrowUpOutlined />, label: "Move up", disabled: index === 0 || busy, onClick: p.onMoveUp },
+      { key: "down", icon: <ArrowDownOutlined />, label: "Move down", disabled: isLast || busy, onClick: p.onMoveDown },
+      { type: "divider" as const },
+      { key: "edit", icon: <EditOutlined />, label: "Edit grade", disabled: busy, onClick: p.onEditGrade },
+      { key: "delete", icon: <DeleteOutlined />, label: "Delete grade", danger: true, disabled: busy, onClick: p.onDeleteGrade },
+    ],
+  };
+
   return (
     <Card
-      type="inner"
       // The header row is tinted by school section (primary, junior, O/L, A/L).
       className={`os-grade-card os-grade-band--${gradeBand(grade.name)}`}
       aria-label={`${grade.name} - ${classes.length} classes`}
@@ -76,33 +86,24 @@ export default function GradeGroup(p: Props) {
         <div className="os-flex os-items-center os-gap-3 os-min-w-0">
           <span className="os-truncate">{grade.name}</span>
           <Tag variant="filled">{classes.length} {classes.length === 1 ? "class" : "classes"}</Tag>
+          {warning && (
+            <Tooltip title={warning}>
+              <Tag color="warning" variant="filled" icon={<WarningOutlined />}>Check name</Tag>
+            </Tooltip>
+          )}
         </div>
       }
       extra={
         <div className="os-flex os-items-center os-gap-1">
-          <Tooltip title="Move up">
-            <Button type="text" size="small" aria-label="Move up" icon={<ArrowUpOutlined />} disabled={index === 0 || busy} onClick={p.onMoveUp} />
-          </Tooltip>
-          <Tooltip title="Move down">
-            <Button type="text" size="small" aria-label="Move down" icon={<ArrowDownOutlined />} disabled={isLast || busy} onClick={p.onMoveDown} />
-          </Tooltip>
-          <Button type="text" size="small" icon={<EditOutlined />} disabled={busy} onClick={p.onEditGrade}>Edit</Button>
-          <Button type="text" danger size="small" icon={<DeleteOutlined />} disabled={busy} onClick={p.onDeleteGrade}>Delete</Button>
+          <Button size="small" icon={<PlusOutlined />} onClick={() => p.onAddClass(grade.id)}>Add class</Button>
+          <Dropdown menu={menu} trigger={["click"]} placement="bottomRight">
+            <Button type="text" size="small" aria-label={`More actions for ${grade.name}`} icon={<MoreOutlined />} />
+          </Dropdown>
         </div>
       }
     >
-      {warning && <Alert type="warning" showIcon className="os-mb-4" title={warning} />}
-
-      <div className="os-flex os-items-center os-justify-between os-gap-3 os-wrap os-mb-3">
-        <div>
-          <p className="os-m-0 os-fw-500 os-text-md os-c-primary">Classes in this grade</p>
-          <p className="os-m-0 os-mt-1 os-text-sm os-c-tertiary">Manage form teachers, streams, rooms and enrolment.</p>
-        </div>
-        <Button icon={<PlusOutlined />} onClick={() => p.onAddClass(grade.id)}>Add class</Button>
-      </div>
-
       {classes.length === 0 ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No classes yet for this grade." />
+        <p className="os-grade-card__empty">No classes in this grade yet.</p>
       ) : (
         <DataGrid rows={classes} columns={columns} getRowId={(c) => c.id} pagination={false} />
       )}

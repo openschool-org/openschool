@@ -17,6 +17,7 @@ export default function SubjectsCurriculum() {
       </div>
 
       <Tabs
+        className="os-detail-tabs"
         defaultActiveKey={defaultTab}
         aria-label="Subjects and curriculum sections"
         items={[

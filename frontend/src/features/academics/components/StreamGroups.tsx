@@ -7,7 +7,7 @@ import { useStreamGroups, useCreateStreamGroup } from "@/features/academics/quer
 import type { Stream } from "@/features/academics/api/stream";
 import FormModal from "@/shared/ui/FormModal";
 
-// Sub-groups under one A/L stream. Creation stays in a focused modal so cards remain scannable.
+// One A/L stream as a compact row: name, its sub-groups as tags, and "Add subgroup". Creation stays in a focused modal.
 export default function StreamGroups({ stream }: { stream: Stream }) {
   const { data: groups, isLoading } = useStreamGroups(stream.id);
   const createGroup = useCreateStreamGroup();
@@ -23,19 +23,18 @@ export default function StreamGroups({ stream }: { stream: Stream }) {
   };
 
   return (
-    <div className="os-pl-6">
-      <div className="os-flex os-wrap os-gap-2 os-mb-2">
+    <div className="os-stream-row">
+      <span className="os-stream-row__name">{stream.name}</span>
+      <div className="os-stream-row__groups">
         {isLoading ? (
           <SkeletonText width="30%" />
         ) : groups?.length ? (
-          groups.map((g) => <Tag key={g.id} color="cyan" variant="filled">{g.name}</Tag>)
+          groups.map((g) => <Tag key={g.id} variant="filled">{g.name}</Tag>)
         ) : (
-          <span className="os-text-xs os-c-tertiary">No sub-groups</span>
+          <span className="os-text-sm os-c-tertiary">No sub-groups yet</span>
         )}
       </div>
-      <Button type="text" size="small" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
-        Add subgroup
-      </Button>
+      <Button size="small" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>Add subgroup</Button>
 
       <FormModal
         open={createOpen}
