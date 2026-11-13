@@ -1,5 +1,6 @@
-import { Button, TextInput } from "@carbon/react";
-import { Checkmark, Add } from "@carbon/icons-react";
+import { Button } from "antd";
+import { CheckOutlined, PlusOutlined } from "@ant-design/icons";
+import TextField from "@/shared/ui/TextField";
 import type { Term } from "@/features/school/api/term";
 import { isDateRangeInvalid } from "@/shared/lib/date";
 import type { TermFormValues, TermTouched } from "@/features/school/lib/termForm";
@@ -22,14 +23,14 @@ export default function TermForm({ form, onChange, touched, onTouch, editing, is
   // Remounting the pickers on term switch makes flatpickr pick up the prefilled value.
   const pickerKey = editing?.id ?? "new";
   return (
-    <div className="os-grid os-gap-3">
-      {editing && <p className="os-m-0 os-text-xs os-fw-600 os-c-primary">Editing {editing.name}</p>}
-      <TextInput
+    <div className="os-stack os-gap-4">
+      <div className="os-term-form-grid">
+      <TextField
         id="term-name"
-        labelText="Term name"
+        label="Term name"
         placeholder="e.g. Term 1"
         value={form.name}
-        onChange={(e) => onChange({ ...form, name: e.target.value })}
+        onChange={(v) => onChange({ ...form, name: v })}
         onBlur={() => onTouch("name")}
         invalid={!!touched.name && !form.name.trim()}
         invalidText="A name is required."
@@ -40,11 +41,12 @@ export default function TermForm({ form, onChange, touched, onTouch, editing, is
           onBlur={() => onTouch("end_date")}
           invalid={!!touched.end_date && (!form.end_date || rangeInvalid)}
           invalidText={rangeInvalid ? "End date must be after the start date." : "An end date is required."} />
-      <div className="os-flex os-gap-2">
-        <Button kind="ghost" size="sm" renderIcon={editing ? Checkmark : Add} onClick={onSubmit} disabled={isSaving}>
+      </div>
+      <div className="os-flex os-gap-2 os-justify-end">
+        {editing && <Button onClick={onCancelEdit} disabled={isSaving}>Cancel</Button>}
+        <Button type="primary" icon={editing ? <CheckOutlined /> : <PlusOutlined />} onClick={onSubmit} loading={isSaving}>
           {isSaving ? (editing ? "Saving…" : "Adding…") : editing ? "Save changes" : "Add term"}
         </Button>
-        {editing && <Button kind="ghost" size="sm" onClick={onCancelEdit} disabled={isSaving}>Cancel</Button>}
       </div>
     </div>
   );

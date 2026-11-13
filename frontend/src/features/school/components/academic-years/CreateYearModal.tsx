@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
-import { TextInput, Checkbox } from "@carbon/react";
+import { Checkbox } from "antd";
+import TextField from "@/shared/ui/TextField";
 import type { useCreateAcademicYear } from "@/features/school/queries/useAcademicYears";
 import FormModal from "@/shared/ui/FormModal";
 import DateField from "@/shared/ui/DateField";
@@ -56,17 +57,18 @@ export default function CreateYearModal({
       error={createYear.error}
       errorFallback="Failed to create academic year"
     >
-      <div className="os-grid os-gap-4">
-        <TextInput
+      <div className="os-stack os-gap-4">
+        <TextField
           id="ay-label"
-          labelText="Label"
+          label="Label"
           placeholder="e.g. 2027"
           value={form.label}
-          onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+          onChange={(v) => setForm((f) => ({ ...f, label: v }))}
           onBlur={() => setTouched((t) => ({ ...t, label: true }))}
           invalid={!!touched.label && !form.label.trim()}
           invalidText="A label is required."
         />
+        <div className="os-settings-grid">
         <DateField value={form.start_date} onChange={(ymd) => setForm((f) => ({ ...f, start_date: ymd }))} id="ay-start"
             labelText="Start date"
             onBlur={() => setTouched((t) => ({ ...t, start_date: true }))}
@@ -77,12 +79,10 @@ export default function CreateYearModal({
             onBlur={() => setTouched((t) => ({ ...t, end_date: true }))}
             invalid={!!touched.end_date && (!form.end_date || dateRangeInvalid)}
             invalidText={dateRangeInvalid ? "End date must be after the start date." : "An end date is required."} />
-        <Checkbox
-          id="ay-current"
-          labelText="Set as current academic year"
-          checked={form.is_current}
-          onChange={(_e, { checked }) => setForm((f) => ({ ...f, is_current: checked }))}
-        />
+        </div>
+        <Checkbox id="ay-current" checked={form.is_current} onChange={(e) => setForm((f) => ({ ...f, is_current: e.target.checked }))}>
+          Make this the current academic year
+        </Checkbox>
       </div>
     </FormModal>
   );

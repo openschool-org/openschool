@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Calendar, Checkmark, Edit } from "@carbon/icons-react";
-import { Button, Tag, ComposedModal, ModalHeader, ModalBody, ModalFooter, SkeletonText } from "@carbon/react";
+import { Button, Modal, Skeleton, Tag, Tooltip } from "antd";
+import { CalendarOutlined, CheckOutlined, EditOutlined } from "@ant-design/icons";
+import { MODAL_WIDTH } from "@/shared/ui/modalWidth";
 import { useTerms, useCreateTerm, useUpdateTerm, useSetCurrentTerm, useDeleteTerm } from "@/features/school/queries/useTerms";
 import type { AcademicYear } from "@/features/school/api/academicYear";
 import type { Term } from "@/features/school/api/term";
@@ -55,35 +56,30 @@ export default function TermsModal({ year, onClose }: { year: AcademicYear; onCl
 
   return (
     <>
-      <ComposedModal open size="md" onClose={onClose} aria-label={`Terms - ${year.label}`}>
-        <ModalHeader title={`Terms - ${year.label}`} />
-        <ModalBody>
-          <div className="os-terms-modal-intro">
-            <Calendar size={20} className="os-fill-accent" />
-            <p className="os-m-0 os-text-sm os-c-secondary">Organise this academic year into terms. Set one term as current for attendance, marks, and reports.</p>
-          </div>
+      <Modal open width={MODAL_WIDTH.md} title={`Terms · ${year.label}`} onCancel={onClose} footer={<Button onClick={onClose}>Close</Button>}>
+          <p className="os-mt-0 os-mb-4 os-text-sm os-c-secondary">Split the year into terms. The current term is used for attendance, marks and reports.</p>
           <MutationErrorNotification isError={createTerm.isError} error={createTerm.error} title="Could not create term" fallback="Please try again." />
           <MutationErrorNotification isError={updateTerm.isError} error={updateTerm.error} title="Could not update term" fallback="Please try again." />
           <MutationErrorNotification isError={deleteTerm.isError} error={deleteTerm.error} title="Could not delete term" fallback="Please try again." />
 
-          {isLoading && <SkeletonText paragraph lineCount={3} />}
+          {isLoading && <Skeleton active title={false} paragraph={{ rows: 3 }} />}
           {!isLoading && terms?.length === 0 && <p className="os-terms-empty os-text-md os-c-tertiary os-mb-5">No terms yet. Add the first term below to get started.</p>}
           {!!terms?.length && (
             <div className="os-term-list os-mb-6">
               {terms.map((t) => (
                 <div key={t.id} className={`os-term-card${t.is_current ? " is-current" : ""}`}>
-                  <div className="os-term-card__marker" aria-hidden="true"><Calendar size={16} /></div>
+                  <div className="os-term-card__marker" aria-hidden="true"><CalendarOutlined /></div>
                   <div className="os-flex-1 os-min-w-0">
                     <p className="os-m-0 os-fw-500 os-text-md os-c-primary">{t.name}</p>
                     <p className="os-m-0 os-text-xs os-c-secondary">{formatDayMonthYear(t.start_date)} – {formatDayMonthYear(t.end_date)}</p>
                   </div>
                   <div className="os-term-card__actions">
                     {t.is_current ? (
-                      <Tag type="teal" size="sm"><Checkmark size={12} className="os-mr-1" />Current</Tag>
+                      <Tag color="cyan" variant="filled" icon={<CheckOutlined />}>Current</Tag>
                     ) : (
-                      <Button kind="ghost" size="sm" onClick={() => setCurrentTerm.mutate(t.id)} disabled={setCurrentTerm.isPending}>Set current</Button>
+                      <Button type="text" size="small" onClick={() => setCurrentTerm.mutate(t.id)} loading={setCurrentTerm.isPending && setCurrentTerm.variables === t.id}>Set current</Button>
                     )}
-                    <Button hasIconOnly kind="ghost" size="sm" iconDescription="Edit term" renderIcon={Edit} onClick={() => startEdit(t)} />
+                    <Tooltip title={`Edit ${t.name}`}><Button type="text" size="small" aria-label={`Edit ${t.name}`} icon={<EditOutlined />} onClick={() => startEdit(t)} /></Tooltip>
                     <RemoveIconButton label="Delete term" onClick={() => setToDelete(t)} />
                   </div>
                 </div>
@@ -98,11 +94,7 @@ export default function TermsModal({ year, onClose }: { year: AcademicYear; onCl
             </div>
             <TermForm form={form} onChange={setForm} touched={touched} onTouch={(f) => setTouched((t) => ({ ...t, [f]: true }))} editing={editing} isSaving={createTerm.isPending || updateTerm.isPending} onSubmit={submit} onCancelEdit={resetForm} />
           </div>
-        </ModalBody>
-        <ModalFooter>
-          <Button kind="secondary" onClick={onClose}>Close</Button>
-        </ModalFooter>
-      </ComposedModal>
+      </Modal>
 
       <ConfirmDeleteModal
         open={!!toDelete}
