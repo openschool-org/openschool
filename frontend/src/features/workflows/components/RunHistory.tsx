@@ -6,7 +6,7 @@ import DataGrid from "@/shared/ui/DataGrid";
 
 
 export default function RunHistory({ runs, onOpen }: { runs: RunSummary[]; onOpen: (id: string) => void }) {
-  if (runs.length === 0) return <p className="os-m-0 os-text-sm os-c-tertiary">No runs yet.</p>;
+  if (runs.length === 0) return <p className="os-m-0 os-px-6 os-py-4 os-text-sm os-c-tertiary">No runs yet. Create a proposal to start one.</p>;
   return (
     <DataGrid
       rows={runs}

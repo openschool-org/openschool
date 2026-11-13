@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
-import { Button, Card, Col, Row, Steps, Tag } from "antd";
-import { ArrowLeftOutlined, CheckOutlined, DeleteOutlined, FileSearchOutlined, UndoOutlined } from "@ant-design/icons";
-import LinkButton from "@/shared/ui/LinkButton";
+import { Button, Card, Col, Row, Tag } from "antd";
+import { ArrowLeftOutlined, CheckOutlined, DeleteOutlined, FileSearchOutlined, SafetyCertificateOutlined, UndoOutlined } from "@ant-design/icons";
 import { useWorkflowPage } from "@/features/workflows/hooks/useWorkflowPage";
 import WorkflowInputs from "@/features/workflows/components/WorkflowInputs";
+import StepStrip from "@/features/workflows/components/StepStrip";
 import ChecksList from "@/features/workflows/components/ChecksList";
 import ProposalView from "@/features/workflows/components/ProposalView";
 import RunHistory from "@/features/workflows/components/RunHistory";
@@ -42,72 +42,63 @@ export default function WorkflowPage({ workflowKey, backTo = "/year-end", backLa
   const toolByName = new Map(entry.tools.map((t) => [t.name, t]));
   // The backend's steps, with "Review the preview" placed before the first step that saves:
   // checking finishes when a proposal exists, review is current while it waits, saving finishes on apply.
-  const stepItems = entry.steps.map((st) => ({
+  // Titles only on the strip; what each step does shows on hover.
+  const stepItems = entry.steps.map((st, i) => ({
+    key: `${st.tool}-${i}`,
     title: st.title,
-    description: (
-      <span className="os-flex os-col os-gap-1">
-        <span>{toolByName.get(st.tool)?.description}</span>
-        <span>
-          <Tag color={st.phase === "apply" ? "magenta" : undefined} variant="filled">
-            {st.phase === "apply" ? "Saves when you apply" : "Checks only"}
-          </Tag>
-        </span>
-      </span>
-    ),
+    hint: `${toolByName.get(st.tool)?.description ?? ""} ${st.phase === "apply" ? "Saves when you apply." : "Checks only."}`.trim(),
   }));
   const firstApply = entry.steps.findIndex((st) => st.phase === "apply");
   const reviewAt = firstApply < 0 ? stepItems.length : firstApply;
-  stepItems.splice(reviewAt, 0, {
-    title: "Review the preview",
-    description: <span>Look through the rows the check produces, fix anything marked, then choose Review done, apply.</span>,
-  });
+  stepItems.splice(reviewAt, 0, { key: "review", title: "Review the preview", hint: "You look through the proposal and decide. Nothing is saved before this." });
   const current = !run ? 0 : run.state === "applied" ? stepItems.length : run.state === "proposed" ? reviewAt : 0;
 
   return (
     <div className="os-page">
-      {/* Title and back link share one line; the description sits below at full width. */}
       <div className="os-workflow-head">
+        <Link to={backTo} className="os-workflow-head__back"><ArrowLeftOutlined /> {backLabel}</Link>
+        {entry.order > 0 && <p className="os-workflow-head__eyebrow">Year-end · Step {entry.order}</p>}
         <div className="os-workflow-head__row">
-          <h1 className="os-page__title os-m-0">{entry.order > 0 ? `${entry.order}. ` : ""}{entry.title}</h1>
-          <LinkButton to={backTo} icon={<ArrowLeftOutlined />}>{backLabel}</LinkButton>
+          <h1 className="os-page__title os-m-0">{entry.title}</h1>
+          {run && <Tag color={RUN_STATE_TAG[run.state].color} variant="filled">{RUN_STATE_TAG[run.state].label}</Tag>}
         </div>
-        <p className="os-page__subtitle os-max-w-50">{entry.description}</p>
+        <p className="os-page__subtitle os-max-w-50 os-m-0">{entry.description}</p>
       </div>
 
-      <Row gutter={24} className="os-form-columns">
-        <Col xs={24} lg={16}>
-          <Card className="os-form-card" title="Set up">
-            <div className="os-flex os-col os-gap-5">
-              <WorkflowInputs fields={entry.inputs} values={p.values} onChange={p.setValue} />
-              <ChecksList checks={p.checks} />
-              <div className="os-flex os-gap-2 os-wrap">
-                <Button size="large" onClick={p.runCheck} loading={p.busy.check}>{p.busy.check ? "Checking…" : "Check"}</Button>
-                <Button size="large" type="primary" icon={<FileSearchOutlined />} onClick={p.runPropose} loading={p.busy.propose}>
-                  {p.busy.propose ? "Working it out…" : "Create proposal"}
-                </Button>
-              </div>
+      <Row gutter={[24, 24]} className="os-form-columns os-mb-6">
+        <Col xs={24} lg={15}>
+          <Card className="os-form-card os-workflow-setup" title="Set up">
+            <WorkflowInputs fields={entry.inputs} values={p.values} onChange={p.setValue} />
+            <div className="os-workflow-setup__actions">
+              <Button icon={<SafetyCertificateOutlined />} onClick={p.runCheck} loading={p.busy.check}>{p.busy.check ? "Checking…" : "Check readiness"}</Button>
+              <Button type="primary" icon={<FileSearchOutlined />} onClick={p.runPropose} loading={p.busy.propose}>
+                {p.busy.propose ? "Working it out…" : "Create proposal"}
+              </Button>
             </div>
           </Card>
         </Col>
-        <Col xs={24} lg={8}>
-          <Card className="os-form-card" title="How it works">
-            <Steps
-              orientation="vertical"
-              size="small"
-              current={current}
-              status={run?.state === "failed" ? "error" : undefined}
-              items={stepItems}
-            />
+        <Col xs={24} lg={9}>
+          <Card className="os-form-card os-mb-6" title="Progress">
+            <StepStrip steps={stepItems} current={current} failed={run?.state === "failed"} />
+          </Card>
+          <Card className="os-form-card" title="Readiness">
+            {p.checks.length === 0 ? (
+              <p className="os-m-0 os-text-sm os-c-tertiary">Choose Check readiness to see whether everything this step needs is in place. Nothing is changed.</p>
+            ) : (
+              <ChecksList checks={p.checks} />
+            )}
           </Card>
         </Col>
       </Row>
 
       {run && (
-        <div className="os-mb-6">
-          <div className="os-flex os-items-center os-justify-between os-gap-4 os-wrap os-mb-4">
-            <div className="os-flex os-items-center os-gap-2">
-              <h2 className="os-workflow-run__title">This run</h2>
-              <Tag color={RUN_STATE_TAG[run.state].color} variant="filled">{RUN_STATE_TAG[run.state].label}</Tag>
+        <div className="os-section os-mb-6">
+          <div className="os-section__header os-tt-head">
+            <div>
+              <h2 className="os-section__title">Proposal</h2>
+              <p className="os-text-sm os-c-secondary os-m-0">
+                {run.state === "proposed" ? "Nothing is saved yet. Adjust any editable cells, then apply." : "What this run worked out."}
+              </p>
             </div>
             <div className="os-flex os-gap-2">
               {run.state === "proposed" && (
@@ -119,11 +110,13 @@ export default function WorkflowPage({ workflowKey, backTo = "/year-end", backLa
               {run.state === "applied" && <Button danger icon={<UndoOutlined />} onClick={() => setConfirm("revert")}>Revert</Button>}
             </div>
           </div>
-          <ProposalView run={run} onEdit={p.editCell} editingRow={p.editingRow} />
+          <div className="os-section__body">
+            <ProposalView run={run} onEdit={p.editCell} editingRow={p.editingRow} />
+          </div>
         </div>
       )}
 
-      <Card className="os-dash-card" title="History">
+      <Card className="os-dash-card is-flush" title="History">
         <RunHistory runs={p.history.data ?? []} onOpen={p.openRun} />
       </Card>
 
