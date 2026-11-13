@@ -905,3 +905,11 @@
 .os-workflow-head__row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
 .os-workflow-run__title { margin: 0; color: var(--os-text-primary); font-size: 1.125rem; font-weight: 500; }
 .os-workflow-trace.ant-collapse { background: var(--os-layer); }
+
+// Clickable antd Card (e.g. marks overview class cards): pointer and a focus ring, no hover lift.
+.os-click-card.ant-card {
+  cursor: pointer;
+  border-radius: 0.625rem;
+  .ant-card-body { padding: 1rem 1.25rem; }
+  &:focus-visible { outline: 2px solid var(--os-accent); outline-offset: 2px; }
+}

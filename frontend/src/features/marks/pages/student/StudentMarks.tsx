@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Select, SelectItem } from "@carbon/react";
+import SelectField from "@/shared/ui/SelectField";
 import { useMyMarks } from "@/features/students/queries/useStudentSelf";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useTerms } from "@/features/school/queries/useTerms";
@@ -19,10 +19,15 @@ export default function StudentMarks() {
   return (
     <div className="os-p-8">
       <SectionCard title={t("marks.termMarks")}>
-        <Select id="my-marks-term" labelText={t("marks.term")} value={termId} onChange={(e) => setTermId(e.target.value)} className="os-max-w-20 os-mb-5">
-          <SelectItem value="" text={t("marks.chooseTerm")} />
-          {terms?.map((term) => <SelectItem key={term.id} value={term.id} text={term.name} />)}
-        </Select>
+        <SelectField
+          id="my-marks-term"
+          label={t("marks.term")}
+          className="os-max-w-20 os-mb-5"
+          placeholder={t("marks.chooseTerm")}
+          value={termId}
+          onChange={setTermId}
+          options={(terms ?? []).map((term) => ({ value: term.id, label: term.name }))}
+        />
         {!termId ? (
           <EmptyState title={t("marks.pickTitle")} description={t("marks.pickDesc")} />
         ) : isLoading ? (

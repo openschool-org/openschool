@@ -30,7 +30,7 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `features/email/` | 2 | 0 |
 | `features/guardians/` | 3 | 3 |
 | `features/leave/` | 8 | 0 |
-| `features/marks/` | 5 | 0 |
+| `features/marks/` | 5 | 5 |
 | `features/notifications/` | 7 | 2 |
 | `features/parent/` | 4 | 2 |
 | `features/portfolio/` | 12 | 5 |
@@ -43,7 +43,7 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `features/teachers/` | 16 | 6 |
 | `features/timetable/` | 21 | 0 |
 | `features/workflows/` | 10 | 10 |
-| **Total** | **235** | **143 (61%)** |
+| **Total** | **235** | **148 (63%)** |
 
 Not counted above: [UI/UX issues](#uiux-issues), [SCSS cleanup](#scss-cleanup) and [build and docs cleanup](#build-and-docs-cleanup).
 
@@ -482,11 +482,11 @@ Paths are relative to `frontend/src/<area>/`.
 
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
-| ⬜ | `components/ClassMarks.tsx` | Select, SelectItem, NumberInput, Button, InlineNotification, Checkbox, Tag | Save |
-| ⬜ | `components/ClassSubjectCard.tsx` | ClickableTile | CheckmarkFilled |
-| ⬜ | `components/MarksEntryTable.tsx` | Checkbox, NumberInput, Tag | - |
-| ⬜ | `pages/student/StudentMarks.tsx` | Select, SelectItem | - |
-| ⬜ | `pages/teacher/TeacherMarks.tsx` | Select, SelectItem, Button, InlineNotification | Save, ArrowLeft |
+| ✅ | `components/ClassMarks.tsx` | Select, SelectItem, NumberInput, Button, InlineNotification, Checkbox, Tag | Save |
+| ✅ | `components/ClassSubjectCard.tsx` | ClickableTile | CheckmarkFilled |
+| ✅ | `components/MarksEntryTable.tsx` | Checkbox, NumberInput, Tag | - |
+| ✅ | `pages/student/StudentMarks.tsx` | Select, SelectItem | - |
+| ✅ | `pages/teacher/TeacherMarks.tsx` | Select, SelectItem, Button, InlineNotification | Save, ArrowLeft |
 
 ### `features/notifications/`
 

@@ -1,6 +1,7 @@
-import { Checkbox, NumberInput, Tag } from "@carbon/react";
+import { Checkbox, InputNumber, Tag } from "antd";
 import type { Student } from "@/features/students/api/student";
 import type { useMarksDraft } from "@/features/marks/hooks/useMarksDraft";
+import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 import { displayName } from "@/shared/lib/name";
 
 interface Props {
@@ -11,8 +12,10 @@ interface Props {
 }
 
 const marksInputId = (studentId: string) => `marks-${studentId}`;
+// Top bar (3.5rem) plus the marks context bar (2.5rem), so the header row pins just below them.
+const STICKY_OFFSET = 96;
 
-// Editable roster; stays a plain table because every row holds form controls.
+// Editable roster with keyboard entry: Enter/↓ next row, ↑ previous row, A marks absent.
 export default function MarksEntryTable({ students, subjectName, maxMarks, draft }: Props) {
   const focusRow = (index: number) => {
     const target = students[index];
@@ -34,6 +37,55 @@ export default function MarksEntryTable({ students, subjectName, maxMarks, draft
     }
   };
 
+  const position = new Map(students.map((st, i) => [st.id, i]));
+
+  const columns: GridColumn<Student>[] = [
+    { key: "n", header: "#", render: (st) => <span className="os-table__muted">{(position.get(st.id) ?? 0) + 1}</span> },
+    { key: "name", header: "Student name", render: (st) => <span className="os-fw-500" title={st.full_name}>{displayName(st)}</span> },
+    { key: "index", header: "Index number", render: (st) => <span className="os-table__mono">{st.index_number}</span> },
+    {
+      key: "marks",
+      header: "Marks",
+      render: (st) => {
+        const row = draft.get(st.id);
+        return (
+          <InputNumber
+            id={marksInputId(st.id)}
+            aria-label={`Marks for ${displayName(st)}`}
+            size="small"
+            controls={false}
+            className="os-w-8"
+            min={0}
+            max={maxMarks}
+            value={row.marks}
+            disabled={row.isAbsent}
+            onChange={(v) => draft.setMarks(st.id, typeof v === "number" ? v : 0)}
+            onKeyDown={(e) => handleKeyDown(e, position.get(st.id) ?? 0)}
+          />
+        );
+      },
+    },
+    {
+      key: "absent",
+      header: "Absent",
+      render: (st) => (
+        <Checkbox id={`absent-${st.id}`} checked={draft.get(st.id).isAbsent} onChange={(e) => draft.setAbsent(st.id, e.target.checked)}>
+          AB
+        </Checkbox>
+      ),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (st) => (
+        <span className="os-flex os-gap-1">
+          {draft.get(st.id).isAbsent && <Tag color="error" variant="filled">AB</Tag>}
+          {draft.isUnsaved(st.id) && <Tag color="processing" variant="filled">Unsaved</Tag>}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <>
       <div className="os-marks-context-bar">
@@ -41,51 +93,7 @@ export default function MarksEntryTable({ students, subjectName, maxMarks, draft
         <span>Max marks: <strong>{maxMarks}</strong></span>
         <span className="os-c-tertiary">Enter/↓ next row · ↑ previous row · A marks absent</span>
       </div>
-      <table className="os-table os-table--sticky-head">
-        <thead>
-          <tr>
-            <th className="os-w-3">#</th>
-            <th>Student name</th>
-            <th>Index number</th>
-            <th className="os-w-8">Marks</th>
-            <th className="os-w-5">Absent</th>
-            <th className="os-w-7">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {students.map((student, i) => {
-            const row = draft.get(student.id);
-            return (
-              <tr key={student.id}>
-                <td className="os-table__muted">{i + 1}</td>
-                <td className="os-fw-500" title={student.full_name}>{displayName(student)}</td>
-                <td className="os-table__mono">{student.index_number}</td>
-                <td>
-                  <NumberInput
-                    id={marksInputId(student.id)}
-                    label=""
-                    min={0}
-                    max={maxMarks}
-                    value={row.marks}
-                    disabled={row.isAbsent}
-                    onChange={(_e, { value }) => draft.setMarks(student.id, Number(value))}
-                    onKeyDown={(e) => handleKeyDown(e, i)}
-                    size="sm"
-                    hideSteppers
-                  />
-                </td>
-                <td>
-                  <Checkbox id={`absent-${student.id}`} labelText="AB" checked={row.isAbsent} onChange={(_e, { checked }) => draft.setAbsent(student.id, checked)} />
-                </td>
-                <td>
-                  {row.isAbsent && <Tag type="red" size="sm">AB</Tag>}
-                  {draft.isUnsaved(student.id) && <Tag type="high-contrast" size="sm">Unsaved</Tag>}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <DataGrid rows={students} columns={columns} getRowId={(st) => st.id} pagination={false} noHover stickyOffset={STICKY_OFFSET} />
     </>
   );
 }
