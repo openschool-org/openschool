@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@carbon/react";
+import { Button } from "antd";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 import ListState from "@/shared/ui/ListState";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
@@ -39,7 +39,7 @@ export default function LeaveRequestsTable({ year, search, status, leaveType }: 
       header: "Actions",
       align: "end",
       render: (r) => (
-        <Button kind={r.status === "pending" ? "tertiary" : "ghost"} size="sm" onClick={() => setReviewing(r.id)}>
+        <Button type={r.status === "pending" ? "default" : "text"} size="small" onClick={() => setReviewing(r.id)}>
           {r.status === "pending" ? "Review" : "View"}
         </Button>
       ),

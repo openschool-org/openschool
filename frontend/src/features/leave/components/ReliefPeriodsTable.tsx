@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { InlineNotification, Select, SelectItem, SkeletonText } from "@carbon/react";
+import { Alert, Select, Skeleton } from "antd";
+import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 import type { AffectedPeriod, ReliefCandidate } from "@/features/leave/api/leave";
 import { periodKey } from "@/features/leave/hooks/useLeaveForm";
 import { useReliefCandidates } from "@/features/leave/queries/useLeave";
@@ -20,87 +21,66 @@ export default function ReliefPeriodsTable({ periods, truncated, isLoading, reli
   const slots = useMemo(() => [...new Set(periods.map(slotKey))], [periods]);
   const candidates = useReliefCandidates(slots);
   const bySlot = useMemo(() => new Map((candidates.data ?? []).map((s) => [slotKey(s), s.candidates])), [candidates.data]);
-  if (isLoading) return <SkeletonText paragraph lineCount={3} />;
+  if (isLoading) return <Skeleton active title={false} paragraph={{ rows: 3 }} />;
   if (periods.length === 0) {
     return <p className="os-text-sm os-c-secondary">You have no timetabled periods in this time, so no relief is needed.</p>;
   }
+  // A teacher can't take two classes in the same period, so each picker hides teachers already chosen for that slot.
+  const candidatesFor = (p: AffectedPeriod) =>
+    (bySlot.get(slotKey(p)) ?? []).filter((candidate) =>
+      candidate.id === relief[periodKey(p)] || !periods.some((other) => slotKey(other) === slotKey(p) && periodKey(other) !== periodKey(p) && relief[periodKey(other)] === candidate.id),
+    );
+
+  const columns: GridColumn<AffectedPeriod>[] = [
+    { key: "date", header: "Date", render: (p) => <span className="os-table__mono">{formatDate(p.date)}</span> },
+    { key: "period", header: "Period", render: (p) => <>{p.period_number}{p.start_time ? ` (${p.start_time}-${p.end_time})` : ""}</> },
+    { key: "class", header: "Class", render: (p) => p.class_name },
+    { key: "subject", header: "Subject", render: (p) => <span className="os-table__muted">{p.subject_name || "-"}</span> },
+    {
+      key: "relief",
+      header: "Relief teacher",
+      render: (p) => <ReliefPicker period={p} candidates={candidatesFor(p)} isLoading={candidates.isLoading} value={relief[periodKey(p)] ?? ""} onPick={(id) => onPick(periodKey(p), id)} />,
+    },
+  ];
+
   return (
     <>
       {truncated && (
-        <InlineNotification
-          kind="info"
-          lowContrast
-          hideCloseButton
-          className="os-mb-4 os-max-w-full"
+        <Alert
+          type="info"
+          showIcon
+          className="os-mb-4"
           title="Long leave"
-          subtitle="Only the first two weeks of periods are listed. Name an acting teacher above; the Principal arranges relief after that."
+          description="Only the first two weeks of periods are listed. Name an acting teacher above; the Principal arranges relief after that."
         />
       )}
-      <div className="os-table-scroll">
-        <table className="os-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Period</th>
-              <th>Class</th>
-              <th>Subject</th>
-              <th>Relief teacher</th>
-            </tr>
-          </thead>
-          <tbody>
-            {periods.map((p) => (
-              <ReliefRow
-                key={periodKey(p)}
-                period={p}
-                candidates={(bySlot.get(slotKey(p)) ?? []).filter((candidate) =>
-                  candidate.id === relief[periodKey(p)] || !periods.some((other) =>
-                    slotKey(other) === slotKey(p) && periodKey(other) !== periodKey(p) && relief[periodKey(other)] === candidate.id,
-                  ),
-                )}
-                isLoading={candidates.isLoading}
-                value={relief[periodKey(p)] ?? ""}
-                onPick={(id) => onPick(periodKey(p), id)}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataGrid rows={periods} columns={columns} getRowId={periodKey} pagination={false} noHover />
     </>
   );
 }
 
-interface RowProps {
+interface PickerProps {
   period: AffectedPeriod;
-  candidates?: ReliefCandidate[];
+  candidates: ReliefCandidate[];
   isLoading: boolean;
   value: string;
   onPick: (id: string) => void;
 }
 
-function ReliefRow({ period, candidates, isLoading, value, onPick }: RowProps) {
-  const time = period.start_time ? ` (${period.start_time}-${period.end_time})` : "";
+function ReliefPicker({ period, candidates, isLoading, value, onPick }: PickerProps) {
   return (
-    <tr>
-      <td className="os-table__mono">{formatDate(period.date)}</td>
-      <td>{period.period_number}{time}</td>
-      <td>{period.class_name}</td>
-      <td className="os-table__muted">{period.subject_name || "-"}</td>
-      <td>
-        <Select
-          id={`relief-${period.date}-${period.period_number}-${period.class_id}`}
-          labelText="Relief teacher"
-          hideLabel
-          size="sm"
-          value={value}
-          disabled={isLoading}
-          onChange={(e) => onPick(e.target.value)}
-        >
-          <SelectItem value="" text={isLoading ? "Loading…" : "Leave for the Principal to arrange"} />
-          {(candidates ?? []).map((c) => (
-            <SelectItem key={c.id} value={c.id} text={c.relief_periods > 0 ? `${c.full_name} (${c.relief_periods} relief today)` : c.full_name} />
-          ))}
-        </Select>
-      </td>
-    </tr>
+    <Select
+      id={`relief-${period.date}-${period.period_number}-${period.class_id}`}
+      aria-label={`Relief teacher for period ${period.period_number}, ${period.class_name}`}
+      size="small"
+      className="os-min-w-16"
+      value={value}
+      disabled={isLoading}
+      onChange={(v: string) => onPick(v)}
+      options={[
+        { value: "", label: isLoading ? "Loading…" : "Leave for the Principal to arrange" },
+        ...candidates.map((c) => ({ value: c.id, label: c.relief_periods > 0 ? `${c.full_name} (${c.relief_periods} relief today)` : c.full_name })),
+      ]}
+    />
   );
 }

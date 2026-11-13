@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Select, SelectItem, Tab, TabList, Tabs } from "@carbon/react";
+import { Tabs } from "antd";
+import SelectField from "@/shared/ui/SelectField";
 import FilterBar from "@/shared/ui/FilterBar";
 import ActiveFilterTags from "@/shared/ui/ActiveFilterTags";
 import DateField from "@/shared/ui/DateField";
@@ -25,9 +26,7 @@ export default function LeaveRegister() {
   const yearPicker = {
     label: "Year",
     node: (
-      <Select id="leave-register-year" labelText="Year" hideLabel size="md" value={String(year)} onChange={(e) => setYear(Number(e.target.value))}>
-        {[thisYear + 1, thisYear, thisYear - 1, thisYear - 2].map((y) => <SelectItem key={y} value={String(y)} text={String(y)} />)}
-      </Select>
+      <SelectField id="leave-register-year" label="Year" hideLabel className="os-min-w-7" value={String(year)} onChange={(v) => setYear(Number(v))} options={[thisYear + 1, thisYear, thisYear - 1, thisYear - 2].map((y) => ({ value: String(y), label: String(y) }))} />
     ),
   };
 
@@ -40,11 +39,12 @@ export default function LeaveRegister() {
         </div>
       </div>
 
-      <Tabs selectedIndex={view} onChange={({ selectedIndex }) => setView(selectedIndex)}>
-        <TabList aria-label="Leave register view">
-          {VIEWS.map((v) => <Tab key={v}>{v}</Tab>)}
-        </TabList>
-      </Tabs>
+      <Tabs
+        activeKey={String(view)}
+        onChange={(k) => setView(Number(k))}
+        aria-label="Leave register view"
+        items={VIEWS.map((v, i) => ({ key: String(i), label: v }))}
+      />
 
       <div className="os-section os-mt-4">
         {view === 2 ? (
@@ -63,19 +63,13 @@ export default function LeaveRegister() {
                 {
                   label: "Status",
                   node: (
-                    <Select id="leave-filter-status" labelText="Status" hideLabel size="md" value={filters.status} onChange={(e) => set("status", e.target.value)}>
-                      <SelectItem value="" text="Any status" />
-                      {Object.entries(LEAVE_STATUS_TAGS).map(([value, tag]) => <SelectItem key={value} value={value} text={tag.label} />)}
-                    </Select>
+                    <SelectField id="leave-filter-status" label="Status" hideLabel value={filters.status} onChange={(v) => set("status", v)} options={[{ value: "", label: "Any status" }, ...Object.entries(LEAVE_STATUS_TAGS).map(([value, tag]) => ({ value, label: tag.label }))]} />
                   ),
                 },
                 {
                   label: "Leave type",
                   node: (
-                    <Select id="leave-filter-type" labelText="Leave type" hideLabel size="md" value={filters.type} onChange={(e) => set("type", e.target.value)}>
-                      <SelectItem value="" text="All leave types" />
-                      {LEAVE_TYPES.map((t) => <SelectItem key={t.value} value={t.value} text={t.label} />)}
-                    </Select>
+                    <SelectField id="leave-filter-type" label="Leave type" hideLabel value={filters.type} onChange={(v) => set("type", v)} options={[{ value: "", label: "All leave types" }, ...LEAVE_TYPES.map((t) => ({ value: t.value, label: t.label }))]} />
                   ),
                 },
               ]}

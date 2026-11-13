@@ -29,7 +29,7 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `features/curriculum/` | 16 | 16 |
 | `features/email/` | 2 | 0 |
 | `features/guardians/` | 3 | 3 |
-| `features/leave/` | 8 | 0 |
+| `features/leave/` | 8 | 8 |
 | `features/marks/` | 5 | 5 |
 | `features/notifications/` | 7 | 2 |
 | `features/parent/` | 4 | 2 |
@@ -43,7 +43,7 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `features/teachers/` | 16 | 6 |
 | `features/timetable/` | 21 | 0 |
 | `features/workflows/` | 10 | 10 |
-| **Total** | **235** | **148 (63%)** |
+| **Total** | **235** | **156 (66%)** |
 
 Not counted above: [UI/UX issues](#uiux-issues), [SCSS cleanup](#scss-cleanup) and [build and docs cleanup](#build-and-docs-cleanup).
 
@@ -469,14 +469,14 @@ Paths are relative to `frontend/src/<area>/`.
 
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
-| ⬜ | `components/ApplyLeaveModal.tsx` | Select, SelectItem, TextArea, TextInput | - |
-| ⬜ | `components/LeaveBalanceCards.tsx` | SkeletonText | - |
-| ⬜ | `components/LeaveRequestsTable.tsx` | Button | - |
-| ⬜ | `components/LeaveReviewModal.tsx` | Button, ComposedModal, InlineNotification, ModalBody, ModalFooter, ModalHeader, SkeletonText, TextArea | - |
-| ⬜ | `components/LeaveStatusTag.tsx` | Tag | - |
-| ⬜ | `components/ReliefPeriodsTable.tsx` | InlineNotification, Select, SelectItem, SkeletonText | - |
-| ⬜ | `pages/admin/LeaveRegister.tsx` | Select, SelectItem, Tab, TabList, Tabs | - |
-| ⬜ | `pages/teacher/MyLeave.tsx` | Button, Select, SelectItem | Add |
+| ✅ | `components/ApplyLeaveModal.tsx` | Select, SelectItem, TextArea, TextInput | - |
+| ✅ | `components/LeaveBalanceCards.tsx` | SkeletonText | - |
+| ✅ | `components/LeaveRequestsTable.tsx` | Button | - |
+| ✅ | `components/LeaveReviewModal.tsx` | Button, ComposedModal, InlineNotification, ModalBody, ModalFooter, ModalHeader, SkeletonText, TextArea | - |
+| ✅ | `components/LeaveStatusTag.tsx` | Tag | - |
+| ✅ | `components/ReliefPeriodsTable.tsx` | InlineNotification, Select, SelectItem, SkeletonText | - |
+| ✅ | `pages/admin/LeaveRegister.tsx` | Select, SelectItem, Tab, TabList, Tabs | - |
+| ✅ | `pages/teacher/MyLeave.tsx` | Button, Select, SelectItem | Add |
 
 ### `features/marks/`
 
