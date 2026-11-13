@@ -913,3 +913,6 @@
   .ant-card-body { padding: 1rem 1.25rem; }
   &:focus-visible { outline: 2px solid var(--os-accent); outline-offset: 2px; }
 }
+
+// Notification inbox: unread rows get a neutral tint (not teal) next to the unread dot.
+.os-notif-row--unread { background: var(--os-canvas); }

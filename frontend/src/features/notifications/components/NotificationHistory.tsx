@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Select, SelectItem, Tag } from "@carbon/react";
+import { Tag } from "antd";
+import SelectField from "@/shared/ui/SelectField";
 import { useNotificationHistory } from "@/features/notifications/queries/useNotifications";
 import { CATEGORIES, PRIORITIES } from "@/features/notifications/api/notification";
-import { NOTIFICATION_PRIORITY_TAG as PRIORITY_TAG } from "@/shared/lib/constants/tags";
+import { NOTIFICATION_PRIORITY_COLOR } from "@/shared/lib/constants/tags";
 import { useListFilters } from "@/shared/hooks/useListFilters";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
 import { formatDateTime } from "@/shared/lib/date";
@@ -46,19 +47,13 @@ export default function NotificationHistory() {
             {
               label: "Category",
               node: (
-                <Select id="history-category" labelText="Category" hideLabel value={filters.category} onChange={(e) => update("category", e.target.value)}>
-                  <SelectItem value="" text="All categories" />
-                  {CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value} text={c.label} />)}
-                </Select>
+                <SelectField id="history-category" label="Category" hideLabel value={filters.category} onChange={(v) => update("category", v)} options={[{ value: "", label: "All categories" }, ...CATEGORIES.map((c) => ({ value: c.value, label: c.label }))]} />
               ),
             },
             {
               label: "Priority",
               node: (
-                <Select id="history-priority" labelText="Priority" hideLabel value={filters.priority} onChange={(e) => update("priority", e.target.value)}>
-                  <SelectItem value="" text="All priorities" />
-                  {PRIORITIES.map((p) => <SelectItem key={p.value} value={p.value} text={p.label} />)}
-                </Select>
+                <SelectField id="history-priority" label="Priority" hideLabel value={filters.priority} onChange={(v) => update("priority", v)} options={[{ value: "", label: "All priorities" }, ...PRIORITIES.map((p) => ({ value: p.value, label: p.label }))]} />
               ),
             },
             { label: "From", node: <DateField id="history-from" labelText="From" hideLabel placeholder="From" value={filters.from} maxDate={filters.to || undefined} onChange={(v) => update("from", v)} /> },
@@ -96,8 +91,8 @@ export default function NotificationHistory() {
               header: "Title",
               render: (n) => (
                 <div>
-                  <span className="os-fw-600">{n.title}</span>
-                  {n.priority !== "normal" && <Tag type={PRIORITY_TAG[n.priority]} size="sm" className="os-ml-2">{n.priority}</Tag>}
+                  <span className="os-fw-500">{n.title}</span>
+                  {n.priority !== "normal" && <Tag color={NOTIFICATION_PRIORITY_COLOR[n.priority]} variant="filled" className="os-ml-2">{n.priority}</Tag>}
                   <p className="os-m-0 os-text-sm os-c-secondary os-truncate os-clamp-2">{n.message}</p>
                 </div>
               ),

@@ -31,7 +31,7 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `features/guardians/` | 3 | 3 |
 | `features/leave/` | 8 | 8 |
 | `features/marks/` | 5 | 5 |
-| `features/notifications/` | 7 | 2 |
+| `features/notifications/` | 7 | 7 |
 | `features/parent/` | 4 | 2 |
 | `features/portfolio/` | 12 | 5 |
 | `features/positions/` | 2 | 2 |
@@ -43,7 +43,7 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `features/teachers/` | 16 | 6 |
 | `features/timetable/` | 21 | 0 |
 | `features/workflows/` | 10 | 10 |
-| **Total** | **235** | **156 (66%)** |
+| **Total** | **235** | **161 (69%)** |
 
 Not counted above: [UI/UX issues](#uiux-issues), [SCSS cleanup](#scss-cleanup) and [build and docs cleanup](#build-and-docs-cleanup).
 
@@ -493,12 +493,12 @@ Paths are relative to `frontend/src/<area>/`.
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
 | ✅ | `components/AgentFindingsBanner.tsx` | ActionableNotification, Tag | - |
-| ⬜ | `components/DraftRow.tsx` | Button, InlineNotification | Send, TrashCan |
-| ⬜ | `components/NotificationHistory.tsx` | Select, SelectItem, Tag | - |
+| ✅ | `components/DraftRow.tsx` | Button, InlineNotification | Send, TrashCan |
+| ✅ | `components/NotificationHistory.tsx` | Select, SelectItem, Tag | - |
 | ✅ | `components/NotificationsBell.tsx` | - | - |
-| ⬜ | `components/RecipientPicker.tsx` | Button, Dropdown | Add |
-| ⬜ | `pages/NotificationCenter.tsx` | Tag, Dropdown, Button, Pagination | Archive, ArrowUpRight, Search |
-| ⬜ | `pages/NotificationComposer.tsx` | Button, TextInput, TextArea, Dropdown, Tag, InlineNotification, ComposedModal, ModalBody, ModalHeader | Send, Save |
+| ✅ | `components/RecipientPicker.tsx` | Button, Dropdown | Add |
+| ✅ | `pages/NotificationCenter.tsx` | Tag, Dropdown, Button, Pagination | Archive, ArrowUpRight, Search |
+| ✅ | `pages/NotificationComposer.tsx` | Button, TextInput, TextArea, Dropdown, Tag, InlineNotification, ComposedModal, ModalBody, ModalHeader | Send, Save |
 
 ### `features/parent/`
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button, InlineNotification } from "@carbon/react";
-import { Send, TrashCan } from "@carbon/icons-react";
+import { Alert, Button } from "antd";
+import { DeleteOutlined, SendOutlined } from "@ant-design/icons";
 import { useSendNotificationDraft, useDeleteNotificationDraft } from "@/features/notifications/queries/useNotifications";
 import type { Notification } from "@/features/notifications/api/notification";
 import { getErrorMessage } from "@/shared/api/errors";
@@ -21,30 +21,18 @@ export default function DraftRow({ draft }: { draft: Notification }) {
           <p className="os-mt-0 os-mx-0 os-mb-h os-fw-500 os-text-sm">{draft.title}</p>
           <p className="os-m-0 os-text-xs os-c-tertiary">{draft.recipient_rules.length} recipient rule(s)</p>
         </div>
-        <Button kind="ghost" size="sm" renderIcon={Send} onClick={() => send.mutate(draft.id)} disabled={busy}>
+        <Button type="text" size="small" icon={<SendOutlined />} onClick={() => send.mutate(draft.id)} disabled={busy} loading={send.isPending}>
           Send
         </Button>
-        <Button kind="danger--ghost" size="sm" renderIcon={TrashCan} onClick={() => setConfirmingDelete(true)} disabled={busy}>
+        <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => setConfirmingDelete(true)} disabled={busy}>
           Delete
         </Button>
       </div>
       {send.isError && (
-        <InlineNotification
-          kind="error"
-          title="Could not send draft"
-          subtitle={getErrorMessage(send.error)}
-          lowContrast
-          onClose={() => send.reset()} className="os-mt-2 os-max-w-full"
-        />
+        <Alert type="error" showIcon closable onClose={() => send.reset()} className="os-mt-2" title="Could not send draft" description={getErrorMessage(send.error)} />
       )}
       {remove.isError && (
-        <InlineNotification
-          kind="error"
-          title="Could not delete draft"
-          subtitle={getErrorMessage(remove.error)}
-          lowContrast
-          onClose={() => remove.reset()} className="os-mt-2 os-max-w-full"
-        />
+        <Alert type="error" showIcon closable onClose={() => remove.reset()} className="os-mt-2" title="Could not delete draft" description={getErrorMessage(remove.error)} />
       )}
       <ConfirmDeleteModal
         open={confirmingDelete}
