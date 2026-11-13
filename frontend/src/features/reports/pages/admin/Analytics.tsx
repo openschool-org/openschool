@@ -1,283 +1,58 @@
-/* eslint-disable max-lines */
-import { useMemo, useState } from "react";
-import { SkeletonText, Tabs, TabList, Tab, TabPanels, TabPanel, Button, Tag } from "@carbon/react";
+import { useState } from "react";
+import { Skeleton, Tabs } from "antd";
 import { useDashboardAnalytics, useLeadershipAnalytics } from "@/features/reports/queries/useDashboardAnalytics";
+import StudentsPanel from "@/features/reports/components/analytics/StudentsPanel";
+import { AcademicsPanel, SchoolPanel, StaffPanel } from "@/features/reports/components/analytics/OtherPanels";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
-import { formatShortDayMonth } from "@/shared/lib/date";
-import {
-  Section,
-  StatTile,
-  BarList,
-  Sparkline,
-  TrendSummary,
-  DonutChart,
-} from "@/features/reports/components/ChartPrimitives";
-import { ACCENT, STATUS_COLORS, CHART_BLUE, CHART_PURPLE, CATEGORICAL_PALETTE, GENDER_COLORS } from "@/features/reports/components/chartColors";
-import type { CountRow, AttendanceTrendPoint } from "@/features/reports/api/dashboardAnalytics";
+
+type Tab = "students" | "academics" | "staff" | "school";
+const TABS: { key: Tab; label: string }[] = [
+  { key: "students", label: "Students" },
+  { key: "academics", label: "Academics" },
+  { key: "staff", label: "Staff" },
+  { key: "school", label: "School" },
+];
 
 // scope picks the endpoint: admin analytics, or the Principal / Vice Principal scoped view with the same shape (ADR 0002).
 export default function Analytics({ scope = "admin" }: { scope?: "admin" | "leadership" }) {
   const adminQuery = useDashboardAnalytics(scope === "admin");
   const leadershipQuery = useLeadershipAnalytics(scope === "leadership");
   const { data, isLoading, isError, refetch } = scope === "leadership" ? leadershipQuery : adminQuery;
+  const [tab, setTab] = useState<Tab>("students");
 
   return (
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">Analytics</h1>
-          <p className="os-page__subtitle">Marks, attendance, houses and growth across the school.</p>
+          <p className="os-page__subtitle">Enrolment, marks, attendance and growth across the school.</p>
         </div>
       </div>
 
-      {isLoading && (
-        <div className="os-section">
-          <div className="os-section__body os-p-6">
-            <SkeletonText width="40%" />
-            <SkeletonText width="70%" />
-            <SkeletonText width="55%" />
-          </div>
+      {isLoading ? (
+        <div className="os-stack os-gap-4">
+          <div className="os-stat-grid">{[0, 1, 2, 3].map((i) => <div key={i} className="os-chart-card os-p-6"><Skeleton active title={false} paragraph={{ rows: 2 }} /></div>)}</div>
+          <div className="os-chart-card os-p-6"><Skeleton active paragraph={{ rows: 6 }} /></div>
         </div>
+      ) : isError || !data ? (
+        <div className="os-section"><ErrorMessage message="Could not load analytics." onRetry={refetch} /></div>
+      ) : (
+        <Tabs
+          className="os-detail-tabs"
+          activeKey={tab}
+          onChange={(k) => setTab(k as Tab)}
+          items={TABS.map((t) => ({
+            key: t.key,
+            label: t.label,
+            children:
+              t.key !== tab ? null
+              : t.key === "students" ? <StudentsPanel data={data} />
+              : t.key === "academics" ? <AcademicsPanel data={data} />
+              : t.key === "staff" ? <StaffPanel data={data} />
+              : <SchoolPanel data={data} />,
+          }))}
+        />
       )}
-
-      {!isLoading && (isError || !data) && (
-        <div className="os-section">
-          <div className="os-section__body">
-            <ErrorMessage message="Could not load analytics." onRetry={refetch} />
-          </div>
-        </div>
-      )}
-
-      {!isLoading && data && (
-        <Tabs>
-          <TabList aria-label="Analytics sections">
-            <Tab>Students</Tab>
-            <Tab>Academics</Tab>
-            <Tab>Staff</Tab>
-            <Tab>School</Tab>
-          </TabList>
-          <TabPanels>
-            <TabPanel className="os-p-0">
-              <StudentsPanel data={data} />
-            </TabPanel>
-            <TabPanel className="os-p-0">
-              <AcademicsPanel data={data} />
-            </TabPanel>
-            <TabPanel className="os-p-0">
-              <StaffPanel data={data} />
-            </TabPanel>
-            <TabPanel className="os-p-0">
-              <SchoolPanel data={data} />
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-      )}
-    </div>
-  );
-}
-
-type AnalyticsData = NonNullable<ReturnType<typeof useDashboardAnalytics>["data"]>;
-
-function StudentsPanel({ data }: { data: AnalyticsData }) {
-  const genderRows: CountRow[] = data.student.gender_distribution.map((g) => ({
-    label: g.label ? g.label[0].toUpperCase() + g.label.slice(1) : "Unspecified",
-    count: g.count,
-  }));
-
-  const trendPoints = data.student.attendance_trend.map((t: AttendanceTrendPoint) => ({
-    label: formatShortDayMonth(t.date),
-    pct: t.total_count > 0 ? Math.round((t.present_count / t.total_count) * 100) : 0,
-  }));
-
-  return (
-    <div className="os-my-4 os-mx-0">
-      <div className="os-stat-grid">
-        <StatTile label="Total students" value={data.student.total} color={ACCENT} />
-        <StatTile label="Grades with students" value={data.student.by_grade.filter((row) => row.count > 0).length} color={CHART_BLUE} />
-        <StatTile label="Active classes" value={data.student.by_class.length} color={CHART_PURPLE} />
-      </div>
-
-      <div className="os-grid os-grid-cols-2 os-gap-6 os-mt-6">
-        <Section title="Gender distribution">
-          <DonutChart
-            slices={genderRows.map((r) => ({
-              label: r.label,
-              value: r.count,
-              color: GENDER_COLORS[r.label] ?? "var(--os-text-tertiary)",
-            }))}
-          />
-        </Section>
-        <Section title="House distribution">
-          <DonutChart
-            slices={data.student.house_distribution.map((h, i) => ({
-              label: h.name,
-              value: h.count,
-              color: h.color || CATEGORICAL_PALETTE[i % CATEGORICAL_PALETTE.length],
-            }))}
-          />
-        </Section>
-      </div>
-
-      <StudentEnrollmentSection byGrade={data.student.by_grade} byClass={data.student.by_class} />
-
-      <div className="os-grid os-grid-cols-2 os-gap-6 os-mt-6">
-        <Section title="Attendance trend (last 14 days)">
-          <Sparkline
-            points={trendPoints.map((p) => ({ label: p.label, value: p.pct }))}
-            min={0}
-            max={100}
-            formatValue={(v) => `${v}% present`}
-            emptyMessage="No attendance sessions in the last 14 days."
-          />
-        </Section>
-        <Section title="Enrolment insight">
-          <EnrollmentInsight byGrade={data.student.by_grade} byClass={data.student.by_class} />
-        </Section>
-      </div>
-    </div>
-  );
-}
-
-function StudentEnrollmentSection({ byGrade, byClass }: { byGrade: CountRow[]; byClass: CountRow[] }) {
-  const firstGrade = byGrade.find((row) => row.count > 0)?.label ?? byGrade[0]?.label ?? "";
-  const [selectedGrade, setSelectedGrade] = useState(firstGrade);
-  const effectiveSelectedGrade = byGrade.some((row) => row.label === selectedGrade) ? selectedGrade : firstGrade;
-  const gradeRows = byGrade.map((row) => ({ label: row.label, value: row.count }));
-  const classRows = useMemo(() => {
-    const prefix = `${effectiveSelectedGrade} `;
-    return byClass
-      .filter((row) => row.label.startsWith(prefix))
-      .map((row) => ({ label: row.label.slice(prefix.length), value: row.count }));
-  }, [byClass, effectiveSelectedGrade]);
-  const selectedCount = byGrade.find((row) => row.label === effectiveSelectedGrade)?.count ?? 0;
-
-  return (
-    <Section title="Student enrolment by grade and class">
-      <div className="os-grid os-grid-cols-2 os-gap-6">
-        <div>
-          <div className="os-flex os-items-center os-justify-between os-mb-3">
-            <p className="os-m-0 os-text-xs os-fw-600 os-uppercase os-tracking-wide os-c-secondary">Grades</p>
-            <span className="os-text-xs os-c-tertiary">Select a grade</span>
-          </div>
-          <div className="os-flex os-col os-gap-1h" aria-label="Student counts by grade">
-            {gradeRows.map((row) => (
-              <Button
-                key={row.label}
-                kind={effectiveSelectedGrade === row.label ? "tertiary" : "ghost"}
-                size="sm"
-                className="os-justify-start os-w-full"
-                onClick={() => setSelectedGrade(row.label)}
-                aria-pressed={effectiveSelectedGrade === row.label}
-              >
-                <span className="os-flex os-justify-between os-w-full os-text-left">
-                  <span>{row.label}</span>
-                  <strong>{row.value}</strong>
-                </span>
-              </Button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <div className="os-flex os-items-center os-justify-between os-mb-3">
-            <p className="os-m-0 os-text-xs os-fw-600 os-uppercase os-tracking-wide os-c-secondary">Classes in {effectiveSelectedGrade || "selected grade"}</p>
-            <Tag type="blue" size="sm">{selectedCount} students</Tag>
-          </div>
-          <BarList rows={classRows} color={CHART_BLUE} />
-        </div>
-      </div>
-    </Section>
-  );
-}
-
-function EnrollmentInsight({ byGrade, byClass }: { byGrade: CountRow[]; byClass: CountRow[] }) {
-  const largestGrade = byGrade.reduce<CountRow | null>((largest, row) => (!largest || row.count > largest.count ? row : largest), null);
-  const largestClass = byClass.reduce<CountRow | null>((largest, row) => (!largest || row.count > largest.count ? row : largest), null);
-  if (!largestGrade && !largestClass) return <p className="os-m-0 os-text-sm os-c-tertiary">No enrolment data yet.</p>;
-  return (
-    <div className="os-flex os-col os-gap-4">
-      {largestGrade && <div><p className="os-m-0 os-text-xs os-c-secondary">Largest grade</p><p className="os-m-0 os-text-lg os-fw-600">{largestGrade.label} · {largestGrade.count} students</p></div>}
-      {largestClass && <div><p className="os-m-0 os-text-xs os-c-secondary">Largest class</p><p className="os-m-0 os-text-lg os-fw-600">{largestClass.label} · {largestClass.count} students</p></div>}
-    </div>
-  );
-}
-
-function AcademicsPanel({ data }: { data: AnalyticsData }) {
-  return (
-    <div className="os-my-4 os-mx-0">
-      <div className="os-stat-grid">
-        <StatTile label="Examination average" value={`${data.academic.examination_average}%`} color={ACCENT} />
-        <StatTile label="Students with marks" value={data.academic.students_with_marks} color={CHART_BLUE} />
-        <StatTile label="Overall attendance %" value={`${Math.round(data.academic.attendance_percentage)}%`} color={STATUS_COLORS.present} />
-        <StatTile label="Mark entries this term" value={data.academic.examination_entries} color={CHART_PURPLE} />
-      </div>
-
-      <div className="os-grid os-grid-cols-2 os-gap-6 os-mt-6">
-        <Section title="Marks by subject (avg %, current term)">
-          <BarList
-            rows={data.academic.subject_performance.map((r) => ({ label: r.label, value: r.average_percentage }))}
-            formatValue={(v) => `${v}%`}
-          />
-        </Section>
-        <Section title="Marks by grade (avg %, current term)">
-          <BarList
-            rows={data.academic.grade_wise_performance.map((r) => ({ label: r.label, value: r.average_percentage }))}
-            color={CHART_BLUE}
-            formatValue={(v) => `${v}%`}
-          />
-        </Section>
-      </div>
-
-      <div className="os-mt-6">
-        <Section title="Marks by class (avg %, current term)">
-          <BarList
-            rows={data.academic.class_wise_performance.map((r) => ({ label: r.label, value: r.average_percentage }))}
-            color={STATUS_COLORS.present}
-            formatValue={(v) => `${v}%`}
-          />
-        </Section>
-      </div>
-    </div>
-  );
-}
-
-function StaffPanel({ data }: { data: AnalyticsData }) {
-  return (
-    <div className="os-my-4 os-mx-0">
-      <div className="os-stat-grid">
-        <StatTile label="Academic staff" value={data.staff.academic_staff_count} color={ACCENT} />
-        <StatTile label="Non-academic staff" value={data.staff.non_academic_staff_count} color={CHART_PURPLE} />
-      </div>
-
-      <div className="os-grid os-grid-cols-2 os-gap-6 os-mt-6">
-        <Section title="Staff attendance this month">
-          <DonutChart
-            slices={[
-              { label: "Present", value: data.staff.attendance_this_month.present_count, color: STATUS_COLORS.present },
-              { label: "Late", value: data.staff.attendance_this_month.late_count, color: STATUS_COLORS.late },
-              { label: "Absent", value: data.staff.attendance_this_month.absent_count, color: STATUS_COLORS.absent },
-              { label: "Leave", value: data.staff.attendance_this_month.leave_count, color: STATUS_COLORS.leave },
-            ]}
-          />
-        </Section>
-        <TrendSummary title="Staff growth by joining year" points={data.school.staff_growth} color={CHART_PURPLE} />
-      </div>
-    </div>
-  );
-}
-
-function SchoolPanel({ data }: { data: AnalyticsData }) {
-  return (
-    <div className="os-my-4 os-mx-0">
-      <div className="os-stat-grid">
-        <StatTile label="Notifications sent" value={data.school.notifications_sent_count} color={CHART_BLUE} />
-        <StatTile label="Timetable completion" value={`${Math.round(data.school.timetable_completion_pct)}%`} color={STATUS_COLORS.present} />
-        <StatTile label="Total classes" value={data.school.total_classes} color={ACCENT} />
-        <StatTile label="Published timetables" value={data.school.published_classes} color={CHART_PURPLE} />
-      </div>
-
-      <div className="os-mt-6">
-        <TrendSummary title="Student growth by year" points={data.school.student_growth} color={ACCENT} />
-      </div>
     </div>
   );
 }

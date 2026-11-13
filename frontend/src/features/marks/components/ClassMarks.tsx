@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { Select, SelectItem, NumberInput, Button, InlineNotification, Checkbox, Tag } from "@carbon/react";
-import { Save } from "@carbon/icons-react";
+import { Alert, Button, Checkbox, InputNumber, Tag } from "antd";
+import { SaveOutlined } from "@ant-design/icons";
+import type { ClassMarkRow } from "@/features/marks/api/termMark";
+import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
+import SelectField from "@/shared/ui/SelectField";
 import { useTerms, useCurrentTerm } from "@/features/school/queries/useTerms";
 import { useSubjects } from "@/features/curriculum/queries/useSubjects";
 import { useClassSubjectTeachers } from "@/features/academics/queries/useClasses";
@@ -56,6 +59,63 @@ export default function ClassMarks({
     setSyncedFor(rowsKey);
   }
 
+  type Entry = { marks: number; max_marks: number; is_absent: boolean };
+  const update = (studentId: string, patch: Partial<Entry>) => setDraft((d) => ({ ...d, [studentId]: { ...d[studentId], ...patch } }));
+
+  const columns: GridColumn<ClassMarkRow>[] = [
+    { key: "index", header: "Index no.", render: (r) => <span className="os-table__mono">{r.index_number}</span> },
+    {
+      key: "student",
+      header: "Student",
+      render: (r) => <>{r.student_name}{draft[r.student_id]?.is_absent && <Tag color="error" variant="filled" className="os-ml-2">AB</Tag>}</>,
+    },
+    {
+      key: "marks",
+      header: "Marks",
+      render: (r) => (
+        <InputNumber
+          id={`marks-${r.student_id}`}
+          aria-label={`Marks for ${r.student_name}`}
+          size="small"
+          className="os-w-8"
+          min={0}
+          max={draft[r.student_id]?.max_marks ?? 100}
+          value={draft[r.student_id]?.marks ?? 0}
+          disabled={draft[r.student_id]?.is_absent ?? false}
+          onChange={(v) => update(r.student_id, { marks: typeof v === "number" ? v : 0 })}
+        />
+      ),
+    },
+    {
+      key: "max",
+      header: "Out of",
+      render: (r) => (
+        <InputNumber
+          id={`max-marks-${r.student_id}`}
+          aria-label={`Maximum marks for ${r.student_name}`}
+          size="small"
+          className="os-w-8"
+          min={1}
+          value={draft[r.student_id]?.max_marks ?? 100}
+          onChange={(v) => update(r.student_id, { max_marks: typeof v === "number" ? v : 100 })}
+        />
+      ),
+    },
+    {
+      key: "absent",
+      header: "Absent",
+      render: (r) => (
+        <Checkbox
+          id={`absent-${r.student_id}`}
+          checked={draft[r.student_id]?.is_absent ?? false}
+          onChange={(e) => update(r.student_id, { is_absent: e.target.checked, marks: e.target.checked ? 0 : draft[r.student_id]?.marks ?? 0 })}
+        >
+          AB
+        </Checkbox>
+      ),
+    },
+  ];
+
   const handleSave = () => {
     if (!effectiveTermId || !subjectId) return;
     saveMarks.mutate({
@@ -74,22 +134,16 @@ export default function ClassMarks({
           className="os-wrap os-gap-3"
           meta={
             <div className="os-flex os-gap-3 os-wrap">
-              <Select
+              <SelectField
                 id="marks-term"
-                labelText="Term"
+                label="Term"
                 hideLabel
-                size="sm"
+                placeholder="Choose a term…"
+                className="os-min-w-12"
                 value={effectiveTermId}
-                onChange={(e) => {
-                  setTermId(e.target.value);
-                  setTermTouched(true);
-                }}
-              >
-                <SelectItem value="" text="Choose a term…" />
-                {terms?.map((t) => (
-                  <SelectItem key={t.id} value={t.id} text={t.is_current ? `${t.name} (current)` : t.name} />
-                ))}
-              </Select>
+                onChange={(v) => { setTermId(v); setTermTouched(true); }}
+                options={(terms ?? []).map((t) => ({ value: t.id, label: t.is_current ? `${t.name} (current)` : t.name }))}
+              />
               <div className="os-min-w-12">
                 <EntityCombobox
                   id="marks-subject"
@@ -122,100 +176,11 @@ export default function ClassMarks({
               onClose={() => saveMarks.reset()} className="os-mt-0 os-mx-6 os-mb-4"
             />
             {saveMarks.isSuccess && (
-              <InlineNotification
-                kind="success"
-                title="Marks saved"
-                lowContrast
-                onClose={() => saveMarks.reset()} className="os-max-w-full os-mt-0 os-mx-6 os-mb-4"
-              />
+              <Alert type="success" showIcon closable onClose={() => saveMarks.reset()} className="os-mt-0 os-mx-6 os-mb-4" title="Marks saved" />
             )}
-            <table className="os-table os-table--no-hover">
-              <thead>
-                <tr>
-                  <th>Index no.</th>
-                  <th>Student</th>
-                  <th className="os-w-8">Marks</th>
-                  <th className="os-w-8">Out of</th>
-                  <th className="os-w-5">Absent</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => {
-                  const isAbsent = draft[r.student_id]?.is_absent ?? false;
-                  return (
-                  <tr key={r.student_id}>
-                    <td className="os-table__mono">{r.index_number}</td>
-                    <td>{r.student_name}{isAbsent && <Tag type="red" size="sm" className="os-ml-2">AB</Tag>}</td>
-                    <td>
-                      <NumberInput
-                        id={`marks-${r.student_id}`}
-                        label=""
-                        hideLabel
-                        size="sm"
-                        min={0}
-                        max={draft[r.student_id]?.max_marks ?? 100}
-                        value={draft[r.student_id]?.marks ?? 0}
-                        disabled={isAbsent}
-                        onChange={(_e, { value }) =>
-                          setDraft((d) => ({
-                            ...d,
-                            [r.student_id]: {
-                              ...d[r.student_id],
-                              marks: value === "" ? 0 : Number(value),
-                            },
-                          }))
-                        }
-                      />
-                    </td>
-                    <td>
-                      <NumberInput
-                        id={`max-marks-${r.student_id}`}
-                        label=""
-                        hideLabel
-                        size="sm"
-                        min={1}
-                        value={draft[r.student_id]?.max_marks ?? 100}
-                        onChange={(_e, { value }) =>
-                          setDraft((d) => ({
-                            ...d,
-                            [r.student_id]: {
-                              ...d[r.student_id],
-                              max_marks: value === "" ? 100 : Number(value),
-                            },
-                          }))
-                        }
-                      />
-                    </td>
-                    <td>
-                      <Checkbox
-                        id={`absent-${r.student_id}`}
-                        labelText="AB"
-                        checked={isAbsent}
-                        onChange={(_e, { checked }) =>
-                          setDraft((d) => ({
-                            ...d,
-                            [r.student_id]: {
-                              ...d[r.student_id],
-                              marks: checked ? 0 : d[r.student_id]?.marks ?? 0,
-                              is_absent: checked,
-                            },
-                          }))
-                        }
-                      />
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <DataGrid rows={rows} columns={columns} getRowId={(r) => r.student_id} pagination={false} noHover />
             <div className="os-py-4 os-px-6 os-border-t">
-              <Button
-                renderIcon={Save}
-                kind="primary"
-                size="sm"
-                onClick={handleSave}
-                disabled={saveMarks.isPending}
-              >
+              <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saveMarks.isPending}>
                 {saveMarks.isPending ? "Saving…" : "Save marks"}
               </Button>
             </div>

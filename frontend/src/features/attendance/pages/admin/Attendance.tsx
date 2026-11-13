@@ -1,15 +1,14 @@
 import { useState } from "react";
-import { Link } from "react-router";
-import { EventSchedule, CheckmarkFilled, WarningFilled, AddAlt } from "@carbon/icons-react";
-import { Button, Tag } from "@carbon/react";
+import { Button, Tag } from "antd";
+import { CheckCircleFilled, ExclamationCircleFilled, PlusCircleOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
 import { useDailySessions, useDeleteSession, useCreateSession } from "@/features/attendance/queries/useAttendance";
 import { useCurrentClasses } from "@/features/academics/queries/useClasses";
 import { useRole } from "@/shared/auth/useRole";
 import type { DailySession } from "@/features/attendance/api/attendance";
-import { todayISODate, isLockedAfter24Hours, formatDate } from "@/shared/lib/date";
+import { todayISODate, isLockedAfter24Hours, formatLongDate } from "@/shared/lib/date";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
-import StatCardSkeleton from "@/shared/ui/StatCardSkeleton";
 import SectionHeader from "@/shared/ui/SectionHeader";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import EmptyState from "@/shared/ui/EmptyState";
@@ -68,11 +67,10 @@ export default function Attendance() {
         const isMarked = s.marked_count > 0;
         return (
           <div className="os-flex os-gap-1h os-wrap">
-            <Tag type={isMarked ? "blue" : "gray"} size="sm">
-              {isMarked ? <CheckmarkFilled size={12} className="os-mr-1 os-align-middle" /> : <WarningFilled size={12} className="os-mr-1 os-align-middle" />}
+            <Tag color={isMarked ? "success" : "warning"} variant="filled" icon={isMarked ? <CheckCircleFilled /> : <ExclamationCircleFilled />}>
               {isMarked ? "Marked" : "Pending"}
             </Tag>
-            {isLockedAfter24Hours(s.created_at) && <Tag type="magenta" size="sm">Locked</Tag>}
+            {isLockedAfter24Hours(s.created_at) && <Tag color="magenta" variant="filled">Locked</Tag>}
           </div>
         );
       },
@@ -85,10 +83,10 @@ export default function Attendance() {
         const readOnly = s.marked_count > 0 || (isLockedAfter24Hours(s.created_at) && !isAdmin);
         return (
           <div className="os-grid__actions os-nowrap-flex">
-            <Button kind={readOnly ? "ghost" : "primary"} size="sm" as={Link} to={`/attendance/sessions/${s.id}/mark`} className={`os-nowrap${readOnly ? " os-c-accent" : ""}`}>
+            <LinkButton to={`/attendance/sessions/${s.id}/mark`} type={readOnly ? "link" : "primary"} size="small">
               {readOnly ? "View" : "Mark"}
-            </Button>
-            <Button kind="danger--ghost" size="sm" className="os-nowrap" onClick={() => setToDelete(s)}>Delete</Button>
+            </LinkButton>
+            <Button type="text" danger size="small" onClick={() => setToDelete(s)}>Delete</Button>
           </div>
         );
       },
@@ -104,12 +102,12 @@ export default function Attendance() {
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">Attendance</h1>
-          <p className="os-page__subtitle">{formatDate(date)}</p>
+          <p className="os-page__subtitle">{formatLongDate(`${date}T00:00:00`)}</p>
         </div>
         <div className="os-min-w-12">
           <DateField value={date} onChange={(ymd) => {
               if (ymd) setDate(ymd);
-            }} id="attendance-date" labelText="Attendance date" hideLabel size="lg" />
+            }} id="attendance-date" labelText="Attendance date" hideLabel />
         </div>
       </div>
 
@@ -117,7 +115,7 @@ export default function Attendance() {
 
       {!isToday && (
         <div className="os-mb-4">
-          <Button kind="ghost" size="sm" onClick={() => setDate(todayISODate())}>
+          <Button type="link" size="small" className="os-p-0" onClick={() => setDate(todayISODate())}>
             Jump to today
           </Button>
         </div>
@@ -125,11 +123,6 @@ export default function Attendance() {
 
       {isLoading ? (
         <>
-          <div className="os-stat-grid os-grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <StatCardSkeleton key={i} />
-            ))}
-          </div>
           <div className="os-section">
             <SectionHeader title="Sessions" />
             <TableSkeleton headers={HEADERS} />
@@ -139,41 +132,27 @@ export default function Attendance() {
         <ErrorMessage message="Could not load sessions for this date." onRetry={refetch} />
       ) : (
         <>
-          <div className="os-stat-grid os-grid-cols-3">
-            <div className="os-stat-card">
-              <p className="os-stat-card__label">
-                <EventSchedule size={14} className="os-fill-accent" /> Sessions
-              </p>
-              <p className="os-stat-card__value">{sessions?.length ?? 0}</p>
-              <p className="os-stat-card__meta">Created for this date</p>
-            </div>
-            <div className="os-stat-card os-border-t-success">
-              <p className="os-stat-card__label">
-                <CheckmarkFilled size={14} className="os-fill-success" /> Marked
-              </p>
-              <p className="os-stat-card__value">{marked}</p>
-              <p className="os-stat-card__meta">At least one record</p>
-            </div>
-            <div className="os-stat-card os-border-t-warning">
-              <p className="os-stat-card__label">
-                <WarningFilled size={14} className="os-fill-warning" /> Pending
-              </p>
-              <p className="os-stat-card__value">{pending}</p>
-              <p className="os-stat-card__meta">No records yet</p>
-            </div>
-          </div>
 
           <div className="os-section">
             <SectionHeader
               title="Sessions"
               meta={
                 missingClasses.length > 0 && (
-                  <Button renderIcon={AddAlt} kind="primary" size="sm" onClick={createAllSessions} disabled={bulkCreating}>
-                    {bulkCreating ? "Creating…" : `Create sessions for all classes (${missingClasses.length})`}
+                  <Button type="primary" icon={<PlusCircleOutlined />} onClick={createAllSessions} loading={bulkCreating}>
+                    {bulkCreating ? "Creating…" : `Create all sessions (${missingClasses.length})`}
                   </Button>
                 )
               }
             />
+            {!!sessions?.length && (
+              <div className="os-att-summary">
+                <div className="os-att-summary__stats">
+                  <span className="os-att-stat"><span className="os-att-stat__dot" aria-hidden="true" />Sessions<strong>{sessions.length}</strong></span>
+                  <span className="os-att-stat"><span className="os-att-stat__dot is-present" aria-hidden="true" />Marked<strong>{marked}</strong></span>
+                  <span className="os-att-stat"><span className="os-att-stat__dot is-late" aria-hidden="true" />Pending<strong>{pending}</strong></span>
+                </div>
+              </div>
+            )}
 
             <MutationErrorNotification
               isError={deleteSession.isError}
@@ -192,9 +171,9 @@ export default function Attendance() {
                     : "Sessions are created from a class's Attendance tab - go to a class to start one."
                 }
                 action={
-                  <Button kind="primary" as={Link} to="/classes">
+                  <LinkButton to="/classes" type="primary">
                     Go to Classes
-                  </Button>
+                  </LinkButton>
                 }
               />
             ) : (

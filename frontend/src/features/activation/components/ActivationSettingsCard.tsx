@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Button, NumberInput, Toggle } from "@carbon/react";
-import { Save } from "@carbon/icons-react";
+import { Button, Card, Switch } from "antd";
+import { SaveOutlined } from "@ant-design/icons";
+import NumberField from "@/shared/ui/NumberField";
 import { useActivationSettings, useUpdateActivationSettings } from "@/features/activation/queries/useActivation";
 import type { ActivationSettings } from "@/features/activation/api/activation";
 import { closesAtFromYmd, opensAtFromYmd, ymdFromClosesAt, ymdFromOpensAt } from "@/features/activation/lib/window";
-import SectionCard from "@/shared/ui/SectionCard";
 import DateField from "@/shared/ui/DateField";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
@@ -61,42 +61,49 @@ export default function ActivationSettingsCard() {
   };
 
   return (
-    <SectionCard
+    <Card
+      className="os-form-card"
       title="Self-activation"
-      meta={<Button renderIcon={Save} kind="primary" size="sm" onClick={save} disabled={update.isPending || !ttlValid || !windowValid}>Save</Button>}
+      extra={<Button type="primary" icon={<SaveOutlined />} onClick={save} loading={update.isPending} disabled={!ttlValid || !windowValid}>Save</Button>}
     >
-      <p className="os-text-sm os-c-secondary os-mt-0 os-mb-4">
-        People can create their own login with a code you issue below. Turned off, nobody of that type can activate and no codes can be generated for them. Admins can still create logins as before.
-      </p>
-      <MutationErrorNotification isError={update.isError} error={update.error} title="Could not save settings" />
-      <div className="os-grid os-grid-cols-2 os-gap-5 os-mb-5">
-        <Toggle id="activation-students" labelText="Students" labelA="Off" labelB="On" toggled={form.student_enabled} onToggle={(on) => set("student_enabled", on)} />
-        <Toggle id="activation-parents" labelText="Guardians" labelA="Off" labelB="On" toggled={form.parent_enabled} onToggle={(on) => set("parent_enabled", on)} />
-        <DateField id="activation-opens" labelText="Opens on (optional)" value={form.opens} onChange={(v) => set("opens", v)} />
-        <DateField
-          id="activation-closes"
-          labelText="Closes after (optional)"
-          value={form.closes}
-          minDate={form.opens || undefined}
-          invalid={!windowValid}
-          invalidText="Must be on or after the opening date."
-          onChange={(v) => set("closes", v)}
-        />
-        <NumberInput
-          id="activation-ttl"
-          label="Codes stay valid for (days)"
-          helperText="Applies to codes generated after saving."
-          min={1}
-          max={90}
-          value={form.code_ttl_days}
-          invalid={!ttlValid}
-          invalidText="Enter a whole number from 1 to 90."
-          onChange={(_e, { value }) => set("code_ttl_days", value === "" ? "" : Number(value))}
-        />
+      <div className="os-stack os-gap-5">
+        <p className="os-text-sm os-c-secondary os-m-0">People create their own login with a code you issue. Admins can still create logins as before.</p>
+        <MutationErrorNotification isError={update.isError} error={update.error} title="Could not save settings" />
+        <div className="os-switch-list">
+          {([["student_enabled", "Students", "Students can activate with a code"], ["parent_enabled", "Guardians", "Guardians can activate with a code"]] as const).map(([key, label, hint]) => (
+            <label key={key} className="os-switch-row" htmlFor={`activation-${key}`}>
+              <span><span className="os-switch-row__label">{label}</span><span className="os-switch-row__hint">{hint}</span></span>
+              <Switch id={`activation-${key}`} checked={form[key]} onChange={(on) => set(key, on)} />
+            </label>
+          ))}
+        </div>
+        <div className="os-settings-grid">
+          <DateField id="activation-opens" labelText="Opens on (optional)" value={form.opens} onChange={(v) => set("opens", v)} />
+          <DateField
+            id="activation-closes"
+            labelText="Closes after (optional)"
+            value={form.closes}
+            minDate={form.opens || undefined}
+            invalid={!windowValid}
+            invalidText="Must be on or after the opening date."
+            onChange={(v) => set("closes", v)}
+          />
+          <NumberField
+            id="activation-ttl"
+            label="Codes stay valid for (days)"
+            helperText="Applies to codes generated after saving."
+            min={1}
+            max={90}
+            value={form.code_ttl_days === "" ? null : form.code_ttl_days}
+            invalid={!ttlValid}
+            invalidText="Enter a whole number from 1 to 90."
+            onChange={(v) => set("code_ttl_days", v ?? "")}
+          />
+        </div>
+        {(form.opens || form.closes) && (
+          <Button type="link" size="small" className="os-p-0 os-self-start" onClick={() => setForm((f) => (f ? { ...f, opens: "", closes: "" } : f))}>Clear dates</Button>
+        )}
       </div>
-      {(form.opens || form.closes) && (
-        <Button kind="ghost" size="sm" onClick={() => setForm((f) => (f ? { ...f, opens: "", closes: "" } : f))}>Clear dates</Button>
-      )}
-    </SectionCard>
+    </Card>
   );
 }

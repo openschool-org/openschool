@@ -24,14 +24,14 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `app/` | 3 | 3 |
 | `features/academics/` | 16 | 16 |
 | `features/activation/` | 8 | 3 |
-| `features/attendance/` | 9 | 0 |
+| `features/attendance/` | 9 | 9 |
 | `features/auth/` | 5 | 5 |
 | `features/curriculum/` | 16 | 16 |
 | `features/email/` | 2 | 0 |
 | `features/guardians/` | 3 | 3 |
-| `features/leave/` | 8 | 0 |
-| `features/marks/` | 5 | 0 |
-| `features/notifications/` | 7 | 2 |
+| `features/leave/` | 8 | 8 |
+| `features/marks/` | 5 | 5 |
+| `features/notifications/` | 7 | 7 |
 | `features/parent/` | 4 | 2 |
 | `features/portfolio/` | 12 | 5 |
 | `features/positions/` | 2 | 2 |
@@ -42,8 +42,8 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `features/system/` | 4 | 1 |
 | `features/teachers/` | 16 | 6 |
 | `features/timetable/` | 21 | 0 |
-| `features/workflows/` | 10 | 0 |
-| **Total** | **235** | **124 (53%)** |
+| `features/workflows/` | 10 | 10 |
+| **Total** | **235** | **161 (69%)** |
 
 Not counted above: [UI/UX issues](#uiux-issues), [SCSS cleanup](#scss-cleanup) and [build and docs cleanup](#build-and-docs-cleanup).
 
@@ -409,15 +409,15 @@ Paths are relative to `frontend/src/<area>/`.
 
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
-| ⬜ | `components/AttendanceHistoryTable.tsx` | Tag | - |
-| ⬜ | `components/StatusButton.tsx` | - | CheckmarkFilled, CloseFilled, Time, Certificate |
-| ⬜ | `components/staff/StaffRosterTable.tsx` | Button, Pagination, Tag | CloseFilled |
-| ⬜ | `components/staff/StaffStatusButton.tsx` | - | CheckmarkFilled, CloseFilled, Time, Renew |
-| ⬜ | `pages/admin/Attendance.tsx` | Button, Tag | EventSchedule, CheckmarkFilled, WarningFilled, AddAlt |
-| ⬜ | `pages/admin/AttendanceMark.tsx` | Button, Tag, InlineNotification, TextInput, Pagination | ArrowLeft, Save, Search, UserMultiple, Warning |
-| ⬜ | `pages/admin/StaffAttendance.tsx` | Tab, TabList, Tabs, Tag, Toggle | - |
-| ⬜ | `pages/teacher/TeacherAttendance.tsx` | Tag | EventSchedule, Search, Time |
-| ⬜ | `pages/teacher/TeacherMyAttendance.tsx` | Button, Tag | ChevronLeft, ChevronRight, CheckmarkFilled, CloseFilled, Time, Renew |
+| ✅ | `components/AttendanceHistoryTable.tsx` | Tag | - |
+| ✅ | `components/StatusButton.tsx` | - | CheckmarkFilled, CloseFilled, Time, Certificate |
+| ✅ | `components/staff/StaffRosterTable.tsx` | Button, Pagination, Tag | CloseFilled |
+| ✅ | `components/staff/StaffStatusButton.tsx` | - | CheckmarkFilled, CloseFilled, Time, Renew |
+| ✅ | `pages/admin/Attendance.tsx` | Button, Tag | EventSchedule, CheckmarkFilled, WarningFilled, AddAlt |
+| ✅ | `pages/admin/AttendanceMark.tsx` | Button, Tag, InlineNotification, TextInput, Pagination | ArrowLeft, Save, Search, UserMultiple, Warning |
+| ✅ | `pages/admin/StaffAttendance.tsx` | Tab, TabList, Tabs, Tag, Toggle | - |
+| ✅ | `pages/teacher/TeacherAttendance.tsx` | Tag | EventSchedule, Search, Time |
+| ✅ | `pages/teacher/TeacherMyAttendance.tsx` | Button, Tag | ChevronLeft, ChevronRight, CheckmarkFilled, CloseFilled, Time, Renew |
 
 ### `features/auth/`
 
@@ -469,36 +469,36 @@ Paths are relative to `frontend/src/<area>/`.
 
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
-| ⬜ | `components/ApplyLeaveModal.tsx` | Select, SelectItem, TextArea, TextInput | - |
-| ⬜ | `components/LeaveBalanceCards.tsx` | SkeletonText | - |
-| ⬜ | `components/LeaveRequestsTable.tsx` | Button | - |
-| ⬜ | `components/LeaveReviewModal.tsx` | Button, ComposedModal, InlineNotification, ModalBody, ModalFooter, ModalHeader, SkeletonText, TextArea | - |
-| ⬜ | `components/LeaveStatusTag.tsx` | Tag | - |
-| ⬜ | `components/ReliefPeriodsTable.tsx` | InlineNotification, Select, SelectItem, SkeletonText | - |
-| ⬜ | `pages/admin/LeaveRegister.tsx` | Select, SelectItem, Tab, TabList, Tabs | - |
-| ⬜ | `pages/teacher/MyLeave.tsx` | Button, Select, SelectItem | Add |
+| ✅ | `components/ApplyLeaveModal.tsx` | Select, SelectItem, TextArea, TextInput | - |
+| ✅ | `components/LeaveBalanceCards.tsx` | SkeletonText | - |
+| ✅ | `components/LeaveRequestsTable.tsx` | Button | - |
+| ✅ | `components/LeaveReviewModal.tsx` | Button, ComposedModal, InlineNotification, ModalBody, ModalFooter, ModalHeader, SkeletonText, TextArea | - |
+| ✅ | `components/LeaveStatusTag.tsx` | Tag | - |
+| ✅ | `components/ReliefPeriodsTable.tsx` | InlineNotification, Select, SelectItem, SkeletonText | - |
+| ✅ | `pages/admin/LeaveRegister.tsx` | Select, SelectItem, Tab, TabList, Tabs | - |
+| ✅ | `pages/teacher/MyLeave.tsx` | Button, Select, SelectItem | Add |
 
 ### `features/marks/`
 
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
-| ⬜ | `components/ClassMarks.tsx` | Select, SelectItem, NumberInput, Button, InlineNotification, Checkbox, Tag | Save |
-| ⬜ | `components/ClassSubjectCard.tsx` | ClickableTile | CheckmarkFilled |
-| ⬜ | `components/MarksEntryTable.tsx` | Checkbox, NumberInput, Tag | - |
-| ⬜ | `pages/student/StudentMarks.tsx` | Select, SelectItem | - |
-| ⬜ | `pages/teacher/TeacherMarks.tsx` | Select, SelectItem, Button, InlineNotification | Save, ArrowLeft |
+| ✅ | `components/ClassMarks.tsx` | Select, SelectItem, NumberInput, Button, InlineNotification, Checkbox, Tag | Save |
+| ✅ | `components/ClassSubjectCard.tsx` | ClickableTile | CheckmarkFilled |
+| ✅ | `components/MarksEntryTable.tsx` | Checkbox, NumberInput, Tag | - |
+| ✅ | `pages/student/StudentMarks.tsx` | Select, SelectItem | - |
+| ✅ | `pages/teacher/TeacherMarks.tsx` | Select, SelectItem, Button, InlineNotification | Save, ArrowLeft |
 
 ### `features/notifications/`
 
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
 | ✅ | `components/AgentFindingsBanner.tsx` | ActionableNotification, Tag | - |
-| ⬜ | `components/DraftRow.tsx` | Button, InlineNotification | Send, TrashCan |
-| ⬜ | `components/NotificationHistory.tsx` | Select, SelectItem, Tag | - |
+| ✅ | `components/DraftRow.tsx` | Button, InlineNotification | Send, TrashCan |
+| ✅ | `components/NotificationHistory.tsx` | Select, SelectItem, Tag | - |
 | ✅ | `components/NotificationsBell.tsx` | - | - |
-| ⬜ | `components/RecipientPicker.tsx` | Button, Dropdown | Add |
-| ⬜ | `pages/NotificationCenter.tsx` | Tag, Dropdown, Button, Pagination | Archive, ArrowUpRight, Search |
-| ⬜ | `pages/NotificationComposer.tsx` | Button, TextInput, TextArea, Dropdown, Tag, InlineNotification, ComposedModal, ModalBody, ModalHeader | Send, Save |
+| ✅ | `components/RecipientPicker.tsx` | Button, Dropdown | Add |
+| ✅ | `pages/NotificationCenter.tsx` | Tag, Dropdown, Button, Pagination | Archive, ArrowUpRight, Search |
+| ✅ | `pages/NotificationComposer.tsx` | Button, TextInput, TextArea, Dropdown, Tag, InlineNotification, ComposedModal, ModalBody, ModalHeader | Send, Save |
 
 ### `features/parent/`
 
@@ -656,16 +656,16 @@ Paths are relative to `frontend/src/<area>/`.
 
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
-| ⬜ | `components/ChecksList.tsx` | - | CheckmarkFilled, WarningAltFilled, ErrorFilled |
-| ⬜ | `components/ConfirmActionModal.tsx` | Button, ComposedModal, ModalBody, ModalFooter, ModalHeader | - |
-| ⬜ | `components/CsvInput.tsx` | Button, FileUploaderButton, TextArea | Download |
-| ⬜ | `components/ProposalSection.tsx` | Checkbox, Pagination, Select, SelectItem | - |
-| ⬜ | `components/ProposalView.tsx` | InlineNotification | - |
-| ⬜ | `components/RunHistory.tsx` | Tag | - |
-| ⬜ | `components/WorkflowAgents.tsx` | Button, SkeletonText, Tag | ArrowRight |
-| ⬜ | `components/WorkflowInputs.tsx` | Checkbox, FilterableMultiSelect, Select, SelectItem, TextInput | - |
-| ⬜ | `pages/admin/WorkflowPage.tsx` | Button, Tag | ArrowLeft, Checkmark, Renew, TrashCan, Undo |
-| ⬜ | `pages/admin/YearEnd.tsx` | Button, Tag | ArrowRight |
+| ✅ | `components/ChecksList.tsx` | - | CheckmarkFilled, WarningAltFilled, ErrorFilled |
+| ✅ | `components/ConfirmActionModal.tsx` | Button, ComposedModal, ModalBody, ModalFooter, ModalHeader | - |
+| ✅ | `components/CsvInput.tsx` | Button, FileUploaderButton, TextArea | Download |
+| ✅ | `components/ProposalSection.tsx` | Checkbox, Pagination, Select, SelectItem | - |
+| ✅ | `components/ProposalView.tsx` | InlineNotification | - |
+| ✅ | `components/RunHistory.tsx` | Tag | - |
+| ✅ | `components/WorkflowAgents.tsx` | Button, SkeletonText, Tag | ArrowRight |
+| ✅ | `components/WorkflowInputs.tsx` | Checkbox, FilterableMultiSelect, Select, SelectItem, TextInput | - |
+| ✅ | `pages/admin/WorkflowPage.tsx` | Button, Tag | ArrowLeft, Checkmark, Renew, TrashCan, Undo |
+| ✅ | `pages/admin/YearEnd.tsx` | Button, Tag | ArrowRight |
 
 ## SCSS cleanup
 

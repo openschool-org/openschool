@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Button, Checkbox, InlineNotification } from "@carbon/react";
-import { Download, Printer } from "@carbon/icons-react";
+import { Alert, Button, Checkbox } from "antd";
+import { DownloadOutlined, PrinterOutlined } from "@ant-design/icons";
 import type { GeneratedBatch } from "@/features/activation/api/activation";
 import { downloadBatchCsv, groupByClass } from "@/features/activation/lib/codeSheet";
 import { usePrintSheet } from "@/features/activation/hooks/usePrintSheet";
@@ -17,26 +17,24 @@ export default function IssuedBatchPanel({ batch, onDone, reopened = false }: { 
   const { selected, print } = usePrintSheet();
 
   if (batch.codes.length === 0) {
-    return <InlineNotification kind="info" lowContrast hideCloseButton title="Nobody to issue" subtitle="Everyone in this selection already has a login." className="os-max-w-full" />;
+    return <Alert type="info" showIcon title="Nobody to issue" description="Everyone in this selection already has a login." />;
   }
 
   return (
     <>
-      <InlineNotification
-        kind="warning"
-        lowContrast
-        hideCloseButton
+      <Alert
+        type="warning"
+        showIcon
         title={`${batch.codes.length} codes in ${groups.length} ${groups.length === 1 ? "class" : "classes"}, valid until ${formatDate(batch.expires_at)}`}
-        subtitle={reopened
+        description={reopened
           ? "Unused codes from this batch. Print a class or save it as a PDF (choose Save as PDF in the print window); Ctrl+P also prints the code sheets. Opening codes is recorded in the audit log."
           : "Print a class or save it as a PDF (choose Save as PDF in the print window); Ctrl+P also prints the code sheets. You can reopen unused codes later from Issued batches."}
-        className="os-max-w-full"
       />
       <div className="os-flex os-gap-2 os-items-center os-wrap os-my-4">
-        <Button kind="primary" size="sm" renderIcon={Printer} onClick={() => print(null)}>Print all classes</Button>
-        <Button kind="secondary" size="sm" renderIcon={Download} onClick={() => downloadBatchCsv(batch)}>Download CSV</Button>
-        <Checkbox id="codes-hand-out" labelText="Include the class hand-out list" checked={withHandOutList} onChange={(_e, { checked }) => setWithHandOutList(checked)} />
-        <Button kind="ghost" size="sm" onClick={onDone}>Done</Button>
+        <Button type="primary" icon={<PrinterOutlined />} onClick={() => print(null)}>Print all classes</Button>
+        <Button icon={<DownloadOutlined />} onClick={() => downloadBatchCsv(batch)}>Download CSV</Button>
+        <Checkbox id="codes-hand-out" checked={withHandOutList} onChange={(e) => setWithHandOutList(e.target.checked)}>Include the class hand-out list</Checkbox>
+        <Button type="text" className="os-ml-auto" onClick={onDone}>Done</Button>
       </div>
       <table className="os-table">
         <thead>
@@ -50,10 +48,10 @@ export default function IssuedBatchPanel({ batch, onDone, reopened = false }: { 
         <tbody>
           {groups.map((g) => (
             <tr key={g.key}>
-              <td>{g.title}</td>
+              <td className="os-fw-500">{g.title}</td>
               <td>{g.formTeacher || "-"}</td>
               <td>{g.codes.length}</td>
-              <td><Button kind="ghost" size="sm" renderIcon={Printer} onClick={() => print([g.key])}>Print / PDF</Button></td>
+              <td className="os-text-right"><Button size="small" icon={<PrinterOutlined />} onClick={() => print([g.key])}>Print / PDF</Button></td>
             </tr>
           ))}
         </tbody>

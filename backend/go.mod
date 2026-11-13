@@ -4,7 +4,7 @@ go 1.26.0
 
 // Pinned past 1.26.3 to pick up stdlib CVE fixes (net/textproto, crypto/x509,
 // net/http/idna) that govulncheck otherwise reports on every build (S14).
-toolchain go1.26.10
+toolchain go1.26.11
 
 require (
 	filippo.io/age v1.3.2

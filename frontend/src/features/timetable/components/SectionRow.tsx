@@ -1,5 +1,5 @@
-import { Time } from "@carbon/icons-react";
-import { Button, Tag } from "@carbon/react";
+import { Button, Tag } from "antd";
+import { ClockCircleOutlined } from "@ant-design/icons";
 import RemoveIconButton from "@/shared/ui/RemoveIconButton";
 import type { GradeSection } from "@/features/timetable/api/gradeSection";
 
@@ -21,17 +21,17 @@ export default function SectionRow({
     <div className="os-list-row os-col os-items-stretch os-py-4 os-px-6">
       <div className="os-flex os-items-center os-justify-between os-mb-2">
         <div className="os-flex os-items-center os-gap-2">
-          <Time size={16} className="os-fill-accent" />
-          <span className="os-fw-600 os-text-md">{s.name}</span>
+          <ClockCircleOutlined className="os-c-accent" />
+          <span className="os-fw-500 os-text-md">{s.name}</span>
           <span className="os-text-xs os-c-tertiary">
             Interval {s.interval_start_time}–{s.interval_end_time}
           </span>
         </div>
         <div className="os-flex os-gap-2">
-          <Button kind="ghost" size="sm" onClick={onPeriods}>
+          <Button size="small" onClick={onPeriods}>
             Periods
           </Button>
-          <Button kind="ghost" size="sm" onClick={onEdit}>
+          <Button type="text" size="small" onClick={onEdit}>
             Edit
           </Button>
           <RemoveIconButton label="Delete" onClick={onDelete} />
@@ -43,7 +43,7 @@ export default function SectionRow({
           <span className="os-text-xs os-c-tertiary">No grades assigned</span>
         ) : (
           s.grade_ids.map((gid) => (
-            <Tag key={gid} type="teal" size="sm">
+            <Tag key={gid} variant="filled">
               {gradeName(gid)}
             </Tag>
           ))

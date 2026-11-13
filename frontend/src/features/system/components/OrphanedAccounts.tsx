@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
-import { Button, SkeletonText } from "@carbon/react";
-import { TrashCan } from "@carbon/icons-react";
+import { Button } from "antd";
+import { DeleteOutlined, SyncOutlined } from "@ant-design/icons";
+import DataGrid from "@/shared/ui/DataGrid";
+import TableSkeleton from "@/shared/ui/TableSkeleton";
 import { useOrphanedAccounts, useDeleteOrphanedAccount } from "@/features/system/queries/useIdentityReconciliation";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import EmptyState from "@/shared/ui/EmptyState";
@@ -24,82 +26,50 @@ export default function OrphanedAccounts() {
   }, [orphaned, search]);
 
   return (
-    <div>
-      <div className="os-page__header">
-        <div>
-          <h2 className="os-section__title os-m-0">
-            Orphaned accounts
-          </h2>
-          <p className="os-page__subtitle os-mt-1">
-            ThunderID accounts with no matching local user record - left behind when a signup failed partway
-            through. Safe to review and delete.
-          </p>
+    <div className="os-stack os-gap-4">
+      <MutationErrorNotification isError={deleteOrphan.isError} error={deleteOrphan.error} title="Could not delete account" />
+      <div className="os-section">
+        <div className="os-section__header os-tt-head">
+          <div>
+            <h2 className="os-section__title">Orphaned accounts</h2>
+            <p className="os-text-sm os-c-secondary os-m-0">Sign-in accounts with no matching user here, left behind when a signup failed partway. Safe to review and delete.</p>
+          </div>
+          <Button type={loaded ? "default" : "primary"} icon={<SyncOutlined />} loading={isFetching} onClick={() => (loaded ? refetch() : setLoaded(true))}>
+            {isFetching ? "Checking…" : loaded ? "Check again" : "Check now"}
+          </Button>
         </div>
-        <Button kind={loaded ? "secondary" : "primary"} onClick={() => (loaded ? refetch() : setLoaded(true))} disabled={isFetching}>
-          {isFetching ? "Checking…" : loaded ? "Re-check" : "Check for orphaned accounts"}
-        </Button>
-      </div>
 
-      <MutationErrorNotification
-        isError={deleteOrphan.isError}
-        error={deleteOrphan.error}
-        title="Could not delete account" className="os-mb-4"
-      />
-
-      {isError && <ErrorMessage message="Could not check for orphaned accounts." onRetry={refetch} />}
-
-      {loaded && (
-        <div className="os-section">
-          {isLoading && (
-            <div>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="os-flex os-gap-4 os-py-3h os-px-6 os-border-b">
-                  <SkeletonText width="15rem" />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!isLoading && !!orphaned?.length && (
-            <div className="os-px-6 os-pt-4">
+        {!loaded ? (
+          <p className="os-m-0 os-px-6 os-py-5 os-text-sm os-c-tertiary">Nothing checked yet. The check asks the sign-in service for every account, so it only runs when you ask.</p>
+        ) : isError ? (
+          <ErrorMessage message="Could not check for orphaned accounts." onRetry={refetch} />
+        ) : isLoading ? (
+          <TableSkeleton headers={["Account", "ID", ""]} />
+        ) : !orphaned?.length ? (
+          <EmptyState title="No orphaned accounts" description="Every sign-in account has a matching user." />
+        ) : (
+          <>
+            <div className="os-card-search">
               <FilterBar search={{ value: search, onChange: setSearch, placeholder: "Search by username, email or ID" }} />
             </div>
-          )}
-
-          {!isLoading && !!orphaned?.length && shown.length === 0 && (
-            <EmptyState title="No accounts match your search" description="Try another username, email or ID." />
-          )}
-
-          {!isLoading && !isError && (orphaned?.length ?? 0) === 0 && (
-            <EmptyState title="No orphaned accounts found" description="Every ThunderID account has a matching local user record." />
-          )}
-
-          {!isLoading && shown.length > 0 && (
-            <div>
-              {shown.map((account, i) => (
-                <div
-                  key={account.id} className={`os-flex os-items-center os-justify-between os-py-3h os-px-6 ${i < shown.length - 1 ? "os-border-b" : ""}`}
-                >
-                  <div>
-                    <p className="os-m-0 os-fw-600 os-text-md">
-                      {account.username || account.email || "(no username/email on file)"}
-                    </p>
-                    <p className="os-mt-h os-mx-0 os-mb-0 os-text-xs os-c-tertiary">ID: {account.id}</p>
-                  </div>
-                  <Button
-                    kind="danger--tertiary"
-                    size="sm"
-                    renderIcon={TrashCan}
-                    onClick={() => setPendingDeleteId(account.id)}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+            {shown.length === 0 ? (
+              <EmptyState title="No accounts match your search" description="Try another username, email or ID." />
+            ) : (
+              <DataGrid
+                rows={shown}
+                getRowId={(a) => a.id}
+                noHover
+                pagination={false}
+                columns={[
+                  { key: "account", header: "Account", render: (a) => <span className="os-fw-500">{a.username || a.email || "(no username or email)"}</span> },
+                  { key: "id", header: "ID", render: (a) => <span className="os-table__mono">{a.id}</span> },
+                  { key: "actions", header: "", align: "end", render: (a) => <Button type="text" danger size="small" icon={<DeleteOutlined />} onClick={() => setPendingDeleteId(a.id)}>Delete</Button> },
+                ]}
+              />
+            )}
+          </>
+        )}
+      </div>
 
       <ConfirmDeleteModal
         open={!!pendingDeleteId}

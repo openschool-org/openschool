@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Button, TextInput, ComposedModal, ModalHeader, ModalBody, ModalFooter, SkeletonText } from "@carbon/react";
+import { Button, Modal, Skeleton } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import {
   useGradeSectionPeriods,
   useSaveGradeSectionPeriods,
@@ -8,6 +9,8 @@ import {
 import type { GradeSection, TimetablePeriod } from "@/features/timetable/api/gradeSection";
 import EmptyState from "@/shared/ui/EmptyState";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import TextField from "@/shared/ui/TextField";
+import { MODAL_WIDTH } from "@/shared/ui/modalWidth";
 
 const formatTimeForInput = (t: string) => {
   if (!t) return "";
@@ -36,9 +39,20 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
   const busy = save.isPending || regenerate.isPending;
 
   return (
-    <ComposedModal open size="md" onClose={onClose} aria-label={`${section.name} - period grid`}>
-      <ModalHeader title={`${section.name} - period grid`} />
-      <ModalBody>
+    <Modal
+      open
+      title={`${section.name} - period grid`}
+      width={MODAL_WIDTH.md}
+      onCancel={onClose}
+      footer={
+        <>
+          <Button onClick={onClose}>Close</Button>
+          <Button type="primary" onClick={handleSave} disabled={!rows || regenerate.isPending} loading={save.isPending}>
+            {save.isPending ? "Saving…" : "Save changes"}
+          </Button>
+        </>
+      }
+    >
         <MutationErrorNotification
           isError={save.isError}
           error={save.error}
@@ -51,8 +65,9 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
         />
         <div className="os-mb-4 os-flex os-justify-end">
           <Button
-            kind="ghost"
-            size="sm"
+            size="small"
+            icon={<ReloadOutlined />}
+            loading={regenerate.isPending}
             onClick={() => regenerate.mutate(undefined, { onSuccess: () => setRows(null) })}
             disabled={busy}
           >
@@ -60,7 +75,7 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
           </Button>
         </div>
         {isLoading ? (
-          <SkeletonText width="60%" />
+          <Skeleton active title={false} paragraph={{ rows: 4 }} />
         ) : active.length === 0 ? (
           <EmptyState
             title="No periods configured"
@@ -78,31 +93,31 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
             </thead>
             <tbody>
               {active.map((p, i) => (
-                <tr key={i} style={p.slot_type === "interval" ? { background: "var(--os-status-late-bg)" } : undefined}>
+                <tr key={i} className={p.slot_type === "interval" ? "os-period-row--interval" : undefined}>
                   <td>{p.slot_type === "interval" ? "Interval" : "Period"}</td>
                   <td>{p.period_number ?? "-"}</td>
                   <td>
-                    <TextInput
+                    <TextField
                       id={`start-${i}`}
-                      labelText={`${p.slot_type === "interval" ? "Interval" : "Period"} ${i + 1} start time`}
+                      label={`${p.slot_type === "interval" ? "Interval" : "Period"} ${i + 1} start time`}
                       hideLabel
                       type="time"
-                      size="sm"
+                      size="small"
                       value={formatTimeForInput(p.start_time)}
                       disabled={busy}
-                      onChange={(e) => updateRow(i, { start_time: e.target.value })}
+                      onChange={(v) => updateRow(i, { start_time: v })}
                     />
                   </td>
                   <td>
-                    <TextInput
+                    <TextField
                       id={`end-${i}`}
-                      labelText={`${p.slot_type === "interval" ? "Interval" : "Period"} ${i + 1} end time`}
+                      label={`${p.slot_type === "interval" ? "Interval" : "Period"} ${i + 1} end time`}
                       hideLabel
                       type="time"
-                      size="sm"
+                      size="small"
                       value={formatTimeForInput(p.end_time)}
                       disabled={busy}
-                      onChange={(e) => updateRow(i, { end_time: e.target.value })}
+                      onChange={(v) => updateRow(i, { end_time: v })}
                     />
                   </td>
                 </tr>
@@ -110,15 +125,6 @@ export default function PeriodsEditor({ section, onClose }: { section: GradeSect
             </tbody>
           </table>
         )}
-      </ModalBody>
-      <ModalFooter>
-        <Button kind="secondary" onClick={onClose}>
-          Close
-        </Button>
-        <Button kind="primary" onClick={handleSave} disabled={!rows || busy}>
-          {save.isPending ? "Saving…" : "Save changes"}
-        </Button>
-      </ModalFooter>
-    </ComposedModal>
+    </Modal>
   );
 }

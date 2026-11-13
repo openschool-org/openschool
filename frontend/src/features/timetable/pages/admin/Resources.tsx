@@ -1,30 +1,24 @@
 import { useMemo, useState } from "react";
-import { Education, Home, Map as MapIcon, Information, Add, Edit, TrashCan } from "@carbon/icons-react";
-import { Button, IconButton, Tag } from "@carbon/react";
+import { Button, Card, Segmented, Tag, Tooltip } from "antd";
+import { BankOutlined, DeleteOutlined, EditOutlined, ExperimentOutlined, HomeOutlined, PlusOutlined } from "@ant-design/icons";
 import { useClassrooms, useCreateClassroom, useUpdateClassroom, useDeleteClassroom } from "@/features/timetable/queries/useClassrooms";
 import type { Classroom, ClassroomType } from "@/features/timetable/api/classroom";
 import ClassroomFormModal from "@/features/timetable/components/ClassroomFormModal";
-import { EMPTY_CLASSROOM_FORM, isLabMissingSubject, type ClassroomForm } from "@/features/timetable/lib/classroomForm";
-import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import BackfillHomeroomsButton from "@/features/timetable/components/BackfillHomeroomsButton";
-import LoadingSpinner from "@/shared/ui/LoadingSpinner";
+import { EMPTY_CLASSROOM_FORM, isLabMissingSubject, type ClassroomForm } from "@/features/timetable/lib/classroomForm";
+import { BAND_COLOR, roomBand } from "@/features/timetable/lib/roomKind";
+import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
+import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
+import EmptyState from "@/shared/ui/EmptyState";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
-import RoomAvatar from "@/features/timetable/components/RoomAvatar";
-import { BAND_TAG, roomKind } from "@/features/timetable/lib/roomKind";
-import { HallIcon } from "@/features/timetable/components/facilityIcons";
+import FilterBar from "@/shared/ui/FilterBar";
+import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 
-const RESOURCE_TYPES = [
-  { key: "regular", label: "Homerooms & classrooms", icon: Home },
-  { key: "lab", label: "Labs", icon: Education },
-  { key: "eca", label: "Libraries, halls & facilities", icon: HallIcon },
-] as const;
-
-type ZoneKey = ClassroomType | "all";
-
-const ZONES: { key: ZoneKey; label: string; description: string; icon: React.ComponentType<{ size?: number }> }[] = [
-  { key: "regular", label: "Learning block", description: "Homerooms and everyday teaching spaces", icon: Home },
-  { key: "lab", label: "Practical learning", description: "Subject labs used for practical lessons", icon: Education },
-  { key: "eca", label: "Shared facilities", description: "Libraries, halls, arts, sports and support spaces", icon: HallIcon },
+// The three zones a resource belongs to; the dot colour reuses the school-section palette.
+const ZONES: { key: ClassroomType; label: string; description: string; band: string; Icon: typeof HomeOutlined }[] = [
+  { key: "regular", label: "Learning block", description: "Homerooms and everyday teaching spaces", band: "primary", Icon: HomeOutlined },
+  { key: "lab", label: "Practical learning", description: "Subject labs used for practical lessons", band: "ol", Icon: ExperimentOutlined },
+  { key: "eca", label: "Shared facilities", description: "Libraries, halls, arts, sports and support spaces", band: "al", Icon: BankOutlined },
 ];
 
 const FACILITY_LABEL: Record<string, string> = {
@@ -33,26 +27,24 @@ const FACILITY_LABEL: Record<string, string> = {
   musicRoom: "Music room", danceRoom: "Dancing room", dramaRoom: "Drama room",
   auditorium: "Auditorium / hall", medicalRoom: "Medical / sick room", counselingRoom: "Counseling room", staffRoom: "Staff room",
 };
-
 const FACILITY_LAB_GROUPS = new Set(["scienceLab", "itLab", "technicalLab", "homeEconomicsLab", "languageLab"]);
 
-function resourceType(resource: Classroom): ClassroomType {
-  if (resource.room_type === "eca" && resource.code && FACILITY_LAB_GROUPS.has(resource.code)) return "lab";
-  return resource.room_type;
+function resourceType(r: Classroom): ClassroomType {
+  if (r.room_type === "eca" && r.code && FACILITY_LAB_GROUPS.has(r.code)) return "lab";
+  return r.room_type;
 }
 
-function resourceMeta(resource: Classroom) {
-  if (resource.room_type === "regular") return "Homeroom";
-  if (resource.room_type === "lab") return resource.subject_name ? `${resource.subject_name} lab` : "Subject lab";
-  return resource.code ? FACILITY_LABEL[resource.code] ?? resource.code : "Facility";
+function resourceMeta(r: Classroom) {
+  if (r.room_type === "regular") return "Homeroom";
+  if (r.room_type === "lab") return r.subject_name ? `${r.subject_name} lab` : "Subject lab";
+  return r.code ? FACILITY_LABEL[r.code] ?? r.code : "Facility";
 }
 
-function resourceCapacity(resource: Classroom) {
-  return resource.capacity == null ? "Capacity not set" : `${resource.capacity} places`;
-}
-
-function ResourceMap({ resources }: { resources: Classroom[] }) {
-  const [activeZone, setActiveZone] = useState<ZoneKey>("all");
+export default function Resources() {
+  const { data: classrooms, isLoading, isError, refetch } = useClassrooms();
+  const resources = useMemo(() => classrooms ?? [], [classrooms]);
+  const [zone, setZone] = useState<ClassroomType | "all">("all");
+  const [query, setQuery] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Classroom | null>(null);
   const [form, setForm] = useState<ClassroomForm>(EMPTY_CLASSROOM_FORM);
@@ -61,18 +53,16 @@ function ResourceMap({ resources }: { resources: Classroom[] }) {
   const updateResource = useUpdateClassroom();
   const deleteResource = useDeleteClassroom();
   const saving = editing ? updateResource : createResource;
-  const visible = useMemo(() => activeZone === "all" ? resources : resources.filter((resource) => resourceType(resource) === activeZone), [activeZone, resources]);
 
-  const openCreate = () => {
-    createResource.reset();
-    setEditing(null);
-    setForm(EMPTY_CLASSROOM_FORM);
-    setModalOpen(true);
-  };
-  const openEdit = (resource: Classroom) => {
+  const countOf = (key: ClassroomType) => resources.filter((r) => resourceType(r) === key).length;
+  const q = query.trim().toLowerCase();
+  const matches = (r: Classroom) => !q || r.name.toLowerCase().includes(q) || resourceMeta(r).toLowerCase().includes(q);
+
+  const openCreate = () => { createResource.reset(); setEditing(null); setForm(EMPTY_CLASSROOM_FORM); setModalOpen(true); };
+  const openEdit = (r: Classroom) => {
     updateResource.reset();
-    setEditing(resource);
-    setForm({ name: resource.name, code: resource.code ?? "", capacity: resource.capacity == null ? "" : String(resource.capacity), room_type: resource.room_type, subject_id: resource.subject_id ?? "" });
+    setEditing(r);
+    setForm({ name: r.name, code: r.code ?? "", capacity: r.capacity == null ? "" : String(r.capacity), room_type: r.room_type, subject_id: r.subject_id ?? "" });
     setModalOpen(true);
   };
   const save = () => {
@@ -82,104 +72,97 @@ function ResourceMap({ resources }: { resources: Classroom[] }) {
     else createResource.mutate(data, { onSuccess: () => setModalOpen(false) });
   };
 
-  return (
-    <section className="os-resource-map" aria-labelledby="resource-map-title">
-      <div className="os-resource-map__header">
-        <div>
-          <div className="os-flex os-items-center os-gap-2">
-            <MapIcon size={20} />
-            <h2 id="resource-map-title">School resource map</h2>
-            <Tag type="gray" size="sm">Schematic view</Tag>
-          </div>
-          <p>Automatically arranged from this school’s configured rooms and facilities.</p>
+  const columns: GridColumn<Classroom>[] = [
+    { key: "name", header: "Name", render: (r) => <span className="os-fw-500">{r.name}</span> },
+    { key: "type", header: "Type", render: (r) => <Tag color={BAND_COLOR[roomBand(r)]} variant="filled">{resourceMeta(r)}</Tag> },
+    { key: "capacity", header: "Capacity", render: (r) => <span className="os-table__muted">{r.capacity == null ? "Not set" : `${r.capacity} places`}</span> },
+    {
+      key: "actions",
+      header: "Actions",
+      align: "end",
+      render: (r) => (
+        <div className="os-grid__actions">
+          <Tooltip title={`Edit ${r.name}`}><Button type="text" size="small" aria-label={`Edit ${r.name}`} icon={<EditOutlined />} onClick={() => openEdit(r)} /></Tooltip>
+          <Tooltip title={`Delete ${r.name}`}><Button type="text" size="small" danger aria-label={`Delete ${r.name}`} icon={<DeleteOutlined />} onClick={() => setToDelete(r)} /></Tooltip>
         </div>
-      <div className="os-flex os-items-center os-gap-3">
-          <BackfillHomeroomsButton size="sm" />
-          <Information size={20} className="os-c-secondary" aria-label="This is a visual overview, not a geographic floor plan" />
-          <Button renderIcon={Add} size="sm" kind="primary" onClick={openCreate}>Add resource</Button>
-        </div>
-      </div>
+      ),
+    },
+  ];
 
-      <div className="os-resource-map__filters" role="group" aria-label="Resource map zones">
-        <button type="button" aria-pressed={activeZone === "all"} className={activeZone === "all" ? "is-active" : ""} onClick={() => setActiveZone("all")}>All resources <span>{resources.length}</span></button>
-        {ZONES.map((zone) => {
-          const count = resources.filter((resource) => resourceType(resource) === zone.key).length;
-          return <button key={zone.key} type="button" aria-pressed={activeZone === zone.key} className={activeZone === zone.key ? "is-active" : ""} onClick={() => setActiveZone(zone.key)}>{zone.label} <span>{count}</span></button>;
-        })}
-      </div>
-
-      <div className="os-resource-map__canvas">
-        <div className="os-resource-map__zones">
-          {ZONES.filter((zone) => activeZone === "all" || activeZone === zone.key).map((zone) => {
-            const zoneResources = visible.filter((resource) => resourceType(resource) === zone.key);
-            const ZoneIcon = zone.icon;
-            return (
-              <div key={zone.key} className={`os-resource-map__zone os-resource-map__zone--${zone.key}`}>
-                <div className="os-resource-map__zone-heading">
-                  <div className="os-resource-map__zone-title">
-                    <span className="os-resource-map__zone-icon" aria-hidden="true"><ZoneIcon size={20} /></span>
-                    <div><h3>{zone.label}</h3><p>{zone.description}</p></div>
-                  </div>
-                  <span className="os-resource-map__zone-count" aria-label={`${zoneResources.length} resources`}>{zoneResources.length}</span>
-                </div>
-                <div className="os-resource-map__rooms">
-                  {zoneResources.length === 0 ? <span className="os-resource-map__empty">No resources configured</span> : zoneResources.map((resource) => (
-                    <article key={resource.id} className="os-resource-map__room">
-                      <RoomAvatar room={resource} />
-                      <div className="os-resource-map__room-body">
-                        <p className="os-resource-map__room-title" title={resource.name}>{resource.name}</p>
-                        <div className="os-resource-map__room-meta">
-                          <Tag type={BAND_TAG[roomKind(resource).band]} size="sm">{resourceMeta(resource)}</Tag>
-                          <small>{resourceCapacity(resource)}</small>
-                        </div>
-                      </div>
-                      <div className="os-resource-map__room-actions">
-                        <IconButton label={`Edit ${resource.name}`} kind="ghost" size="sm" onClick={() => openEdit(resource)}><Edit size={16} /></IconButton>
-                        <IconButton label={`Delete ${resource.name}`} kind="ghost" size="sm" onClick={() => setToDelete(resource)}><TrashCan size={16} /></IconButton>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {modalOpen && <ClassroomFormModal editing={!!editing} form={form} onChange={setForm} isPending={saving.isPending} isError={saving.isError} error={saving.error} onClose={() => setModalOpen(false)} onSubmit={save} />}
-      <ConfirmDeleteModal open={!!toDelete} title="Delete resource" description={<>Delete <strong>{toDelete?.name}</strong>? This cannot be undone.</>} subject="Resource" mutation={deleteResource} onClose={() => setToDelete(null)} onConfirm={() => toDelete && deleteResource.mutate(toDelete.id)} />
-    </section>
-  );
-}
-
-export default function Resources() {
-  const { data: classrooms, isLoading, isError, refetch } = useClassrooms();
+  const shownZones = ZONES.filter((z) => zone === "all" || zone === z.key)
+    .map((z) => ({ ...z, rows: resources.filter((r) => resourceType(r) === z.key && matches(r)) }))
+    .filter((z) => !q || z.rows.length > 0);
 
   return (
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">School resources</h1>
-          <p className="os-page__subtitle">View and manage homerooms, libraries, auditoriums, labs, and other facilities in one place.</p>
+          <p className="os-page__subtitle">Homerooms, labs, libraries, halls and other facilities in one place.</p>
+        </div>
+        <div className="os-flex os-gap-3">
+          <BackfillHomeroomsButton />
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add resource</Button>
         </div>
       </div>
 
       {isLoading ? <LoadingSpinner label="Loading school resources…" /> : isError ? <ErrorMessage message="Could not load school resources." onRetry={refetch} /> : (
         <>
-          <div className="os-grid os-grid-cols-3 os-gap-4 os-mb-6">
-            {RESOURCE_TYPES.map(({ key, label, icon: Icon }) => (
-              <div key={key} className="os-bg-layer os-border os-p-5">
-                <div className="os-flex os-items-center os-gap-2 os-mb-3">
-                  <Icon size={20} className="os-fill-accent" />
-                  <span className="os-text-sm os-fw-600 os-c-secondary">{label}</span>
-                </div>
-                <strong className="os-text-4xl os-fw-300 os-c-primary">{classrooms?.filter((room) => resourceType(room) === key).length ?? 0}</strong>
-              </div>
+          <div className="os-stat-grid os-grid-cols-3">
+            {ZONES.map(({ key, label, Icon }) => (
+              <Card key={key} className="os-dash-stat">
+                <p className="os-dash-stat__label"><Icon />{label}</p>
+                <p className="os-dash-stat__value">{countOf(key)}</p>
+              </Card>
             ))}
           </div>
-          <ResourceMap resources={classrooms ?? []} />
+
+          <div className="os-grades-filter">
+            <FilterBar
+              search={{ value: query, onChange: setQuery, placeholder: "Search rooms and facilities…" }}
+              controls={[{
+                label: "Zone",
+                node: (
+                  <Segmented
+                    value={zone}
+                    onChange={(v) => setZone(v as ClassroomType | "all")}
+                    options={[{ value: "all", label: `All ${resources.length}` }, ...ZONES.map((z) => ({ value: z.key, label: `${z.label} ${countOf(z.key)}` }))]}
+                  />
+                ),
+              }]}
+            />
+          </div>
+
+          {shownZones.length === 0 ? (
+            <div className="os-section"><EmptyState title="No matching resources" description="Try another name, or a different zone." /></div>
+          ) : (
+            <div className="os-flex os-col os-gap-4">
+              {shownZones.map((z) => (
+                <Card
+                  key={z.key}
+                  className={`os-grade-card os-grade-band--${z.band}`}
+                  title={
+                    <div className="os-flex os-items-center os-gap-3 os-min-w-0">
+                      <span className="os-truncate">{z.label}</span>
+                      <Tag variant="filled">{z.rows.length}</Tag>
+                      <span className="os-resource-zone__desc">{z.description}</span>
+                    </div>
+                  }
+                >
+                  {z.rows.length === 0 ? (
+                    <p className="os-grade-card__empty">No resources here yet.</p>
+                  ) : (
+                    <DataGrid rows={z.rows} columns={columns} getRowId={(r) => r.id} pagination={false} />
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
         </>
       )}
+
+      {modalOpen && <ClassroomFormModal editing={!!editing} form={form} onChange={setForm} isPending={saving.isPending} isError={saving.isError} error={saving.error} onClose={() => setModalOpen(false)} onSubmit={save} />}
+      <ConfirmDeleteModal open={!!toDelete} title="Delete resource" description={<>Delete <strong>{toDelete?.name}</strong>? This cannot be undone.</>} subject="Resource" mutation={deleteResource} onClose={() => setToDelete(null)} onConfirm={() => toDelete && deleteResource.mutate(toDelete.id)} />
     </div>
   );
 }

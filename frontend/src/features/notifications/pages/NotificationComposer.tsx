@@ -1,6 +1,11 @@
 import { useRef, useState } from "react";
-import { Button, TextInput, TextArea, Dropdown, Tag, InlineNotification, ComposedModal, ModalBody, ModalHeader } from "@carbon/react";
-import { Send, Save } from "@carbon/icons-react";
+import { Alert, Button, Modal, Segmented, Tag } from "antd";
+import { SaveOutlined, SendOutlined } from "@ant-design/icons";
+import Field from "@/shared/ui/Field";
+import SelectField from "@/shared/ui/SelectField";
+import TextAreaField from "@/shared/ui/TextAreaField";
+import TextField from "@/shared/ui/TextField";
+import { MODAL_WIDTH } from "@/shared/ui/modalWidth";
 import {
   useDraftNotifications,
   useCreateNotification,
@@ -91,91 +96,81 @@ export default function NotificationComposer() {
             )}
           </p>
         </div>
-        <Button renderIcon={Send} kind="primary" onClick={openComposer}>
+        <Button type="primary" icon={<SendOutlined />} onClick={openComposer}>
           Notify
         </Button>
       </div>
 
       {create.isSuccess && (
-        <InlineNotification
-          kind="success"
-          title="Done"
-          subtitle="Notification saved."
-          lowContrast
-          onClose={() => create.reset()} className="os-mb-6 os-max-w-full"
-        />
+        <Alert type="success" showIcon closable onClose={() => create.reset()} className="os-mb-6" title="Done" description="Notification saved." />
       )}
 
-      <ComposedModal open={composeOpen} size="lg" onClose={closeComposer} aria-label="Compose notification">
-        <ModalHeader title="Compose notification" />
-        <ModalBody>
-        {create.isError && <InlineNotification kind="error" title="Could not send notification" subtitle={getErrorMessage(create.error)} lowContrast onClose={() => create.reset()} className="os-mb-6 os-max-w-full" />}
-        <div className="os-section">
-          <div className="os-section__header">
-            <h2 className="os-section__title">Compose</h2>
+      <Modal
+        open={composeOpen}
+        title="Compose notification"
+        width={MODAL_WIDTH.lg}
+        onCancel={closeComposer}
+        footer={
+          <>
+            <Button icon={<SaveOutlined />} onClick={() => handleSubmit(true)} disabled={!isReady || create.isPending}>
+              Save as draft
+            </Button>
+            <Button type="primary" icon={<SendOutlined />} onClick={() => handleSubmit(false)} disabled={!isReady} loading={create.isPending}>
+              {create.isPending ? "Sending…" : "Send now"}
+            </Button>
+          </>
+        }
+      >
+        {create.isError && <Alert type="error" showIcon closable onClose={() => create.reset()} className="os-mb-4" title="Could not send notification" description={getErrorMessage(create.error)} />}
+        <div className="os-flex os-col os-gap-5">
+          <TextField id="notification-title" label="Title" placeholder="e.g. Term Test Timetable Released" value={title} onChange={setTitle} disabled={create.isPending} />
+          <TextAreaField id="notification-message" label="Message" placeholder="Type your message here…" rows={5} value={message} onChange={setMessage} disabled={create.isPending} />
+
+          <div className="os-modal-form">
+            <SelectField
+              id="notification-category"
+              label="Category"
+              value={category}
+              onChange={(v) => setCategory(v as NotificationCategory)}
+              disabled={create.isPending}
+              options={CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
+            />
+            <Field id="notification-priority" label="Priority">
+              <Segmented
+                id="notification-priority"
+                value={priority}
+                disabled={create.isPending}
+                onChange={(v) => setPriority(v as NotificationPriority)}
+                options={PRIORITIES.map((p) => ({ value: p.value, label: p.label }))}
+              />
+            </Field>
           </div>
-          <div className="os-section__body os-flex os-col os-gap-6">
-            <TextInput id="notification-title" labelText="Title" placeholder="e.g. Term Test Timetable Released" value={title} onChange={(e) => setTitle(e.target.value)} disabled={create.isPending} />
-            <TextArea id="notification-message" labelText="Message" placeholder="Type your message here…" rows={5} value={message} onChange={(e) => setMessage(e.target.value)} disabled={create.isPending} />
 
-            <div className="os-grid os-grid-cols-2 os-gap-4">
-              <Dropdown
-                id="notification-category"
-                titleText="Category"
-                label=""
-                items={CATEGORIES}
-                itemToString={(item) => (item as (typeof CATEGORIES)[number])?.label ?? ""}
-                selectedItem={CATEGORIES.find((c) => c.value === category)}
-                onChange={({ selectedItem }) => setCategory((selectedItem as (typeof CATEGORIES)[number]).value)}
-                disabled={create.isPending}
-              />
-              <div>
-                <p className="os-text-xs os-fw-600 os-mb-2 os-c-secondary">Priority</p>
-                <div className="os-flex os-gap-2">
-                  {PRIORITIES.map((p) => (
-                    <button
-                      key={p.value}
-                      onClick={() => setPriority(p.value)} disabled={create.isPending} aria-pressed={priority === p.value} className={`os-pill${priority === p.value ? " is-active" : ""}`}
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
+          <div>
+            <h3 className="os-text-md os-fw-500 os-mt-0 os-mb-3">Send to</h3>
+            {rules.length > 0 && (
+              <div className="os-flex os-wrap os-gap-1h os-mb-3">
+                {rules.map((rule, i) => (
+                  <Tag
+                    key={ruleKey(rule)}
+                    color="blue"
+                    variant="filled"
+                    closable={!create.isPending}
+                    onClose={(e) => { e.preventDefault(); removeRule(i); }}
+                  >
+                    {rule.label ?? rule.type}
+                  </Tag>
+                ))}
               </div>
-            </div>
-
-            <div>
-              <p className="os-text-xs os-fw-600 os-tracking-wide os-uppercase os-c-secondary os-mb-3">
-                Send To
-              </p>
-              {rules.length > 0 && (
-                <div className="os-flex os-wrap os-gap-1h os-mb-3">
-                  {rules.map((rule, i) => (
-                      <Tag key={ruleKey(rule)} type="teal" size="sm" filter disabled={create.isPending} onClose={() => removeRule(i)}>
-                      {rule.label ?? rule.type}
-                    </Tag>
-                  ))}
-                </div>
-              )}
-              <RecipientPicker
-                onAdd={(rule) => setRules((r) => (r.some((x) => ruleKey(x) === ruleKey(rule)) ? r : [...r, rule]))}
-                canBroadcastEveryone={canBroadcastEveryone}
-                disabled={create.isPending}
-              />
-            </div>
-
-            <div className="os-flex os-gap-3">
-              <Button renderIcon={Send} kind="primary" onClick={() => handleSubmit(false)} disabled={!isReady || create.isPending}>
-                {create.isPending ? "Sending…" : "Send now"}
-              </Button>
-              <Button renderIcon={Save} kind="secondary" onClick={() => handleSubmit(true)} disabled={!isReady || create.isPending}>
-                Save as draft
-              </Button>
-            </div>
+            )}
+            <RecipientPicker
+              onAdd={(rule) => setRules((r) => (r.some((x) => ruleKey(x) === ruleKey(rule)) ? r : [...r, rule]))}
+              canBroadcastEveryone={canBroadcastEveryone}
+              disabled={create.isPending}
+            />
           </div>
         </div>
-        </ModalBody>
-      </ComposedModal>
+      </Modal>
 
       {drafts && drafts.length > 0 && (
         <div className="os-section os-mb-6">

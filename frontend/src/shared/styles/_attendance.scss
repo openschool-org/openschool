@@ -247,3 +247,17 @@
 @media (max-width: 42rem) {
   .os-staff-status { min-height: 2.75rem; flex: 1 1 40%; }
 }
+
+// Attendance marking (pages/admin/AttendanceMark.tsx): summary cards and a light row tint per status.
+.os-attendance-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+
+  @media (max-width: 900px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 560px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@each $s in present, absent, late, excused {
+  .os-grid .os-attendance-row--#{$s} > td { background: color-mix(in srgb, var(--os-status-#{$s}-bg) 45%, var(--os-layer)); }
+}

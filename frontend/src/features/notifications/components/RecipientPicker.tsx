@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Button, Dropdown } from "@carbon/react";
-import { Add } from "@carbon/icons-react";
+import { Button } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import SelectField from "@/shared/ui/SelectField";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useGrades } from "@/features/academics/queries/useGrades";
 import { useCurrentClasses } from "@/features/academics/queries/useClasses";
@@ -95,18 +96,17 @@ export default function RecipientPicker({
 
   return (
     <div className="os-grid os-gap-3">
-      <Dropdown
+      <SelectField
         id="recipient-rule-type"
-        titleText="Recipient type"
-        label="Choose…"
-        items={availableRuleTypes}
-        itemToString={(item) => (item as (typeof RULE_TYPES)[number])?.label ?? ""}
-        selectedItem={availableRuleTypes.find((r) => r.value === ruleType)}
+        label="Recipient type"
+        placeholder="Choose…"
+        value={ruleType}
         disabled={disabled}
-        onChange={({ selectedItem }) => {
-          setRuleType((selectedItem as (typeof RULE_TYPES)[number] | null)?.value ?? ruleType);
+        onChange={(v) => {
+          setRuleType(v as (typeof RULE_TYPES)[number]["value"]);
           reset();
         }}
+        options={availableRuleTypes.map((r) => ({ value: r.value, label: r.label }))}
       />
 
       {ruleType === "grade" && (
@@ -161,15 +161,13 @@ export default function RecipientPicker({
             placeholder="Search subjects…"
             disabled={disabled}
           />
-          <Dropdown
+          <SelectField
             id="rule-subject-audience"
-            titleText="Audience"
-            label=""
-            items={["students", "teachers"]}
-            itemToString={(item) => (item === "teachers" ? "Teachers of this subject" : "Students taking this subject")}
-            selectedItem={subjectAudience}
-            onChange={({ selectedItem }) => setSubjectAudience((selectedItem as "students" | "teachers") ?? "students")}
+            label="Audience"
+            value={subjectAudience}
+            onChange={(v) => setSubjectAudience(v as "students" | "teachers")}
             disabled={disabled}
+            options={[{ value: "students", label: "Students taking this subject" }, { value: "teachers", label: "Teachers of this subject" }]}
           />
         </>
       )}
@@ -216,7 +214,7 @@ export default function RecipientPicker({
         />
       )}
 
-      <Button kind="ghost" size="sm" renderIcon={Add} onClick={handleAdd} disabled={disabled || (ruleType !== "everyone" && !selectedId)}>
+      <Button icon={<PlusOutlined />} onClick={handleAdd} disabled={disabled || (ruleType !== "everyone" && !selectedId)}>
         Add recipient
       </Button>
     </div>

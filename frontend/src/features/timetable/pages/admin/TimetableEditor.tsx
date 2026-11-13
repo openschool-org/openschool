@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Button, Tag, SkeletonText } from "@carbon/react";
+import { Button, Tag } from "antd";
+import { ArrowLeftOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { SkeletonText } from "@/shared/ui/Skeleton";
 import { useClass, useClassSubjectTeachers } from "@/features/academics/queries/useClasses";
 import { useGrades } from "@/features/academics/queries/useGrades";
 import { useTeachers } from "@/features/teachers/queries/useTeachers";
@@ -122,25 +124,26 @@ export default function TimetableEditor() {
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">
-            {gradeName} - {cls?.name} <Tag type="gray" size="sm">v{timetable.version}</Tag>
+            {gradeName} - {cls?.name}
           </h1>
-          <p className="os-page__subtitle">
-            Status: <strong>{statusLabel(timetable.status)}</strong>
-            {timetable.review_comments && <> - <em>{timetable.review_comments}</em></>}
-          </p>
+          <div className="os-flex os-items-center os-gap-2 os-wrap os-mt-1">
+            <Tag color={TIMETABLE_STATUS_TAG[timetable.status as keyof typeof TIMETABLE_STATUS_TAG]?.color} variant="filled">{statusLabel(timetable.status)}</Tag>
+            <Tag variant="filled">v{timetable.version}</Tag>
+            {timetable.review_comments && <span className="os-text-sm os-c-secondary">Reviewer: <em>{timetable.review_comments}</em></span>}
+          </div>
         </div>
         <div className="os-flex os-gap-2">
-          <Button kind="tertiary" onClick={() => navigate(-1)}>Back</Button>
-          <Button kind="ghost" onClick={() => { setValidationOpen(true); runValidation(); }} disabled={validating}>
+          <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>Back</Button>
+          <Button icon={<CheckCircleOutlined />} onClick={() => { setValidationOpen(true); runValidation(); }} loading={validating}>
             {validating ? "Validating…" : "Validate"}
           </Button>
           {isDraft && (
-            <Button kind="primary" onClick={() => submit.mutate()} disabled={submit.isPending}>
+            <Button type="primary" onClick={() => submit.mutate()} loading={submit.isPending}>
               {submit.isPending ? "Submitting…" : "Submit for review"}
             </Button>
           )}
           {timetable.status === "approved" && (
-            <Button kind="primary" onClick={() => publish.mutate()} disabled={publish.isPending}>
+            <Button type="primary" onClick={() => publish.mutate()} loading={publish.isPending}>
               {publish.isPending ? "Publishing…" : "Publish"}
             </Button>
           )}

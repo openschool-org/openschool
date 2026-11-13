@@ -42,7 +42,7 @@ var (
 
 func (StudentIntake) Steps() []StepInfo {
 	return []StepInfo{
-		{Key: "read_csv", Title: "Read and check the CSV", Tool: ToolReadIntakeCSV, Phase: "propose"},
+		{Key: "read_csv", Title: "Check your file", Tool: ToolReadIntakeCSV, Phase: "propose"},
 		{Key: "create_students", Title: "Create students and guardians", Tool: ToolCreateStudents, Phase: "apply"},
 		{Key: "create_accounts", Title: "Create sign-in accounts", Tool: ToolCreateAccounts, Phase: "apply"},
 	}
@@ -74,7 +74,7 @@ func (StudentIntake) Inputs(ctx context.Context, s *Store) ([]InputField, error)
 		{Key: "grade", Label: "Joining grade", Type: "select", Required: true, Options: gradeOptions},
 		{Key: "medium", Label: "Medium when the CSV leaves it blank", Type: "select", Options: mediumOptions},
 		{Key: "csv", Label: "Students CSV", Type: "csv", Required: true, Template: intakeTemplate,
-			Help: "One row per student. Download the template for the columns. Siblings share a guardian NIC."},
+			Help: "One row per student.\nDownload the template for the columns.\nBrothers and sisters: give them the same guardian_nic so they share one guardian."},
 		{Key: "create_accounts", Label: "Create sign-in accounts for students with an email", Type: "boolean", Default: "false"},
 	}
 	if cur := currentYear(years); cur != nil {

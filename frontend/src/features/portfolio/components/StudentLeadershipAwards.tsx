@@ -1,7 +1,4 @@
 import { useState } from "react";
-import { Button } from "antd";
-import TextField from "@/shared/ui/TextField";
-import { PlusOutlined } from "@ant-design/icons";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import {
   useLeadershipRoles,
@@ -11,11 +8,12 @@ import {
   useCreateStudentAward,
   useDeleteStudentAward,
 } from "@/features/portfolio/queries/useStudentPortfolio";
-import { todayISODate } from "@/shared/lib/date";
-import EmptyState from "@/shared/ui/EmptyState";
+import { formatDate, todayISODate } from "@/shared/lib/date";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import RemoveIconButton from "@/shared/ui/RemoveIconButton";
-import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import RecordsCard from "@/shared/ui/RecordsCard";
+import FormModal from "@/shared/ui/FormModal";
+import TextField from "@/shared/ui/TextField";
 import DateField from "@/shared/ui/DateField";
 
 export default function StudentLeadershipAwards({ studentId }: { studentId: string }) {
@@ -24,6 +22,7 @@ export default function StudentLeadershipAwards({ studentId }: { studentId: stri
   const { data: roles, isLoading: rolesLoading } = useLeadershipRoles(studentId);
   const createRole = useCreateLeadershipRole(studentId);
   const deleteRole = useDeleteLeadershipRole(studentId);
+  const [roleOpen, setRoleOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [scope, setScope] = useState("");
   const [pendingDeleteRoleId, setPendingDeleteRoleId] = useState<string | null>(null);
@@ -31,15 +30,19 @@ export default function StudentLeadershipAwards({ studentId }: { studentId: stri
   const { data: awards, isLoading: awardsLoading } = useStudentAwards(studentId);
   const createAward = useCreateStudentAward(studentId);
   const deleteAward = useDeleteStudentAward(studentId);
+  const [awardOpen, setAwardOpen] = useState(false);
   const [awardTitle, setAwardTitle] = useState("");
   const [awardDate, setAwardDate] = useState(todayISODate());
   const [pendingDeleteAwardId, setPendingDeleteAwardId] = useState<string | null>(null);
+
+  const openRole = () => { createRole.reset(); setTitle(""); setScope(""); setRoleOpen(true); };
+  const openAward = () => { createAward.reset(); setAwardTitle(""); setAwardDate(todayISODate()); setAwardOpen(true); };
 
   const addRole = () => {
     if (!title.trim() || !currentYear) return;
     createRole.mutate(
       { academic_year_id: currentYear.id, title: title.trim(), scope: scope.trim() || undefined },
-      { onSuccess: () => { setTitle(""); setScope(""); } },
+      { onSuccess: () => setRoleOpen(false) },
     );
   };
 
@@ -47,39 +50,78 @@ export default function StudentLeadershipAwards({ studentId }: { studentId: stri
     if (!awardTitle.trim() || !currentYear) return;
     createAward.mutate(
       { academic_year_id: currentYear.id, title: awardTitle.trim(), awarded_date: new Date(awardDate).toISOString() },
-      { onSuccess: () => setAwardTitle("") },
+      { onSuccess: () => setAwardOpen(false) },
     );
   };
 
   return (
-    <>
-      <div className="os-section os-mt-4">
-        <div className="os-section__header">
-          <h2 className="os-section__title">Leadership roles</h2>
+    <div className="os-flex os-col os-gap-6">
+      <RecordsCard
+        title="Leadership roles"
+        subtitle="Roles outside the prefect board, such as club president or sports captain"
+        addLabel="Add role"
+        onAdd={currentYear ? openRole : undefined}
+        isLoading={rolesLoading}
+        rows={roles ?? []}
+        getRowId={(r) => r.id}
+        empty={{ title: "No leadership roles yet", description: "Add a role this student holds, like club president or sports captain." }}
+        columns={[
+          { key: "title", header: "Role", render: (r) => <span className="os-fw-500">{r.title}</span> },
+          { key: "scope", header: "Scope", render: (r) => <span className="os-table__muted">{r.scope || "-"}</span> },
+          { key: "actions", header: "", align: "end", render: (r) => <RemoveIconButton label={`Delete ${r.title}`} onClick={() => setPendingDeleteRoleId(r.id)} /> },
+        ]}
+      />
+
+      <RecordsCard
+        title="Awards & achievements"
+        addLabel="Add award"
+        onAdd={currentYear ? openAward : undefined}
+        isLoading={awardsLoading}
+        rows={awards ?? []}
+        getRowId={(a) => a.id}
+        empty={{ title: "No awards yet", description: "Add awards and achievements for this student." }}
+        columns={[
+          { key: "title", header: "Award", render: (a) => <span className="os-fw-500">{a.title}</span> },
+          { key: "date", header: "Date", render: (a) => <span className="os-table__muted">{formatDate(a.awarded_date)}</span> },
+          { key: "actions", header: "", align: "end", render: (a) => <RemoveIconButton label={`Delete ${a.title}`} onClick={() => setPendingDeleteAwardId(a.id)} /> },
+        ]}
+      />
+
+      <FormModal
+        open={roleOpen}
+        title="Add leadership role"
+        onClose={() => setRoleOpen(false)}
+        onSubmit={addRole}
+        isPending={createRole.isPending}
+        submitDisabled={!title.trim()}
+        submitLabel="Add role"
+        isError={createRole.isError}
+        error={createRole.error}
+        errorTitle="Could not add role"
+      >
+        <div className="os-stack os-gap-4">
+          <TextField id="leadership-title" label="Role" placeholder="e.g. Debate Club President" value={title} onChange={setTitle} />
+          <TextField id="leadership-scope" label="Scope (optional)" placeholder="e.g. Senior section" value={scope} onChange={setScope} />
         </div>
-        <div className="os-section__body">
-          <MutationErrorNotification
-            isError={createRole.isError}
-            error={createRole.error}
-            title="Could not add role" fallback="Please try again." className="os-mb-4"
-          />
-          <div className="os-grid os-grid-form-2-auto os-gap-3 os-items-grid-end os-mb-6">
-            <TextField id="leadership-title" label="Title" placeholder="e.g. Debate Club President" value={title} onChange={(v) => setTitle(v)} />
-            <TextField id="leadership-scope" label="Scope (optional)" value={scope} onChange={(v) => setScope(v)} />
-            <Button icon={<PlusOutlined />} type="primary" onClick={addRole} disabled={!title.trim() || createRole.isPending}>Add</Button>
-          </div>
-          {!rolesLoading && (roles?.length ?? 0) === 0 && <EmptyState title="No leadership roles yet" description="Roles outside the prefect board (club president, sports captain, etc.)." />}
-          {roles?.map((r) => (
-            <div key={r.id} className="os-list-row os-list-row--compact os-justify-between">
-              <div>
-                <span className="os-fw-500 os-text-md">{r.title}</span>
-                {r.scope && <span className="os-ml-2 os-text-sm os-c-tertiary">{r.scope}</span>}
-              </div>
-              <RemoveIconButton label="Delete" onClick={() => setPendingDeleteRoleId(r.id)} />
-            </div>
-          ))}
+      </FormModal>
+
+      <FormModal
+        open={awardOpen}
+        title="Add award"
+        onClose={() => setAwardOpen(false)}
+        onSubmit={addAward}
+        isPending={createAward.isPending}
+        submitDisabled={!awardTitle.trim()}
+        submitLabel="Add award"
+        isError={createAward.isError}
+        error={createAward.error}
+        errorTitle="Could not add award"
+      >
+        <div className="os-stack os-gap-4">
+          <TextField id="award-title" label="Award" placeholder="e.g. All-island art competition, 1st place" value={awardTitle} onChange={setAwardTitle} />
+          <DateField id="award-date" labelText="Date" value={awardDate} onChange={(ymd) => ymd && setAwardDate(ymd)} />
         </div>
-      </div>
+      </FormModal>
 
       <ConfirmDeleteModal
         open={pendingDeleteRoleId !== null}
@@ -88,41 +130,8 @@ export default function StudentLeadershipAwards({ studentId }: { studentId: stri
         subject="Leadership role"
         mutation={deleteRole}
         onClose={() => setPendingDeleteRoleId(null)}
-        onConfirm={() => {
-          if (pendingDeleteRoleId) deleteRole.mutate(pendingDeleteRoleId);
-        }}
+        onConfirm={() => pendingDeleteRoleId && deleteRole.mutate(pendingDeleteRoleId)}
       />
-
-      <div className="os-section">
-        <div className="os-section__header">
-          <h2 className="os-section__title">Awards &amp; achievements</h2>
-        </div>
-        <div className="os-section__body">
-          <MutationErrorNotification
-            isError={createAward.isError}
-            error={createAward.error}
-            title="Could not add award" fallback="Please try again." className="os-mb-4"
-          />
-          <div className="os-grid os-grid-form-1-12-auto os-gap-3 os-items-grid-end os-mb-6">
-            <TextField id="award-title" label="Title" value={awardTitle} onChange={(v) => setAwardTitle(v)} />
-            <DateField value={awardDate} onChange={(ymd) => {
-              if (ymd) setAwardDate(ymd);
-            }} id="award-date" labelText="Date" />
-            <Button icon={<PlusOutlined />} type="primary" onClick={addAward} disabled={!awardTitle.trim() || createAward.isPending}>Add</Button>
-          </div>
-          {!awardsLoading && (awards?.length ?? 0) === 0 && <EmptyState title="No awards yet" description="Add awards and achievements for this student." />}
-          {awards?.map((a) => (
-            <div key={a.id} className="os-list-row os-list-row--compact os-justify-between">
-              <div>
-                <span className="os-fw-500 os-text-md">{a.title}</span>
-                <span className="os-ml-2 os-text-sm os-c-tertiary">{a.awarded_date}</span>
-              </div>
-              <RemoveIconButton label="Delete" onClick={() => setPendingDeleteAwardId(a.id)} />
-            </div>
-          ))}
-        </div>
-      </div>
-
       <ConfirmDeleteModal
         open={pendingDeleteAwardId !== null}
         title="Delete award"
@@ -130,10 +139,8 @@ export default function StudentLeadershipAwards({ studentId }: { studentId: stri
         subject="Award"
         mutation={deleteAward}
         onClose={() => setPendingDeleteAwardId(null)}
-        onConfirm={() => {
-          if (pendingDeleteAwardId) deleteAward.mutate(pendingDeleteAwardId);
-        }}
+        onConfirm={() => pendingDeleteAwardId && deleteAward.mutate(pendingDeleteAwardId)}
       />
-    </>
+    </div>
   );
 }

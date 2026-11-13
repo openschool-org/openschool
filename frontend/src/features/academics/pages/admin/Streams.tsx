@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert, Button } from "antd";
-import { AppstoreOutlined, PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined } from "@ant-design/icons";
 import TextField from "@/shared/ui/TextField";
 import { useStreams, useCreateStream } from "@/features/academics/queries/useClasses";
 import StreamGroups from "@/features/academics/components/StreamGroups";
@@ -47,17 +47,7 @@ export default function Streams() {
           />
         )}
         {!isLoading && streams && streams.length > 0 && (
-          <div className="os-grid os-grid-auto-280 os-gap-4 os-p-6">
-            {streams.map((s) => (
-              <div key={s.id} className="os-border os-rounded-md os-bg-layer os-p-5">
-                <div className="os-flex os-items-center os-gap-2 os-mb-4">
-                  <AppstoreOutlined className="os-c-accent" />
-                  <span className="os-fw-600 os-text-md os-c-primary">{s.name}</span>
-                </div>
-                <StreamGroups stream={s} />
-              </div>
-            ))}
-          </div>
+          <div>{streams.map((s) => <StreamGroups key={s.id} stream={s} />)}</div>
         )}
       </SectionCard>
 

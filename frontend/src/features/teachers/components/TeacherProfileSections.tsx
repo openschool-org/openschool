@@ -1,4 +1,4 @@
-import { Radio } from "antd";
+import { Col, Descriptions, Radio, Row } from "antd";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { Teacher, TeacherTitle, TeacherEmploymentStatus, TeacherSubject } from "@/features/teachers/api/teacher";
 import type { House } from "@/features/school/api/house";
@@ -7,6 +7,7 @@ import TeacherSubjectsSection from "@/features/teachers/components/TeacherSubjec
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import PersonNameFields from "@/shared/ui/PersonNameFields";
 import { formatDateOnly, formatISODate } from "@/shared/lib/date";
+import { capitalize } from "@/shared/lib/text";
 import InfoTip from "@/shared/ui/InfoTip";
 import SectionCard from "@/shared/ui/SectionCard";
 import Field from "@/shared/ui/Field";
@@ -50,46 +51,66 @@ export default function TeacherProfileSections(p: Props) {
     onChange: (value: string) => onChange(key, value),
   });
 
+  // View mode reads as a list of facts; the inputs only appear once Edit is pressed.
+  // Three per row on wide screens, ordered so no row is left half empty.
+  const facts = [
+    { key: "full_name", label: "Full name", children: teacher.full_name },
+    { key: "initials", label: "Name with initials", children: teacher.name_with_initials || "-" },
+    { key: "calling", label: "Calling name", children: teacher.calling_name || "-" },
+    { key: "title", label: "Title", children: teacher.title || "-" },
+    { key: "gender", label: "Gender", children: teacher.gender ? capitalize(teacher.gender) : "-" },
+    { key: "employee", label: "Employee number", children: teacher.employee_number },
+    { key: "email", label: "Email", children: teacher.email ?? "-" },
+    { key: "phone", label: "Phone", children: teacher.phone || "-" },
+    { key: "nic", label: "NIC number", children: teacher.nic_number || "-" },
+    { key: "joined", label: "Joined date", children: formatDateOnly(teacher.joined_date) },
+    { key: "created", label: "Created", children: formatISODate(teacher.created_at) },
+  ];
+
   return (
-    <>
+    <Row gutter={[24, 0]}>
+      <Col xs={24} xl={16}>
       <SectionCard title="Profile">
           <MutationErrorNotification isError={!!p.updateError} error={null} fallback={p.updateError ?? ""} />
-          <div className="os-grid os-grid-cols-2 os-gap-5">
-            <SelectField
-              id="title"
-              label="Title"
-              value={form.title}
-              disabled={!editing}
-              onChange={(v) => p.onTitleChange(v as TeacherTitle | "")}
-              options={[{ value: "", label: "None" }, ...TITLES.map((t) => ({ value: t, label: t }))]}
-            />
-            <Field id="edit-gender" label="Gender">
-              <Radio.Group id="edit-gender" value={form.gender || undefined} disabled={!editing} onChange={(e) => p.onGenderChange(e.target.value)}>
-                <Radio value="male">Male</Radio>
-                <Radio value="female">Female</Radio>
-              </Radio.Group>
-            </Field>
-            <PersonNameFields
-              idPrefix="teacher-profile"
-              value={form}
-              readOnly={!editing}
-              fullNameInvalid={editing && !form.full_name.trim()}
-              onChange={(next) => {
-                (["full_name", "name_with_initials", "calling_name"] as const).forEach((key) => {
-                  if (next[key] !== form[key]) onChange(key, next[key]);
-                });
-              }}
-            />
-            <TextField id="employee-number" label="Employee number" value={teacher.employee_number} readOnly />
-            <TextField id="email" label="Email" value={teacher.email ?? "-"} readOnly />
-            <TextField {...field("phone", "Phone", "phone_number")} />
-            <TextField {...field("nic-number", "NIC number", "nic_number")} />
-            <TextField id="joined-date" label="Joined date" value={formatDateOnly(teacher.joined_date)} readOnly />
-            <TextField id="created-at" label="Created" value={formatISODate(teacher.created_at)} readOnly />
-          </div>
+          {editing ? (
+            <div className="os-modal-form">
+              <SelectField
+                id="title"
+                label="Title"
+                value={form.title}
+                disabled={!editing}
+                onChange={(v) => p.onTitleChange(v as TeacherTitle | "")}
+                options={[{ value: "", label: "None" }, ...TITLES.map((t) => ({ value: t, label: t }))]}
+              />
+              <Field id="edit-gender" label="Gender">
+                <Radio.Group id="edit-gender" value={form.gender || undefined} disabled={!editing} onChange={(e) => p.onGenderChange(e.target.value)}>
+                  <Radio value="male">Male</Radio>
+                  <Radio value="female">Female</Radio>
+                </Radio.Group>
+              </Field>
+              <PersonNameFields
+                idPrefix="teacher-profile"
+                value={form}
+                readOnly={!editing}
+                fullNameInvalid={editing && !form.full_name.trim()}
+                onChange={(next) => {
+                  (["full_name", "name_with_initials", "calling_name"] as const).forEach((key) => {
+                    if (next[key] !== form[key]) onChange(key, next[key]);
+                  });
+                }}
+              />
+              <TextField {...field("phone", "Phone", "phone_number")} />
+              <TextField {...field("nic-number", "NIC number", "nic_number")} />
+            </div>
+          ) : (
+            <Descriptions className="os-facts" layout="vertical" colon={false} column={{ xs: 1, sm: 2, lg: 3 }} items={facts} />
+          )}
       </SectionCard>
 
       <TeacherSubjectsSection subjects={p.subjects} editing={editing} assignSubject={p.assignSubject} removeSubject={p.removeSubject} />
+      </Col>
+
+      <Col xs={24} xl={8}>
 
       <SectionCard title="House">
           {currentHouse && (
@@ -120,6 +141,7 @@ export default function TeacherProfileSections(p: Props) {
             options={EMPLOYMENT_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
           />
       </SectionCard>
-    </>
+      </Col>
+    </Row>
   );
 }

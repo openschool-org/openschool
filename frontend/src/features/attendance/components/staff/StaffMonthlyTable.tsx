@@ -22,8 +22,7 @@ export default function StaffMonthlyTable({ year, month, kind, search }: Props) 
   const { data, isLoading, isError, refetch } = useStaffMonthly(year, month, { kind, search, limit: pageSize, offset: (page - 1) * pageSize });
 
   return (
-    <div className="os-section">
-      <ListState
+    <ListState
         isLoading={isLoading}
         isError={isError}
         onRetry={refetch}
@@ -54,7 +53,6 @@ export default function StaffMonthlyTable({ year, month, kind, search }: Props) 
             { key: "leave", header: "Leave", align: "end", render: (r) => r.leave_count },
           ]}
         />
-      </ListState>
-    </div>
+    </ListState>
   );
 }

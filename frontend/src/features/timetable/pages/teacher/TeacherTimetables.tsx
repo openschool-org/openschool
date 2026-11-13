@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router";
-import { Tag, SkeletonText } from "@carbon/react";
+import { Tag } from "antd";
+import { SkeletonText } from "@/shared/ui/Skeleton";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useTimetablesForLeadership } from "@/features/timetable/queries/useTimetables";
 import { TIMETABLE_STATUS_TAG } from "@/shared/lib/constants/tags";
@@ -42,7 +43,7 @@ export default function TeacherTimetables() {
               { key: "grade", header: "Grade", render: (t) => t.grade_name },
               { key: "class", header: "Class", render: (t) => t.class_name },
               { key: "version", header: "Version", render: (t) => `v${t.version}` },
-              { key: "status", header: "Status", render: (t) => <Tag type={statusTag(t.status)?.type ?? "gray"} size="sm">{statusTag(t.status)?.label ?? t.status}</Tag> },
+              { key: "status", header: "Status", render: (t) => <Tag color={statusTag(t.status)?.color} variant="filled">{statusTag(t.status)?.label ?? t.status}</Tag> },
               { key: "updated", header: "Updated", render: (t) => formatDateTime(t.updated_at) },
             ]}
           />

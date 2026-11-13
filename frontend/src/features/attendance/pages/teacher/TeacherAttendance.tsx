@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Tag } from "@carbon/react";
+import { Input, Tag } from "antd";
 import { useQueries } from "@tanstack/react-query";
-import { EventSchedule, Search, Time } from "@carbon/icons-react";
+import { ClockCircleOutlined, ScheduleOutlined, SearchOutlined } from "@ant-design/icons";
 import { useMyClasses } from "@/features/teachers/queries/useTeachers";
 import { useCreateSession, classSessionsOptions } from "@/features/attendance/queries/useAttendance";
 import SessionCountCell from "@/features/attendance/components/SessionCountCell";
@@ -29,7 +29,7 @@ function PendingClassAction({ classId, className, gradeName }: { classId: string
       onClick={handleClick}
       disabled={createSession.isPending} className="os-py-2 os-px-4 os-bg-accent os-c-layer os-border-none os-pointer os-text-sm os-fw-500 os-nowrap os-flex os-items-center os-gap-1h"
     >
-      <EventSchedule size={14} /> {createSession.isPending ? "Starting…" : classLabel(gradeName, className)}
+      <ScheduleOutlined /> {createSession.isPending ? "Starting…" : classLabel(gradeName, className)}
     </button>
   );
 }
@@ -78,7 +78,7 @@ export default function TeacherAttendance() {
 
       {pendingToday.length > 0 && (
         <div className="os-bg-status-late os-border-warning os-py-3h os-px-5 os-mb-6 os-flex os-items-center os-gap-4 os-wrap">
-          <Time size={18} className="os-fill-warning os-shrink-0" />
+          <ClockCircleOutlined className="os-c-warning os-shrink-0 os-text-lg" />
           <div className="os-flex-1">
             <p className="os-mt-0 os-mx-0 os-mb-h os-fw-600 os-text-md os-c-warning-text">
               {pendingToday.length} class{pendingToday.length > 1 ? "es" : ""} not marked today
@@ -111,15 +111,15 @@ export default function TeacherAttendance() {
 
       <div className="os-section">
         <div className="os-toolbar">
-          <div className="os-search os-max-w-22">
-            <Search size={16} className="os-search__icon" />
-            <input
-              className="os-search__input"
-              placeholder="Search by class or date…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
+          <Input
+            className="os-max-w-22"
+            allowClear
+            prefix={<SearchOutlined />}
+            aria-label="Search sessions"
+            placeholder="Search by class or date…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
         </div>
 
         {visible.length === 0 ? (
@@ -134,7 +134,7 @@ export default function TeacherAttendance() {
               { key: "present", header: "Present", render: (r) => <SessionCountCell count={r.session.present_count} status="present" /> },
               { key: "absent", header: "Absent", render: (r) => <SessionCountCell count={r.session.absent_count} status="absent" /> },
             { key: "late", header: "Late", render: (r) => <SessionCountCell count={r.session.late_count} status="late" /> },
-              { key: "status", header: "Status", render: () => <Tag type="blue" size="sm">Marked</Tag> },
+              { key: "status", header: "Status", render: () => <Tag color="success" variant="filled">Marked</Tag> },
               { key: "action", header: "Action", align: "end", render: (r) => <Link to={`/attendance/sessions/${r.session.id}/mark`} className="os-c-tertiary os-no-underline os-text-sm">View</Link> },
             ]}
           />

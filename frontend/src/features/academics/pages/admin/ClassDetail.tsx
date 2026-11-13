@@ -76,6 +76,7 @@ export default function ClassDetail() {
         <div className="os-grid os-grid-cols-2-1 os-gap-6 os-items-grid-start">
           <div>
             <Tabs
+              className="os-detail-tabs"
               defaultActiveKey={initialTab}
               aria-label="Class sections"
               items={[

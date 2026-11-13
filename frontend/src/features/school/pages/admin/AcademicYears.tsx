@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Add } from "@carbon/icons-react";
-import { Button } from "@carbon/react";
+import { Button } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import {
   useAcademicYears,
   useCreateAcademicYear,
@@ -71,10 +71,10 @@ export default function AcademicYears() {
         <div className="os-page__header-left">
           <h1 className="os-page__title">Academic years</h1>
           <p className="os-page__subtitle">
-            Manage academic year periods for the school
+            School years and their terms. Exactly one year is current.
           </p>
         </div>
-        <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
           New academic year
         </Button>
       </div>

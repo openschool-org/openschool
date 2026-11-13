@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Button, InlineNotification, Select, SelectItem } from "@carbon/react";
-import { Send } from "@carbon/icons-react";
+import { Alert, Button, Card } from "antd";
+import { SendOutlined } from "@ant-design/icons";
+import SelectField from "@/shared/ui/SelectField";
 import { useEmailPreview, useEmailTemplates, useSendTestEmail } from "@/features/email/queries/useEmail";
-import SectionCard from "@/shared/ui/SectionCard";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
@@ -21,29 +21,28 @@ export default function EmailPreviewCard() {
   };
 
   return (
-    <SectionCard title="Email templates">
-      <div className="os-flex os-gap-4 os-items-end os-wrap os-mb-4">
-        <Select id="email-template" labelText="Template" value={key} onChange={(e) => choose(e.target.value)}>
-          {templates?.map((t) => <SelectItem key={t.key} value={t.key} text={t.name} />)}
-        </Select>
-        <Button kind="secondary" size="md" renderIcon={Send} disabled={!key || sendTest.isPending} onClick={() => sendTest.mutate(key)}>
-          {sendTest.isPending ? "Sending…" : "Send test to me"}
-        </Button>
-      </div>
-      {sendTest.isSuccess && (
-        <InlineNotification kind="success" lowContrast title="Test email sent" subtitle={`Check the inbox of ${sendTest.data.sent_to}.`} onClose={() => sendTest.reset()} className="os-mb-4 os-max-w-full" />
-      )}
-      <MutationErrorNotification isError={sendTest.isError} error={sendTest.error} title="Could not send the test email" className="os-mb-4" />
+    <Card
+      className="os-form-card"
+      title="Email templates"
+      extra={<Button icon={<SendOutlined />} disabled={!key} loading={sendTest.isPending} onClick={() => sendTest.mutate(key)}>{sendTest.isPending ? "Sending…" : "Send test to me"}</Button>}
+    >
+      <div className="os-stack os-gap-4">
+        <div className="os-email-picker">
+          <SelectField id="email-template" label="Template" value={key} onChange={choose} options={(templates ?? []).map((t) => ({ value: t.key, label: t.name }))} />
+        </div>
+        {sendTest.isSuccess && <Alert type="success" showIcon closable title="Test email sent" description={`Check the inbox of ${sendTest.data.sent_to}.`} onClose={() => sendTest.reset()} />}
+        <MutationErrorNotification isError={sendTest.isError} error={sendTest.error} title="Could not send the test email" />
 
-      {isLoading && <LoadingSpinner />}
-      {isError && <ErrorMessage message="Could not load the preview." onRetry={refetch} />}
-      {preview && (
-        <>
-          <p className="os-text-sm os-c-secondary os-mt-0 os-mb-2">Subject: <strong className="os-c-primary">{preview.subject}</strong></p>
-          {/* sandbox with no permissions: the preview can't run scripts or reach the app. */}
-          <iframe title="Email preview" sandbox="" srcDoc={preview.html} className="os-email-preview" />
-        </>
-      )}
-    </SectionCard>
+        {isLoading && <LoadingSpinner />}
+        {isError && <ErrorMessage message="Could not load the preview." onRetry={refetch} />}
+        {preview && (
+          <div className="os-email-frame">
+            <p className="os-email-frame__subject"><span>Subject</span>{preview.subject}</p>
+            {/* sandbox with no permissions: the preview can't run scripts or reach the app. */}
+            <iframe title="Email preview" sandbox="" srcDoc={preview.html} className="os-email-preview" />
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }

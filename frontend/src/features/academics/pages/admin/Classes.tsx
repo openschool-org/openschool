@@ -1,5 +1,7 @@
-import { useState } from "react";
-import { Alert, Button, Card } from "antd";
+import { useMemo, useState } from "react";
+import { Alert, Button, Segmented } from "antd";
+import FilterBar from "@/shared/ui/FilterBar";
+import { gradeBand } from "@/shared/lib/gradeBand";
 import { PlusOutlined } from "@ant-design/icons";
 import type { Grade } from "@/features/academics/api/grade";
 import type { ClassWithDetails } from "@/features/academics/api/class";
@@ -30,6 +32,24 @@ export default function Classes() {
   const updateClass = useUpdateClass(classToEdit?.id ?? "");
   const { data: mediums } = useMediums();
   const { data: classrooms } = useClassrooms();
+
+  // Search matches a class name or its form teacher; the section filter keeps one school section.
+  const [query, setQuery] = useState("");
+  const [section, setSection] = useState("all");
+  const q = query.trim().toLowerCase();
+  const visible = useMemo(
+    () =>
+      orderedGrades
+        .map((g, i) => {
+          const all = classesByGrade.get(g.id) ?? [];
+          const matches = q ? all.filter((c) => c.name.toLowerCase().includes(q) || (page.teacherName(c.form_teacher_id) ?? "").toLowerCase().includes(q)) : all;
+          return { grade: g, index: i, classes: matches, nameMatch: !!q && g.name.toLowerCase().includes(q) };
+        })
+        .filter((row) => (section === "all" || gradeBand(row.grade.name) === section) && (!q || row.nameMatch || row.classes.length > 0))
+        .map((row) => (row.nameMatch && row.classes.length === 0 ? { ...row, classes: classesByGrade.get(row.grade.id) ?? [] } : row)),
+    [orderedGrades, classesByGrade, q, section, page],
+  );
+  const filtering = !!q || section !== "all";
 
   const busy = reorder.isPending;
   const isLoading = page.grades.isLoading || page.classes.isLoading;
@@ -68,11 +88,31 @@ export default function Classes() {
 
       <AgentFindingsBanner />
 
-      <Card
-        className="os-catalogue-card"
-        title="Grade catalogue"
-        extra={!isLoading && !isError && <span className="os-section__meta">{orderedGrades.length} {orderedGrades.length === 1 ? "grade" : "grades"}</span>}
-      >
+      {!isLoading && !isError && orderedGrades.length > 0 && (
+        <div className="os-grades-filter">
+          <FilterBar
+            search={{ value: query, onChange: setQuery, placeholder: "Search classes or form teachers…" }}
+            controls={[
+              {
+                label: "School section",
+                node: (
+                  <Segmented
+                    value={section}
+                    onChange={(v) => setSection(String(v))}
+                    options={[
+                      { value: "all", label: "All" },
+                      { value: "primary", label: "Primary" },
+                      { value: "junior", label: "Junior" },
+                      { value: "ol", label: "O/L" },
+                      { value: "al", label: "A/L" },
+                    ]}
+                  />
+                ),
+              },
+            ]}
+          />
+        </div>
+      )}
 
         {(deleteGrade.isError || deleteClass.isError || reorder.isError) && (
           <div className="os-stack os-mb-4">
@@ -118,9 +158,13 @@ export default function Classes() {
           />
         )}
 
-        {!isLoading && orderedGrades.length > 0 && (
+        {!isLoading && orderedGrades.length > 0 && visible.length === 0 && filtering && (
+          <div className="os-section"><EmptyState title="No matching classes" description="Try another name or form teacher, or a different section." /></div>
+        )}
+
+        {!isLoading && visible.length > 0 && (
           <div className={`os-flex os-col os-gap-4${busy ? " os-opacity-60" : ""}`}>
-              {orderedGrades.map((g, i) => (
+              {visible.map(({ grade: g, index: i, classes: shown }) => (
                 <GradeGroup
                   key={g.id}
                   grade={g}
@@ -129,7 +173,7 @@ export default function Classes() {
                   from={page.range.from}
                   to={page.range.to}
                   busy={busy}
-                  classes={classesByGrade.get(g.id) ?? []}
+                  classes={shown}
                   onMoveUp={() => page.move(i, -1)}
                   onMoveDown={() => page.move(i, 1)}
                   onEditGrade={() => page.openEditGrade(g)}
@@ -144,7 +188,6 @@ export default function Classes() {
               ))}
           </div>
         )}
-      </Card>
 
       {form.gradeModal && (
         <GradeFormModal

@@ -60,7 +60,7 @@ export function buildAntdTheme(): ThemeConfig {
         motionDurationMid: "0s",
         motionDurationSlow: "0s",
         itemSelectedColor: token("--os-layer", "currentColor"),
-        itemSelectedBg: token("--os-accent-deeper", "transparent"),
+        itemSelectedBg: token("--os-accent", "transparent"),
         groupTitleColor: token("--os-text-tertiary", "currentColor"),
         groupTitleFontSize: 12,
         itemHeight: 38,
@@ -73,18 +73,35 @@ export function buildAntdTheme(): ThemeConfig {
       Button: { primaryShadow: "none", defaultShadow: "none", dangerShadow: "none", fontWeight: 500 },
       // Tables sit inside rounded section cards, so the header needs no radius of its own.
       Table: {
-        headerBg: token("--os-layer-hover", "transparent"),
+        // Header row: a light tint of the theme colour, a step darker than the rows.
+        headerBg: token("--os-accent-light", "transparent"),
         headerColor: token("--os-text-primary", "currentColor"),
         headerSplitColor: "transparent",
+        // Row and header dividers: the regular border grey, so rows read clearly.
+        borderColor: token("--os-border-subtle", "currentColor"),
         headerBorderRadius: 0,
         rowHoverBg: token("--os-layer-hover", "transparent"),
         bodySortBg: "transparent",
-        headerSortActiveBg: token("--os-layer-hover", "transparent"),
-        headerSortHoverBg: token("--os-layer-hover", "transparent"),
+        headerSortActiveBg: token("--os-accent-light", "transparent"),
+        headerSortHoverBg: token("--os-accent-light", "transparent"),
         cellPaddingInline: 24,
         cellPaddingBlock: 12,
       },
       Card: { headerFontSize: 16 },
+      // Segmented filters (All / Primary / …): white track, theme-colour pill for the selected option.
+      Segmented: {
+        trackBg: token("--os-layer", "transparent"),
+        itemColor: token("--os-text-secondary", "currentColor"),
+        itemHoverColor: token("--os-text-primary", "currentColor"),
+        itemHoverBg: token("--os-layer-hover", "transparent"),
+        itemSelectedBg: token("--os-accent", "transparent"),
+        itemSelectedColor: token("--os-layer", "currentColor"),
+        trackPadding: 3,
+        // No sliding animation when the selection changes.
+        motionDurationFast: "0s",
+        motionDurationMid: "0s",
+        motionDurationSlow: "0s",
+      },
       // Select menus: all neutral greys, no teal. Hover is a light grey; the selected option is a
       // slightly darker grey (also while it is the highlighted one, which antd otherwise paints a
       // darker teal) plus bold text. No open/close animation.

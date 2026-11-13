@@ -60,6 +60,7 @@ export default function ChildDetail() {
 
       <div className="os-py-6 os-px-8">
         <Tabs
+          className="os-detail-tabs"
           aria-label={t("child.sections")}
           items={[
             { key: "attendance", label: t("nav.attendance"), children: <TabSection title={t("nav.attendance")} padded={false}><ChildAttendanceTab studentId={child.id} /></TabSection> },

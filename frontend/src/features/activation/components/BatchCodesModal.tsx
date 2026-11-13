@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { ComposedModal, InlineNotification, ModalBody, ModalHeader } from "@carbon/react";
+import { Alert, Modal } from "antd";
+import { MODAL_WIDTH } from "@/shared/ui/modalWidth";
 import { useBatchCodes } from "@/features/activation/queries/useActivation";
 import type { ActivationBatch } from "@/features/activation/api/activation";
 import IssuedBatchPanel from "@/features/activation/components/IssuedBatchPanel";
@@ -18,16 +19,13 @@ export default function BatchCodesModal({ batch, onClose }: { batch: ActivationB
   }, [batch.batch_id, mutate]);
 
   return (
-    <ComposedModal open size="lg" onClose={onClose} aria-label="Activation codes">
-      <ModalHeader title={`${ROLE_LABELS[batch.role].one} codes issued ${formatDate(batch.created_at)}`} />
-      <ModalBody>
+    <Modal open width={MODAL_WIDTH.lg} onCancel={onClose} footer={null} title={`${ROLE_LABELS[batch.role].one} codes issued ${formatDate(batch.created_at)}`}>
         {codes.isPending && <LoadingSpinner />}
         <MutationErrorNotification isError={codes.isError} error={codes.error} title="Could not open these codes" />
         {codes.data && codes.data.codes.length === 0 && (
-          <InlineNotification kind="info" lowContrast hideCloseButton title="No unused codes" subtitle="Every code in this batch was used, cancelled or has expired." className="os-max-w-full" />
+          <Alert type="info" showIcon title="No unused codes" description="Every code in this batch was used, cancelled or has expired." />
         )}
         {codes.data && codes.data.codes.length > 0 && <IssuedBatchPanel batch={codes.data} onDone={onClose} reopened />}
-      </ModalBody>
-    </ComposedModal>
+    </Modal>
   );
 }

@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { Link } from "react-router";
-import { Button, Select, SelectItem, Tag, SkeletonText } from "@carbon/react";
-import { Rocket } from "@carbon/icons-react";
+import { Button, Tag } from "antd";
+import { ThunderboltOutlined } from "@ant-design/icons";
+import { SkeletonText } from "@/shared/ui/Skeleton";
+import SelectField from "@/shared/ui/SelectField";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useGradeSections } from "@/features/timetable/queries/useGradeSections";
 import { useGenerateTimetables } from "@/features/timetable/queries/useGenerate";
@@ -12,40 +14,29 @@ import type { ClassGenerationResult } from "@/features/timetable/api/generate";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import InfoTip from "@/shared/ui/InfoTip";
 
-function ClassResultCard({ result }: { result: ClassGenerationResult }) {
-  if (result.skipped) {
-    return (
-      <div className="os-section os-py-4 os-px-6">
-        <div className="os-flex os-justify-between os-items-center">
-          <span className="os-fw-500">{result.class_name}</span>
-          <Tag type="gray" size="sm">
-            Skipped
-          </Tag>
-        </div>
-        <p className="os-mt-1 os-mx-0 os-mb-0 os-text-sm os-c-tertiary">{result.skip_reason}</p>
-      </div>
-    );
-  }
-
+// One generated class: placed/required count, a link to the draft, and any periods it could not place.
+function ClassResultRow({ result }: { result: ClassGenerationResult }) {
   const complete = result.placed >= result.required && result.required > 0;
-
   return (
-    <div className="os-section os-py-4 os-px-6">
-      <div className="os-flex os-justify-between os-items-center">
+    <div className="os-tt-result">
+      <div className="os-flex os-justify-between os-items-center os-gap-3">
         <span className="os-fw-500">{result.class_name}</span>
         <div className="os-flex os-gap-2 os-items-center">
-          <Tag type={complete ? "green" : result.placed > 0 ? "blue" : "gray"} size="sm">
-            {result.placed} / {result.required} periods placed
-          </Tag>
+          {result.skipped ? (
+            <Tag variant="filled">Skipped</Tag>
+          ) : (
+            <Tag color={complete ? "success" : result.placed > 0 ? "processing" : undefined} variant="filled">
+              {result.placed} / {result.required} periods placed
+            </Tag>
+          )}
           {result.timetable_id && (
-            <Button kind="ghost" size="sm" as={Link} to={`/timetables/${result.timetable_id}`}>
-              Open draft →
-            </Button>
+            <Link to={`/timetables/${result.timetable_id}`}><Button size="small">Open draft</Button></Link>
           )}
         </div>
       </div>
+      {result.skipped && <p className="os-mt-1 os-mb-0 os-text-sm os-c-tertiary">{result.skip_reason}</p>}
       {result.gaps.length > 0 && (
-        <ul className="os-mt-2 os-mx-0 os-mb-0 os-pl-5 os-text-sm os-c-warning-text">
+        <ul className="os-tt-result__gaps">
           {result.gaps.map((g, i) => (
             <li key={i}>
               {g.subject_name || "Unresolved subject"}
@@ -86,49 +77,43 @@ export default function GenerateTimetable({ inline = false }: { inline?: boolean
         </div>
       )}
 
-      <div className="os-section os-p-6">
-        {!currentYear ? (
-          <EmptyState title="No current academic year" description="Set an academic year as current first." />
-        ) : !gradeSections ? (
-          <SkeletonText width="40%" />
-        ) : gradeSections.length === 0 ? (
-          <EmptyState
-            title="No grade sections yet"
-            description="Create a grade section with a period grid under Timetable Settings first."
-          />
-        ) : (
-          <div className="os-flex os-gap-3 os-items-end os-mb-4">
-            <div className="os-w-20">
-              <Select
-                id="generate-grade-section"
-                labelText="Grade section"
-                value={sectionId}
-                onChange={(e) => setSectionId(e.target.value)}
-              >
-                <SelectItem value="" text="Select a grade section…" />
-                {gradeSections.map((gs) => (
-                  <SelectItem key={gs.id} value={gs.id} text={gs.name} />
-                ))}
-              </Select>
-            </div>
-            <Button renderIcon={Rocket} kind="primary" onClick={handleGenerate} disabled={!sectionId || generate.isPending}>
-              {generate.isPending ? "Generating…" : "Generate"}
-            </Button>
+      <div className="os-section">
+        <div className="os-section__header">
+          <div>
+            <h2 className="os-section__title">Generate drafts</h2>
+            <p className="os-text-sm os-c-secondary os-m-0">Fills a draft timetable for every class in a grade section. Gaps it cannot place are listed for you to finish by hand.</p>
           </div>
-        )}
-
-        <MutationErrorNotification
-          isError={generate.isError}
-          error={generate.error}
-          title="Could not generate timetables"
-          onClose={() => generate.reset()} className="os-mb-4"
-        />
+        </div>
+        <div className="os-section__body">
+          {!currentYear ? (
+            <EmptyState title="No current academic year" description="Set an academic year as current first." />
+          ) : !gradeSections ? (
+            <SkeletonText width="40%" />
+          ) : gradeSections.length === 0 ? (
+            <EmptyState title="No grade sections yet" description="Create a grade section with a period grid on the Settings tab first." />
+          ) : (
+            <div className="os-flex os-gap-3 os-items-end os-wrap">
+              <div className="os-tt-create">
+                <SelectField
+                  id="generate-grade-section"
+                  label="Grade section"
+                  placeholder="Select a grade section…"
+                  value={sectionId}
+                  onChange={setSectionId}
+                  options={gradeSections.map((gs) => ({ value: gs.id, label: gs.name }))}
+                />
+              </div>
+              <Button type="primary" icon={<ThunderboltOutlined />} onClick={handleGenerate} disabled={!sectionId} loading={generate.isPending}>
+                {generate.isPending ? "Generating…" : "Generate"}
+              </Button>
+            </div>
+          )}
+          <MutationErrorNotification isError={generate.isError} error={generate.error} title="Could not generate timetables" onClose={() => generate.reset()} className="os-mt-4" />
+        </div>
 
         {result && (
-          <div className="os-grid os-gap-3 os-mt-4">
-            {result.classes.map((c) => (
-              <ClassResultCard key={c.class_id} result={c} />
-            ))}
+          <div className="os-tt-results">
+            {result.classes.map((c) => <ClassResultRow key={c.class_id} result={c} />)}
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-import { InlineNotification } from "@carbon/react";
+import { Alert, Card, Collapse } from "antd";
 import type { Run } from "@/features/workflows/api/workflows";
 import ProposalSection from "@/features/workflows/components/ProposalSection";
 import TraceList from "@/features/workflows/components/TraceList";
@@ -16,23 +16,23 @@ export default function ProposalView({ run, onEdit, editingRow }: Props) {
     <div className="os-flex os-col os-gap-4">
       <div className="os-stat-grid os-mb-0">
         {run.proposal.summary.map((s) => (
-          <div key={s.label} className="os-stat-card">
-            <p className="os-stat-card__label">{s.label}</p>
-            <p className="os-stat-card__value">{s.value}</p>
-          </div>
+          <Card key={s.label} className="os-dash-stat">
+            <p className="os-dash-stat__label">{s.label}</p>
+            <p className="os-dash-stat__value">{s.value}</p>
+          </Card>
         ))}
       </div>
       {(run.proposal.warnings ?? []).map((w) => (
-        <InlineNotification key={w} kind="warning" lowContrast hideCloseButton title="Check this" subtitle={w} className="os-max-w-full" />
+        <Alert key={w} type="warning" showIcon title="Check this" description={w} />
       ))}
-      {run.error && <InlineNotification kind="error" lowContrast hideCloseButton title="This run failed" subtitle={run.error} className="os-max-w-full" />}
+      {run.error && <Alert type="error" showIcon title="This run failed" description={run.error} />}
       {run.proposal.sections.map((section) => (
         <ProposalSection key={section.key} section={section} editable={editable} busyRowId={editingRow} onEdit={(rowId, cells) => onEdit(section.key, rowId, cells)} />
       ))}
-      <details className="os-section os-p-4">
-        <summary className="os-fw-600 os-pointer">Steps this run took ({run.trace.length})</summary>
-        <TraceList steps={run.trace} />
-      </details>
+      <Collapse
+        className="os-workflow-trace"
+        items={[{ key: "trace", label: `Steps this run took (${run.trace.length})`, children: <TraceList steps={run.trace} /> }]}
+      />
     </div>
   );
 }

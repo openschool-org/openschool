@@ -1,5 +1,5 @@
-import { Button } from "@carbon/react";
-import { Home } from "@carbon/icons-react";
+import { Button } from "antd";
+import { HomeOutlined } from "@ant-design/icons";
 import { useBackfillHomerooms } from "@/features/timetable/queries/useClassrooms";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useToast } from "@/shared/ui/toast/useToast";
@@ -23,7 +23,7 @@ export default function BackfillHomeroomsButton({ size = "md" }: { size?: "sm" |
   };
 
   return (
-    <Button renderIcon={Home} kind="tertiary" size={size} onClick={run} disabled={!year || backfill.isPending}>
+    <Button icon={<HomeOutlined />} size={size === "sm" ? "small" : "middle"} onClick={run} disabled={!year} loading={backfill.isPending}>
       {backfill.isPending ? "Adding homerooms…" : "Add missing homerooms"}
     </Button>
   );

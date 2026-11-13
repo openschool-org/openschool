@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { TextInput } from "@carbon/react";
+import TextField from "@/shared/ui/TextField";
 import { useTeacher, useTeachers } from "@/features/teachers/queries/useTeachers";
 import { useCreateSociety, useUpdateSociety } from "@/features/portfolio/queries/useSocieties";
 import FormModal from "@/shared/ui/FormModal";
@@ -64,12 +64,12 @@ export default function SocietyFormModal({ society, academicYearId, onClose }: P
       errorFallback="Failed to save society"
     >
       <div className="os-grid os-gap-4">
-        <TextInput
+        <TextField
           id="society-name"
-          labelText="Society name"
+          label="Society name"
           placeholder="e.g. Science Society"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={setName}
         />
         <EntityCombobox
           id="society-tic"

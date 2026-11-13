@@ -1,4 +1,5 @@
-import { Button, ComposedModal, ModalBody, ModalFooter, ModalHeader } from "@carbon/react";
+import { Button, Modal } from "antd";
+import { MODAL_WIDTH } from "@/shared/ui/modalWidth";
 
 interface Props {
   open: boolean;
@@ -13,19 +14,21 @@ interface Props {
 
 export default function ConfirmActionModal({ open, title, body, confirmLabel, busy, danger = false, onCancel, onConfirm }: Props) {
   return (
-    <ComposedModal open={open} onClose={onCancel} size="sm" aria-label={title} danger={danger}>
-      <ModalHeader title={title} />
-      <ModalBody>
-        <p>{body}</p>
-      </ModalBody>
-      <ModalFooter>
-        <Button kind="secondary" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button kind={danger ? "danger" : "primary"} onClick={onConfirm} disabled={busy}>
-          {busy ? "Working…" : confirmLabel}
-        </Button>
-      </ModalFooter>
-    </ComposedModal>
+    <Modal
+      open={open}
+      title={title}
+      width={MODAL_WIDTH.sm}
+      onCancel={onCancel}
+      footer={
+        <>
+          <Button onClick={onCancel}>Cancel</Button>
+          <Button type="primary" danger={danger} onClick={onConfirm} loading={busy}>
+            {busy ? "Working…" : confirmLabel}
+          </Button>
+        </>
+      }
+    >
+      <p className="os-text-md">{body}</p>
+    </Modal>
   );
 }

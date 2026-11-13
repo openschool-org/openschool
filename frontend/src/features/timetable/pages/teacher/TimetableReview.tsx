@@ -1,4 +1,4 @@
-import { SkeletonText } from "@carbon/react";
+import { SkeletonText } from "@/shared/ui/Skeleton";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useReviewQueue } from "@/features/timetable/queries/useTimetables";
 import EmptyState from "@/shared/ui/EmptyState";

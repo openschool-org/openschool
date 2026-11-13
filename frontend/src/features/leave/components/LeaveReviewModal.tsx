@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { Button, ComposedModal, InlineNotification, ModalBody, ModalFooter, ModalHeader, SkeletonText, TextArea } from "@carbon/react";
+import { Alert, Button, Modal, Skeleton } from "antd";
+import DataGrid from "@/shared/ui/DataGrid";
+import TextAreaField from "@/shared/ui/TextAreaField";
+import { MODAL_WIDTH } from "@/shared/ui/modalWidth";
 import InfoRow from "@/shared/ui/InfoRow";
 import { getErrorMessage } from "@/shared/api/errors";
 import { useToast } from "@/shared/ui/toast/useToast";
@@ -45,15 +48,29 @@ export default function LeaveReviewModal({ id, onClose }: Props) {
   };
 
   return (
-    <ComposedModal open size="md" onClose={onClose} aria-label="Leave application">
-      <ModalHeader title={leave ? `${leave.teacher_name}: ${LEAVE_TYPE_LABELS[leave.leave_type]}` : "Leave application"} />
-      <ModalBody>
+    <Modal
+      open
+      width={MODAL_WIDTH.md}
+      onCancel={onClose}
+      title={leave ? `${leave.teacher_name}: ${LEAVE_TYPE_LABELS[leave.leave_type]}` : "Leave application"}
+      footer={
+        <>
+          <Button onClick={onClose}>Close</Button>
+          {leave?.status === "pending" && canDecideOwnRequest && (
+            <>
+              <Button danger onClick={() => submit(false)} disabled={decide.isPending}>Not approve</Button>
+              <Button type="primary" onClick={() => submit(true)} loading={decide.isPending}>{decide.isPending ? "Saving…" : "Approve"}</Button>
+            </>
+          )}
+        </>
+      }
+    >
         {isLoading || !leave ? (
-          <SkeletonText paragraph lineCount={4} />
+          <Skeleton active title={false} paragraph={{ rows: 4 }} />
         ) : (
           <div className="os-flex os-col os-gap-4">
             {decide.isError && (
-              <InlineNotification kind="error" lowContrast hideCloseButton className="os-max-w-full" title="Could not save the decision" subtitle={getErrorMessage(decide.error, "Please try again.")} />
+              <Alert type="error" showIcon title="Could not save the decision" description={getErrorMessage(decide.error, "Please try again.")} />
             )}
             <div>
               <InfoRow label="Status" value={<LeaveStatusTag status={leave.status} />} />
@@ -65,53 +82,43 @@ export default function LeaveReviewModal({ id, onClose }: Props) {
               {leave.decision_note && <InfoRow label="Note" value={leave.decision_note} />}
             </div>
             <div>
-              <h3 className="os-text-md os-fw-600 os-mb-2">Relief arrangements</h3>
+              <h3 className="os-text-md os-fw-500 os-mb-2">Relief arrangements</h3>
               {leave.relief.length === 0 ? (
                 <p className="os-text-sm os-c-secondary">No timetabled periods are missed.</p>
               ) : (
-                <table className="os-table">
-                  <thead><tr><th>Date</th><th>Period</th><th>Class</th><th>Subject</th><th>Relief teacher</th></tr></thead>
-                  <tbody>
-                    {leave.relief.map((r) => (
-                      <tr key={r.id} className={r.relief_teacher_id ? undefined : "is-warning"}>
-                        <td className="os-table__mono">{formatDate(r.date)}</td>
-                        <td>{r.period_number}</td>
-                        <td>{r.class_name}</td>
-                        <td className="os-table__muted">{r.subject_name || "-"}</td>
-                        <td>{r.relief_teacher_name || "Not arranged"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <DataGrid
+                  rows={leave.relief}
+                  getRowId={(r) => r.id}
+                  pagination={false}
+                  noHover
+                  rowClassName={(r) => (r.relief_teacher_id ? "" : "is-warning")}
+                  columns={[
+                    { key: "date", header: "Date", render: (r) => <span className="os-table__mono">{formatDate(r.date)}</span> },
+                    { key: "period", header: "Period", render: (r) => r.period_number },
+                    { key: "class", header: "Class", render: (r) => r.class_name },
+                    { key: "subject", header: "Subject", render: (r) => <span className="os-table__muted">{r.subject_name || "-"}</span> },
+                    { key: "relief", header: "Relief teacher", render: (r) => r.relief_teacher_name || "Not arranged" },
+                  ]}
+                />
               )}
               {uncovered > 0 && leave.status === "pending" && (
                 <p className="os-text-sm os-c-warning-text os-mt-2">{uncovered} period{uncovered === 1 ? "" : "s"} still need a relief teacher.</p>
               )}
             </div>
             {leave.status === "pending" && canDecideOwnRequest && (
-              <TextArea
+              <TextAreaField
                 id="leave-decision-note"
-                labelText={rejecting ? "Reason for not approving" : "Note to the teacher (optional)"}
+                label={rejecting ? "Reason for not approving" : "Note to the teacher (optional)"}
                 rows={2}
-                maxCount={1000}
+                maxLength={1000}
                 value={note}
-                onChange={(e) => setNote(e.target.value)}
+                onChange={setNote}
                 invalid={rejecting && !note.trim()}
                 invalidText="Give a reason when not approving"
               />
             )}
           </div>
         )}
-      </ModalBody>
-      <ModalFooter>
-        <Button kind="secondary" onClick={onClose}>Close</Button>
-        {leave?.status === "pending" && canDecideOwnRequest && (
-          <>
-            <Button kind="danger" onClick={() => submit(false)} disabled={decide.isPending}>Not approve</Button>
-            <Button kind="primary" onClick={() => submit(true)} disabled={decide.isPending}>{decide.isPending ? "Saving…" : "Approve"}</Button>
-          </>
-        )}
-      </ModalFooter>
-    </ComposedModal>
+    </Modal>
   );
 }

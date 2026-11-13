@@ -5,14 +5,16 @@ The open-source platform for digitising the day-to-day operations of Sri Lankan 
 [![Backend CI](https://github.com/openschool-org/openschool/actions/workflows/backend-ci.yml/badge.svg)](https://github.com/openschool-org/openschool/actions/workflows/backend-ci.yml)
 [![Frontend CI](https://github.com/openschool-org/openschool/actions/workflows/frontend-ci.yml/badge.svg)](https://github.com/openschool-org/openschool/actions/workflows/frontend-ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Status: under development](https://img.shields.io/badge/status-under%20development-yellow.svg)](CHANGELOG.md)
+
+> [!WARNING]
+> OpenSchool is under active development. Features, interfaces and data models may change between releases. See the [changelog](CHANGELOG.md).
 
 ## Overview
 
 OpenSchool brings everyday school work into one system: student and staff records, classes, attendance, curriculum, timetables, marks, notifications, reports, and administration. It replaces paper records and disconnected tools with a single source of truth.
 
 It is designed to be self-hosted. A school or public-sector organisation can run it on infrastructure it controls, which keeps student and administrative data under local control. It is released under the Apache License 2.0, with no licence fees and no vendor lock-in.
-
-> **Status:** OpenSchool is pre-1.0 and under active development. Interfaces and data models may change between releases. See the [changelog](CHANGELOG.md).
 
 ## Features
 

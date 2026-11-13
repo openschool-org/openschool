@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Select, SelectItem, Button, InlineNotification } from "@carbon/react";
-import { Save, ArrowLeft } from "@carbon/icons-react";
+import { Alert, Button } from "antd";
+import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
+import SelectField from "@/shared/ui/SelectField";
 import { useMyTeacherProfile, useTeacherWorkload } from "@/features/teachers/queries/useTeachers";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useTerms, useCurrentTerm } from "@/features/school/queries/useTerms";
@@ -62,10 +63,15 @@ export default function TeacherMarks() {
   if (teacherLoading || workloadLoading || yearLoading) return <LoadingSpinner />;
 
   const termSelector = (
-    <Select id="marks-term" labelText="Term" size="sm" value={effectiveTermId} onChange={(e) => { setTermId(e.target.value); setTermTouched(true); }} className="os-min-w-12">
-      <SelectItem value="" text="Choose a term…" />
-      {terms?.map((t) => <SelectItem key={t.id} value={t.id} text={t.is_current ? `${t.name} (current)` : t.name} />)}
-    </Select>
+    <SelectField
+      id="marks-term"
+      label="Term"
+      className="os-min-w-12"
+      placeholder="Choose a term…"
+      value={effectiveTermId}
+      onChange={(v) => { setTermId(v); setTermTouched(true); }}
+      options={(terms ?? []).map((t) => ({ value: t.id, label: t.is_current ? `${t.name} (current)` : t.name }))}
+    />
   );
 
   if (mode === "overview") {
@@ -85,7 +91,7 @@ export default function TeacherMarks() {
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <Button kind="ghost" size="sm" renderIcon={ArrowLeft} onClick={() => unsavedGuard.guard(() => { setMode("overview"); setClassId(""); setSubjectId(""); })} className="os-mb-2 os-pl-0">
+          <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => unsavedGuard.guard(() => { setMode("overview"); setClassId(""); setSubjectId(""); })} className="os-mb-2 os-p-0">
             Back to overview
           </Button>
           <h1 className="os-page__title">Record marks</h1>
@@ -96,19 +102,30 @@ export default function TeacherMarks() {
       <div className="os-section os-mb-6">
         <div className="os-section__header os-wrap os-row-gap-3">
           <div className="os-flex os-gap-3 os-wrap os-w-full">
-            <Select id="record-class" labelText="Class" size="sm" value={classId} onChange={(e) => { setClassId(e.target.value); setSubjectId(""); }} className="os-min-w-12">
-              <SelectItem value="" text="Choose a class…" />
-              {uniqueClasses.map((c) => <SelectItem key={c.id} value={c.id} text={`${c.grade_name} - ${c.name}`} />)}
-            </Select>
-            <Select id="record-subject" labelText="Subject" size="sm" value={subjectId} disabled={!classId} onChange={(e) => setSubjectId(e.target.value)} className="os-min-w-12">
-              <SelectItem value="" text="Choose a subject…" />
-              {classSubjects.map((s) => <SelectItem key={s.id} value={s.id} text={s.name} />)}
-            </Select>
+            <SelectField
+              id="record-class"
+              label="Class"
+              className="os-min-w-12"
+              placeholder="Choose a class…"
+              value={classId}
+              onChange={(v) => { setClassId(v); setSubjectId(""); }}
+              options={uniqueClasses.map((c) => ({ value: c.id, label: `${c.grade_name} - ${c.name}` }))}
+            />
+            <SelectField
+              id="record-subject"
+              label="Subject"
+              className="os-min-w-12"
+              placeholder="Choose a subject…"
+              value={subjectId}
+              disabled={!classId}
+              onChange={setSubjectId}
+              options={classSubjects.map((s) => ({ value: s.id, label: s.name }))}
+            />
             {termSelector}
             {ready && (
               <div className="os-flex os-items-center os-gap-4 os-ml-auto os-self-end">
                 <span className="os-text-sm os-c-secondary">Max Marks: <strong>{maxMarks}</strong></span>
-                <Button renderIcon={Save} size="sm" onClick={handleSave} disabled={saveMarks.isPending || !students?.length || !draft.hasUnsaved}>
+                <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} disabled={!students?.length || !draft.hasUnsaved} loading={saveMarks.isPending}>
                   {saveMarks.isPending ? "Saving…" : "Save marks"}
                 </Button>
               </div>
@@ -124,7 +141,7 @@ export default function TeacherMarks() {
           <div className="os-section__body os-p-0">
             <div className="os-p-4">
               <MutationErrorNotification isError={saveMarks.isError} error={saveMarks.error} title="Could not save marks" fallback="Please try again." onClose={() => saveMarks.reset()} />
-              {saveMarks.isSuccess && <InlineNotification kind="success" title="Marks saved successfully" lowContrast className="os-max-w-full" />}
+              {saveMarks.isSuccess && <Alert type="success" showIcon title="Marks saved successfully" />}
             </div>
             <MarksEntryTable students={students} subjectName={subjects?.find((s) => s.id === subjectId)?.name ?? ""} maxMarks={maxMarks} draft={draft} />
           </div>

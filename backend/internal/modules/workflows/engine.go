@@ -40,7 +40,7 @@ type InputField struct {
 	Type     string   `json:"type"` // select, multiselect, text, date, boolean, csv
 	Required bool     `json:"required"`
 	Default  string   `json:"default,omitempty"`
-	Help     string   `json:"help,omitempty"`
+	Help     string   `json:"help,omitempty"` // csv: one rule per line, shown as a checklist
 	Options  []Option `json:"options,omitempty"`
 	Template string   `json:"template,omitempty"` // csv only: header and an example row, offered as a download
 }

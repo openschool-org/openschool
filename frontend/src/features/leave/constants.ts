@@ -20,9 +20,10 @@ export const DAY_PARTS: { value: DayPart; label: string }[] = [
 
 export const HALF_DAY_TYPES: LeaveType[] = ["casual", "duty"];
 
-export const LEAVE_STATUS_TAGS: Record<LeaveStatus, { label: string; type: "blue" | "green" | "red" | "gray" }> = {
-  pending: { label: "Waiting for approval", type: "blue" },
-  approved: { label: "Approved", type: "green" },
-  rejected: { label: "Not approved", type: "red" },
-  cancelled: { label: "Cancelled", type: "gray" },
+// antd Tag colour per status; undefined is the neutral tag.
+export const LEAVE_STATUS_TAGS: Record<LeaveStatus, { label: string; color?: string }> = {
+  pending: { label: "Waiting for approval", color: "processing" },
+  approved: { label: "Approved", color: "success" },
+  rejected: { label: "Not approved", color: "error" },
+  cancelled: { label: "Cancelled" },
 };

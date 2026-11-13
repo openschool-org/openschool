@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
-import { Add } from "@carbon/icons-react";
-import { Button, Tag, InlineNotification, SkeletonText } from "@carbon/react";
+import { Alert, Button, Tag, Tooltip } from "antd";
+import { DeleteOutlined, EditOutlined, PlusOutlined, UsergroupAddOutlined } from "@ant-design/icons";
+import DataGrid from "@/shared/ui/DataGrid";
+import TableSkeleton from "@/shared/ui/TableSkeleton";
 import { useHouses, useCreateHouse, useUpdateHouse, useDeleteHouse, useReassignMissingHouses, useReassignMissingStaffHouses } from "@/features/school/queries/useHouses";
 import type { House } from "@/features/school/api/house";
 import { HOUSE_COLOR_PALETTE } from "@/features/school/setupConstants";
@@ -57,76 +59,72 @@ export default function HousesPanel() {
   const resetReassign = () => { reassign.reset(); reassignStaff.reset(); };
 
   return (
-    <div>
-      <div className="os-page__header os-flex os-items-start os-justify-between">
-        <div>
-          <h2 className="os-section__title os-m-0">Houses</h2>
-          <p className="os-page__subtitle os-mt-1">
-            New students and staff are assigned automatically to whichever house currently has the fewest members, with random tie-breaks.
-          </p>
-        </div>
-        <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>Add house</Button>
-      </div>
-
+    <div className="os-stack os-gap-4">
       {isError && <ErrorMessage message="Could not load houses." onRetry={refetch} />}
       <MutationErrorNotification isError={deleteHouse.isError} error={deleteHouse.error} title="Could not delete house" fallback="The house may be assigned to a student or teacher." onClose={() => deleteHouse.reset()} />
       {(reassign.isSuccess || reassignStaff.isSuccess) && (
-        <InlineNotification
-          kind="success"
+        <Alert
+          type="success"
+          showIcon
+          closable
           title="Houses assigned"
-          subtitle={[reassign.data && `${reassign.data.assigned} student(s)`, reassignStaff.data && `${reassignStaff.data.assigned} staff member(s)`].filter(Boolean).join(" and ") + " assigned a house."}
-          lowContrast
+          description={[reassign.data && `${reassign.data.assigned} student(s)`, reassignStaff.data && `${reassignStaff.data.assigned} staff member(s)`].filter(Boolean).join(" and ") + " assigned a house."}
           onClose={resetReassign}
-          className="os-max-w-full os-mb-4"
         />
       )}
       <MutationErrorNotification isError={reassign.isError || reassignStaff.isError} error={reassign.error ?? reassignStaff.error} title="Could not re-assign" fallback="Please try again." onClose={resetReassign} />
 
       <div className="os-section">
-        <div className="os-section__header">
-          <h2 className="os-section__title">Houses</h2>
-          {houses && <span className="os-text-xs os-c-tertiary">{houses.length} total</span>}
+        <div className="os-section__header os-tt-head">
+          <div>
+            <h2 className="os-section__title">Houses {houses && <span className="os-c-tertiary os-fw-400">· {houses.length}</span>}</h2>
+            <p className="os-text-sm os-c-secondary os-m-0">New students and staff join the house with the fewest members.</p>
+          </div>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add house</Button>
         </div>
 
-        {isLoading &&
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="os-flex os-items-center os-py-3h os-px-6 os-border-b os-gap-4">
-              <SkeletonText width="1.5rem" />
-              <SkeletonText width="30%" />
-            </div>
-          ))}
-
-        {!isLoading && !isError && ordered.length === 0 && (
+        {isLoading ? (
+          <TableSkeleton headers={["House", "Code", ""]} />
+        ) : !isError && ordered.length === 0 ? (
           <EmptyState
             title="No houses yet"
-            description="Add the houses this school uses. Students and staff are then assigned automatically, balanced across whichever houses exist."
-            action={<Button renderIcon={Add} kind="primary" onClick={openCreate}>Add house</Button>}
+            description="Add the houses this school uses. Students and staff are then spread across them automatically."
+            action={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add house</Button>}
+          />
+        ) : (
+          <DataGrid
+            rows={ordered}
+            getRowId={(h) => h.id}
+            noHover
+            pagination={false}
+            columns={[
+              { key: "name", header: "House", render: (h) => <span className="os-flex os-items-center os-gap-3"><span aria-hidden className="os-house-swatch" style={{ background: h.color }} /><span className="os-fw-500">{h.name}</span></span> },
+              { key: "code", header: "Code", render: (h) => (h.code ? <Tag variant="filled">{h.code}</Tag> : <span className="os-table__muted">-</span>) },
+              {
+                key: "actions",
+                header: "",
+                align: "end",
+                render: (h) => (
+                  <div className="os-grid__actions">
+                    <Tooltip title={`Edit ${h.name}`}><Button type="text" size="small" aria-label={`Edit ${h.name}`} icon={<EditOutlined />} onClick={() => openEdit(h)} /></Tooltip>
+                    <Tooltip title={`Delete ${h.name}`}><Button type="text" size="small" danger aria-label={`Delete ${h.name}`} icon={<DeleteOutlined />} onClick={() => setToDelete(h)} /></Tooltip>
+                  </div>
+                ),
+              },
+            ]}
           />
         )}
 
-        {ordered.map((h) => (
-          <div key={h.id} className="os-list-item os-flex os-items-center os-gap-4">
-            <span aria-hidden className="os-dot os-w-1r os-h-1r" style={{ backgroundColor: h.color }} />
-            <span className="os-fw-600 os-text-md os-c-primary">{h.name}</span>
-            {h.code && <Tag type="cool-gray" size="sm">{h.code}</Tag>}
-            <div className="os-flex-1" />
-            <Button kind="ghost" size="sm" onClick={() => openEdit(h)}>Edit</Button>
-            <Button kind="danger--ghost" size="sm" onClick={() => setToDelete(h)}>Delete</Button>
+        {ordered.length > 0 && (
+          <div className="os-house-footer">
+            <p className="os-m-0 os-text-sm os-c-secondary">People added before houses existed can be given one now.</p>
+            <div className="os-flex os-gap-2 os-wrap">
+              <Button icon={<UsergroupAddOutlined />} loading={reassign.isPending} onClick={() => reassign.mutate()}>Assign students</Button>
+              <Button icon={<UsergroupAddOutlined />} loading={reassignStaff.isPending} onClick={() => reassignStaff.mutate()}>Assign staff</Button>
+            </div>
           </div>
-        ))}
+        )}
       </div>
-
-      {ordered.length > 0 && (
-        <div className="os-flex os-items-center os-gap-3 os-wrap">
-          <Button kind="tertiary" size="md" disabled={reassign.isPending} onClick={() => reassign.mutate()}>
-            {reassign.isPending ? "Assigning…" : "Re-assign students without a house"}
-          </Button>
-          <Button kind="tertiary" size="md" disabled={reassignStaff.isPending} onClick={() => reassignStaff.mutate()}>
-            {reassignStaff.isPending ? "Assigning…" : "Re-assign staff without a house"}
-          </Button>
-          <span className="os-text-xs os-c-tertiary">Useful after setting up houses. People added earlier get one too.</span>
-        </div>
-      )}
 
       {modal && (
         <HouseFormModal

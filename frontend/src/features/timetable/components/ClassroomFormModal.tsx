@@ -1,7 +1,9 @@
-import { TextInput, NumberInput, Select, SelectItem } from "@carbon/react";
 import { useSubjects } from "@/features/curriculum/queries/useSubjects";
 import type { ClassroomType } from "@/features/timetable/api/classroom";
 import FormModal from "@/shared/ui/FormModal";
+import NumberField from "@/shared/ui/NumberField";
+import SelectField from "@/shared/ui/SelectField";
+import TextField from "@/shared/ui/TextField";
 import { isLabMissingSubject, type ClassroomForm } from "@/features/timetable/lib/classroomForm";
 
 interface Props {
@@ -15,25 +17,47 @@ interface Props {
   onSubmit: () => void;
 }
 
+const TYPES: { value: ClassroomType; label: string }[] = [
+  { value: "regular", label: "Homeroom or classroom" },
+  { value: "lab", label: "Lab" },
+  { value: "eca", label: "Library, hall or other facility" },
+];
+
 export default function ClassroomFormModal({ editing, form, onChange, isPending, isError, error, onClose, onSubmit }: Props) {
   const { data: subjects } = useSubjects();
   const labMissingSubject = isLabMissingSubject(form);
   return (
-    <FormModal open title={editing ? "Edit classroom" : "New classroom"} onClose={onClose} onSubmit={onSubmit} isPending={isPending} submitDisabled={!form.name.trim() || labMissingSubject} isError={isError} error={error} errorFallback="Failed to save classroom">
-      <div className="os-grid os-gap-4">
-        <TextInput id="classroom-name" labelText="Room name" placeholder="e.g. Room 8A, Science Lab 1" value={form.name} onChange={(e) => onChange({ ...form, name: e.target.value })} />
-        <NumberInput id="classroom-capacity" label="Capacity (optional)" min={0} value={form.capacity} onChange={(_e, { value }) => onChange({ ...form, capacity: value != null ? String(value) : "" })} />
-        <Select id="classroom-type" labelText="Type" value={form.room_type} onChange={(e) => onChange({ ...form, room_type: e.target.value as ClassroomType, subject_id: e.target.value === "lab" ? form.subject_id : "" })}>
-          <SelectItem value="regular" text="Regular (homeroom)" />
-          <SelectItem value="lab" text="Lab" />
-          <SelectItem value="eca" text="ECA (extra-curricular activities)" />
-        </Select>
+    <FormModal open title={editing ? "Edit resource" : "Add resource"} onClose={onClose} onSubmit={onSubmit} isPending={isPending} submitDisabled={!form.name.trim() || labMissingSubject} isError={isError} error={error} errorFallback="Failed to save resource">
+      <div className="os-stack os-gap-4">
+        <TextField id="classroom-name" label="Name" placeholder="e.g. 8-A, Science Lab 1, Main hall" value={form.name} onChange={(v) => onChange({ ...form, name: v })} />
+        <SelectField
+          id="classroom-type"
+          label="Type"
+          value={form.room_type}
+          onChange={(v) => onChange({ ...form, room_type: v as ClassroomType, subject_id: v === "lab" ? form.subject_id : "" })}
+          options={TYPES}
+        />
         {form.room_type === "lab" && (
-          <Select id="classroom-subject" labelText="Subject this lab is for" helperText="The auto-generator only sends this subject's lab periods to this room." value={form.subject_id} invalid={labMissingSubject} invalidText="Required for a lab classroom." onChange={(e) => onChange({ ...form, subject_id: e.target.value })}>
-            <SelectItem value="" text="Select subject…" />
-            {subjects?.map((s) => <SelectItem key={s.id} value={s.id} text={s.name} />)}
-          </Select>
+          <SelectField
+            id="classroom-subject"
+            label="Subject this lab is for"
+            helperText="The timetable generator only sends this subject's lab periods to this room."
+            placeholder="Select subject…"
+            showSearch
+            value={form.subject_id}
+            invalid={labMissingSubject}
+            invalidText="Required for a lab."
+            onChange={(v) => onChange({ ...form, subject_id: v })}
+            options={(subjects ?? []).map((s) => ({ value: s.id, label: s.name }))}
+          />
         )}
+        <NumberField
+          id="classroom-capacity"
+          label="Capacity (optional)"
+          min={0}
+          value={form.capacity === "" ? null : Number(form.capacity)}
+          onChange={(v) => onChange({ ...form, capacity: v === null ? "" : String(v) })}
+        />
       </div>
     </FormModal>
   );

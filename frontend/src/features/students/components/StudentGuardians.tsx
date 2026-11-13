@@ -38,7 +38,7 @@ export default function StudentGuardians({ studentId }: { studentId: string }) {
       meta={
         <Button
           icon={<PlusOutlined />}
-          type="text"
+          type="primary"
           onClick={() => setAddOpen(true)}
           disabled={isLoading || isError || atMax}
         >

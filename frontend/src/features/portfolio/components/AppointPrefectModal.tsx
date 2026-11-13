@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Select, SelectItem } from "@carbon/react";
+import SelectField from "@/shared/ui/SelectField";
 import { useStudents } from "@/features/students/queries/useStudents";
 import { useAssignPrefect } from "@/features/portfolio/queries/usePrefects";
 import type { PrefectRank } from "@/features/portfolio/api/prefect";
@@ -37,9 +37,13 @@ export default function AppointPrefectModal({ academicYearId, assignedStudentIds
     >
       <div className="os-grid os-gap-4">
         <EntityCombobox id="prefect-student" labelText="Student" items={available} selectedId={studentId} onSelect={setStudentId} onSearch={setSearch} getId={(s) => s.id} itemToString={(s) => `${displayName(s)} - ${s.index_number}`} placeholder="Search students by name or index number…" />
-        <Select id="prefect-rank" labelText="Rank" value={rank} onChange={(e) => setRank(e.target.value as PrefectRank)}>
-          {PREFECT_RANKS.map((r) => <SelectItem key={r.value} value={r.value} text={r.label.replace(/s$/, "")} />)}
-        </Select>
+        <SelectField
+          id="prefect-rank"
+          label="Rank"
+          value={rank}
+          onChange={(v) => setRank(v as PrefectRank)}
+          options={PREFECT_RANKS.map((r) => ({ value: r.value, label: r.label.replace(/s$/, "") }))}
+        />
       </div>
     </FormModal>
   );

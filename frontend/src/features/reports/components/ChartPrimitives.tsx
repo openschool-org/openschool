@@ -1,192 +1,130 @@
-import { ACCENT } from "@/features/reports/components/chartColors";
-// Dependency-free chart primitives (hand-rolled SVG/CSS) shared by the dashboard and Analytics page.
-import type { GrowthPoint } from "@/features/reports/api/dashboardAnalytics";
-import SectionHeader from "@/shared/ui/SectionHeader";
+// Dependency-free chart primitives (hand-rolled SVG/CSS) for the Analytics page.
+import type { ReactNode } from "react";
+import { Card, Tooltip } from "antd";
+import { CHART_1 } from "@/features/reports/components/chartColors";
 
-export function Section({ title, children }: { title: string; children: React.ReactNode }) {
+// A titled chart card: title and optional subtitle on the left, a control or figure on the right.
+export function ChartCard({ title, subtitle, extra, children, className }: { title: string; subtitle?: string; extra?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <div className="os-section">
-      <SectionHeader title={title} />
-      <div className="os-section__body">{children}</div>
-    </div>
+    <section className={`os-chart-card${className ? ` ${className}` : ""}`}>
+      <header className="os-chart-card__head">
+        <div className="os-min-w-0">
+          <h2 className="os-chart-card__title">{title}</h2>
+          {subtitle && <p className="os-chart-card__subtitle">{subtitle}</p>}
+        </div>
+        {extra}
+      </header>
+      <div className="os-chart-card__body">{children}</div>
+    </section>
   );
 }
 
-export function StatTile({ label, value, color }: { label: string; value: string | number; color: string }) {
+// A headline number: label, value, and an optional one-line context underneath.
+export function KpiTile({ label, value, hint, icon }: { label: string; value: ReactNode; hint?: ReactNode; icon?: ReactNode }) {
   return (
-    <div className="os-bg-layer os-border os-py-5 os-px-6" style={{ borderTop: `3px solid ${color}` }}>
-      <p className="os-mt-0 os-mx-0 os-mb-2 os-text-2xs os-fw-600 os-uppercase os-tracking-wide os-c-secondary">
-        {label}
-      </p>
-      <p className="os-m-0 os-text-5xl os-fw-300 os-c-primary os-lh-1">{value}</p>
-    </div>
+    <Card className="os-dash-stat">
+      <p className="os-dash-stat__label">{icon}{label}</p>
+      <p className="os-dash-stat__value">{value}</p>
+      {hint && <p className="os-dash-stat__meta">{hint}</p>}
+    </Card>
   );
 }
 
+export function NoData({ children = "No data yet." }: { children?: ReactNode }) {
+  return <p className="os-chart-empty">{children}</p>;
+}
+
+interface BarRow { label: string; value: number }
+
+// Horizontal bars on one line each: label, bar, value. Rows become buttons when `onSelect` is given.
 export function BarList({
   rows,
-  color = ACCENT,
-  formatValue,
-}: {
-  rows: { label: string; value: number }[];
-  color?: string;
-  formatValue?: (v: number) => string;
-}) {
-  const max = Math.max(1, ...rows.map((r) => r.value));
-  return (
-    <div className="os-flex os-col os-gap-2h">
-      {rows.map((r) => (
-        <div key={r.label} title={`${r.label}: ${formatValue ? formatValue(r.value) : r.value}`}>
-          <div className="os-flex os-justify-between os-text-xs os-mb-h">
-            <span className="os-c-secondary">{r.label}</span>
-            <span className="os-fw-600 os-c-primary">{formatValue ? formatValue(r.value) : r.value}</span>
-          </div>
-          <div className="os-h-px-6 os-bg-border-subtle os-rounded-md" aria-hidden="true">
-            <div className="os-h-full os-rounded-md" style={{ width: `${(r.value / max) * 100}%`, background: color }} />
-          </div>
-        </div>
-      ))}
-      {rows.length === 0 && <p className="os-text-sm os-c-tertiary os-m-0">No data yet.</p>}
-    </div>
-  );
-}
-
-export function Sparkline({
-  points,
-  color = ACCENT,
-  min,
+  color = CHART_1,
   max,
-  formatValue,
-  emptyMessage = "No data yet.",
+  formatValue = (v) => `${v}`,
+  selected,
+  onSelect,
+  empty,
 }: {
-  points: { label: string; value: number }[];
+  rows: BarRow[];
   color?: string;
-  min?: number;
   max?: number;
   formatValue?: (v: number) => string;
-  emptyMessage?: string;
+  selected?: string;
+  onSelect?: (label: string) => void;
+  empty?: string;
 }) {
-  if (points.length === 0) return <p className="os-text-sm os-c-tertiary os-m-0">{emptyMessage}</p>;
-  const w = 100;
-  const h = 32;
-  const values = points.map((p) => p.value);
-  const lo = min ?? Math.min(...values);
-  const hi = max ?? Math.max(...values);
-  const range = hi - lo || 1;
-  const stepX = points.length > 1 ? w / (points.length - 1) : 0;
-  const coords = points.map((p, i) => ({ x: i * stepX, y: h - ((p.value - lo) / range) * h }));
-  const path = coords.map((c, i) => `${i === 0 ? "M" : "L"}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ");
-  const fmt = formatValue ?? ((v: number) => `${v}`);
-
+  if (rows.length === 0) return <NoData>{empty}</NoData>;
+  const top = max ?? Math.max(1, ...rows.map((r) => r.value));
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="os-w-full os-h-px-64">
-      <path d={path} className="os-fill-none" style={{ stroke: color }} strokeWidth={2} vectorEffect="non-scaling-stroke" />
-      {coords.map((c, i) => (
-        <circle key={points[i].label} cx={c.x} cy={c.y} r={1.6} style={{ fill: color }}>
-          <title>{`${points[i].label}: ${fmt(points[i].value)}`}</title>
-        </circle>
-      ))}
-    </svg>
+    <ul className={`os-bars${onSelect ? " is-selectable" : ""}`}>
+      {rows.map((r) => {
+        const content = (
+          <>
+            <span className="os-bars__label" title={r.label}>{r.label}</span>
+            <span className="os-bars__track" aria-hidden="true">
+              {r.value > 0 && <span className="os-bars__fill" style={{ width: `${Math.min(100, (r.value / top) * 100)}%`, background: color }} />}
+            </span>
+            <span className="os-bars__value">{formatValue(r.value)}</span>
+          </>
+        );
+        return (
+          <Tooltip key={r.label} title={`${r.label}: ${formatValue(r.value)}`} mouseEnterDelay={0.15}>
+            <li>
+              {onSelect ? (
+                <button type="button" className={`os-bars__row${selected === r.label ? " is-active" : ""}`} aria-pressed={selected === r.label} onClick={() => onSelect(r.label)}>
+                  {content}
+                </button>
+              ) : (
+                <div className="os-bars__row">{content}</div>
+              )}
+            </li>
+          </Tooltip>
+        );
+      })}
+    </ul>
   );
 }
 
-export function TrendSummary({ title, points, color }: { title: string; points: GrowthPoint[]; color: string }) {
-  const latest = points.length > 0 ? points[points.length - 1] : null;
-  const prior = points.length > 1 ? points[points.length - 2] : null;
-  const delta = latest && prior ? latest.count - prior.count : null;
-  const deltaColor = !delta ? "var(--os-text-secondary)" : delta > 0 ? "var(--os-success)" : "var(--os-danger)";
-
-  return (
-    <Section title={title}>
-      {latest ? (
-        <>
-          <div className="os-flex os-items-baseline os-gap-2h os-mb-3 os-wrap">
-            <span className="os-text-4xl os-fw-300 os-c-primary os-lh-1">{latest.count}</span>
-            <span className="os-text-xs os-c-tertiary">as of {latest.label}</span>
-            {delta !== null && (
-              <span className="os-text-xs os-fw-600 os-ml-auto" style={{ color: deltaColor }}>
-                {delta > 0 ? "+" : ""}
-                {delta} vs {prior!.label}
-              </span>
-            )}
-          </div>
-          <Sparkline
-            points={points.map((p) => ({ label: p.label, value: p.count }))}
-            color={color}
-            formatValue={(v) => `${v}`}
-          />
-        </>
-      ) : (
-        <p className="os-text-sm os-c-tertiary os-m-0">No data yet.</p>
-      )}
-    </Section>
-  );
-}
-
-export function DonutChart({
-  slices,
-  size = 140,
-  thickness = 18,
-}: {
-  slices: { label: string; value: number; color: string }[];
-  size?: number;
-  thickness?: number;
-}) {
+// Part-to-whole ring with a 2px gap between segments, total in the middle, and a legend with counts and shares.
+export function DonutChart({ slices, centerLabel = "total", size = 148, thickness = 16 }: { slices: { label: string; value: number; color: string }[]; centerLabel?: string; size?: number; thickness?: number }) {
   const total = slices.reduce((sum, s) => sum + s.value, 0);
+  if (slices.length === 0) return <NoData />;
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
+  const visible = slices.filter((s) => s.value > 0);
+  const gap = visible.length > 1 ? 2 : 0;
   let cumulative = 0;
 
   return (
-    <div className="os-flex os-items-center os-gap-6 os-wrap">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="os-shrink-0">
+    <div className="os-donut">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="os-donut__ring" role="img" aria-label={`${total} ${centerLabel}`}>
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" className="os-donut__track" strokeWidth={thickness} />
         <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-          {total === 0 ? (
-            <circle cx={size / 2} cy={size / 2} r={radius} className="os-fill-none os-stroke-border" strokeWidth={thickness} />
-          ) : (
-            slices.map((s) => {
-              const fraction = s.value / total;
-              const dash = fraction * circumference;
-              const offset = -(cumulative / total) * circumference;
-              cumulative += s.value;
-              return (
-                <circle
-                  key={s.label}
-                  cx={size / 2}
-                  cy={size / 2}
-                  r={radius} className="os-fill-none" style={{ stroke: s.color }}
-                  strokeWidth={thickness}
-                  strokeDasharray={`${dash} ${circumference - dash}`}
-                  strokeDashoffset={offset}
-                >
-                  <title>{`${s.label}: ${s.value} (${Math.round(fraction * 100)}%)`}</title>
-                </circle>
-              );
-            })
-          )}
+          {total > 0 && visible.map((s) => {
+            const dash = Math.max(0, (s.value / total) * circumference - gap);
+            const offset = -(cumulative / total) * circumference;
+            cumulative += s.value;
+            return (
+              <circle key={s.label} cx={size / 2} cy={size / 2} r={radius} fill="none" style={{ stroke: s.color }} strokeWidth={thickness} strokeDasharray={`${dash} ${circumference - dash}`} strokeDashoffset={offset}>
+                <title>{`${s.label}: ${s.value} (${Math.round((s.value / total) * 100)}%)`}</title>
+              </circle>
+            );
+          })}
         </g>
-        <text
-          x="50%"
-          y="50%"
-          textAnchor="middle"
-          dominantBaseline="central" className="os-text-lg os-fw-600 os-fill-primary"
-        >
-          {total}
-        </text>
+        <text x="50%" y="46%" textAnchor="middle" dominantBaseline="central" className="os-donut__total">{total}</text>
+        <text x="50%" y="62%" textAnchor="middle" dominantBaseline="central" className="os-donut__caption">{centerLabel}</text>
       </svg>
-      <div className="os-flex os-col os-gap-1h os-flex-1 os-min-w-8">
+      <ul className="os-legend">
         {slices.map((s) => (
-          <div key={s.label} className="os-flex os-items-center os-gap-2 os-text-xs">
-            <span className="os-w-0h os-h-0h os-rounded-sm os-shrink-0" style={{ background: s.color }} />
-            <span className="os-c-secondary">{s.label}</span>
-            <span className="os-fw-600 os-c-primary os-ml-auto">
-              {s.value}
-              {total > 0 && ` (${Math.round((s.value / total) * 100)}%)`}
-            </span>
-          </div>
+          <li key={s.label} className="os-legend__item">
+            <span className="os-legend__swatch" style={{ background: s.color }} aria-hidden="true" />
+            <span className="os-legend__label">{s.label}</span>
+            <span className="os-legend__value">{s.value}</span>
+            <span className="os-legend__pct">{total > 0 ? `${Math.round((s.value / total) * 100)}%` : "–"}</span>
+          </li>
         ))}
-        {slices.length === 0 && <p className="os-text-sm os-c-tertiary os-m-0">No data yet.</p>}
-      </div>
+      </ul>
     </div>
   );
 }

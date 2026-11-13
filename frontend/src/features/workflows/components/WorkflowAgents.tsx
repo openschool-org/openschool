@@ -1,6 +1,7 @@
-import { Link } from "react-router";
-import { Button, SkeletonText, Tag } from "@carbon/react";
-import { ArrowRight } from "@carbon/icons-react";
+import { Tag } from "antd";
+import { ArrowRightOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
+import { SkeletonText } from "@/shared/ui/Skeleton";
 import { useWorkflowCatalog } from "@/features/workflows/queries/useWorkflows";
 import type { CatalogEntry } from "@/features/workflows/api/workflows";
 import { RUN_STATE_TAG } from "@/features/workflows/runState";
@@ -18,8 +19,8 @@ function WorkflowRow({ w, last }: { w: CatalogEntry; last: boolean }) {
       <div className="os-flex-1 os-min-w-20">
         <div className="os-flex os-items-center os-gap-2h os-wrap">
           <span className="os-fw-600 os-text-md">{w.order > 0 ? `${w.order}. ` : ""}{w.title}</span>
-          <Tag type="purple" size="sm">On request</Tag>
-          {w.last_run && <Tag type={RUN_STATE_TAG[w.last_run.state].type} size="sm">{RUN_STATE_TAG[w.last_run.state].label}</Tag>}
+          <Tag color="purple" variant="filled">On request</Tag>
+          {w.last_run && <Tag color={RUN_STATE_TAG[w.last_run.state].color} variant="filled">{RUN_STATE_TAG[w.last_run.state].label}</Tag>}
         </div>
         <p className="os-mt-1 os-mx-0 os-mb-0 os-text-sm os-c-secondary">{w.description}</p>
         <details className="os-agent-checks os-mt-2">
@@ -42,9 +43,9 @@ function WorkflowRow({ w, last }: { w: CatalogEntry; last: boolean }) {
             : "Never run yet"}
         </p>
       </div>
-      <Button kind="ghost" size="sm" renderIcon={ArrowRight} as={Link} to={pathFor(w)}>
+      <LinkButton to={pathFor(w)} type="text" size="small" icon={<ArrowRightOutlined />} iconPlacement="end">
         Open
-      </Button>
+      </LinkButton>
     </div>
   );
 }

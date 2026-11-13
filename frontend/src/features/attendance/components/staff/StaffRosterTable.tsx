@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Button, Pagination, Tag } from "@carbon/react";
-import { CloseFilled } from "@carbon/icons-react";
+import { Button } from "antd";
+import { CloseCircleOutlined } from "@ant-design/icons";
 import { useStaffRoster, useMarkStaffAttendance, useMarkUnmarkedAbsent } from "@/features/attendance/queries/useStaffAttendance";
 import type { StaffAttendanceStatus, StaffKind } from "@/features/attendance/api/staffAttendance";
 import StaffStatusButton from "@/features/attendance/components/staff/StaffStatusButton";
@@ -11,6 +11,16 @@ import ConfirmActionModal from "@/shared/ui/ConfirmActionModal";
 import ListState from "@/shared/ui/ListState";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
 import Avatar from "@/shared/ui/Avatar";
+import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
+import type { StaffAttendanceRow } from "@/features/attendance/api/staffAttendance";
+
+const SUMMARY = [
+  { key: "present", label: "Present" },
+  { key: "late", label: "Late" },
+  { key: "absent", label: "Absent" },
+  { key: "leave", label: "Leave" },
+  { key: "unmarked", label: "Not marked" },
+] as const;
 
 interface Props {
   date: string;
@@ -53,22 +63,45 @@ export default function StaffRosterTable({ date, kind, search }: Props) {
 
   const totals = data?.totals;
 
-  return (
-    <div className="os-section">
-      <div className="os-section__header os-wrap os-gap-3">
-        <div className="os-flex os-gap-2 os-wrap" aria-live="polite">
-          {totals && (
-            <>
-              <Tag type="green" size="sm">Present {totals.present}</Tag>
-              <Tag type="warm-gray" size="sm">Late {totals.late}</Tag>
-              <Tag type="red" size="sm">Absent {totals.absent}</Tag>
-              <Tag type="blue" size="sm">Leave {totals.leave}</Tag>
-              <Tag type="gray" size="sm">Not marked {totals.unmarked}</Tag>
-            </>
-          )}
+  const columns: GridColumn<StaffAttendanceRow>[] = [
+    {
+      key: "name",
+      header: "Name",
+      render: (row) => (
+        <div className="os-flex os-items-center os-gap-2">
+          <Avatar name={row.full_name} size="sm" />
+          <span className="os-fw-500">{row.full_name}</span>
         </div>
-      <Button kind="danger--tertiary" size="sm" renderIcon={CloseFilled} onClick={() => setConfirmBulkAbsent(true)} disabled={!totals?.unmarked || markUnmarked.isPending}>
-          {markUnmarked.isPending ? "Marking…" : "Mark all unmarked as absent"}
+      ),
+    },
+    { key: "employee_number", header: "Employee no.", render: (row) => <span className="os-table__mono">{row.employee_number}</span> },
+    {
+      key: "attendance",
+      header: "Attendance",
+      render: (row) => (
+        <div className={`os-flex os-gap-1h os-wrap ${markingId === row.staff_id ? "os-opacity-50" : ""}`}>
+          {STAFF_STATUSES.map((st) => (
+            <StaffStatusButton key={st} value={st} selected={row.status === st} personName={row.full_name} onClick={() => onMark(row.staff_id, st)} />
+          ))}
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <>
+      <div className="os-att-summary" aria-live="polite">
+        <div className="os-att-summary__stats">
+          {totals && SUMMARY.map((k) => (
+            <span key={k.key} className="os-att-stat">
+              <span className={`os-att-stat__dot is-${k.key}`} aria-hidden="true" />
+              {k.label}
+              <strong>{totals[k.key]}</strong>
+            </span>
+          ))}
+        </div>
+        <Button danger size="small" icon={<CloseCircleOutlined />} onClick={() => setConfirmBulkAbsent(true)} disabled={!totals?.unmarked} loading={markUnmarked.isPending}>
+          {markUnmarked.isPending ? "Marking…" : "Mark unmarked as absent"}
         </Button>
       </div>
 
@@ -81,49 +114,15 @@ export default function StaffRosterTable({ date, kind, search }: Props) {
         empty={{ title: search ? "No one matches your search" : "No active staff", description: search ? "Try another name or employee number." : "Add people on the Teachers or Staff page first." }}
         skeleton={<TableSkeleton headers={["Name", "Employee no.", "Attendance"]} />}
       >
-        <table className="os-table os-table--stack os-table--no-hover">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Employee no.</th>
-              <th>Attendance</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data?.items.map((row) => (
-              <tr key={row.staff_id}>
-                <td data-label="Name">
-                  <div className="os-flex os-items-center os-gap-2">
-                    <Avatar name={row.full_name} size="sm" />
-                    <span className="os-fw-500">{row.full_name}</span>
-                  </div>
-                </td>
-                <td data-label="Employee no." className="os-table__mono">{row.employee_number}</td>
-                <td data-label="Attendance">
-                  <div className={`os-flex os-gap-1h os-wrap ${markingId === row.staff_id ? "os-opacity-50" : ""}`}>
-                    {STAFF_STATUSES.map((s) => (
-                      <StaffStatusButton key={s} value={s} selected={row.status === s} personName={row.full_name} onClick={() => onMark(row.staff_id, s)} />
-                    ))}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </ListState>
-
-      {!!data?.total && (
-        <Pagination
-          totalItems={data.total}
-          page={page}
-          pageSize={pageSize}
+        <DataGrid
+          rows={data?.items ?? []}
+          columns={columns}
+          getRowId={(row) => row.staff_id}
+          noHover
           pageSizes={[25, 50, 100]}
-          onChange={({ page: p, pageSize: ps }) => {
-            setPage(ps === pageSize ? p : 1);
-            setPageSize(ps);
-          }}
+          server={{ page, pageSize, totalItems: data?.total ?? 0, onChange: ({ page: p, pageSize: ps }) => { setPage(p); setPageSize(ps); } }}
         />
-      )}
+      </ListState>
       <ConfirmActionModal
         open={confirmBulkAbsent}
         title="Mark unmarked staff as absent"
@@ -134,6 +133,6 @@ export default function StaffRosterTable({ date, kind, search }: Props) {
         onClose={() => setConfirmBulkAbsent(false)}
         onConfirm={() => { onMarkUnmarked(); setConfirmBulkAbsent(false); }}
       />
-    </div>
+    </>
   );
 }

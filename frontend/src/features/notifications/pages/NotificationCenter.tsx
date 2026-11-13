@@ -1,7 +1,8 @@
-import { NOTIFICATION_PRIORITY_TAG as PRIORITY_TAG } from "@/shared/lib/constants/tags";
+import { NOTIFICATION_PRIORITY_COLOR } from "@/shared/lib/constants/tags";
 import { useState } from "react";
-import { Tag, Dropdown, Button, Pagination } from "@carbon/react";
-import { Archive, ArrowUpRight, Search } from "@carbon/icons-react";
+import { Button, Input, Pagination, Segmented, Tag } from "antd";
+import { ExportOutlined, InboxOutlined, SearchOutlined } from "@ant-design/icons";
+import SelectField from "@/shared/ui/SelectField";
 import { formatDateTime } from "@/shared/lib/date";
 import {
   useInbox,
@@ -29,17 +30,17 @@ function NotificationRow({ n }: { n: MyNotification }) {
 
   return (
     <div
-      className={`${`os-list-row${!n.is_read ? " is-selected" : ""}`} os-gap-4 os-py-3h os-px-6`}
+      className={`os-list-row os-gap-4 os-py-3h os-px-6${!n.is_read ? " os-notif-row--unread" : ""}`}
     >
       <div className="os-flex-1 os-min-w-0">
         <div className="os-flex os-items-center os-gap-2 os-mb-1">
-          <span className="os-fw-600 os-text-md os-c-primary">{n.title}</span>
+          <span className="os-fw-500 os-text-md os-c-primary">{n.title}</span>
           {n.priority !== "normal" && (
-            <Tag type={PRIORITY_TAG[n.priority]} size="sm">
+            <Tag color={NOTIFICATION_PRIORITY_COLOR[n.priority]} variant="filled">
               {translateValue(t, "priority", n.priority)}
             </Tag>
           )}
-          <Tag type="blue" size="sm">
+          <Tag variant="filled">
             {translateValue(t, "category", n.category)}
           </Tag>
           {!n.is_read && !n.is_archived && (
@@ -56,16 +57,16 @@ function NotificationRow({ n }: { n: MyNotification }) {
       </div>
       <div className="os-flex os-col os-gap-1h os-items-end os-shrink-0">
         {!n.is_read && (
-          <Button kind="ghost" size="sm" onClick={() => markRead.mutate(n.notification_id)}>
+          <Button type="text" size="small" onClick={() => markRead.mutate(n.notification_id)}>
             {t("notif.markRead")}
           </Button>
         )}
         {n.is_archived ? (
-          <Button kind="ghost" size="sm" renderIcon={ArrowUpRight} onClick={() => unarchive.mutate(n.notification_id)}>
+          <Button type="text" size="small" icon={<ExportOutlined />} onClick={() => unarchive.mutate(n.notification_id)}>
             {t("notif.unarchive")}
           </Button>
         ) : (
-          <Button kind="ghost" size="sm" renderIcon={Archive} onClick={() => archive.mutate(n.notification_id)}>
+          <Button type="text" size="small" icon={<InboxOutlined />} onClick={() => archive.mutate(n.notification_id)}>
             {t("notif.archive")}
           </Button>
         )}
@@ -114,40 +115,37 @@ export default function NotificationCenter() {
       </div>
 
       <div className="os-section">
-        <div className="os-flex os-gap-2 os-pt-4 os-px-6 os-pb-0" role="group" aria-label={t("notif.filters")}>
-          {(["unread", "read", "archived"] as Tab[]).map((key) => (
-            <button
-              type="button"
-              key={key}
-              onClick={() => setTab(key)} className={`os-pill os-px-4${tab === key ? " is-active" : ""}`}
-              aria-pressed={tab === key}
-            >
-              {key === "unread" ? t("notif.tabUnread", { count: unreadCount }) : key === "read" ? t("notif.tabRead", { count: readCount }) : t("notif.tabArchived")}
-            </button>
-          ))}
+        <div className="os-pt-4 os-px-6">
+          <Segmented
+            aria-label={t("notif.filters")}
+            value={tab}
+            onChange={(v) => setTab(v as Tab)}
+            options={[
+              { value: "unread", label: t("notif.tabUnread", { count: unreadCount }) },
+              { value: "read", label: t("notif.tabRead", { count: readCount }) },
+              { value: "archived", label: t("notif.tabArchived") },
+            ]}
+          />
         </div>
 
         <div className="os-toolbar">
-          <div className="os-search os-max-w-22">
-            <Search size={16} className="os-search__icon" />
-            <input
-              className="os-search__input"
-              placeholder={t("notif.search")}
-              aria-label={t("notif.search")}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
+          <Input
+            className="os-max-w-22"
+            allowClear
+            prefix={<SearchOutlined />}
+            placeholder={t("notif.search")}
+            aria-label={t("notif.search")}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
           <div className="os-w-16">
-            <Dropdown
+            <SelectField
               id="notification-category-filter"
-              titleText={t("notif.category")}
+              label={t("notif.category")}
               hideLabel
-              label={t("notif.allCategories")}
-              items={["", ...CATEGORIES.map((c) => c.value)]}
-              itemToString={(item) => (item ? translateValue(t, "category", item as string) : t("notif.allCategories"))}
-              selectedItem={category}
-              onChange={({ selectedItem }) => setCategory((selectedItem as NotificationCategory | "") ?? "")}
+              value={category}
+              onChange={(v) => setCategory(v as NotificationCategory | "")}
+              options={[{ value: "", label: t("notif.allCategories") }, ...CATEGORIES.map((c) => ({ value: c.value, label: translateValue(t, "category", c.value) }))]}
             />
           </div>
         </div>
@@ -167,16 +165,20 @@ export default function NotificationCenter() {
               <NotificationRow key={n.recipient_id} n={n} />
             ))}
             {(data?.total ?? 0) > pageSize && (
-              <Pagination
-                totalItems={data?.total ?? 0}
-                page={page}
-                pageSize={pageSize}
-                pageSizes={[25, 50, 100]}
-                onChange={({ page: p, pageSize: ps }) => {
-                  setPage(ps === pageSize ? p : 1);
-                  setPageSize(ps);
-                }}
-              />
+              <div className="os-flex os-justify-end os-py-3 os-px-6 os-border-t">
+                <Pagination
+                  current={page}
+                  total={data?.total ?? 0}
+                  pageSize={pageSize}
+                  pageSizeOptions={[25, 50, 100]}
+                  showSizeChanger
+                  size="small"
+                  onChange={(p, ps) => {
+                    setPage(ps === pageSize ? p : 1);
+                    setPageSize(ps);
+                  }}
+                />
+              </div>
             )}
           </div>
         )}

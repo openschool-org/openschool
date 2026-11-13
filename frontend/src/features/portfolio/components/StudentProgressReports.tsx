@@ -1,24 +1,19 @@
 import { useState } from "react";
-import SelectField from "@/shared/ui/SelectField";
-import { Button } from "antd";
-import TextAreaField from "@/shared/ui/TextAreaField";
-import { PlusOutlined } from "@ant-design/icons";
+import { Tag } from "antd";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
-import { useCurrentTerm } from "@/features/school/queries/useTerms";
-import { useTerms } from "@/features/school/queries/useTerms";
+import { useCurrentTerm, useTerms } from "@/features/school/queries/useTerms";
 import {
   useProgressReports,
   useCreateProgressReport,
   useDeleteProgressReport,
 } from "@/features/portfolio/queries/useStudentPortfolio";
-import EmptyState from "@/shared/ui/EmptyState";
+import { formatISODate } from "@/shared/lib/date";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import RemoveIconButton from "@/shared/ui/RemoveIconButton";
-import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
-import SectionCard from "@/shared/ui/SectionCard";
-import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
-import ErrorMessage from "@/shared/ui/ErrorMessage";
-import { formatISODate } from "@/shared/lib/date";
+import RecordsCard from "@/shared/ui/RecordsCard";
+import FormModal from "@/shared/ui/FormModal";
+import SelectField from "@/shared/ui/SelectField";
+import TextAreaField from "@/shared/ui/TextAreaField";
 
 export default function StudentProgressReports({ studentId }: { studentId: string }) {
   const { data: currentYear } = useCurrentAcademicYear();
@@ -28,74 +23,83 @@ export default function StudentProgressReports({ studentId }: { studentId: strin
   const createReport = useCreateProgressReport(studentId);
   const deleteReport = useDeleteProgressReport(studentId);
 
+  const [open, setOpen] = useState(false);
   const [termId, setTermId] = useState("");
   const [narrative, setNarrative] = useState("");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const selectedTermId = termId || currentTerm?.id || "";
+  // The current term's report comes first.
   const orderedReports = reports
     ? [...reports].sort((a, b) => Number(b.term_id === currentTerm?.id) - Number(a.term_id === currentTerm?.id))
     : [];
+
+  const openAdd = () => { createReport.reset(); setTermId(""); setNarrative(""); setOpen(true); };
 
   const handleAdd = () => {
     if (!selectedTermId || !narrative.trim()) return;
     createReport.mutate(
       { term_id: selectedTermId, narrative: narrative.trim() },
-      { onSuccess: () => setNarrative("") },
+      { onSuccess: () => setOpen(false) },
     );
   };
 
   return (
-    <SectionCard title="Progress reports" className="os-mt-4">
-        <MutationErrorNotification
-          isError={createReport.isError}
-          error={createReport.error}
-          title="Could not add report" fallback="Please try again." className="os-mb-4"
-        />
+    <>
+      <RecordsCard
+        title="Progress reports"
+        subtitle="A narrative report for each term"
+        addLabel="Add report"
+        onAdd={openAdd}
+        isLoading={isLoading}
+        isError={isError}
+        errorMessage="Could not load progress reports."
+        onRetry={refetch}
+        rows={orderedReports}
+        getRowId={(r) => r.id}
+        empty={{ title: "No progress reports yet", description: "Add a term-by-term narrative report for this student." }}
+        columns={[
+          {
+            key: "term",
+            header: "Term",
+            render: (r) => (
+              <span className="os-flex os-items-center os-gap-2 os-nowrap">
+                <span className="os-fw-500">{r.term_name}</span>
+                {r.term_id === currentTerm?.id && <Tag color="processing" variant="filled">Current</Tag>}
+              </span>
+            ),
+          },
+          { key: "narrative", header: "Report", render: (r) => <span className="os-c-secondary">{r.narrative}</span> },
+          { key: "updated", header: "Updated", render: (r) => <span className="os-nowrap os-table__muted">{formatISODate(r.updated_at ?? r.created_at)}</span> },
+          { key: "actions", header: "", align: "end", render: (r) => <RemoveIconButton label={`Delete ${r.term_name} report`} onClick={() => setPendingDeleteId(r.id)} /> },
+        ]}
+      />
 
-        <div className="os-grid os-grid-form-12-1-auto os-gap-3 os-items-grid-end os-mb-6">
+      <FormModal
+        open={open}
+        title="Add progress report"
+        size="md"
+        onClose={() => setOpen(false)}
+        onSubmit={handleAdd}
+        isPending={createReport.isPending}
+        submitDisabled={!selectedTermId || !narrative.trim()}
+        submitLabel="Add report"
+        isError={createReport.isError}
+        error={createReport.error}
+        errorTitle="Could not add report"
+      >
+        <div className="os-stack os-gap-4">
           <SelectField
             id="progress-report-term"
             label="Term"
+            placeholder="Select term…"
             value={selectedTermId}
             onChange={setTermId}
-            options={[{ value: "", label: "Select term…" }, ...(terms ?? []).map((t) => ({ value: t.id, label: t.id === currentTerm?.id ? `${t.name} (current)` : t.name }))]}
+            options={(terms ?? []).map((t) => ({ value: t.id, label: t.id === currentTerm?.id ? `${t.name} (current)` : t.name }))}
           />
-          <TextAreaField
-            id="progress-report-narrative"
-            label="Narrative"
-            rows={2}
-            value={narrative}
-            onChange={(v) => setNarrative(v)}
-          />
-          <Button
-            icon={<PlusOutlined />}
-            type="primary"
-            onClick={handleAdd}
-            disabled={!selectedTermId || !narrative.trim() || createReport.isPending}
-          >
-            Add
-          </Button>
+          <TextAreaField id="progress-report-narrative" label="Report" rows={6} value={narrative} onChange={setNarrative} />
         </div>
+      </FormModal>
 
-        {isLoading && <ListRowSkeleton leadingWidth={null} titleWidth="35%" subtitleWidth="70%" trailingWidth="2rem" />}
-        {isError && <ErrorMessage message="Could not load progress reports." onRetry={refetch} />}
-        {!isLoading && !isError && orderedReports.length === 0 && (
-          <EmptyState title="No progress reports yet" description="Add a term-by-term narrative report for this student." />
-        )}
-
-        {!isLoading && !isError && orderedReports.map((r) => (
-          <div key={r.id} className="os-list-row os-justify-between os-items-start">
-            <div>
-              <div className="os-flex os-items-center os-gap-2">
-                <span className="os-fw-600 os-text-sm">{r.term_name}</span>
-                {r.term_id === currentTerm?.id && <span className="os-text-xs os-c-accent os-fw-600">Current term</span>}
-              </div>
-              <p className="os-mt-1h os-mx-0 os-mb-0 os-text-md os-c-secondary">{r.narrative}</p>
-              <span className="os-text-xs os-c-tertiary">Updated {formatISODate(r.updated_at ?? r.created_at)}</span>
-            </div>
-            <RemoveIconButton label="Delete" onClick={() => setPendingDeleteId(r.id)} />
-          </div>
-        ))}
       <ConfirmDeleteModal
         open={pendingDeleteId !== null}
         title="Delete progress report"
@@ -103,10 +107,8 @@ export default function StudentProgressReports({ studentId }: { studentId: strin
         subject="Progress report"
         mutation={deleteReport}
         onClose={() => setPendingDeleteId(null)}
-        onConfirm={() => {
-          if (pendingDeleteId) deleteReport.mutate(pendingDeleteId);
-        }}
+        onConfirm={() => pendingDeleteId && deleteReport.mutate(pendingDeleteId)}
       />
-    </SectionCard>
+    </>
   );
 }

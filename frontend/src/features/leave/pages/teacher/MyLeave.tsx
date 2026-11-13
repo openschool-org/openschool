@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Add } from "@carbon/icons-react";
-import { Button, Select, SelectItem } from "@carbon/react";
+import { Button } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import SelectField from "@/shared/ui/SelectField";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 import ListState from "@/shared/ui/ListState";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
@@ -37,7 +38,7 @@ export default function MyLeave() {
       key: "actions",
       header: "Actions",
       align: "end",
-      render: (r) => r.status === "pending" && <Button kind="ghost" size="sm" onClick={() => setToCancel(r)}>Cancel</Button>,
+      render: (r) => r.status === "pending" && <Button type="text" danger size="small" onClick={() => setToCancel(r)}>Cancel</Button>,
     },
   ];
 
@@ -49,10 +50,8 @@ export default function MyLeave() {
           <p className="os-page__subtitle">Apply for leave, arrange relief for your periods and follow the Principal's decision</p>
         </div>
         <div className="os-flex os-gap-2 os-items-end">
-          <Select id="leave-year" labelText="Year" hideLabel size="md" value={String(year)} onChange={(e) => setYear(Number(e.target.value))}>
-            {[thisYear + 1, thisYear, thisYear - 1, thisYear - 2].map((y) => <SelectItem key={y} value={String(y)} text={String(y)} />)}
-          </Select>
-          <Button renderIcon={Add} kind="primary" size="md" onClick={() => setApplying(true)}>Apply for leave</Button>
+          <SelectField id="leave-year" label="Year" hideLabel className="os-min-w-7" value={String(year)} onChange={(v) => setYear(Number(v))} options={[thisYear + 1, thisYear, thisYear - 1, thisYear - 2].map((y) => ({ value: String(y), label: String(y) }))} />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setApplying(true)}>Apply for leave</Button>
         </div>
       </div>
 

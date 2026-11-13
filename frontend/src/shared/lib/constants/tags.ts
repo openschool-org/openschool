@@ -12,17 +12,19 @@ export const SEVERITY_COLOR: Record<"minor" | "major" | "severe", string | undef
   severe: "error",
 };
 
-export const NOTIFICATION_PRIORITY_TAG = {
-  normal: "gray",
-  important: "warm-gray",
-  urgent: "red",
-} as const;
+// antd Tag colour per notification priority; undefined is the neutral default tag.
+export const NOTIFICATION_PRIORITY_COLOR: Record<"normal" | "important" | "urgent", string | undefined> = {
+  normal: undefined,
+  important: "warning",
+  urgent: "error",
+};
 
-export const TIMETABLE_STATUS_TAG = {
-  draft: { type: "gray", label: "Draft" },
-  under_review: { type: "blue", label: "Under review" },
-  approved: { type: "teal", label: "Approved" },
-  published: { type: "green", label: "Published" },
-  rejected: { type: "red", label: "Rejected" },
-  archived: { type: "magenta", label: "Archived" },
-} as const;
+// antd Tag colour and label per timetable status; undefined colour is the neutral tag.
+export const TIMETABLE_STATUS_TAG: Record<"draft" | "under_review" | "approved" | "published" | "rejected" | "archived", { color?: string; label: string }> = {
+  draft: { label: "Draft" },
+  under_review: { color: "processing", label: "Under review" },
+  approved: { color: "cyan", label: "Approved" },
+  published: { color: "success", label: "Published" },
+  rejected: { color: "error", label: "Rejected" },
+  archived: { color: "magenta", label: "Archived" },
+};

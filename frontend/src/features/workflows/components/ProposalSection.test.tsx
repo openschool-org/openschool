@@ -16,7 +16,9 @@ describe("ProposalSection", () => {
     };
     const onEdit = vi.fn();
     render(<ProposalSection section={section} editable onEdit={onEdit} busyRowId={null} />);
-    fireEvent.change(screen.getByLabelText("Basket 1: Nimal"), { target: { value: "art" } });
+    // antd Select: open it, then pick the option.
+    fireEvent.mouseDown(screen.getByLabelText("Basket 1: Nimal"));
+    fireEvent.click(screen.getByTitle("Art"));
     expect(onEdit).toHaveBeenCalledWith("s1", { "g:1:1": "art" });
     expect(screen.getByText("No choice recorded yet.")).toBeTruthy();
   });

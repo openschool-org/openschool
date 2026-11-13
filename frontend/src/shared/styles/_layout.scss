@@ -55,13 +55,14 @@
 
 .os-toast-stack {
   position: fixed;
-  top: 4rem;
+  top: calc(var(--os-header-h) + 0.75rem);
   right: 1rem;
   z-index: 9500;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  max-width: 20rem;
+  width: 28rem;
+  max-width: calc(100vw - 2rem);
 }
 
 .os-toast-stack__item {
@@ -70,7 +71,7 @@
 }
 
 @media (max-width: 42rem) {
-  .os-toast-stack { left: 1rem; max-width: none; }
+  .os-toast-stack { left: 1rem; width: auto; max-width: none; }
 }
 
 // Sidebar (Ant Design Menu, themed in shared/theme/antdTheme.ts): white rail, dark filled pill on the active page.
