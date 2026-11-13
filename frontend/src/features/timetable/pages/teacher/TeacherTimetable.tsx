@@ -1,4 +1,4 @@
-import { SkeletonText } from "@carbon/react";
+import { SkeletonText } from "@/shared/ui/Skeleton";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useMyTeacherSchedule } from "@/features/timetable/queries/useTimetables";
 import TimetableByDay from "@/features/timetable/components/TimetableByDay";

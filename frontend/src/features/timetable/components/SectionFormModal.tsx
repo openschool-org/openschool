@@ -1,7 +1,9 @@
-import { Button, TextInput, MultiSelect, ComposedModal, ModalHeader, ModalBody, ModalFooter } from "@carbon/react";
+import { Select } from "antd";
 import type { Grade } from "@/features/academics/api/grade";
 import type { GradeSectionForm } from "@/features/timetable/constants";
-import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import Field from "@/shared/ui/Field";
+import FormModal from "@/shared/ui/FormModal";
+import TextField from "@/shared/ui/TextField";
 
 export default function SectionFormModal({
   open,
@@ -31,56 +33,36 @@ export default function SectionFormModal({
   error: unknown;
 }) {
   return (
-    <ComposedModal open={open} size="md" onClose={onClose} aria-label={isEdit ? "Edit grade section" : "New grade section"}>
-      <ModalHeader title={isEdit ? "Edit grade section" : "New grade section"} />
-      <ModalBody>
-        <MutationErrorNotification
-          isError={isError}
-          error={error} className="os-mb-4"
-        />
-        <div className="os-grid os-gap-4">
-          <TextInput
-            id="section-name"
-            labelText="Section name"
-            placeholder="e.g. Junior Secondary"
-            value={form.name}
-            onChange={(e) => onFormChange({ ...form, name: e.target.value })}
-          />
-          <div className="os-grid os-grid-cols-2 os-gap-4">
-            <TextInput
-              id="section-interval-start"
-              labelText="Interval start"
-              type="time"
-              value={form.interval_start_time}
-              onChange={(e) => onFormChange({ ...form, interval_start_time: e.target.value })}
-            />
-            <TextInput
-              id="section-interval-end"
-              labelText="Interval end"
-              type="time"
-              value={form.interval_end_time}
-              onChange={(e) => onFormChange({ ...form, interval_end_time: e.target.value })}
-            />
-          </div>
-          <MultiSelect
-            id="section-grades"
-            titleText="Grades in this section"
-            label="Select grades…"
-            items={grades ?? []}
-            itemToString={(g) => g?.name ?? ""}
-            selectedItems={(grades ?? []).filter((g) => selectedGradeIds.includes(g.id))}
-            onChange={({ selectedItems }) => onSelectedGradeIdsChange((selectedItems ?? []).map((g) => g.id))}
-          />
+    <FormModal
+      open={open}
+      title={isEdit ? "Edit grade section" : "New grade section"}
+      size="md"
+      onClose={onClose}
+      onSubmit={onSubmit}
+      isPending={isPending}
+      submitDisabled={!form.name.trim()}
+      isError={isError}
+      error={error}
+    >
+      <div className="os-stack os-gap-4">
+        <TextField id="section-name" label="Section name" placeholder="e.g. Junior Secondary" value={form.name} onChange={(v) => onFormChange({ ...form, name: v })} />
+        <div className="os-grid os-grid-cols-2 os-gap-4">
+          <TextField id="section-interval-start" label="Interval start" type="time" value={form.interval_start_time} onChange={(v) => onFormChange({ ...form, interval_start_time: v })} />
+          <TextField id="section-interval-end" label="Interval end" type="time" value={form.interval_end_time} onChange={(v) => onFormChange({ ...form, interval_end_time: v })} />
         </div>
-      </ModalBody>
-      <ModalFooter>
-        <Button kind="secondary" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button kind="primary" onClick={onSubmit} disabled={!form.name.trim() || isPending}>
-          {isPending ? "Saving…" : "Save"}
-        </Button>
-      </ModalFooter>
-    </ComposedModal>
+        <Field id="section-grades" label="Grades in this section">
+          <Select
+            id="section-grades"
+            mode="multiple"
+            className="os-w-full"
+            placeholder="Select grades…"
+            optionFilterProp="label"
+            value={selectedGradeIds}
+            onChange={onSelectedGradeIdsChange}
+            options={(grades ?? []).map((g) => ({ value: g.id, label: g.name }))}
+          />
+        </Field>
+      </div>
+    </FormModal>
   );
 }

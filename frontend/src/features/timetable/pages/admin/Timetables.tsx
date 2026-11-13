@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Add } from "@carbon/icons-react";
-import { Button, Tag, SkeletonText, OverflowMenu, OverflowMenuItem } from "@carbon/react";
+import { Button, Dropdown, Tag } from "antd";
+import { MoreOutlined, PlusOutlined } from "@ant-design/icons";
+import { SkeletonText } from "@/shared/ui/Skeleton";
 import { TIMETABLE_STATUS_TAG } from "@/shared/lib/constants/tags";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 import { formatDateTime } from "@/shared/lib/date";
@@ -70,22 +71,31 @@ export default function Timetables({ inline = false }: { inline?: boolean }) {
 
 
   const columns: GridColumn<TimetableWithClass>[] = [
-    { key: "grade", header: "Grade", render: (t) => t.grade_name },
+    { key: "grade", header: "Grade", render: (t) => <span className="os-fw-500">{t.grade_name}</span> },
     { key: "class", header: "Class", render: (t) => t.class_name },
-    { key: "version", header: "Version", render: (t) => `v${t.version}` },
-    { key: "status", header: "Status", render: (t) => <Tag type={statusTag(t.status)?.type ?? "gray"} size="sm">{statusTag(t.status)?.label ?? t.status}</Tag> },
-    { key: "updated", header: "Updated", render: (t) => formatDateTime(t.updated_at) },
+    { key: "version", header: "Version", render: (t) => <span className="os-table__muted">v{t.version}</span> },
+    { key: "status", header: "Status", render: (t) => <Tag color={statusTag(t.status)?.color} variant="filled">{statusTag(t.status)?.label ?? t.status}</Tag> },
+    { key: "updated", header: "Updated", render: (t) => <span className="os-table__muted os-nowrap">{formatDateTime(t.updated_at)}</span> },
     {
       key: "menu",
       header: "",
       align: "end",
       render: (t) => (
         <div onClick={(e) => e.stopPropagation()}>
-          <OverflowMenu size="sm" flipped>
-            <OverflowMenuItem itemText="Copy to another class" onClick={() => openCopy(t)} />
-            {t.status === "published" && <OverflowMenuItem itemText="Revise (new draft)" onClick={() => handleRevise(t)} />}
-            <OverflowMenuItem itemText="Delete" isDelete onClick={() => { deleteTimetable.reset(); setDeleteTarget(t); }} />
-          </OverflowMenu>
+          <Dropdown
+            trigger={["click"]}
+            placement="bottomRight"
+            menu={{
+              items: [
+                { key: "copy", label: "Copy to another class", onClick: () => openCopy(t) },
+                ...(t.status === "published" ? [{ key: "revise", label: "Revise (new draft)", onClick: () => handleRevise(t) }] : []),
+                { type: "divider" as const },
+                { key: "delete", label: "Delete", danger: true, onClick: () => { deleteTimetable.reset(); setDeleteTarget(t); } },
+              ],
+            }}
+          >
+            <Button type="text" size="small" aria-label={`Actions for ${t.grade_name} ${t.class_name}`} icon={<MoreOutlined />} />
+          </Dropdown>
         </div>
       ),
     },
@@ -105,25 +115,32 @@ export default function Timetables({ inline = false }: { inline?: boolean }) {
         </div>
       )}
 
-      <div className="os-section os-p-6">
-        <div className="os-flex os-gap-3 os-items-end os-mb-6">
-          <div className="os-w-20">
-            <EntityCombobox
-              id="new-timetable-class"
-              items={classes ?? []}
-              selectedId={newClassId}
-              onSelect={setNewClassId}
-              getId={(c) => c.id}
-              itemToString={(c) => `${c.grade_name} - ${c.name}`}
-              labelText="Create a draft timetable for a class"
-              placeholder="Search classes…"
-            />
+      <div className="os-section">
+        <div className="os-section__header os-tt-head">
+          <div>
+            <h2 className="os-section__title">Class timetables</h2>
+            <p className="os-text-sm os-c-secondary os-m-0">Pick a class to start a new draft. Click a row to open it.</p>
           </div>
-          <Button renderIcon={Add} kind="primary" onClick={handleCreate} disabled={!newClassId || createTimetable.isPending}>
-            {createTimetable.isPending ? "Creating…" : "New draft"}
-          </Button>
+          <div className="os-flex os-gap-2 os-items-center os-tt-create">
+            <div className="os-flex-1">
+              <EntityCombobox
+                id="new-timetable-class"
+                items={classes ?? []}
+                selectedId={newClassId}
+                onSelect={setNewClassId}
+                getId={(c) => c.id}
+                itemToString={(c) => `${c.grade_name} - ${c.name}`}
+                ariaLabel="Class for the new draft"
+                placeholder="Search classes…"
+              />
+            </div>
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate} disabled={!newClassId} loading={createTimetable.isPending}>
+              {createTimetable.isPending ? "Creating…" : "New draft"}
+            </Button>
+          </div>
         </div>
 
+        <div className="os-tt-alerts">
         <MutationErrorNotification
           isError={createTimetable.isError}
           error={createTimetable.error}
@@ -142,15 +159,16 @@ export default function Timetables({ inline = false }: { inline?: boolean }) {
           title="Could not delete timetable"
           onClose={() => deleteTimetable.reset()} className="os-mb-4"
         />
+        </div>
 
         {!currentYear ? (
           <EmptyState title="No current academic year" description="Set an academic year as current first." />
         ) : isLoading ? (
-          <SkeletonText width="40%" />
+          <div className="os-p-6"><SkeletonText width="40%" /></div>
         ) : isError ? (
           <ErrorMessage message="Could not load timetables." onRetry={refetch} />
         ) : !timetables || timetables.length === 0 ? (
-          <EmptyState title="No timetables yet" description="Create a draft timetable for a class above to get started." />
+          <EmptyState title="No timetables yet" description="Pick a class above and create its first draft." />
         ) : (
           <DataGrid rows={timetables} columns={columns} getRowId={(t) => t.id} pageSize={20} onRowClick={(t) => navigate(`/timetables/${t.id}`)} />
         )}

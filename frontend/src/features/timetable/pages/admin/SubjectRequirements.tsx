@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { NumberInput, SkeletonText, Dropdown } from "@carbon/react";
+import { SkeletonText } from "@/shared/ui/Skeleton";
+import NumberField from "@/shared/ui/NumberField";
+import SelectField from "@/shared/ui/SelectField";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useGrades } from "@/features/academics/queries/useGrades";
 import { useSubjects } from "@/features/curriculum/queries/useSubjects";
@@ -69,17 +71,24 @@ export default function SubjectRequirements({ inline = false }: { inline?: boole
         </div>
       )}
 
-      <div className="os-section os-p-6">
-        <div className="os-max-w-20 os-mb-6">
-          <Dropdown
-            id="requirements-grade"
-            titleText="Grade"
-            label="Select a grade…"
-            items={grades ?? []}
-            itemToString={(g) => (g as Grade)?.name ?? ""}
-            selectedItem={selectedGrade}
-            onChange={({ selectedItem }) => setSelectedGrade(selectedItem ?? null)}
-          />
+      <div className="os-section">
+        <div className="os-section__header os-tt-head">
+          <div>
+            <h2 className="os-section__title">Weekly periods per subject</h2>
+            <p className="os-text-sm os-c-secondary os-m-0">Changes save as you type. A timetable must meet these before it can go for review.</p>
+          </div>
+          <div className="os-tt-create">
+            <SelectField
+              id="requirements-grade"
+              label="Grade"
+              hideLabel
+              placeholder="Select a grade…"
+              showSearch
+              value={selectedGrade?.id ?? ""}
+              onChange={(id) => setSelectedGrade(grades?.find((g) => g.id === id) ?? null)}
+              options={(grades ?? []).map((g) => ({ value: g.id, label: g.name }))}
+            />
+          </div>
         </div>
 
         {!currentYear ? (
@@ -87,11 +96,12 @@ export default function SubjectRequirements({ inline = false }: { inline?: boole
         ) : !selectedGrade ? (
           <EmptyState title="Select a grade" description="Choose a grade above to configure its subject periods." />
         ) : isLoading ? (
-          <SkeletonText width="40%" />
+          <div className="os-p-6"><SkeletonText width="40%" /></div>
         ) : !subjects || subjects.length === 0 ? (
           <EmptyState title="No subjects yet" description="Add subjects under Subjects first." />
         ) : (
           <>
+            <div className="os-tt-alerts">
             <MutationErrorNotification
               isError={upsert.isError}
               error={upsert.error}
@@ -104,6 +114,7 @@ export default function SubjectRequirements({ inline = false }: { inline?: boole
               title="Could not clear requirement"
               onClose={() => remove.reset()} className="os-mb-4"
             />
+            </div>
             <table className="os-table">
               <thead>
                 <tr>
@@ -122,41 +133,44 @@ export default function SubjectRequirements({ inline = false }: { inline?: boole
                   const maxBlocks = Math.floor(periods / 2);
                   return (
                     <tr key={s.id}>
-                      <td>{s.name}</td>
+                      <td className="os-fw-500">{s.name}</td>
                       <td>
-                        <NumberInput
+                        <NumberField
                           id={`periods-${s.id}`}
-                          label=""
-                          size="sm"
+                          label="Periods per week"
+                          hideLabel
+                          size="small"
                           min={0}
                           max={20}
                           value={periods}
-                          onChange={(_e, { value }) => handleChange(s.id, Number(value ?? 0), labPeriodsFor(s.id), doubleBlocks)}
+                          onChange={(v) => handleChange(s.id, v ?? 0, labPeriodsFor(s.id), doubleBlocks)}
                         />
                       </td>
                       <td>
-                        <NumberInput
+                        <NumberField
                           id={`lab-periods-${s.id}`}
-                          label=""
-                          size="sm"
+                          label="Lab periods per week"
+                          hideLabel
+                          size="small"
                           min={0}
                           max={periods}
                           value={labPeriodsFor(s.id)}
                           disabled={periods === 0}
-                          onChange={(_e, { value }) => handleChange(s.id, periods, Number(value ?? 0), doubleBlocks)}
+                          onChange={(v) => handleChange(s.id, periods, v ?? 0, doubleBlocks)}
                         />
                       </td>
                       <td>
-                        <NumberInput
+                        <NumberField
                           id={`double-blocks-${s.id}`}
-                          label=""
-                          size="sm"
+                          label="Double blocks per week"
+                          hideLabel
+                          size="small"
                           min={0}
                           max={maxBlocks}
                           value={doubleBlocks}
                           disabled={maxBlocks === 0}
                           helperText={maxBlocks > 0 ? `up to ${maxBlocks}` : undefined}
-                          onChange={(_e, { value }) => handleChange(s.id, periods, labPeriodsFor(s.id), Number(value ?? 0))}
+                          onChange={(v) => handleChange(s.id, periods, labPeriodsFor(s.id), v ?? 0)}
                         />
                       </td>
                       <td>

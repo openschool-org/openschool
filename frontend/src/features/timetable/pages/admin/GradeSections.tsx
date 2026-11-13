@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Add } from "@carbon/icons-react";
-import { Button, SkeletonText } from "@carbon/react";
+import { Button } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import { SkeletonText } from "@/shared/ui/Skeleton";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useGrades } from "@/features/academics/queries/useGrades";
 import {
@@ -115,24 +116,20 @@ export default function GradeSections({ inline = false }: { inline?: boolean }) 
             <h1 className="os-page__title">Grade sections</h1>
             <p className="os-page__subtitle">Grade groups, their period grid and section head for {currentYear.label}.</p>
           </div>
-          <Button renderIcon={Add} kind="primary" size="md" onClick={openCreate}>
-            New Section
-          </Button>
-        </div>
-      )}
-
-      {inline && (
-        <div className="os-flex os-justify-between os-items-center os-mb-4 os-wrap os-gap-4">
-          <p className="os-m-0 os-text-md os-c-secondary">
-            Set up different interval times for different grades by grouping them into sections.
-          </p>
-          <Button renderIcon={Add} kind="primary" size="sm" onClick={openCreate}>
-            New Section
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+            New section
           </Button>
         </div>
       )}
 
       <div className="os-section">
+        <div className="os-section__header">
+          <div>
+            <h2 className="os-section__title">Grade sections</h2>
+            <p className="os-text-sm os-c-secondary os-m-0">Group grades that share interval times and a period grid.</p>
+          </div>
+          {inline && <Button icon={<PlusOutlined />} onClick={openCreate}>New section</Button>}
+        </div>
         {isLoading && (
           <div className="os-py-5 os-px-6">
             <SkeletonText width="40%" />
@@ -143,7 +140,7 @@ export default function GradeSections({ inline = false }: { inline?: boolean }) 
           isError={deleteSection.isError}
           error={deleteSection.error}
           title="Could not delete section"
-          onClose={() => deleteSection.reset()} className="os-mt-0 os-mx-6 os-mb-4"
+          onClose={() => deleteSection.reset()} className="os-mx-6 os-my-4"
         />
 
         {!isLoading && !isError && (!sections || sections.length === 0) && (
@@ -151,8 +148,8 @@ export default function GradeSections({ inline = false }: { inline?: boolean }) 
             title="No grade sections yet"
             description="e.g. Primary (Grades 1-5), Junior Secondary (6-9), Senior Secondary (10-11), Advanced Level (12-13)."
             action={
-              <Button renderIcon={Add} kind="primary" onClick={openCreate}>
-                New Section
+              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+                New section
               </Button>
             }
           />
