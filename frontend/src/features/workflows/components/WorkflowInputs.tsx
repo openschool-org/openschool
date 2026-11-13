@@ -1,7 +1,10 @@
-import { Checkbox, FilterableMultiSelect, Select, SelectItem, TextInput } from "@carbon/react";
+import { Checkbox, Select } from "antd";
 import type { InputField, Inputs } from "@/features/workflows/api/workflows";
 import DateField from "@/shared/ui/DateField";
 import CsvInput from "@/features/workflows/components/CsvInput";
+import Field from "@/shared/ui/Field";
+import SelectField from "@/shared/ui/SelectField";
+import TextField from "@/shared/ui/TextField";
 
 interface Props {
   fields: InputField[];
@@ -19,24 +22,22 @@ export default function WorkflowInputs({ fields, values, onChange }: Props) {
         switch (f.type) {
           case "select":
             return (
-              <Select key={f.key} id={id} labelText={f.label} helperText={f.help} value={value} onChange={(e) => onChange(f.key, e.target.value)}>
-                <SelectItem value="" text="Choose…" />
-                {f.options?.map((o) => <SelectItem key={o.value} value={o.value} text={o.label} />)}
-              </Select>
+              <SelectField key={f.key} id={id} label={f.label} helperText={f.help} placeholder="Choose…" value={value} onChange={(v) => onChange(f.key, v)} options={(f.options ?? []).map((o) => ({ value: o.value, label: o.label }))} />
             );
           case "multiselect": {
             const selected = value ? value.split(",") : [];
             return (
-              <FilterableMultiSelect
-                key={f.key}
-                id={id}
-                titleText={f.label}
-                helperText={f.help}
-                items={f.options ?? []}
-                itemToString={(o) => o?.label ?? ""}
-                initialSelectedItems={(f.options ?? []).filter((o) => selected.includes(o.value))}
-                onChange={({ selectedItems }) => onChange(f.key, (selectedItems ?? []).map((o) => o.value).join(","))}
-              />
+              <Field key={f.key} id={id} label={f.label} helper={f.help}>
+                <Select
+                  id={id}
+                  mode="multiple"
+                  className="os-w-full"
+                  showSearch={{ filterOption: (input, option) => String(option?.label ?? "").toLowerCase().includes(input.trim().toLowerCase()) }}
+                  value={selected}
+                  options={(f.options ?? []).map((o) => ({ value: o.value, label: o.label }))}
+                  onChange={(vals: string[]) => onChange(f.key, vals.join(","))}
+                />
+              </Field>
             );
           }
           case "date":
@@ -44,14 +45,14 @@ export default function WorkflowInputs({ fields, values, onChange }: Props) {
           case "boolean":
             return (
               <div key={f.key} className="os-workflow-inputs__check">
-                <Checkbox id={id} labelText={f.label} checked={value === "true"} onChange={(_, { checked }) => onChange(f.key, String(checked))} />
+                <Checkbox id={id} checked={value === "true"} onChange={(e) => onChange(f.key, String(e.target.checked))}>{f.label}</Checkbox>
                 {f.help && <p className="os-m-0 os-text-xs os-c-tertiary">{f.help}</p>}
               </div>
             );
           case "csv":
             return <CsvInput key={f.key} id={id} label={f.label} help={f.help} template={f.template} value={value} onChange={(v) => onChange(f.key, v)} />;
           default:
-            return <TextInput key={f.key} id={id} labelText={f.label} helperText={f.help} value={value} onChange={(e) => onChange(f.key, e.target.value)} />;
+            return <TextField key={f.key} id={id} label={f.label} helperText={f.help} value={value} onChange={(v) => onChange(f.key, v)} />;
         }
       })}
     </div>

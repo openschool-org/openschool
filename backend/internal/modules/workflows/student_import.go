@@ -23,22 +23,30 @@ func (StudentImport) Description() string {
 }
 
 var (
-	ToolReadImportCSV  = tool("read_import_csv", "Reads the student CSV and checks every row: required fields, class, phone numbers, gender, duplicates by index number and guardian NIC.", false)
-	ToolImportStudents = tool("import_students", "Creates the students and guardians, links siblings to the same guardian and places each student in their class.", true)
+	ToolReadImportCSV  = tool("read_import_csv", "Checks every row of your file: required fields, that each class exists, phone numbers, gender, and repeated index numbers or guardian NICs. Nothing is saved.", false)
+	ToolImportStudents = tool("import_students", "Creates the students and their guardians, links brothers and sisters to the same guardian, and puts each student in their class.", true)
 	importColumns      = []string{"class", "index_number", "full_name", "name_with_initials", "calling_name", "gender", "address", "phone", "guardian_name", "guardian_relationship", "guardian_phone", "guardian_nic", "guardian_email"}
 	importTemplate     = strings.Join(importColumns, ",") + "\n6-A,2026/0001,Hettiwatta Arachchige Nimali Perera,,Nimali,female,\"12 Temple Road, Kandy\",0771234567,H.A. Sunil Perera,father,0712345678,197512345678,\n6-A,2026/0002,Hettiwatta Arachchige Kasun Perera,H.A.K. Perera,,male,\"12 Temple Road, Kandy\",,H.A. Sunil Perera,father,0712345678,197512345678,\n"
 )
 
 func (StudentImport) Steps() []StepInfo {
 	return []StepInfo{
-		{Key: "read_csv", Title: "Read and check the CSV", Tool: ToolReadImportCSV, Phase: "propose"},
-		{Key: "import_students", Title: "Create students and place them in classes", Tool: ToolImportStudents, Phase: "apply"},
+		{Key: "read_csv", Title: "Check your file", Tool: ToolReadImportCSV, Phase: "propose"},
+		{Key: "import_students", Title: "Import the students", Tool: ToolImportStudents, Phase: "apply"},
 	}
 }
 
 func (StudentImport) Inputs(context.Context, *Store) ([]InputField, error) {
 	return []InputField{{Key: "csv", Label: "Students CSV", Type: "csv", Required: true, Template: importTemplate,
-		Help: "One row per student. The class column uses the class name, such as 6-A. name_with_initials (like H.A.N. Perera) is filled in from the full name when left blank; calling_name is optional. Siblings share a guardian NIC, so they are linked to one guardian. In Excel, format the phone and NIC columns as Text before typing, or Excel shortens long numbers."}}, nil
+		// One rule per line: the page shows each line as a checklist item.
+		Help: strings.Join([]string{
+			"One row per student.",
+			"class is the class name exactly as it appears in OpenSchool, for example 6-A.",
+			"name_with_initials (for example H.A.N. Perera) can be left blank; it is filled in from full_name.",
+			"calling_name is optional.",
+			"Brothers and sisters: give them the same guardian_nic so they share one guardian.",
+			"In Excel, format the phone and NIC columns as Text before typing, or Excel shortens long numbers.",
+		}, "\n")}}, nil
 }
 
 func (StudentImport) Check(ctx context.Context, s *Store, in Inputs) ([]Check, error) {

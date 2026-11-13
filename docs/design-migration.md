@@ -24,7 +24,7 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `app/` | 3 | 3 |
 | `features/academics/` | 16 | 16 |
 | `features/activation/` | 8 | 3 |
-| `features/attendance/` | 9 | 0 |
+| `features/attendance/` | 9 | 9 |
 | `features/auth/` | 5 | 5 |
 | `features/curriculum/` | 16 | 16 |
 | `features/email/` | 2 | 0 |
@@ -42,8 +42,8 @@ Branch: `ui-migration-to-antd`. Inventory taken on 8 Nov 2026.
 | `features/system/` | 4 | 1 |
 | `features/teachers/` | 16 | 6 |
 | `features/timetable/` | 21 | 0 |
-| `features/workflows/` | 10 | 0 |
-| **Total** | **235** | **124 (53%)** |
+| `features/workflows/` | 10 | 10 |
+| **Total** | **235** | **143 (61%)** |
 
 Not counted above: [UI/UX issues](#uiux-issues), [SCSS cleanup](#scss-cleanup) and [build and docs cleanup](#build-and-docs-cleanup).
 
@@ -409,15 +409,15 @@ Paths are relative to `frontend/src/<area>/`.
 
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
-| ⬜ | `components/AttendanceHistoryTable.tsx` | Tag | - |
-| ⬜ | `components/StatusButton.tsx` | - | CheckmarkFilled, CloseFilled, Time, Certificate |
-| ⬜ | `components/staff/StaffRosterTable.tsx` | Button, Pagination, Tag | CloseFilled |
-| ⬜ | `components/staff/StaffStatusButton.tsx` | - | CheckmarkFilled, CloseFilled, Time, Renew |
-| ⬜ | `pages/admin/Attendance.tsx` | Button, Tag | EventSchedule, CheckmarkFilled, WarningFilled, AddAlt |
-| ⬜ | `pages/admin/AttendanceMark.tsx` | Button, Tag, InlineNotification, TextInput, Pagination | ArrowLeft, Save, Search, UserMultiple, Warning |
-| ⬜ | `pages/admin/StaffAttendance.tsx` | Tab, TabList, Tabs, Tag, Toggle | - |
-| ⬜ | `pages/teacher/TeacherAttendance.tsx` | Tag | EventSchedule, Search, Time |
-| ⬜ | `pages/teacher/TeacherMyAttendance.tsx` | Button, Tag | ChevronLeft, ChevronRight, CheckmarkFilled, CloseFilled, Time, Renew |
+| ✅ | `components/AttendanceHistoryTable.tsx` | Tag | - |
+| ✅ | `components/StatusButton.tsx` | - | CheckmarkFilled, CloseFilled, Time, Certificate |
+| ✅ | `components/staff/StaffRosterTable.tsx` | Button, Pagination, Tag | CloseFilled |
+| ✅ | `components/staff/StaffStatusButton.tsx` | - | CheckmarkFilled, CloseFilled, Time, Renew |
+| ✅ | `pages/admin/Attendance.tsx` | Button, Tag | EventSchedule, CheckmarkFilled, WarningFilled, AddAlt |
+| ✅ | `pages/admin/AttendanceMark.tsx` | Button, Tag, InlineNotification, TextInput, Pagination | ArrowLeft, Save, Search, UserMultiple, Warning |
+| ✅ | `pages/admin/StaffAttendance.tsx` | Tab, TabList, Tabs, Tag, Toggle | - |
+| ✅ | `pages/teacher/TeacherAttendance.tsx` | Tag | EventSchedule, Search, Time |
+| ✅ | `pages/teacher/TeacherMyAttendance.tsx` | Button, Tag | ChevronLeft, ChevronRight, CheckmarkFilled, CloseFilled, Time, Renew |
 
 ### `features/auth/`
 
@@ -656,16 +656,16 @@ Paths are relative to `frontend/src/<area>/`.
 
 | Status | File | Carbon components | Carbon icons |
 | --- | --- | --- | --- |
-| ⬜ | `components/ChecksList.tsx` | - | CheckmarkFilled, WarningAltFilled, ErrorFilled |
-| ⬜ | `components/ConfirmActionModal.tsx` | Button, ComposedModal, ModalBody, ModalFooter, ModalHeader | - |
-| ⬜ | `components/CsvInput.tsx` | Button, FileUploaderButton, TextArea | Download |
-| ⬜ | `components/ProposalSection.tsx` | Checkbox, Pagination, Select, SelectItem | - |
-| ⬜ | `components/ProposalView.tsx` | InlineNotification | - |
-| ⬜ | `components/RunHistory.tsx` | Tag | - |
-| ⬜ | `components/WorkflowAgents.tsx` | Button, SkeletonText, Tag | ArrowRight |
-| ⬜ | `components/WorkflowInputs.tsx` | Checkbox, FilterableMultiSelect, Select, SelectItem, TextInput | - |
-| ⬜ | `pages/admin/WorkflowPage.tsx` | Button, Tag | ArrowLeft, Checkmark, Renew, TrashCan, Undo |
-| ⬜ | `pages/admin/YearEnd.tsx` | Button, Tag | ArrowRight |
+| ✅ | `components/ChecksList.tsx` | - | CheckmarkFilled, WarningAltFilled, ErrorFilled |
+| ✅ | `components/ConfirmActionModal.tsx` | Button, ComposedModal, ModalBody, ModalFooter, ModalHeader | - |
+| ✅ | `components/CsvInput.tsx` | Button, FileUploaderButton, TextArea | Download |
+| ✅ | `components/ProposalSection.tsx` | Checkbox, Pagination, Select, SelectItem | - |
+| ✅ | `components/ProposalView.tsx` | InlineNotification | - |
+| ✅ | `components/RunHistory.tsx` | Tag | - |
+| ✅ | `components/WorkflowAgents.tsx` | Button, SkeletonText, Tag | ArrowRight |
+| ✅ | `components/WorkflowInputs.tsx` | Checkbox, FilterableMultiSelect, Select, SelectItem, TextInput | - |
+| ✅ | `pages/admin/WorkflowPage.tsx` | Button, Tag | ArrowLeft, Checkmark, Renew, TrashCan, Undo |
+| ✅ | `pages/admin/YearEnd.tsx` | Button, Tag | ArrowRight |
 
 ## SCSS cleanup
 

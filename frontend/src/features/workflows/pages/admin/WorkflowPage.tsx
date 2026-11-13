@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
-import { Button, Tag } from "@carbon/react";
-import { ArrowLeft, Checkmark, Renew, TrashCan, Undo } from "@carbon/icons-react";
+import { Button, Card, Col, Row, Steps, Tag } from "antd";
+import { ArrowLeftOutlined, CheckOutlined, DeleteOutlined, FileSearchOutlined, UndoOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
 import { useWorkflowPage } from "@/features/workflows/hooks/useWorkflowPage";
 import WorkflowInputs from "@/features/workflows/components/WorkflowInputs";
 import ChecksList from "@/features/workflows/components/ChecksList";
@@ -39,73 +40,92 @@ export default function WorkflowPage({ workflowKey, backTo = "/year-end", backLa
   const { entry } = p;
   const run = p.run.data;
   const toolByName = new Map(entry.tools.map((t) => [t.name, t]));
+  // The backend's steps, with "Review the preview" placed before the first step that saves:
+  // checking finishes when a proposal exists, review is current while it waits, saving finishes on apply.
+  const stepItems = entry.steps.map((st) => ({
+    title: st.title,
+    description: (
+      <span className="os-flex os-col os-gap-1">
+        <span>{toolByName.get(st.tool)?.description}</span>
+        <span>
+          <Tag color={st.phase === "apply" ? "magenta" : undefined} variant="filled">
+            {st.phase === "apply" ? "Saves when you apply" : "Checks only"}
+          </Tag>
+        </span>
+      </span>
+    ),
+  }));
+  const firstApply = entry.steps.findIndex((st) => st.phase === "apply");
+  const reviewAt = firstApply < 0 ? stepItems.length : firstApply;
+  stepItems.splice(reviewAt, 0, {
+    title: "Review the preview",
+    description: <span>Look through the rows the check produces, fix anything marked, then choose Review done, apply.</span>,
+  });
+  const current = !run ? 0 : run.state === "applied" ? stepItems.length : run.state === "proposed" ? reviewAt : 0;
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">{entry.order > 0 ? `${entry.order}. ` : ""}{entry.title}</h1>
-          <p className="os-page__subtitle">{entry.description}</p>
+      {/* Title and back link share one line; the description sits below at full width. */}
+      <div className="os-workflow-head">
+        <div className="os-workflow-head__row">
+          <h1 className="os-page__title os-m-0">{entry.order > 0 ? `${entry.order}. ` : ""}{entry.title}</h1>
+          <LinkButton to={backTo} icon={<ArrowLeftOutlined />}>{backLabel}</LinkButton>
         </div>
-        <Button kind="ghost" size="md" renderIcon={ArrowLeft} as={Link} to={backTo}>{backLabel}</Button>
+        <p className="os-page__subtitle os-max-w-50">{entry.description}</p>
       </div>
 
-      <div className="os-grid os-grid-cols-2-1 os-gap-6 os-items-grid-start">
-        <div className="os-section">
-          <div className="os-section__header"><h2 className="os-section__title">Set up</h2></div>
-          <div className="os-p-6 os-flex os-col os-gap-4">
-            <WorkflowInputs fields={entry.inputs} values={p.values} onChange={p.setValue} />
-            <ChecksList checks={p.checks} />
-            <div className="os-flex os-gap-2 os-wrap">
-              <Button kind="secondary" onClick={p.runCheck} disabled={p.busy.check}>{p.busy.check ? "Checking…" : "Check"}</Button>
-              <Button kind="primary" renderIcon={Renew} onClick={p.runPropose} disabled={p.busy.propose}>
-                {p.busy.propose ? "Working it out…" : "Create proposal"}
-              </Button>
+      <Row gutter={24} className="os-form-columns">
+        <Col xs={24} lg={16}>
+          <Card className="os-form-card" title="Set up">
+            <div className="os-flex os-col os-gap-5">
+              <WorkflowInputs fields={entry.inputs} values={p.values} onChange={p.setValue} />
+              <ChecksList checks={p.checks} />
+              <div className="os-flex os-gap-2 os-wrap">
+                <Button size="large" onClick={p.runCheck} loading={p.busy.check}>{p.busy.check ? "Checking…" : "Check"}</Button>
+                <Button size="large" type="primary" icon={<FileSearchOutlined />} onClick={p.runPropose} loading={p.busy.propose}>
+                  {p.busy.propose ? "Working it out…" : "Create proposal"}
+                </Button>
+              </div>
             </div>
-          </div>
-        </div>
-
-        <div className="os-section">
-          <div className="os-section__header"><h2 className="os-section__title">Steps and tools</h2></div>
-          <ol className="os-steps">
-            {entry.steps.map((s) => (
-              <li key={s.key}>
-                <span className="os-fw-600">{s.title}</span>
-                <Tag type={s.phase === "apply" ? "magenta" : "cool-gray"} size="sm">{s.phase === "apply" ? "Writes" : "Reads"}</Tag>
-                <p className="os-m-0 os-text-xs os-c-secondary">
-                  <code>{s.tool}</code> {toolByName.get(s.tool)?.description}
-                </p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </div>
+          </Card>
+        </Col>
+        <Col xs={24} lg={8}>
+          <Card className="os-form-card" title="How it works">
+            <Steps
+              orientation="vertical"
+              size="small"
+              current={current}
+              status={run?.state === "failed" ? "error" : undefined}
+              items={stepItems}
+            />
+          </Card>
+        </Col>
+      </Row>
 
       {run && (
-        <div className="os-mt-6">
+        <div className="os-mb-6">
           <div className="os-flex os-items-center os-justify-between os-gap-4 os-wrap os-mb-4">
             <div className="os-flex os-items-center os-gap-2">
-              <h2 className="os-section__title os-m-0">This run</h2>
-              <Tag type={RUN_STATE_TAG[run.state].type}>{RUN_STATE_TAG[run.state].label}</Tag>
+              <h2 className="os-workflow-run__title">This run</h2>
+              <Tag color={RUN_STATE_TAG[run.state].color} variant="filled">{RUN_STATE_TAG[run.state].label}</Tag>
             </div>
             <div className="os-flex os-gap-2">
               {run.state === "proposed" && (
                 <>
-                  <Button kind="ghost" renderIcon={TrashCan} onClick={p.runDiscard} disabled={p.busy.discard}>Discard</Button>
-                  <Button kind="primary" renderIcon={Checkmark} onClick={() => setConfirm("apply")}>Review done, apply</Button>
+                  <Button type="text" icon={<DeleteOutlined />} onClick={p.runDiscard} loading={p.busy.discard}>Discard</Button>
+                  <Button type="primary" icon={<CheckOutlined />} onClick={() => setConfirm("apply")}>Review done, apply</Button>
                 </>
               )}
-              {run.state === "applied" && <Button kind="danger--tertiary" renderIcon={Undo} onClick={() => setConfirm("revert")}>Revert</Button>}
+              {run.state === "applied" && <Button danger icon={<UndoOutlined />} onClick={() => setConfirm("revert")}>Revert</Button>}
             </div>
           </div>
           <ProposalView run={run} onEdit={p.editCell} editingRow={p.editingRow} />
         </div>
       )}
 
-      <div className="os-section os-mt-6">
-        <div className="os-section__header"><h2 className="os-section__title">History</h2></div>
+      <Card className="os-dash-card" title="History">
         <RunHistory runs={p.history.data ?? []} onOpen={p.openRun} />
-      </div>
+      </Card>
 
       <ConfirmActionModal
         open={confirm === "apply"}
