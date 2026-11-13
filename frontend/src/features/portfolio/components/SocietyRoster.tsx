@@ -1,15 +1,8 @@
 import { useState } from "react";
-import { Add } from "@carbon/icons-react";
-import {
-  Button,
-  Select,
-  SelectItem,
-  ComposedModal,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  SkeletonText,
-} from "@carbon/react";
+import { Button, Skeleton } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import FormModal from "@/shared/ui/FormModal";
+import SelectField from "@/shared/ui/SelectField";
 import { Link } from "react-router";
 import { useStudents } from "@/features/students/queries/useStudents";
 import { useSocietyMembers, useAssignSocietyMember, useRemoveSocietyMember } from "@/features/portfolio/queries/useSocieties";
@@ -80,7 +73,7 @@ export default function SocietyRoster({ societyId, readOnly }: Props) {
     <div className="os-society-roster">
       <div className="os-flex os-justify-end os-mb-4">
         {!readOnly && (
-          <Button renderIcon={Add} kind="primary" size="sm" onClick={openAssign}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openAssign}>
             Add member
           </Button>
         )}
@@ -95,7 +88,7 @@ export default function SocietyRoster({ societyId, readOnly }: Props) {
       />
 
       {isLoading ? (
-        <SkeletonText width="40%" />
+        <Skeleton active title={false} paragraph={{ rows: 3 }} />
       ) : (members ?? []).length === 0 ? (
         <EmptyState title="No members yet" description="Add a student to this society's roster." />
       ) : (
@@ -103,7 +96,7 @@ export default function SocietyRoster({ societyId, readOnly }: Props) {
           byRole(value).length === 0 ? null : (
             <div key={value} className="os-mb-4">
               <div className="os-flex os-items-center os-gap-2 os-mb-1">
-                <h3 className="os-text-xs os-fw-600 os-uppercase os-c-tertiary os-m-0">
+                <h3 className="os-text-sm os-fw-500 os-c-secondary os-m-0">
                   {label}
                 </h3>
                 <span className="os-text-xs os-c-tertiary">{byRole(value).length}</span>
@@ -128,47 +121,40 @@ export default function SocietyRoster({ societyId, readOnly }: Props) {
         )
       )}
 
-      <ComposedModal open={assignOpen} size="sm" onClose={() => setAssignOpen(false)} aria-label="Add society member">
-        <ModalHeader title="Add society member" />
-        <ModalBody>
-          <MutationErrorNotification
-            isError={assignMember.isError}
-            error={assignMember.error}
-            title="Could not add member" fallback="Please try again."
+      <FormModal
+        open={assignOpen}
+        title="Add society member"
+        onClose={() => setAssignOpen(false)}
+        onSubmit={handleAssign}
+        isPending={assignMember.isPending}
+        submitDisabled={!studentChoice}
+        submitLabel="Add"
+        isError={assignMember.isError}
+        error={assignMember.error}
+        errorTitle="Could not add member"
+        errorFallback="Please try again."
+      >
+        <div className="os-stack os-gap-4">
+          <EntityCombobox
+            id="society-member-student"
+            labelText="Student"
+            items={availableStudents}
+            selectedId={studentChoice}
+            onSelect={setStudentChoice}
+            onSearch={setStudentSearch}
+            getId={(s) => s.id}
+            itemToString={(s) => `${displayName(s)} - ${s.index_number}`}
+            placeholder="Search students by name or index number…"
           />
-          <div className="os-grid os-gap-4">
-            <EntityCombobox
-              id="society-member-student"
-              labelText="Student"
-              items={availableStudents}
-              selectedId={studentChoice}
-              onSelect={setStudentChoice}
-              onSearch={setStudentSearch}
-              getId={(s) => s.id}
-              itemToString={(s) => `${displayName(s)} - ${s.index_number}`}
-              placeholder="Search students by name or index number…"
-            />
-            <Select
-              id="society-member-role"
-              labelText="Role"
-              value={roleChoice}
-              onChange={(e) => setRoleChoice(e.target.value as SocietyRole)}
-            >
-              {ROLES.map((r) => (
-                <SelectItem key={r.value} value={r.value} text={r.label.replace(/s$/, "")} />
-              ))}
-            </Select>
-          </div>
-        </ModalBody>
-        <ModalFooter>
-          <Button kind="secondary" onClick={() => setAssignOpen(false)}>
-            Cancel
-          </Button>
-          <Button kind="primary" onClick={handleAssign} disabled={!studentChoice || assignMember.isPending}>
-            {assignMember.isPending ? "Saving…" : "Add"}
-          </Button>
-        </ModalFooter>
-      </ComposedModal>
+          <SelectField
+            id="society-member-role"
+            label="Role"
+            value={roleChoice}
+            onChange={(v) => setRoleChoice(v as SocietyRole)}
+            options={ROLES.map((r) => ({ value: r.value, label: r.label.replace(/s$/, "") }))}
+          />
+        </div>
+      </FormModal>
 
       <ConfirmDeleteModal
         open={!!memberToRemove}

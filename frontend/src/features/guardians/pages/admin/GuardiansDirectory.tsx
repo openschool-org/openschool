@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { CloseOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Checkbox, Input, Pagination, Tag } from "antd";
+import { Button, Checkbox, Drawer, Input, Tag } from "antd";
+import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
+import ListState from "@/shared/ui/ListState";
+import TableSkeleton from "@/shared/ui/TableSkeleton";
+import type { Guardian } from "@/features/guardians/api/guardian";
 import { useGuardians } from "@/features/guardians/queries/useGuardians";
 import { useDebounced } from "@/shared/hooks/useDebounced";
-import EmptyState from "@/shared/ui/EmptyState";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import Avatar from "@/shared/ui/Avatar";
-import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
 import { relationshipLabel } from "@/features/guardians/constants";
 import GuardianDetail from "@/features/guardians/components/GuardianDetail";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
@@ -34,6 +36,23 @@ export default function GuardiansDirectory() {
   const totalItems = data?.total ?? 0;
 
   const selected = ordered.find((g) => g.id === selectedId) ?? null;
+
+  const columns: GridColumn<Guardian>[] = [
+    {
+      key: "name",
+      header: "Name",
+      render: (g) => (
+        <div className="os-flex os-items-center os-gap-2">
+          <Avatar name={g.full_name} size="sm" />
+          <span className="os-table__link" title={g.full_name}>{displayName(g)}</span>
+        </div>
+      ),
+    },
+    { key: "relationship", header: "Relationship", render: (g) => <span className="os-table__muted">{relationshipLabel(g.relationship)}</span> },
+    { key: "phone", header: "Phone", render: (g) => <span className="os-table__muted">{g.phone || "-"}</span> },
+    { key: "nic", header: "NIC number", render: (g) => <span className="os-table__mono">{g.nic_number || "-"}</span> },
+    { key: "email", header: "Email", render: (g) => <span className="os-table__muted">{g.email ?? "-"}</span> },
+  ];
 
   const onChange = ({ page: p, pageSize: ps }: { page: number; pageSize: number }) => {
     setPage(p);
@@ -85,74 +104,36 @@ export default function GuardiansDirectory() {
 
       {isError && <ErrorMessage message="Could not load guardian records." onRetry={refetch} />}
 
-      <div className="os-grid os-grid-cols-side os-gap-6 os-items-grid-start">
-        <div className="os-section os-bg-layer os-mt-0 os-p-0 os-overflow-hidden">
-          {isLoading && (
-            <div className="os-p-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <ListRowSkeleton key={i} leadingWidth="2.25rem" titleWidth="70%" subtitleWidth={null} trailingWidth={null} />
-              ))}
-            </div>
-          )}
-
-          {!isLoading && !isError && ordered.length === 0 && (
-            <div className="os-p-6">
-              <EmptyState
-                title={isSearching ? "No matching guardians" : "No guardians found"}
-                description={
-                  isSearching
-                    ? "Try a different name, phone number, email address or NIC number."
-                    : "Guardians are automatically linked when adding or editing student profiles."
-                }
-              />
-            </div>
-          )}
-
-          {!isLoading &&
-            ordered.map((g) => {
-              const isSelected = selected?.id === g.id;
-              return (
-                <button
-                  type="button"
-                  key={g.id}
-                  onClick={() => setSelectedId(g.id)}
-                  aria-pressed={isSelected}
-                  className={`os-list-row os-list-row--button${isSelected ? " is-selected" : ""} os-flex os-items-center os-gap-3 os-py-3h os-px-5 os-rounded-0 os-border-b ${isSelected ? "os-bg-accent-light" : "os-bg-layer"}`}
-                >
-                  <Avatar name={g.full_name} size="sm" />
-                  <div className="os-min-w-0 os-flex-1">
-                    <div className="os-fw-600 os-text-md os-c-primary os-overflow-hidden os-truncate os-nowrap" title={g.full_name}>
-                      {displayName(g)}
-                    </div>
-                    <div className="os-text-xs os-c-tertiary">
-                      {relationshipLabel(g.relationship)} · {g.phone}{g.nic_number ? ` · NIC ${g.nic_number}` : ""}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-
-          {!isLoading && ordered.length > 0 && (
-            <Pagination
-              total={totalItems}
-              current={page}
-              pageSize={pageSize}
-              pageSizeOptions={[10, 25, 50, 100]}
-              showSizeChanger
-              onChange={(current, size) => onChange({ page: current, pageSize: size })}
-              className="os-grid__pager"
-            />
-          )}
-        </div>
-
-        {selected ? (
-          <GuardianDetail key={selected.id} guardian={selected} onDeleted={() => setSelectedId(null)} />
-        ) : (
-          <div className="os-section os-bg-layer os-mt-0 os-text-center os-py-12 os-px-6">
-            <EmptyState title="Select a guardian" description="Choose a guardian from the directory list to view contact info and linked students." />
-          </div>
-        )}
+      {/* Full-width list; a row opens the guardian's details in a side drawer. */}
+      <div className="os-section">
+        <ListState
+          isLoading={isLoading}
+          isError={false}
+          isEmpty={ordered.length === 0}
+          errorMessage="Could not load guardian records."
+          onRetry={refetch}
+          skeleton={<TableSkeleton headers={columns.map((c) => c.header)} />}
+          empty={
+            isSearching
+              ? { title: "No matching guardians", description: "Try a different name, phone number, email address or NIC number." }
+              : { title: "No guardians found", description: "Guardians are automatically linked when adding or editing student profiles." }
+          }
+        >
+          <DataGrid
+            rows={ordered}
+            columns={columns}
+            getRowId={(g) => g.id}
+            onRowClick={(g) => setSelectedId(g.id)}
+            countLabel={(shown, total) => `Showing ${shown} of ${total} guardians`}
+            pageSizes={[10, 25, 50, 100]}
+            server={{ page, pageSize, totalItems, onChange }}
+          />
+        </ListState>
       </div>
+
+      <Drawer open={!!selected} onClose={() => setSelectedId(null)} size={640} title="Guardian" className="os-detail-drawer" destroyOnHidden>
+        {selected && <GuardianDetail key={selected.id} guardian={selected} onDeleted={() => setSelectedId(null)} />}
+      </Drawer>
     </div>
   );
 }

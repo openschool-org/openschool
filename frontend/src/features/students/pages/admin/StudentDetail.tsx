@@ -75,6 +75,7 @@ export default function StudentDetail() {
 
       <div className="os-py-6 os-px-8">
         <Tabs
+          className="os-detail-tabs"
           activeKey={activeTab}
           onChange={setActiveTab}
           aria-label="Student sections"

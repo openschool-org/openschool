@@ -1,8 +1,5 @@
 import { useState } from "react";
-import { Button, Tag } from "antd";
-import TextField from "@/shared/ui/TextField";
-import SelectField from "@/shared/ui/SelectField";
-import { PlusOutlined } from "@ant-design/icons";
+import { Tag } from "antd";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import {
   useStudentActivities,
@@ -12,11 +9,12 @@ import {
 import { useStudentSocietyMemberships } from "@/features/portfolio/queries/useSocieties";
 import { ACTIVITY_CATEGORIES } from "@/features/portfolio/api/studentPortfolio";
 import type { ActivityCategory } from "@/features/portfolio/api/studentPortfolio";
-import EmptyState from "@/shared/ui/EmptyState";
-import ErrorMessage from "@/shared/ui/ErrorMessage";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import RemoveIconButton from "@/shared/ui/RemoveIconButton";
-import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import RecordsCard from "@/shared/ui/RecordsCard";
+import FormModal from "@/shared/ui/FormModal";
+import SelectField from "@/shared/ui/SelectField";
+import TextField from "@/shared/ui/TextField";
 
 const SOCIETY_ROLE_LABELS: Record<string, string> = {
   leader: "Leader",
@@ -26,106 +24,93 @@ const SOCIETY_ROLE_LABELS: Record<string, string> = {
   member: "Member",
 };
 
-function StudentSocietyMemberships({ studentId }: { studentId: string }) {
-  const { data: memberships, isLoading, isError, refetch } = useStudentSocietyMemberships(studentId);
-
-  if (isLoading) return null;
-
-  if (isError) {
-    return (
-      <div className="os-mb-6">
-        <ErrorMessage message="Could not load society memberships." onRetry={refetch} />
-      </div>
-    );
-  }
-
-  if ((memberships?.length ?? 0) === 0) return null;
-
-  return (
-    <div className="os-mb-6">
-      <h3 className="os-text-xs os-fw-600 os-uppercase os-c-tertiary os-mt-0 os-mx-0 os-mb-2">
-        Society memberships
-      </h3>
-      {memberships?.map((m) => (
-        <div key={m.id} className="os-list-row os-list-row--compact os-gap-2h">
-          <Tag color="purple" variant="filled">{SOCIETY_ROLE_LABELS[m.role] ?? m.role}</Tag>
-          <span className="os-fw-500 os-text-md">{m.society_name}</span>
-          <span className="os-text-sm os-c-tertiary">{m.academic_year_label}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
+const categoryLabel = (c: string) => ACTIVITY_CATEGORIES.find((x) => x.value === c)?.label ?? c;
 
 export default function StudentActivities({ studentId }: { studentId: string }) {
   const { data: currentYear } = useCurrentAcademicYear();
   const { data: activities, isLoading } = useStudentActivities(studentId);
+  const memberships = useStudentSocietyMemberships(studentId);
   const createActivity = useCreateStudentActivity(studentId);
   const deleteActivity = useDeleteStudentActivity(studentId);
 
+  const [open, setOpen] = useState(false);
   const [category, setCategory] = useState<ActivityCategory | "">("");
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
+  const openAdd = () => { createActivity.reset(); setCategory(""); setName(""); setRole(""); setOpen(true); };
+
   const handleAdd = () => {
     if (!category || !name.trim() || !currentYear) return;
     createActivity.mutate(
-      {
-        academic_year_id: currentYear.id,
-        category,
-        name: name.trim(),
-        role: role.trim() || undefined,
-      },
-      { onSuccess: () => { setName(""); setRole(""); } },
+      { academic_year_id: currentYear.id, category, name: name.trim(), role: role.trim() || undefined },
+      { onSuccess: () => setOpen(false) },
     );
   };
 
   return (
-    <div className="os-section os-mt-4">
-      <div className="os-section__header">
-        <h2 className="os-section__title">Activities</h2>
-        <span className="os-text-xs os-c-tertiary">Clubs, sports, societies &amp; competitions</span>
-      </div>
-      <div className="os-section__body">
-        <StudentSocietyMemberships studentId={studentId} />
+    <div className="os-flex os-col os-gap-6">
+      <RecordsCard
+        title="Activities"
+        subtitle="Clubs, sports and competitions"
+        addLabel="Add activity"
+        onAdd={currentYear ? openAdd : undefined}
+        isLoading={isLoading}
+        rows={activities ?? []}
+        getRowId={(a) => a.id}
+        empty={{ title: "No activities yet", description: "Add clubs, sports or competitions this student takes part in." }}
+        columns={[
+          { key: "category", header: "Category", render: (a) => <Tag variant="filled">{categoryLabel(a.category)}</Tag> },
+          { key: "name", header: "Activity", render: (a) => <span className="os-fw-500">{a.name}</span> },
+          { key: "role", header: "Role", render: (a) => <span className="os-table__muted">{a.role || "-"}</span> },
+          { key: "actions", header: "", align: "end", render: (a) => <RemoveIconButton label={`Delete ${a.name}`} onClick={() => setPendingDeleteId(a.id)} /> },
+        ]}
+      />
 
-        <MutationErrorNotification
-          isError={createActivity.isError}
-          error={createActivity.error}
-          title="Could not add activity" fallback="Please try again." className="os-mb-4"
-        />
+      {/* Society memberships come from the Societies page, so they are listed here but not edited. */}
+      <RecordsCard
+        title="Society memberships"
+        subtitle="Managed on the Societies page"
+        isLoading={memberships.isLoading}
+        isError={memberships.isError}
+        errorMessage="Could not load society memberships."
+        onRetry={memberships.refetch}
+        rows={memberships.data ?? []}
+        getRowId={(m) => m.id}
+        empty={{ title: "No society memberships", description: "This student is not on any society roster." }}
+        columns={[
+          { key: "society", header: "Society", render: (m) => <span className="os-fw-500">{m.society_name}</span> },
+          { key: "role", header: "Role", render: (m) => <Tag color="purple" variant="filled">{SOCIETY_ROLE_LABELS[m.role] ?? m.role}</Tag> },
+          { key: "year", header: "Year", render: (m) => <span className="os-table__muted">{m.academic_year_label}</span> },
+        ]}
+      />
 
-        <div className="os-grid os-grid-form-10-1-10-auto os-gap-3 os-items-grid-end os-mb-6">
+      <FormModal
+        open={open}
+        title="Add activity"
+        onClose={() => setOpen(false)}
+        onSubmit={handleAdd}
+        isPending={createActivity.isPending}
+        submitDisabled={!category || !name.trim()}
+        submitLabel="Add activity"
+        isError={createActivity.isError}
+        error={createActivity.error}
+        errorTitle="Could not add activity"
+      >
+        <div className="os-stack os-gap-4">
           <SelectField
             id="activity-category"
             label="Category"
+            placeholder="Select…"
             value={category}
             onChange={(v) => setCategory(v as ActivityCategory)}
-            options={[{ value: "", label: "Select…" }, ...ACTIVITY_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))]}
+            options={ACTIVITY_CATEGORIES.map((c) => ({ value: c.value, label: c.label }))}
           />
-          <TextField id="activity-name" label="Name" value={name} onChange={(v) => setName(v)} />
-          <TextField id="activity-role" label="Role (optional)" value={role} onChange={(v) => setRole(v)} />
-          <Button icon={<PlusOutlined />} type="primary" onClick={handleAdd} disabled={!category || !name.trim() || createActivity.isPending}>
-            Add
-          </Button>
+          <TextField id="activity-name" label="Activity" placeholder="e.g. School cricket team" value={name} onChange={setName} />
+          <TextField id="activity-role" label="Role (optional)" placeholder="e.g. Vice captain" value={role} onChange={setRole} />
         </div>
-
-        {!isLoading && (activities?.length ?? 0) === 0 && (
-          <EmptyState title="No activities yet" description="Add clubs, sports, societies, or competitions this student takes part in." />
-        )}
-
-        {activities?.map((a) => (
-          <div key={a.id} className="os-list-row os-list-row--compact os-justify-between">
-            <div className="os-flex os-items-center os-gap-2h">
-              <Tag variant="filled">{ACTIVITY_CATEGORIES.find((c) => c.value === a.category)?.label ?? a.category}</Tag>
-              <span className="os-fw-500 os-text-md">{a.name}</span>
-              {a.role && <span className="os-text-sm os-c-tertiary">{a.role}</span>}
-            </div>
-            <RemoveIconButton label="Delete" onClick={() => setPendingDeleteId(a.id)} />
-          </div>
-        ))}
-      </div>
+      </FormModal>
 
       <ConfirmDeleteModal
         open={pendingDeleteId !== null}
@@ -134,9 +119,7 @@ export default function StudentActivities({ studentId }: { studentId: string }) 
         subject="Activity"
         mutation={deleteActivity}
         onClose={() => setPendingDeleteId(null)}
-        onConfirm={() => {
-          if (pendingDeleteId) deleteActivity.mutate(pendingDeleteId);
-        }}
+        onConfirm={() => pendingDeleteId && deleteActivity.mutate(pendingDeleteId)}
       />
     </div>
   );

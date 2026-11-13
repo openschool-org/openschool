@@ -1,4 +1,4 @@
-import { Input, Radio, Tag } from "antd";
+import { Col, Descriptions, Input, Radio, Row, Tag } from "antd";
 import type { StudentWithClass, StudentEnrollmentStatus } from "@/features/students/api/student";
 import type { House } from "@/features/school/api/house";
 import type { UseMutationResult } from "@tanstack/react-query";
@@ -51,46 +51,40 @@ export default function StudentProfileTab({
 }) {
   const currentHouse = houses?.find((h) => h.id === student.house_id);
 
+  // View mode reads as facts, three per row on wide screens; inputs only appear in edit mode.
+  const facts = [
+    { key: "full_name", label: "Full name", children: student.full_name },
+    { key: "initials", label: "Name with initials", children: student.name_with_initials || "-" },
+    { key: "calling", label: "Calling name", children: student.calling_name || "-" },
+    { key: "index", label: "Index number", children: student.index_number },
+    { key: "gender", label: "Gender", children: form.gender ? form.gender[0].toUpperCase() + form.gender.slice(1) : "-" },
+    { key: "email", label: "Email", children: student.email ?? "-" },
+    { key: "phone", label: "Phone", children: form.phone_number || "-" },
+    { key: "whatsapp", label: "WhatsApp", children: form.whatsapp || "-" },
+    { key: "address", label: "Address", children: form.address || "-" },
+    { key: "remarks", label: "Special remarks", children: form.special_remarks || "-", span: "filled" as const },
+  ];
+
   return (
-    <>
-      <SectionCard title="Profile" className="os-mt-4">
+    <Row gutter={[24, 0]} className="os-mt-4">
+      <Col xs={24} xl={16}>
+      <SectionCard title="Profile">
           <MutationErrorNotification isError={!!updateError} error={null} title="Could not update student" fallback={updateError ?? "Please try again."} />
-          <div className="os-grid os-grid-cols-2 os-gap-5">
-            <PersonNameFields
-              idPrefix="student-profile"
-              value={form}
-              readOnly={!editing}
-              fullNameInvalid={editing && !form.full_name.trim()}
-              onChange={(next) => {
-                (["full_name", "name_with_initials", "calling_name"] as const).forEach((field) => {
-                  if (next[field] !== form[field]) onChange(field, next[field]);
-                });
-              }}
-            />
-            <TextField id="index-number" label="Index number" value={student.index_number} readOnly />
-            <TextField id="email" label="Email" value={student.email ?? "-"} readOnly />
-            <TextField
-              id="phone"
-              label="Phone"
-              value={form.phone_number}
-              readOnly={!editing}
-              onChange={(v) => onChange("phone_number", v)}
-            />
-            <TextField
-              id="whatsapp"
-              label="WhatsApp"
-              value={form.whatsapp}
-              readOnly={!editing}
-              onChange={(v) => onChange("whatsapp", v)}
-            />
-            <TextField
-              id="address"
-              label="Address"
-              value={form.address}
-              readOnly={!editing}
-              onChange={(v) => onChange("address", v)}
-            />
-            {editing ? (
+          {editing ? (
+            <div className="os-modal-form">
+              <PersonNameFields
+                idPrefix="student-profile"
+                value={form}
+                fullNameInvalid={!form.full_name.trim()}
+                onChange={(next) => {
+                  (["full_name", "name_with_initials", "calling_name"] as const).forEach((field) => {
+                    if (next[field] !== form[field]) onChange(field, next[field]);
+                  });
+                }}
+              />
+              <TextField id="phone" label="Phone" value={form.phone_number} onChange={(v) => onChange("phone_number", v)} />
+              <TextField id="whatsapp" label="WhatsApp" value={form.whatsapp} onChange={(v) => onChange("whatsapp", v)} />
+              <TextField id="address" label="Address" value={form.address} onChange={(v) => onChange("address", v)} />
               <fieldset className="os-field">
                 <legend className="os-field__label">Gender</legend>
                 <Radio.Group name="gender" value={form.gender} onChange={(e) => onGenderChange(e.target.value as Gender)}>
@@ -98,28 +92,19 @@ export default function StudentProfileTab({
                   <Radio value="female">Female</Radio>
                 </Radio.Group>
               </fieldset>
-            ) : (
-              <TextField
-                id="gender"
-                label="Gender"
-                value={form.gender ? form.gender[0].toUpperCase() + form.gender.slice(1) : "-"}
-                readOnly
-              />
-            )}
-            <div className="os-col-span-full">
-              <Field id="special-remarks" label="Special remarks">
-                <Input.TextArea
-                  id="special-remarks"
-                  rows={3}
-                  value={form.special_remarks}
-                  readOnly={!editing}
-                  onChange={(e) => onChange("special_remarks", e.target.value)}
-                />
-              </Field>
+              <div className="os-col-span-full">
+                <Field id="special-remarks" label="Special remarks">
+                  <Input.TextArea id="special-remarks" rows={3} value={form.special_remarks} onChange={(e) => onChange("special_remarks", e.target.value)} />
+                </Field>
+              </div>
             </div>
-          </div>
+          ) : (
+            <Descriptions className="os-facts" layout="vertical" colon={false} column={{ xs: 1, sm: 2, lg: 3 }} items={facts} />
+          )}
       </SectionCard>
+      </Col>
 
+      <Col xs={24} xl={8}>
       <SectionCard title="Current class">
           {student.class_name ? (
             <div className="os-flex os-gap-2 os-wrap">
@@ -137,7 +122,7 @@ export default function StudentProfileTab({
             <div className="os-flex os-items-center os-gap-2 os-mb-3">
               <span className="os-inline-block os-w-3q os-h-3q os-rounded-full" style={{ backgroundColor: currentHouse.color }}
               />
-              <span className="os-text-md os-fw-600">{currentHouse.name}</span>
+              <span className="os-text-md os-fw-500">{currentHouse.name}</span>
             </div>
           )}
           <SelectField
@@ -162,6 +147,7 @@ export default function StudentProfileTab({
             options={ENROLLMENT_STATUSES}
           />
       </SectionCard>
-    </>
+      </Col>
+    </Row>
   );
 }

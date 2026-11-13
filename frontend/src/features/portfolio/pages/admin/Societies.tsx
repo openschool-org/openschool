@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Idea, Add, Edit, UserMultiple } from "@carbon/icons-react";
-import { Button, Select, SelectItem, InlineNotification, SkeletonText, Tag } from "@carbon/react";
+import { Alert, Button, Card, Drawer, Skeleton, Tag, Tooltip } from "antd";
+import { BulbOutlined, EditOutlined, PlusOutlined, TeamOutlined } from "@ant-design/icons";
+import SelectField from "@/shared/ui/SelectField";
 import { useCurrentAcademicYear, useAcademicYears } from "@/features/school/queries/useAcademicYears";
 import { useSocieties, useSocietyYears, useDeleteSociety } from "@/features/portfolio/queries/useSocieties";
 import EmptyState from "@/shared/ui/EmptyState";
@@ -59,48 +60,24 @@ export default function Societies() {
               : `Clubs and societies for ${currentYear?.label ?? "the current year"}.`}
           </p>
         </div>
-        <div className="os-flex os-items-end os-gap-3">
-          <Select
+        <div className="os-flex os-items-center os-gap-3">
+          <SelectField
             id="society-year-selector"
-            labelText="Year"
+            label="Year"
+            hideLabel
+            className="os-min-w-12"
             value={viewingYearId}
-            onChange={(e) => setSelectedYearId(e.target.value || null)} className="os-min-w-12"
-          >
-            {selectableYears.map((y) => (
-              <SelectItem key={y.id} value={y.id} text={y.id === currentYear?.id ? `${y.label} (current)` : y.label} />
-            ))}
-          </Select>
-          <Button
-            renderIcon={Add}
-            kind="primary"
-            size="md"
-            onClick={() => setFormSociety("new")}
-            disabled={!currentYear || isArchive}
-          >
+            onChange={(v) => setSelectedYearId(v || null)}
+            options={selectableYears.map((y) => ({ value: y.id, label: y.id === currentYear?.id ? `${y.label} (current)` : y.label }))}
+          />
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setFormSociety("new")} disabled={!currentYear || isArchive}>
             New society
           </Button>
         </div>
       </div>
 
-      {isArchive && (
-        <InlineNotification
-          kind="info"
-          lowContrast
-          hideCloseButton
-          title="Viewing a past year"
-          subtitle="This is a read-only archive. Switch to the current year to make changes." className="os-mb-6 os-max-w-full"
-        />
-      )}
-
-      {!yearLoading && !currentYear && (
-        <InlineNotification
-          kind="info"
-          lowContrast
-          hideCloseButton
-          title="No current academic year"
-          subtitle="Set an academic year as current before creating societies." className="os-mb-6 os-max-w-full"
-        />
-      )}
+      {isArchive && <Alert type="info" showIcon className="os-mb-6" title="Viewing a past year" description="This is a read-only archive. Switch to the current year to make changes." />}
+      {!yearLoading && !currentYear && <Alert type="info" showIcon className="os-mb-6" title="No current academic year" description="Set an academic year as current before creating societies." />}
 
       {isError && (
         <div className="os-mb-6">
@@ -116,72 +93,61 @@ export default function Societies() {
         onClose={() => deleteSociety.reset()} className="os-mb-6"
       />
 
-      <div className="os-grid os-grid-cols-side-20 os-gap-6 os-items-grid-start">
-        <div className="os-section os-mt-0 os-society-directory">
-          {loading && (
-            <div className="os-py-5 os-px-6">
-              <SkeletonText width="60%" />
-            </div>
-          )}
-
-          {!loading && (societies ?? []).length === 0 && (
-            <EmptyState title="No societies yet" description="Create a society and assign its Teacher-in-Charge." />
-          )}
-
-          {!loading &&
-            (societies ?? []).map((s) => (
-              <button
-                key={s.id}
-                onClick={() => setSelectedId(s.id)}
-                className={`${`os-list-row os-list-row--button${selected?.id === s.id ? " is-selected" : ""}`} os-block os-py-3h os-px-6`}
-              >
-                <div className="os-society-list-row">
-                  <span className="os-society-list-row__icon"><Idea size={16} /></span>
-                  <span className="os-flex-1 os-min-w-0">
-                    <span className="os-block os-fw-600 os-text-md os-c-primary os-truncate">{s.name}</span>
-                    <span className="os-block os-text-xs os-c-tertiary os-truncate">Teacher-in-Charge: {s.teacher_name}</span>
-                  </span>
-                  <Tag type="cool-gray" size="sm"><UserMultiple size={12} className="os-mr-1" />{s.member_count}</Tag>
-                </div>
-              </button>
-            ))}
+      {/* One card per society; a card opens its roster in a side drawer. */}
+      {loading ? (
+        <div className="os-society-grid">
+          {Array.from({ length: 3 }).map((_, i) => <Card key={i} className="os-society-card"><Skeleton active title paragraph={{ rows: 2 }} /></Card>)}
         </div>
+      ) : (societies ?? []).length === 0 ? (
+        <div className="os-section">
+          <EmptyState title="No societies yet" description="Create a society and assign its Teacher-in-Charge." />
+        </div>
+      ) : (
+        <div className="os-society-grid">
+          {(societies ?? []).map((s) => (
+            <Card
+              key={s.id}
+              className="os-society-card"
+              role="button"
+              tabIndex={0}
+              aria-label={`Open ${s.name}`}
+              onClick={() => setSelectedId(s.id)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedId(s.id); } }}
+              title={<span className="os-flex os-items-center os-gap-2"><BulbOutlined className="os-c-accent" />{s.name}</span>}
+              extra={
+                !isArchive && (
+                  <span className="os-flex os-gap-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                    <Tooltip title="Edit society">
+                      <Button type="text" size="small" aria-label={`Edit ${s.name}`} icon={<EditOutlined />} onClick={() => setFormSociety(s)} />
+                    </Tooltip>
+                    <RemoveIconButton label={`Delete ${s.name}`} onClick={() => setDeleting(s)} />
+                  </span>
+                )
+              }
+            >
+              <p className="os-society-card__label">Teacher-in-Charge</p>
+              <p className="os-society-card__teacher">{s.teacher_name}</p>
+              <Tag variant="filled" icon={<TeamOutlined />}>{s.member_count} {s.member_count === 1 ? "member" : "members"}</Tag>
+            </Card>
+          ))}
+        </div>
+      )}
 
-        {selected ? (
-          <div className="os-section os-mt-0 os-society-detail">
-            <div className="os-section__header">
-              <h2 className="os-section__title os-flex os-items-center os-gap-2">
-                <Idea size={16} className="os-fill-accent" /> {selected.name}
-              </h2>
-              {!isArchive && (
-                <div className="os-flex os-gap-2">
-                  <Button
-                    hasIconOnly
-                    kind="ghost"
-                    size="sm"
-                    iconDescription="Edit"
-                    renderIcon={Edit}
-                    onClick={() => setFormSociety(selected)}
-                  />
-                  <RemoveIconButton label="Delete" onClick={() => setDeleting(selected)} />
-                </div>
-              )}
-            </div>
-            <div className="os-section__body">
-              <div className="os-society-detail__owner os-mb-5">
-                <div className="os-society-detail__owner-icon"><Idea size={18} /></div>
-                <div><p className="os-m-0 os-text-xs os-c-tertiary">Teacher-in-Charge</p><p className="os-mt-1 os-mb-0 os-text-md os-fw-500">{selected.teacher_name}</p></div>
-                <Tag type={isArchive ? "cool-gray" : "teal"} size="sm">{isArchive ? "Read only" : "Active"}</Tag>
-              </div>
-              <SocietyRoster societyId={selected.id} readOnly={isArchive} />
-            </div>
-          </div>
-        ) : (
-          <div className="os-section os-mt-0">
-            <EmptyState title="Select a society" description="Pick a society from the list to manage its roster." />
+      <Drawer
+        open={!!selected}
+        onClose={() => setSelectedId(null)}
+        size={640}
+        className="os-detail-drawer"
+        destroyOnHidden
+        title={selected?.name}
+        extra={selected && <Tag variant="filled">{isArchive ? "Read only" : `Teacher-in-Charge: ${selected.teacher_name}`}</Tag>}
+      >
+        {selected && (
+          <div className="os-section os-section__body">
+            <SocietyRoster societyId={selected.id} readOnly={isArchive} />
           </div>
         )}
-      </div>
+      </Drawer>
 
       {formSociety !== null && currentYear && (
         <SocietyFormModal

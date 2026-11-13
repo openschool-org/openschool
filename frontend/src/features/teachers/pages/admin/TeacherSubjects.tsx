@@ -91,23 +91,25 @@ export default function TeacherSubjects() {
         />
       ) : null}
 
-      <FilterBar
-        search={{
-          value: searchQuery,
-          onChange: (value) => { setSearchQuery(value); setPage(1); },
-          placeholder: "Search teachers by name or employee number…",
-        }}
-      />
-
       <SectionCard
         title="Teacher qualifications"
         meta={!loadingTeachers && (
           <span className="os-section__meta">
-            {normalizedSearch ? `${totalItems} matching` : `${totalItems} teachers`}
+            {normalizedSearch ? `${totalItems} matching` : `${totalItems} ${totalItems === 1 ? "teacher" : "teachers"}`}
           </span>
         )}
         flush
       >
+        {/* Search sits inside the card, aligned with the table, like the other list pages. */}
+        <div className="os-card-search">
+          <FilterBar
+            search={{
+              value: searchQuery,
+              onChange: (value) => { setSearchQuery(value); setPage(1); },
+              placeholder: "Search teachers by name or employee number…",
+            }}
+          />
+        </div>
         <ListState
           isLoading={loadingTeachers}
           isError={false}

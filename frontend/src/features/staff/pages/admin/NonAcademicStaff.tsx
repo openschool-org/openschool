@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { CloseOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Input, Pagination, Tag } from "antd";
+import { Button, Drawer, Input, Tag } from "antd";
+import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
+import ListState from "@/shared/ui/ListState";
+import TableSkeleton from "@/shared/ui/TableSkeleton";
 import SelectField from "@/shared/ui/SelectField";
 import { useNonAcademicStaffList } from "@/features/staff/queries/useNonAcademicStaff";
-import { NON_ACADEMIC_DESIGNATIONS, type NonAcademicDesignation } from "@/features/staff/api/nonAcademicStaff";
+import { NON_ACADEMIC_DESIGNATIONS, type NonAcademicDesignation, type NonAcademicStaff as StaffRow } from "@/features/staff/api/nonAcademicStaff";
 import { useDebounced } from "@/shared/hooks/useDebounced";
-import EmptyState from "@/shared/ui/EmptyState";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import Avatar from "@/shared/ui/Avatar";
-import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
 import { designationLabel } from "@/features/staff/constants";
 import StaffFormModal from "@/features/staff/components/StaffFormModal";
 import StaffDetail from "@/features/staff/components/StaffDetail";
@@ -33,6 +34,22 @@ export default function NonAcademicStaff() {
   const totalItems = data?.total ?? 0;
 
   const selected = ordered.find((s) => s.id === selectedId) ?? null;
+
+  const columns: GridColumn<StaffRow>[] = [
+    {
+      key: "name",
+      header: "Name",
+      render: (st) => (
+        <div className="os-flex os-items-center os-gap-2">
+          <Avatar name={st.full_name} size="sm" />
+          <span className="os-table__link">{st.full_name}</span>
+        </div>
+      ),
+    },
+    { key: "designation", header: "Designation", render: (st) => <span className="os-table__muted">{designationLabel(st.designation)}</span> },
+    { key: "employee", header: "Employee no.", render: (st) => <span className="os-table__mono">{st.employee_number}</span> },
+    { key: "phone", header: "Phone", render: (st) => <span className="os-table__muted">{st.phone ?? "-"}</span> },
+  ];
 
   const onChange = ({ page: p, pageSize: ps }: { page: number; pageSize: number }) => {
     setPage(p);
@@ -94,71 +111,32 @@ export default function NonAcademicStaff() {
 
       {isError && <ErrorMessage message="Could not load staff members." onRetry={refetch} />}
 
-      <div className="os-grid os-grid-cols-side os-gap-6 os-items-grid-start">
-        <div className="os-section os-bg-layer os-mt-0 os-p-0 os-overflow-hidden">
-          {isLoading && (
-            <div className="os-p-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <ListRowSkeleton key={i} leadingWidth="1.5rem" titleWidth="70%" subtitleWidth="40%" trailingWidth={null} />
-              ))}
-            </div>
-          )}
-
-          {!isLoading && !isError && ordered.length === 0 && (
-            <div className="os-p-6">
-              <EmptyState
-                title="No staff found"
-                description="Add lab assistants, librarians, office staff, or adjust your filter."
-              />
-            </div>
-          )}
-
-          {!isLoading &&
-            ordered.map((s) => {
-              const isSelected = selected?.id === s.id;
-              return (
-                <button
-                  type="button"
-                  key={s.id}
-                  onClick={() => setSelectedId(s.id)}
-                  aria-pressed={isSelected}
-                  className={`os-list-row os-list-row--button${isSelected ? " is-selected" : ""} os-flex os-items-center os-gap-3 os-py-3h os-px-5 os-rounded-0 os-border-b ${isSelected ? "os-bg-accent-light" : "os-bg-layer"}`}
-                >
-                  <Avatar name={s.full_name} size="sm" />
-                  <div className="os-min-w-0 os-flex-1">
-                    <div className="os-fw-600 os-text-md os-c-primary os-overflow-hidden os-truncate os-nowrap"
-                    >
-                      {s.full_name}
-                    </div>
-                    <div className="os-text-xs os-c-tertiary">
-                      {designationLabel(s.designation)} · {s.employee_number}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-
-          {!isLoading && ordered.length > 0 && (
-            <Pagination
-              total={totalItems}
-              current={page}
-              pageSize={pageSize}
-              pageSizeOptions={[10, 25, 50, 100]}
-              showSizeChanger
-              className="os-grid__pager"
-              onChange={(current, size) => onChange({ page: current, pageSize: size })}
-            />
-          )}
-        </div>
-
-        {selected ? (
-          <StaffDetail staff={selected} onDeleted={() => setSelectedId(null)} />
-        ) : (
-          <div className="os-section os-bg-layer os-mt-0 os-text-center os-py-12 os-px-6">
-            <EmptyState title="Select a staff member" description="Choose a staff member from the left directory to view full profile details." />
-          </div>
-        )}
+      {/* Full-width list; a row opens the staff member's details in a side drawer. */}
+      <div className="os-section">
+        <ListState
+          isLoading={isLoading}
+          isError={false}
+          isEmpty={ordered.length === 0}
+          errorMessage="Could not load staff members."
+          onRetry={refetch}
+          skeleton={<TableSkeleton headers={columns.map((c) => c.header)} />}
+          empty={{ title: "No staff found", description: "Add lab assistants, librarians, office staff, or adjust your filter." }}
+        >
+          <DataGrid
+            rows={ordered}
+            columns={columns}
+            getRowId={(st) => st.id}
+            onRowClick={(st) => setSelectedId(st.id)}
+            countLabel={(shown, total) => `Showing ${shown} of ${total} staff`}
+            pageSizes={[10, 25, 50, 100]}
+            server={{ page, pageSize, totalItems, onChange }}
+          />
+        </ListState>
       </div>
+
+      <Drawer open={!!selected} onClose={() => setSelectedId(null)} size={640} title="Staff member" className="os-detail-drawer" destroyOnHidden>
+        {selected && <StaffDetail staff={selected} onDeleted={() => setSelectedId(null)} />}
+      </Drawer>
 
       {creating && <StaffFormModal staff={null} onClose={() => setCreating(false)} />}
     </div>
