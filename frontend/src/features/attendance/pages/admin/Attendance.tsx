@@ -1,15 +1,14 @@
 import { useState } from "react";
-import { Button, Card, Tag } from "antd";
-import { CheckCircleFilled, ExclamationCircleFilled, PlusCircleOutlined, ScheduleOutlined } from "@ant-design/icons";
+import { Button, Tag } from "antd";
+import { CheckCircleFilled, ExclamationCircleFilled, PlusCircleOutlined } from "@ant-design/icons";
 import LinkButton from "@/shared/ui/LinkButton";
 import { useDailySessions, useDeleteSession, useCreateSession } from "@/features/attendance/queries/useAttendance";
 import { useCurrentClasses } from "@/features/academics/queries/useClasses";
 import { useRole } from "@/shared/auth/useRole";
 import type { DailySession } from "@/features/attendance/api/attendance";
-import { todayISODate, isLockedAfter24Hours, formatDate } from "@/shared/lib/date";
+import { todayISODate, isLockedAfter24Hours, formatLongDate } from "@/shared/lib/date";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
-import StatCardSkeleton from "@/shared/ui/StatCardSkeleton";
 import SectionHeader from "@/shared/ui/SectionHeader";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import EmptyState from "@/shared/ui/EmptyState";
@@ -103,12 +102,12 @@ export default function Attendance() {
       <div className="os-page__header">
         <div className="os-page__header-left">
           <h1 className="os-page__title">Attendance</h1>
-          <p className="os-page__subtitle">{formatDate(date)}</p>
+          <p className="os-page__subtitle">{formatLongDate(`${date}T00:00:00`)}</p>
         </div>
         <div className="os-min-w-12">
           <DateField value={date} onChange={(ymd) => {
               if (ymd) setDate(ymd);
-            }} id="attendance-date" labelText="Attendance date" hideLabel size="lg" />
+            }} id="attendance-date" labelText="Attendance date" hideLabel />
         </div>
       </div>
 
@@ -124,11 +123,6 @@ export default function Attendance() {
 
       {isLoading ? (
         <>
-          <div className="os-stat-grid os-grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <StatCardSkeleton key={i} />
-            ))}
-          </div>
           <div className="os-section">
             <SectionHeader title="Sessions" />
             <TableSkeleton headers={HEADERS} />
@@ -138,35 +132,27 @@ export default function Attendance() {
         <ErrorMessage message="Could not load sessions for this date." onRetry={refetch} />
       ) : (
         <>
-          <div className="os-stat-grid os-grid-cols-3">
-            <Card className="os-dash-stat">
-              <p className="os-dash-stat__label"><ScheduleOutlined /> Sessions</p>
-              <p className="os-dash-stat__value">{sessions?.length ?? 0}</p>
-              <p className="os-dash-stat__meta">Created for this date</p>
-            </Card>
-            <Card className="os-dash-stat">
-              <p className="os-dash-stat__label"><CheckCircleFilled className="os-c-success" /> Marked</p>
-              <p className="os-dash-stat__value">{marked}</p>
-              <p className="os-dash-stat__meta">At least one record</p>
-            </Card>
-            <Card className="os-dash-stat">
-              <p className="os-dash-stat__label"><ExclamationCircleFilled className="os-c-warning" /> Pending</p>
-              <p className="os-dash-stat__value">{pending}</p>
-              <p className="os-dash-stat__meta">No records yet</p>
-            </Card>
-          </div>
 
           <div className="os-section">
             <SectionHeader
               title="Sessions"
               meta={
                 missingClasses.length > 0 && (
-                  <Button type="primary" size="small" icon={<PlusCircleOutlined />} onClick={createAllSessions} loading={bulkCreating}>
-                    {bulkCreating ? "Creating…" : `Create sessions for all classes (${missingClasses.length})`}
+                  <Button type="primary" icon={<PlusCircleOutlined />} onClick={createAllSessions} loading={bulkCreating}>
+                    {bulkCreating ? "Creating…" : `Create all sessions (${missingClasses.length})`}
                   </Button>
                 )
               }
             />
+            {!!sessions?.length && (
+              <div className="os-att-summary">
+                <div className="os-att-summary__stats">
+                  <span className="os-att-stat"><span className="os-att-stat__dot" aria-hidden="true" />Sessions<strong>{sessions.length}</strong></span>
+                  <span className="os-att-stat"><span className="os-att-stat__dot is-present" aria-hidden="true" />Marked<strong>{marked}</strong></span>
+                  <span className="os-att-stat"><span className="os-att-stat__dot is-late" aria-hidden="true" />Pending<strong>{pending}</strong></span>
+                </div>
+              </div>
+            )}
 
             <MutationErrorNotification
               isError={deleteSession.isError}

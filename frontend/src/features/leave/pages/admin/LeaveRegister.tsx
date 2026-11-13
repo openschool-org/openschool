@@ -40,6 +40,7 @@ export default function LeaveRegister() {
       </div>
 
       <Tabs
+        className="os-detail-tabs"
         activeKey={String(view)}
         onChange={(k) => setView(Number(k))}
         aria-label="Leave register view"

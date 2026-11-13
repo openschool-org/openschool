@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Tag } from "antd";
+import { Button } from "antd";
 import { CloseCircleOutlined } from "@ant-design/icons";
 import { useStaffRoster, useMarkStaffAttendance, useMarkUnmarkedAbsent } from "@/features/attendance/queries/useStaffAttendance";
 import type { StaffAttendanceStatus, StaffKind } from "@/features/attendance/api/staffAttendance";
@@ -13,6 +13,14 @@ import TableSkeleton from "@/shared/ui/TableSkeleton";
 import Avatar from "@/shared/ui/Avatar";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 import type { StaffAttendanceRow } from "@/features/attendance/api/staffAttendance";
+
+const SUMMARY = [
+  { key: "present", label: "Present" },
+  { key: "late", label: "Late" },
+  { key: "absent", label: "Absent" },
+  { key: "leave", label: "Leave" },
+  { key: "unmarked", label: "Not marked" },
+] as const;
 
 interface Props {
   date: string;
@@ -81,21 +89,19 @@ export default function StaffRosterTable({ date, kind, search }: Props) {
   ];
 
   return (
-    <div className="os-section">
-      <div className="os-section__header os-wrap os-gap-3">
-        <div className="os-flex os-gap-2 os-wrap" aria-live="polite">
-          {totals && (
-            <>
-              <Tag color="success" variant="filled">Present {totals.present}</Tag>
-              <Tag color="warning" variant="filled">Late {totals.late}</Tag>
-              <Tag color="error" variant="filled">Absent {totals.absent}</Tag>
-              <Tag color="blue" variant="filled">Leave {totals.leave}</Tag>
-              <Tag variant="filled">Not marked {totals.unmarked}</Tag>
-            </>
-          )}
+    <>
+      <div className="os-att-summary" aria-live="polite">
+        <div className="os-att-summary__stats">
+          {totals && SUMMARY.map((k) => (
+            <span key={k.key} className="os-att-stat">
+              <span className={`os-att-stat__dot is-${k.key}`} aria-hidden="true" />
+              {k.label}
+              <strong>{totals[k.key]}</strong>
+            </span>
+          ))}
         </div>
         <Button danger size="small" icon={<CloseCircleOutlined />} onClick={() => setConfirmBulkAbsent(true)} disabled={!totals?.unmarked} loading={markUnmarked.isPending}>
-          {markUnmarked.isPending ? "Marking…" : "Mark all unmarked as absent"}
+          {markUnmarked.isPending ? "Marking…" : "Mark unmarked as absent"}
         </Button>
       </div>
 
@@ -127,6 +133,6 @@ export default function StaffRosterTable({ date, kind, search }: Props) {
         onClose={() => setConfirmBulkAbsent(false)}
         onConfirm={() => { onMarkUnmarked(); setConfirmBulkAbsent(false); }}
       />
-    </div>
+    </>
   );
 }
