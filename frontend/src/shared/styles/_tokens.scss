@@ -17,9 +17,13 @@ $os-header-h:      3.5rem;
 
 $os-canvas:        #F6F7F9; // cool light neutral page background
 $os-layer:         #FFFFFF; // Carbon white
-$os-layer-selected: #E0E0E0; // Carbon gray 20
+$os-layer-selected: #E4E8EE; // selected surface (cool neutral)
 $os-nav-selected:  #ECEEF1; // active sidebar item
 
+// Analytics categorical order, validated for colour-blind separation (teal accent, orange, violet).
+$os-chart-1: #007D9C;
+$os-chart-2: #EB6834;
+$os-chart-3: #6250D6;
 $os-chart-purple:  #8A3FFC; // Carbon purple 60
 $os-chart-blue:    #0F62FE;
 $os-chart-pink:    #D02670;
@@ -40,9 +44,9 @@ $os-text-secondary: #393939; // Carbon gray 90
 $os-text-tertiary:  #525252; // Carbon gray 80
 $os-text-disabled:  #8D8D8D; // Carbon gray 50
 
-$os-border-subtle:  #E0E0E0; // Carbon gray 20
-$os-border-strong:  #C6C6C6; // Carbon gray 30
-$os-layer-hover:    #F4F4F4; // Carbon gray 10
+$os-border-subtle:  #E8EBF0; // dividers, row lines (cool neutral)
+$os-border-strong:  #D5DAE1; // card outlines, inputs (cool neutral)
+$os-layer-hover:    #F7F8FA; // table header, row hover (cool neutral)
 
 $os-danger:       #DA1E28; // Carbon red 60
 $os-success:      #198038; // Carbon green 60
@@ -68,6 +72,9 @@ $os-status-excused-text:   #31135E; // Carbon purple 100
   --os-accent-dark: #{$os-accent-dark};
   --os-accent-light: #{$os-accent-light};
   --os-accent-border: #{$os-accent-border};
+  --os-chart-1: #{$os-chart-1};
+  --os-chart-2: #{$os-chart-2};
+  --os-chart-3: #{$os-chart-3};
   --os-chart-purple: #{$os-chart-purple};
   --os-chart-blue: #{$os-chart-blue};
   --os-chart-pink: #{$os-chart-pink};
