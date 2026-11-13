@@ -1,5 +1,5 @@
-import { Toggle, Tag, Button, SkeletonText } from "@carbon/react";
-import { Play } from "@carbon/icons-react";
+import { Button, Skeleton, Switch, Tag, Tooltip } from "antd";
+import { CaretRightOutlined } from "@ant-design/icons";
 import { useJobs, useSetJobEnabled, useRunJobNow } from "@/features/system/queries/useJobs";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
@@ -11,11 +11,11 @@ import WorkflowAgents from "@/features/workflows/components/WorkflowAgents";
 function statusTag(status: JobRunStatus) {
   switch (status) {
     case "ok":
-      return <Tag type="green" size="sm">OK</Tag>;
+      return <Tag color="success" variant="filled">OK</Tag>;
     case "failed":
-      return <Tag type="red" size="sm">Failed</Tag>;
+      return <Tag color="error" variant="filled">Failed</Tag>;
     case "running":
-      return <Tag type="blue" size="sm">Running</Tag>;
+      return <Tag color="processing" variant="filled">Running</Tag>;
   }
 }
 
@@ -52,88 +52,58 @@ export default function Automation({ inline = false }: { inline?: boolean }) {
         onClose={() => {
           setEnabled.reset();
           runNow.reset();
-        }} className="os-mb-6"
+        }} className="os-mb-4"
       />
 
-      <div className="os-section os-mt-0">
+      <div className="os-section os-mb-6">
         <div className="os-section__header">
-          <h2 className="os-section__title">Scheduled agents</h2>
-          <span className="os-section__meta">Run automatically; turn each one on or off</span>
-        </div>
-        {isLoading && (
-          <div className="os-py-5 os-px-6">
-            <SkeletonText width="60%" />
+          <div>
+            <h2 className="os-section__title">Scheduled agents</h2>
+            <p className="os-text-sm os-c-secondary os-m-0">They run on their own. Turn each one on or off, or run it now.</p>
           </div>
-        )}
+        </div>
+        {isLoading && <div className="os-p-6"><Skeleton active title={false} paragraph={{ rows: 3 }} /></div>}
 
-        {!isLoading &&
-          (jobs ?? []).map((job, i) => (
-            <div
-              key={job.name} className={`os-flex os-items-start os-justify-between os-gap-6 os-py-4 os-px-6 os-wrap ${i < (jobs?.length ?? 0) - 1 ? "os-border-b" : ""}`}
-            >
-              <div className="os-flex-1 os-min-w-20">
-                <div className="os-flex os-items-center os-gap-2h os-wrap">
-                  <span className="os-fw-600 os-text-md">{job.title}</span>
-                  <Tag type="blue" size="sm">{job.schedule_label}</Tag>
-                </div>
-                <p className="os-mt-1 os-mx-0 os-mb-0 os-text-sm os-c-secondary">{job.description}</p>
-                {job.checks.length > 0 && (
-                  <details className="os-agent-checks os-mt-2">
-                    <summary className="os-text-sm os-c-accent-dark os-pointer">What it checks ({job.checks.length})</summary>
-                    <ul>
-                      {job.checks.map((c) => (
-                        <li key={c.key}>
-                          <span className="os-fw-600">{c.title}.</span> {c.description}
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-
+        {!isLoading && (jobs ?? []).map((job) => (
+          <div key={job.name} className="os-agent-row">
+            <div className="os-min-w-0">
+              <div className="os-flex os-items-center os-gap-2 os-wrap">
+                <span className="os-fw-500 os-text-md">{job.title}</span>
+                <Tag variant="filled">{job.schedule_label}</Tag>
+              </div>
+              <p className="os-mt-1 os-mb-0 os-text-sm os-c-secondary">{job.description}</p>
+              <div className="os-flex os-items-center os-gap-2 os-mt-2 os-wrap">
                 {job.last_run ? (
-                  <div className="os-flex os-items-center os-gap-2 os-mt-2h os-wrap">
+                  <>
                     {statusTag(job.last_run.status)}
-                    {job.last_run.findings > 0 && (
-                      <Tag type="magenta" size="sm">{job.last_run.findings} finding{job.last_run.findings === 1 ? "" : "s"}</Tag>
-                    )}
-                    <span className="os-text-xs os-c-tertiary">
-                      Last ran {formatDateTime(job.last_run.started_at)}
-                    </span>
-                  </div>
+                    {job.last_run.findings > 0 && <Tag color="magenta" variant="filled">{job.last_run.findings} finding{job.last_run.findings === 1 ? "" : "s"}</Tag>}
+                    <span className="os-text-xs os-c-tertiary">Last ran {formatDateTime(job.last_run.started_at)}</span>
+                  </>
                 ) : (
-                  <p className="os-mt-2h os-mx-0 os-mb-0 os-text-xs os-c-tertiary">Never run yet</p>
-                )}
-                {job.last_run?.summary && (
-                  <p className="os-mt-1h os-mx-0 os-mb-0 os-text-sm os-c-primary">{job.last_run.summary}</p>
+                  <span className="os-text-xs os-c-tertiary">Never run yet</span>
                 )}
               </div>
-
-              <div className="os-flex os-items-center os-gap-4 os-shrink-0">
-                <Button
-                  kind="ghost"
-                  size="sm"
-                  renderIcon={Play}
-                  disabled={!job.enabled || runNow.isPending}
-                  onClick={() => runNow.mutate(job.name)}
-                >
-                  Run now
-                </Button>
-                {!job.can_disable ? (
-                  <Tag type="gray" size="sm">Always on</Tag>
-                ) : (
-                  <Toggle
-                    id={`job-toggle-${job.name}`}
-                    size="sm"
-                    labelText={`Enable ${job.title}`}
-                    hideLabel
-                    toggled={job.enabled}
-                    disabled={setEnabled.isPending}
-                    onToggle={(checked) => setEnabled.mutate({ name: job.name, enabled: checked })}
-                  />
-                )}
-              </div>
+              {job.last_run?.summary && <p className="os-mt-1 os-mb-0 os-text-sm os-c-primary">{job.last_run.summary}</p>}
+              {job.checks.length > 0 && (
+                <details className="os-agent-checks os-mt-2">
+                  <summary className="os-text-sm os-c-accent-dark os-pointer">What it checks ({job.checks.length})</summary>
+                  <ul>
+                    {job.checks.map((c) => <li key={c.key}><span className="os-fw-600">{c.title}.</span> {c.description}</li>)}
+                  </ul>
+                </details>
+              )}
             </div>
-          ))}
+
+            <div className="os-flex os-items-center os-gap-3 os-shrink-0">
+              <Button size="small" icon={<CaretRightOutlined />} disabled={!job.enabled} loading={runNow.isPending && runNow.variables === job.name} onClick={() => runNow.mutate(job.name)}>Run now</Button>
+              {!job.can_disable ? (
+                <Tooltip title="Always on, cannot be turned off"><Tag variant="filled">Always on</Tag></Tooltip>
+              ) : (
+                <Switch aria-label={`Enable ${job.title}`} checked={job.enabled} loading={setEnabled.isPending && setEnabled.variables?.name === job.name} onChange={(checked) => setEnabled.mutate({ name: job.name, enabled: checked })} />
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       <WorkflowAgents />

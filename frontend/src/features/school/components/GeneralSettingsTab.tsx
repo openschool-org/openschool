@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Button, InlineNotification } from "@carbon/react";
-import { Save, Edit } from "@carbon/icons-react";
+import { Alert, Button, Card, Col, Row } from "antd";
+import { EditOutlined, SaveOutlined } from "@ant-design/icons";
+import LogoUpload from "@/features/school/components/LogoUpload";
 import { isNotFoundError } from "@/shared/api/errors";
 import { useSchool, useUpdateSchool, useCreateSchool } from "@/features/school/queries/useSchool";
 import type { School } from "@/features/school/api/school";
@@ -65,35 +66,43 @@ export default function GeneralSettingsTab() {
     else if (school) updateSchool.mutate({ id: school.id, data }, { onSuccess: flashSaved });
   };
 
-  return (
-    <>
-      <div className="os-flex os-gap-2 os-items-center os-justify-end os-my-4">
-        {pending && <span className="os-text-sm os-c-secondary">Saving…</span>}
-        {noSchoolYet ? (
-          <Button renderIcon={Save} kind="primary" size="md" onClick={save} disabled={pending || rangeInvalid || !form.name.trim()}>Create school</Button>
-        ) : editing ? (
-          <>
-            <Button kind="secondary" size="md" onClick={() => { if (school) setForm(schoolToForm(school)); setEditing(false); }} disabled={pending}>Cancel</Button>
-            <Button renderIcon={Save} kind="primary" size="md" onClick={save} disabled={pending || rangeInvalid}>Save changes</Button>
-          </>
-        ) : (
-          <Button renderIcon={Edit} kind="secondary" size="md" onClick={() => setEditing(true)}>Edit</Button>
-        )}
-      </div>
+  const set = <K extends keyof SettingsForm>(field: K, value: SettingsForm[K]) => setForm((f) => ({ ...f, [field]: value }));
+  const actions = noSchoolYet ? (
+    <Button type="primary" icon={<SaveOutlined />} onClick={save} loading={pending} disabled={rangeInvalid || !form.name.trim()}>Create school</Button>
+  ) : editing ? (
+    <div className="os-flex os-gap-2">
+      <Button onClick={() => { if (school) setForm(schoolToForm(school)); setEditing(false); }} disabled={pending}>Cancel</Button>
+      <Button type="primary" icon={<SaveOutlined />} onClick={save} loading={pending} disabled={rangeInvalid || !form.name.trim()}>Save</Button>
+    </div>
+  ) : (
+    <Button icon={<EditOutlined />} onClick={() => setEditing(true)}>Edit</Button>
+  );
 
-      {isLoading && <LoadingSpinner />}
-      {isError && !noSchoolYet && <ErrorMessage message="Could not load school information." onRetry={refetch} />}
-      {noSchoolYet && (
-        <InlineNotification kind="info" lowContrast hideCloseButton title="No school set up yet" subtitle="Fill in your school's details below and save to finish setup." className="os-mb-4 os-max-w-full" />
-      )}
+  if (isLoading) return <LoadingSpinner />;
+  if (isError && !noSchoolYet) return <ErrorMessage message="Could not load school information." onRetry={refetch} />;
+
+  return (
+    <div className="os-stack os-gap-4">
+      {noSchoolYet && <Alert type="info" showIcon title="No school set up yet" description="Fill in your school's details below and create it to finish setup." />}
       <MutationErrorNotification isError={createSchool.isError} error={createSchool.error} title="Could not create school" />
       <MutationErrorNotification isError={updateSchool.isError} error={updateSchool.error} title="Could not save changes" />
 
-      {!isLoading && (!isError || noSchoolYet) && (
-        <SchoolInfoCard values={form} editing={editable} onChange={(field, value) => setForm((f) => ({ ...f, [field]: value }))} />
-      )}
-      <AcademicSettingsCard gradeFrom={form.grade_from} gradeTo={form.grade_to} editable={editable} onChange={(field, value) => setForm((f) => ({ ...f, [field]: value }))} />
-      <SystemInfoCards />
-    </>
+      <Row gutter={24}>
+        <Col xs={24} lg={16}>
+          <Card className="os-form-card" title="School information" extra={actions}>
+            <SchoolInfoCard values={form} editing={editable} onChange={(field, value) => set(field, value as never)} />
+          </Card>
+          <Card className="os-form-card" title="Academic settings">
+            <AcademicSettingsCard gradeFrom={form.grade_from} gradeTo={form.grade_to} editable={editable} onChange={(field, value) => set(field, value)} />
+          </Card>
+        </Col>
+        <Col xs={24} lg={8}>
+          <Card className="os-form-card" title="Logo">
+            <LogoUpload value={form.logo_url} editing={editable} onChange={(v) => set("logo_url", v)} />
+          </Card>
+          <SystemInfoCards />
+        </Col>
+      </Row>
+    </div>
   );
 }

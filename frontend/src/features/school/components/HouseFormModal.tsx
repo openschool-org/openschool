@@ -1,4 +1,7 @@
-import { TextInput } from "@carbon/react";
+import { ColorPicker } from "antd";
+import { HOUSE_COLOR_PALETTE } from "@/features/school/setupConstants";
+import Field from "@/shared/ui/Field";
+import TextField from "@/shared/ui/TextField";
 import FormModal from "@/shared/ui/FormModal";
 
 export interface HouseForm {
@@ -33,22 +36,28 @@ export default function HouseFormModal({ mode, form, onChange, nameTouched, onNa
       error={error}
       errorFallback="Failed to save house"
     >
-      <TextInput
-        id="house-name"
-        labelText="Name"
-        placeholder="e.g. Vijaya"
-        value={form.name}
-        onChange={(e) => onChange({ ...form, name: e.target.value })}
-        onBlur={onNameBlur}
-        invalid={nameTouched && !form.name.trim()}
-        invalidText="House name is required."
-        className="os-mb-4"
-      />
-      <TextInput id="house-code" labelText="Short code (optional)" placeholder="e.g. VJ" value={form.code} onChange={(e) => onChange({ ...form, code: e.target.value })} className="os-mb-4" />
-      <label htmlFor="house-color" className="os-text-xs os-block os-mb-2">Colour</label>
-      <div className="os-flex os-items-center os-gap-3">
-        <input id="house-color" type="color" value={form.color} onChange={(e) => onChange({ ...form, color: e.target.value })} className="os-w-3 os-h-2h os-p-0 os-border-tertiary os-pointer" />
-        <TextInput id="house-color-hex" labelText="Colour hex value" hideLabel placeholder="#RRGGBB" value={form.color} onChange={(e) => onChange({ ...form, color: e.target.value })} className="os-max-w-8" />
+      <div className="os-stack os-gap-4">
+        <TextField
+          id="house-name"
+          label="Name"
+          placeholder="e.g. Vijaya"
+          value={form.name}
+          onChange={(v) => onChange({ ...form, name: v })}
+          onBlur={onNameBlur}
+          invalid={nameTouched && !form.name.trim()}
+          invalidText="House name is required."
+        />
+        <TextField id="house-code" label="Short code (optional)" placeholder="e.g. VJ" value={form.code} onChange={(v) => onChange({ ...form, code: v })} />
+        <Field id="house-color" label="Colour">
+          <ColorPicker
+            value={form.color}
+            showText
+            disabledAlpha
+            format="hex"
+            presets={[{ label: "Suggested", colors: [...HOUSE_COLOR_PALETTE] }]}
+            onChange={(c) => onChange({ ...form, color: c.toHexString() })}
+          />
+        </Field>
       </div>
     </FormModal>
   );
