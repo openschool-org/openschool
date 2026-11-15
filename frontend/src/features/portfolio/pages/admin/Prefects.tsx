@@ -15,7 +15,6 @@ import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import RemoveIconButton from "@/shared/ui/RemoveIconButton";
 import SectionCard from "@/shared/ui/SectionCard";
 import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
-import Avatar from "@/shared/ui/Avatar";
 
 export default function Prefects() {
   const { data: currentYear, isLoading: yearLoading } = useCurrentAcademicYear();
@@ -83,7 +82,6 @@ export default function Prefects() {
             ) : (
               rows.map((p) => (
                 <div key={p.id} className="os-list-row os-py-3 os-px-6">
-                  <Avatar name={p.student_name} size="sm" />
                   <div className="os-flex-1 os-min-w-0">
                     <Link to={`/students/${p.student_id}`} className="os-table__link os-text-md os-fw-500">{p.student_name}</Link>
                     <p className="os-mt-h os-mx-0 os-mb-0 os-text-xs os-c-secondary">{[p.grade_name, p.student_index].filter(Boolean).join(" · ")}</p>

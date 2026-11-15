@@ -37,7 +37,7 @@ export const ta: Messages = {
   "nav.timetable": "நேர அட்டவணை",
   "nav.subjectEnrolment": "பாடப் பதிவு",
   "nav.progressReports": "முன்னேற்ற அறிக்கைகள்",
-  "nav.activities": "செயற்பாடுகளும் தலைமைத்துவமும்",
+  "nav.activities": "செயற்பாடுகள்",
   "nav.myGuardians": "என் பாதுகாவலர்கள்",
   "nav.notifications": "அறிவிப்புகள்",
   "nav.myChildren": "என் பிள்ளைகள்",

@@ -9,7 +9,7 @@ export const STATUS_COLORS = {
   present: "var(--os-success)",
   late: "var(--os-warning)",
   absent: "var(--os-danger)",
-  leave: CHART_3,
+  leave: "var(--os-status-leave)",
 };
 
 // Houses normally carry their own colour; these cover a house without one.

@@ -35,7 +35,7 @@ export const en = {
   "nav.timetable": "Timetable",
   "nav.subjectEnrolment": "Subject Enrolment",
   "nav.progressReports": "Progress Reports",
-  "nav.activities": "Activities & Leadership",
+  "nav.activities": "Activities",
   "nav.myGuardians": "My Guardians",
   "nav.notifications": "Notifications",
   "nav.myChildren": "My Children",

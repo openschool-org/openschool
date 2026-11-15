@@ -10,7 +10,6 @@ import { useToast } from "@/shared/ui/toast/useToast";
 import ConfirmActionModal from "@/shared/ui/ConfirmActionModal";
 import ListState from "@/shared/ui/ListState";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
-import Avatar from "@/shared/ui/Avatar";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 import type { StaffAttendanceRow } from "@/features/attendance/api/staffAttendance";
 
@@ -69,7 +68,6 @@ export default function StaffRosterTable({ date, kind, search }: Props) {
       header: "Name",
       render: (row) => (
         <div className="os-flex os-items-center os-gap-2">
-          <Avatar name={row.full_name} size="sm" />
           <span className="os-fw-500">{row.full_name}</span>
         </div>
       ),

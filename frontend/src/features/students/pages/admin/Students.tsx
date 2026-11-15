@@ -20,7 +20,6 @@ import { useGrades } from "@/features/academics/queries/useGrades";
 import { useHouses } from "@/features/school/queries/useHouses";
 import { useCurrentClasses } from "@/features/academics/queries/useClasses";
 import type { Student } from "@/features/students/api/student";
-import Avatar from "@/shared/ui/Avatar";
 import { displayName } from "@/shared/lib/name";
 
 const FILTER_LABELS: Record<string, string> = {
@@ -84,7 +83,6 @@ export default function Students() {
       header: "Full name",
       render: (s) => (
         <div className="os-flex os-items-center os-gap-2">
-          <Avatar name={s.full_name} size="sm" />
           <Link to={`/students/${s.id}`} className="os-table__link" title={s.full_name}>{displayName(s)}</Link>
         </div>
       ),

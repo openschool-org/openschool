@@ -1,6 +1,7 @@
 // Admin dashboard (Ant Design based). Scoped to `os-dash-*` so the shared
 // os-section / os-stat-card styles other pages rely on stay untouched.
 // Flat by design: 1px borders, no shadows, no hover decoration on cards.
+@use "tokens" as *;
 // Type scale: 14px body, 13px secondary, 16px card titles; weights 400 / 500 only.
 
 .os-dash-hero {
@@ -33,7 +34,7 @@
   margin-bottom: 1.5rem;
   background: var(--os-layer);
   border: 1px solid var(--os-border-strong);
-  border-radius: 0.625rem;
+  border-radius: $os-radius;
   box-shadow: none;
 
   .ant-card-head { min-height: 3.5rem; padding: 0 1.5rem; border-bottom: 1px solid var(--os-border-subtle); }
@@ -50,7 +51,7 @@
 .os-dash-stat.ant-card {
   background: var(--os-layer);
   border: 1px solid var(--os-border-strong);
-  border-radius: 0.625rem;
+  border-radius: $os-radius;
   box-shadow: none;
   .ant-card-body { padding: 1.25rem 1.5rem; }
 }
@@ -95,7 +96,7 @@
 .os-dash-classes { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0.75rem; }
 .os-dash-class {
   display: block; padding: 1rem; color: inherit; text-decoration: none;
-  border: 1px solid var(--os-border-subtle); border-radius: 0.625rem;
+  border: 1px solid var(--os-border-subtle); border-radius: $os-radius;
   &__top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.75rem; }
   &__name { min-width: 0; font-size: 1rem; font-weight: 500; }
   &__row { display: flex; justify-content: space-between; margin-bottom: 0.375rem; color: var(--os-text-tertiary); font-size: 0.875rem; strong { color: var(--os-text-primary); font-weight: 500; } }
@@ -153,7 +154,7 @@
   min-width: 0;
   background: var(--os-layer);
   border: 1px solid var(--os-border-strong);
-  border-radius: 0.625rem;
+  border-radius: $os-radius;
   &__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.125rem 1.5rem 0; }
   &__title { margin: 0; font-size: 1rem; font-weight: 500; color: var(--os-text-primary); }
   &__subtitle { margin: 0.25rem 0 0; font-size: 0.8125rem; color: var(--os-text-tertiary); }

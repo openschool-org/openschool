@@ -9,7 +9,6 @@ import { useNonAcademicStaffList } from "@/features/staff/queries/useNonAcademic
 import { NON_ACADEMIC_DESIGNATIONS, type NonAcademicDesignation, type NonAcademicStaff as StaffRow } from "@/features/staff/api/nonAcademicStaff";
 import { useDebounced } from "@/shared/hooks/useDebounced";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
-import Avatar from "@/shared/ui/Avatar";
 import { designationLabel } from "@/features/staff/constants";
 import StaffFormModal from "@/features/staff/components/StaffFormModal";
 import StaffDetail from "@/features/staff/components/StaffDetail";
@@ -41,7 +40,6 @@ export default function NonAcademicStaff() {
       header: "Name",
       render: (st) => (
         <div className="os-flex os-items-center os-gap-2">
-          <Avatar name={st.full_name} size="sm" />
           <span className="os-table__link">{st.full_name}</span>
         </div>
       ),

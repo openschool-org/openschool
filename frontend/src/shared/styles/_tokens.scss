@@ -1,18 +1,19 @@
 // Design Tokens
-// OpenSchool palette: the product accent stays #007D9C; supporting colours
+// OpenSchool palette: the product accent is blue #0B5AD9 (rgb 11, 90, 217); supporting colours
 // follow IBM Carbon's neutral and support colour roles.
-$os-accent:        #007D9C;
-$os-accent-dark:   #005F77;
+$os-accent:        #0B5AD9;
+$os-accent-dark:   #0948AE;
 
 // Corner radius shared by cards and panels (matches the antd card look).
-$os-radius:    0.625rem;
+$os-radius:    0.5rem;
 $os-radius-sm: 0.5rem;
-$os-accent-deeper: #004B5E;
-$os-accent-mid:    #1CB3D6;
-$os-accent-light:  #E6F7FA;
-$os-accent-border: #9DE5F3;
+$os-accent-deeper: #073A8C;
+$os-accent-mid:    #4D8BF0;
+$os-accent-light:  #EBF2FE;
+$os-accent-soft:   #E3EDFF; // active menu item: a light, clean blue tint
+$os-accent-border: #B3CDF9;
 $os-brand-orange:  $os-accent;
-$os-sidebar-w:     15rem;
+$os-sidebar-w:     16rem;
 $os-header-h:      3.5rem;
 
 $os-canvas:        #F6F7F9; // cool light neutral page background
@@ -20,10 +21,12 @@ $os-layer:         #FFFFFF; // Carbon white
 $os-layer-selected: #E4E8EE; // selected surface (cool neutral)
 $os-nav-selected:  #ECEEF1; // active sidebar item
 
-// Analytics categorical order, validated for colour-blind separation (teal accent, orange, violet).
-$os-chart-1: #007D9C;
+// Analytics categorical order, validated for colour-blind separation (blue accent, orange, aqua).
+$os-chart-1: #0B5AD9;
 $os-chart-2: #EB6834;
-$os-chart-3: #6250D6;
+$os-chart-3: #1BAF7A;
+// Staff "Leave" state; violet sits apart from the green / amber / red attendance colours.
+$os-status-leave: #6250D6;
 $os-chart-purple:  #8A3FFC; // Carbon purple 60
 $os-chart-blue:    #0F62FE;
 $os-chart-pink:    #D02670;
@@ -71,10 +74,12 @@ $os-status-excused-text:   #31135E; // Carbon purple 100
   --os-accent: #{$os-accent};
   --os-accent-dark: #{$os-accent-dark};
   --os-accent-light: #{$os-accent-light};
+  --os-accent-soft: #{$os-accent-soft};
   --os-accent-border: #{$os-accent-border};
   --os-chart-1: #{$os-chart-1};
   --os-chart-2: #{$os-chart-2};
   --os-chart-3: #{$os-chart-3};
+  --os-status-leave: #{$os-status-leave};
   --os-chart-purple: #{$os-chart-purple};
   --os-chart-blue: #{$os-chart-blue};
   --os-chart-pink: #{$os-chart-pink};

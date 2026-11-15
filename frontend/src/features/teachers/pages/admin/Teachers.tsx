@@ -17,7 +17,6 @@ import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import AgentFindingsBanner from "@/features/notifications/components/AgentFindingsBanner";
 import { useListFilters } from "@/shared/hooks/useListFilters";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
-import Avatar from "@/shared/ui/Avatar";
 import { formatDateOnly } from "@/shared/lib/date";
 import { displayName } from "@/shared/lib/name";
 
@@ -52,7 +51,6 @@ export default function Teachers() {
       header: "Full name",
       render: (t) => (
         <div className="os-flex os-items-center os-gap-2">
-          <Avatar name={displayName(t)} size="sm" />
           <Link to={`/teachers/${t.id}`} className="os-table__link" title={t.full_name}>{displayName(t)}</Link>
         </div>
       ),

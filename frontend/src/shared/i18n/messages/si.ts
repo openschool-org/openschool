@@ -37,7 +37,7 @@ export const si: Messages = {
   "nav.timetable": "කාලසටහන",
   "nav.subjectEnrolment": "විෂය ලියාපදිංචිය",
   "nav.progressReports": "ප්‍රගති වාර්තා",
-  "nav.activities": "ක්‍රියාකාරකම් සහ නායකත්වය",
+  "nav.activities": "ක්‍රියාකාරකම්",
   "nav.myGuardians": "මගේ භාරකරුවන්",
   "nav.notifications": "දැනුම්දීම්",
   "nav.myChildren": "මගේ දරුවන්",

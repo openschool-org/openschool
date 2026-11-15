@@ -2,7 +2,6 @@ import { Link } from "react-router";
 import type { useClass } from "@/features/academics/queries/useClasses";
 import type { Teacher } from "@/features/teachers/api/teacher";
 import type { Student } from "@/features/students/api/student";
-import Avatar from "@/shared/ui/Avatar";
 import SectionCard from "@/shared/ui/SectionCard";
 import { displayName } from "@/shared/lib/name";
 
@@ -60,7 +59,6 @@ export default function DetailsTab({
             <Link
               to={`/teachers/${formTeacher.id}`} className="os-flex os-items-center os-gap-3 os-no-underline"
             >
-              <Avatar name={displayName(formTeacher)} size="sm" />
               <div>
                 <p className="os-mt-0 os-mx-0 os-mb-h os-fw-600 os-text-md os-c-primary"
                 >

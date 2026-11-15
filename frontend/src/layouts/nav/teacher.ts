@@ -1,4 +1,4 @@
-import { AuditOutlined, BankOutlined, BellOutlined, BulbOutlined, CalendarOutlined, CarryOutOutlined, FileDoneOutlined, HomeOutlined, LineChartOutlined, ReloadOutlined, ScheduleOutlined, SettingOutlined, TableOutlined } from "@ant-design/icons";
+import { AuditOutlined, BankOutlined, BellOutlined, BulbOutlined, CalendarOutlined, ReadOutlined, CarryOutOutlined, FileDoneOutlined, HomeOutlined, LineChartOutlined, ReloadOutlined, ScheduleOutlined, SettingOutlined, TableOutlined } from "@ant-design/icons";
 import type { NavGroup } from "@/layouts/nav/types";
 
 // Only a Section Head can act on the review queue, so others do not get the item.
@@ -6,6 +6,7 @@ function teachingGroups(isSectionHead: boolean): NavGroup[] {
   return [
     {
       label: "Academics",
+      Icon: ReadOutlined,
       items: [
         { path: "/t/classes", label: "My Classes", Icon: BankOutlined },
         { path: "/t/timetable", label: "My Timetable", Icon: TableOutlined, exact: true },
@@ -15,7 +16,8 @@ function teachingGroups(isSectionHead: boolean): NavGroup[] {
       ],
     },
     {
-      label: "Operations",
+      label: "Attendance & leave",
+      Icon: ScheduleOutlined,
       items: [
         { path: "/t/attendance", label: "Class Attendance", Icon: ScheduleOutlined },
         { path: "/t/my-attendance", label: "My Attendance", Icon: CalendarOutlined, exact: true },
@@ -29,6 +31,7 @@ function teachingGroups(isSectionHead: boolean): NavGroup[] {
 const LEADERSHIP_GROUPS: NavGroup[] = [
   {
     label: "School",
+    Icon: BankOutlined,
     items: [
       { path: "/t/analytics", label: "Analytics", Icon: LineChartOutlined, exact: true },
       { path: "/t/all-timetables", label: "All Timetables", Icon: TableOutlined, exact: true },
@@ -39,7 +42,8 @@ const LEADERSHIP_GROUPS: NavGroup[] = [
 ];
 
 const SYSTEM_GROUP: NavGroup = {
-  label: "System",
+  label: "Account",
+  Icon: SettingOutlined,
   items: [
     { path: "/t/notifications", label: "Notifications", Icon: BellOutlined, exact: true },
     { path: "/t/profile", label: "My Profile", Icon: SettingOutlined },

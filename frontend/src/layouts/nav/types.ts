@@ -14,5 +14,7 @@ export interface NavItem {
 export interface NavGroup {
   label: string;
   labelKey?: MessageKey;
+  // Shown on the section header when the group has more than one item.
+  Icon?: ComponentType<{ className?: string }>;
   items: NavItem[];
 }

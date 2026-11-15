@@ -12,7 +12,7 @@ import { useT } from "@/shared/i18n/useT";
 export function AppHeaderBrand() {
   return (
     <Link to="/" className="os-topbar__brand">
-      <img src="/w-favicon.webp" alt="" width={24} height={24} />
+      <img src="/b-favicon.webp" alt="" width={24} height={24} />
       <span className="os-topbar__brand-name">OpenSchool</span>
     </Link>
   );
