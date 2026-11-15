@@ -14,7 +14,7 @@ export default function SignIn() {
 
   return (
     <AuthCard
-      title="Sign in"
+      title="Sign in to OpenSchool"
       subtitle="Use the account your school gave you to continue."
       footer={
         <>
