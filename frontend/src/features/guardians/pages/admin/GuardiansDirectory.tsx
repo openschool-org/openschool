@@ -8,7 +8,6 @@ import type { Guardian } from "@/features/guardians/api/guardian";
 import { useGuardians } from "@/features/guardians/queries/useGuardians";
 import { useDebounced } from "@/shared/hooks/useDebounced";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
-import Avatar from "@/shared/ui/Avatar";
 import { relationshipLabel } from "@/features/guardians/constants";
 import GuardianDetail from "@/features/guardians/components/GuardianDetail";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
@@ -43,7 +42,6 @@ export default function GuardiansDirectory() {
       header: "Name",
       render: (g) => (
         <div className="os-flex os-items-center os-gap-2">
-          <Avatar name={g.full_name} size="sm" />
           <span className="os-table__link" title={g.full_name}>{displayName(g)}</span>
         </div>
       ),

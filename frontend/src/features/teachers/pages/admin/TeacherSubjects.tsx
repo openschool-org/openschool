@@ -9,7 +9,6 @@ import ErrorMessage from "@/shared/ui/ErrorMessage";
 import LinkButton from "@/shared/ui/LinkButton";
 import FilterBar from "@/shared/ui/FilterBar";
 import SectionCard from "@/shared/ui/SectionCard";
-import Avatar from "@/shared/ui/Avatar";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 import ListState from "@/shared/ui/ListState";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
@@ -44,7 +43,6 @@ export default function TeacherSubjects() {
       header: "Teacher",
       render: (t) => (
         <div className="os-flex os-items-center os-gap-2">
-          <Avatar name={t.full_name} size="sm" />
           <span className="os-fw-500" title={t.full_name}>{displayName(t)}</span>
         </div>
       ),

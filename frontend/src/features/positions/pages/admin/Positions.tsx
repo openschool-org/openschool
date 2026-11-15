@@ -12,7 +12,6 @@ import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import RemoveIconButton from "@/shared/ui/RemoveIconButton";
 import SectionCard from "@/shared/ui/SectionCard";
 import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
-import Avatar from "@/shared/ui/Avatar";
 
 const Title = ({ text }: { text: string }) => (
   <span className="os-flex os-items-center os-gap-2">
@@ -57,7 +56,6 @@ export default function Positions() {
               />
             ) : (
               <div className="os-flex os-items-center os-gap-4 os-py-3 os-px-6">
-                <Avatar name={principal.teacher_name} size="sm" />
                 <div className="os-flex-1 os-min-w-0">
                   <Link to={`/teachers/${principal.teacher_id}`} className="os-table__link os-text-md os-fw-500">{principal.teacher_name}</Link>
                   <p className="os-mt-h os-mx-0 os-mb-0 os-text-xs os-c-secondary">Notifies the whole school</p>
@@ -75,7 +73,6 @@ export default function Positions() {
             ) : (
               vicePrincipals.map((vp) => (
                 <div key={vp.id} className="os-list-row os-py-3 os-px-6">
-                  <Avatar name={vp.teacher_name} size="sm" />
                   <div className="os-flex-1 os-min-w-0">
                     <Link to={`/teachers/${vp.teacher_id}`} className="os-table__link os-text-md os-fw-500">{vp.teacher_name}</Link>
                   </div>

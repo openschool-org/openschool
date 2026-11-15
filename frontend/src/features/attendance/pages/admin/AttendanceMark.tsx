@@ -15,7 +15,6 @@ import AttendanceSummaryCards from "@/features/attendance/components/AttendanceS
 import { AttendanceNoteCell, AttendanceStatusCell } from "@/features/attendance/components/AttendanceCells";
 import type { Student } from "@/features/students/api/student";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
-import Avatar from "@/shared/ui/Avatar";
 import TextField from "@/shared/ui/TextField";
 import { displayName } from "@/shared/lib/name";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
@@ -70,7 +69,6 @@ export default function AttendanceMark() {
       header: "Student",
       render: (st) => (
         <div className="os-flex os-items-center os-gap-2h">
-          <Avatar name={st.full_name} size="sm" />
           <span className="os-fw-500 os-text-md" title={st.full_name}>{displayName(st)}</span>
         </div>
       ),
