@@ -37,7 +37,10 @@ export function buildAntdTheme(): ThemeConfig {
       controlOutlineWidth: 0,
       fontSize: 14,
       fontWeightStrong: 500,
-      borderRadius: 8,
+      // Controls (buttons, inputs, selects) 6px at every size; cards, modals and popups 8px.
+      borderRadius: 6,
+      borderRadiusSM: 4,
+      borderRadiusLG: 8,
       // Flat surfaces (cards, buttons). Popups keep antd's default shadow (boxShadowSecondary)
       // so dropdown menus stand out from the card behind them.
       boxShadow: "none",
@@ -56,21 +59,28 @@ export function buildAntdTheme(): ThemeConfig {
         itemHoverColor: token("--os-text-secondary", "currentColor"),
         itemHoverBg: "transparent",
         itemActiveBg: token("--os-canvas", "transparent"),
-        motionDurationFast: "0s",
-        motionDurationMid: "0s",
-        motionDurationSlow: "0s",
-        itemSelectedColor: token("--os-layer", "currentColor"),
-        itemSelectedBg: token("--os-accent", "transparent"),
+        // Sections open and close with a short, smooth height animation.
+        motionDurationFast: "0.1s",
+        motionDurationMid: "0.2s",
+        motionDurationSlow: "0.2s",
+        // One active style everywhere (top-level links and pages inside sections): a light tint, text and icon in the main blue.
+        itemSelectedColor: token("--os-accent", "currentColor"),
+        itemSelectedBg: token("--os-accent-soft", "transparent"),
+        subMenuItemBg: "transparent",
         groupTitleColor: token("--os-text-tertiary", "currentColor"),
         groupTitleFontSize: 12,
         itemHeight: 38,
         itemMarginInline: 12,
-        itemBorderRadius: 8,
+        itemBorderRadius: 6,
         iconSize: 18,
-        fontSize: 14,
+        fontSize: 15,
         activeBarBorderWidth: 0,
       },
-      Button: { primaryShadow: "none", defaultShadow: "none", dangerShadow: "none", fontWeight: 500 },
+      Button: { primaryShadow: "none", defaultShadow: "none", dangerShadow: "none", fontWeight: 500, borderRadiusLG: 6, borderRadiusSM: 4 },
+      // Large inputs keep the same 6px corners as the default size.
+      Input: { borderRadiusLG: 6 },
+      InputNumber: { borderRadiusLG: 6 },
+      DatePicker: { borderRadiusLG: 6 },
       // Tables sit inside rounded section cards, so the header needs no radius of its own.
       Table: {
         // Header row: a light tint of the theme colour, a step darker than the rows.
@@ -102,10 +112,14 @@ export function buildAntdTheme(): ThemeConfig {
         motionDurationMid: "0s",
         motionDurationSlow: "0s",
       },
-      // Select menus: all neutral greys, no teal. Hover is a light grey; the selected option is a
+      // Select menus: all neutral greys, no accent tint. Hover is a light grey; the selected option is a
       // slightly darker grey (also while it is the highlighted one, which antd otherwise paints a
-      // darker teal) plus bold text. No open/close animation.
+      // darker accent) plus bold text. No open/close animation.
       Select: {
+        borderRadiusLG: 6,
+        // Chosen values in a multi-select: light theme tint with a thin blue border, not solid.
+        multipleItemBg: token("--os-accent-light", "transparent"),
+        multipleItemBorderColor: token("--os-accent-border", "transparent"),
         optionActiveBg: token("--os-layer-hover", "transparent"),
         optionSelectedBg: token("--os-nav-selected", "transparent"),
         controlItemBgActiveHover: token("--os-nav-selected", "transparent"),

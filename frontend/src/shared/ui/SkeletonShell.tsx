@@ -42,7 +42,7 @@ export default function SkeletonShell() {
   return (
     <div className="os-skeleton-shell">
       <header className="os-skeleton-header" aria-label="Loading application shell" role="status">
-        <img src="/w-favicon.webp" alt="" width={24} height={24} />
+        <img src="/b-favicon.webp" alt="" width={24} height={24} />
         <span className="os-skeleton-header__name">OpenSchool</span>
       </header>
       <div className="os-layout">

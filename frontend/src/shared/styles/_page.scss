@@ -199,7 +199,7 @@
 .os-term-card__marker { display: grid; place-items: center; width: 2rem; height: 2rem; flex-shrink: 0; border-radius: 0.5rem; color: var(--os-accent-dark); background: var(--os-layer-hover); }
 .os-term-card.is-current .os-term-card__marker { color: $os-text-on-color; background: var(--os-accent); }
 .os-term-card__actions { display: flex; align-items: center; gap: 0.25rem; flex-shrink: 0; }
-.os-term-form-panel { padding: 1.25rem; border: 1px solid var(--os-border-strong); border-radius: 0.625rem; background: var(--os-layer-hover); }
+.os-term-form-panel { padding: 1.25rem; border: 1px solid var(--os-border-strong); border-radius: $os-radius; background: var(--os-layer-hover); }
 .os-term-form-panel__heading { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
 .os-term-form-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; @media (max-width: 640px) { grid-template-columns: minmax(0, 1fr); } }
 .os-row--current > td { background: var(--os-accent-light) !important; }
@@ -278,7 +278,7 @@
 // Page placeholder while a route loads (shared/ui/SkeletonShell.tsx).
 .os-content-skeleton {
   &__header { margin-bottom: 1.5rem; }
-  &__card { padding: 1.5rem; background: var(--os-layer); border: 1px solid var(--os-border-subtle); border-radius: 0.625rem; }
+  &__card { padding: 1.5rem; background: var(--os-layer); border: 1px solid var(--os-border-subtle); border-radius: $os-radius; }
 }
 
 .os-snapshot-block {
@@ -883,7 +883,7 @@
   // Rounded card, border only: the table is clipped to the corners and nothing casts a shadow.
   overflow: hidden;
   border: 1px solid var(--os-border-strong);
-  border-radius: 0.625rem;
+  border-radius: $os-radius;
   box-shadow: none;
 
   .ant-table, .ant-table-container { border-radius: 0; box-shadow: none; }
@@ -1029,14 +1029,14 @@
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--os-border-subtle);
   background: var(--os-layer-hover);
-  border-radius: 0 0 0.625rem 0.625rem;
+  border-radius: 0 0 $os-radius $os-radius;
 }
 .os-workflow-trace.ant-collapse { background: var(--os-layer); }
 
 // Clickable antd Card (e.g. marks overview class cards): pointer and a focus ring, no hover lift.
 .os-click-card.ant-card {
   cursor: pointer;
-  border-radius: 0.625rem;
+  border-radius: $os-radius;
   .ant-card-body { padding: 1rem 1.25rem; }
   &:focus-visible { outline: 2px solid var(--os-accent); outline-offset: 2px; }
 }
@@ -1081,7 +1081,7 @@
 .os-society-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 1rem; }
 .os-society-card.ant-card {
   cursor: pointer;
-  border-radius: 0.625rem;
+  border-radius: $os-radius;
   .ant-card-head { min-height: 3rem; padding: 0 0.75rem 0 1.25rem; }
   .ant-card-head-title { font-size: 1rem; font-weight: 500; }
   .ant-card-body { padding: 1rem 1.25rem 1.25rem; }
@@ -1107,11 +1107,27 @@
     padding: 0 1.25rem;
     background: var(--os-layer);
     border: 1px solid var(--os-border-subtle);
-    border-radius: 0.625rem;
+    border-radius: $os-radius;
 
     &::before { display: none; }
-    .ant-tabs-tab { padding: 0.875rem 0; font-size: 0.9375rem; }
-    .ant-tabs-tab + .ant-tabs-tab { margin-left: 1.75rem; }
+    // Tabs read as buttons: the active one is a solid blue pill. On click each tab fades in place
+    // (background and text together); nothing slides between tabs, as antd's ink bar is hidden.
+    padding: 0.25rem;
+    .ant-tabs-ink-bar { display: none; }
+    .ant-tabs-tab {
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9375rem;
+      color: var(--os-text-secondary);
+      transition: background-color 0.18s ease;
+      .ant-tabs-tab-btn { transition: color 0.18s ease; }
+      &:not(.ant-tabs-tab-active):hover { background: var(--os-canvas); .ant-tabs-tab-btn { color: var(--os-text-primary); } }
+    }
+    .ant-tabs-tab + .ant-tabs-tab { margin-left: 0.25rem; }
+    .ant-tabs-tab.ant-tabs-tab-active {
+      background: var(--os-accent);
+      .ant-tabs-tab-btn { color: $os-text-on-color; font-weight: 500; }
+    }
   }
   // Tabs render their cards straight under the strip; the strip's margin does the spacing.
   .ant-tabs-tabpane > .os-mt-4:first-child,
@@ -1123,14 +1139,19 @@
 .os-records-card__subtitle { margin-top: 0.125rem; color: var(--os-text-tertiary); font-size: 0.8125rem; font-weight: 400; white-space: normal; }
 .os-records-card__notice { padding: 1rem 1.5rem 0; }
 
-// Segmented track gets a border so it reads as one control on any background.
-.ant-segmented { border: 1px solid var(--os-border-strong); box-shadow: none; }
-.ant-segmented .ant-segmented-item-selected { font-weight: 500; box-shadow: none; }
-// Segmented: switch instantly. The selected background (and antd's thumb, used while switching)
-// stay visible; only their transitions are removed.
-.ant-segmented .ant-segmented-thumb,
-.ant-segmented .ant-segmented-item { transition: none !important; }
-.ant-segmented .ant-segmented-thumb { background: var(--os-accent); }
+// Segmented controls match the tab bar: bordered track, rounded options with a small gap, the
+// selected one solid blue. antd's sliding thumb is hidden, so options fade in place on click.
+.ant-segmented { padding: 4px; border: 1px solid var(--os-border-strong); border-radius: 8px; box-shadow: none; }
+.ant-segmented .ant-segmented-group { gap: 4px; }
+.ant-segmented .ant-segmented-thumb { display: none !important; }
+.ant-segmented .ant-segmented-item {
+  border-radius: 6px;
+  transition: background-color 0.18s ease, color 0.18s ease !important;
+  &:not(.ant-segmented-item-selected):hover { background: var(--os-canvas); color: var(--os-text-primary); }
+}
+.ant-segmented .ant-segmented-item-selected { background: var(--os-accent) !important; color: $os-text-on-color !important; font-weight: 500; box-shadow: none; }
+.ant-segmented .ant-segmented-item-label { padding-inline: 0.875rem; }
+.ant-segmented .ant-segmented-item:has(:focus-visible) { outline: 2px solid var(--os-accent); outline-offset: 1px; }
 .os-resource-zone__desc { color: var(--os-text-tertiary); font-size: 0.8125rem; font-weight: 400; @media (max-width: 760px) { display: none; } }
 
 // A FilterBar placed inside a card, above its table: same 1.5rem inset as the table cells.
@@ -1212,7 +1233,7 @@
     &.is-present { background: var(--os-success); }
     &.is-late { background: var(--os-warning); }
     &.is-absent { background: var(--os-danger); }
-    &.is-leave { background: var(--os-chart-3); }
+    &.is-leave { background: var(--os-status-leave); }
   }
 }
 
@@ -1230,14 +1251,14 @@
   height: 4.5rem;
   overflow: hidden;
   border: 1px solid var(--os-border-strong);
-  border-radius: 0.625rem;
+  border-radius: $os-radius;
   background: var(--os-layer-hover);
   color: var(--os-text-tertiary);
   font-size: 1.5rem;
   img { max-width: 100%; max-height: 100%; object-fit: contain; }
 }
 .os-house-swatch { width: 0.875rem; height: 0.875rem; flex-shrink: 0; border-radius: 50%; border: 1px solid var(--os-border-strong); }
-.os-house-footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 1rem 1.5rem; border-top: 1px solid var(--os-border-subtle); background: var(--os-layer-hover); border-radius: 0 0 0.625rem 0.625rem; }
+.os-house-footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 1rem 1.5rem; border-top: 1px solid var(--os-border-subtle); background: var(--os-layer-hover); border-radius: 0 0 $os-radius $os-radius; }
 // A list of labelled switches, one per row.
 .os-switch-list { border: 1px solid var(--os-border-subtle); border-radius: 0.5rem; }
 .os-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 1rem; cursor: pointer; & + & { border-top: 1px solid var(--os-border-subtle); } &__label { display: block; font-size: 0.9375rem; font-weight: 500; color: var(--os-text-primary); } &__hint { display: block; font-size: 0.8125rem; color: var(--os-text-tertiary); } }
@@ -1248,7 +1269,7 @@
 .os-about-card {
   margin-bottom: 1.5rem;
   padding: 1.5rem;
-  border-radius: 0.625rem;
+  border-radius: $os-radius;
   background: var(--os-accent-deeper);
   color: $os-text-on-color;
   &__title { margin: 0; font-size: 1.125rem; font-weight: 500; color: $os-text-on-color; }
@@ -1260,3 +1281,7 @@
     dd { margin: 0; font-size: 0.875rem; font-weight: 500; text-align: right; }
   }
 }
+
+// Multi-select chips: dark-blue text and remove icon on the light theme tint (colours set in antdTheme.ts).
+.ant-select-multiple .ant-select-selection-item { color: var(--os-accent-dark); font-weight: 500; }
+.ant-select-multiple .ant-select-selection-item-remove { color: var(--os-accent-dark); &:hover { color: var(--os-accent); } }
