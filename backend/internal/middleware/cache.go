@@ -25,9 +25,14 @@ func (w *bufferedResponseWriter) Write(b []byte) (int, error) {
 // CacheReference sets Cache-Control and ETag on rarely-changing reference
 // data (grades, subjects, mediums, houses — section 5's delivery checklist).
 // A 304 short-circuits the body entirely when the client's cached copy is
-// still current.
+// still current. maxAge 0 means "no-cache": the browser keeps its copy but
+// asks every time, so an admin's new grade shows at once (E12) while an
+// unchanged list still costs only a 304.
 func CacheReference(maxAge int) gin.HandlerFunc {
-	cacheControl := "private, max-age=" + strconv.Itoa(maxAge)
+	cacheControl := "private, no-cache"
+	if maxAge > 0 {
+		cacheControl = "private, max-age=" + strconv.Itoa(maxAge)
+	}
 	return func(c *gin.Context) {
 		buf := &bytes.Buffer{}
 		writer := &bufferedResponseWriter{ResponseWriter: c.Writer, buf: buf}

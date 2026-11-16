@@ -13,6 +13,10 @@ on:
       - "backend/**"
       - ".github/workflows/backend-ci.yml"
 
+# Read-only token: this workflow only builds and tests.
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     name: Build and Test
@@ -63,23 +67,25 @@ jobs:
         run: go vet ./...
 
       - name: Staticcheck
-        run: go run honnef.co/go/tools/cmd/staticcheck@latest -tags=integration ./...
+        run: go run honnef.co/go/tools/cmd/staticcheck@v0.7.0 -tags=integration ./...
 
       - name: Test
         run: go test ./...
 
       - name: Database integration tests
-        run: go test -count=1 -tags=integration ./internal/modules/setup ./internal/modules/auth ./internal/modules/people ./internal/modules/academics ./internal/modules/attendance ./internal/modules/timetable ./internal/modules/notifications ./internal/modules/identity ./internal/modules/school ./internal/modules/curriculum ./internal/modules/leadership ./internal/modules/studentleadership ./internal/modules/search ./internal/modules/dashboard ./internal/modules/reports ./internal/modules/selfservice ./internal/modules/automation ./internal/modules/audit
+        # Every package, so leave, workflows and activation (the riskiest flows,
+        # with the security regression tests) are no longer skipped (E9).
+        run: go test -count=1 -tags=integration ./...
 
       - name: Vulnerability scan (govulncheck)
         # Blocking (S14): the prior findings were Go-toolchain-version CVEs,
         # cleared by pinning `toolchain` in go.mod past the fixed patch and
         # bumping the affected modules (golang.org/x/net, quic-go).
-        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 
       - name: Dead code scan
         # Informational only for now: there is real dead code today (see
         # audit.md) that this would otherwise fail the build on. Flip to
         # blocking once it's cleaned up.
-        run: go run golang.org/x/tools/cmd/deadcode@latest ./...
+        run: go run golang.org/x/tools/cmd/deadcode@v0.48.0 ./...
         continue-on-error: true

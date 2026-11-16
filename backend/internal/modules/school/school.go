@@ -242,6 +242,7 @@ func (h *schoolHandler) getSchool(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, value)
 }
+
 // Branding is the school name and logo only, for every portal's header and
 // dashboard. Students and parents may not read the full school record.
 type Branding struct {

@@ -30,9 +30,9 @@ export function groupByClass(batch: GeneratedBatch): ClassGroup[] {
     .map((g) => ({ key: g.key, title: g.title, formTeacher: g.formTeacher, codes: [...g.codes].sort((a, b) => a.name.localeCompare(b.name)) }));
 }
 
-// Quotes every cell and defuses leading =+-@ so spreadsheet apps never run a cell as a formula.
+// Quotes every cell. A leading = + - @, tab or carriage return makes spreadsheets read the cell as a formula, so it is defused.
 function csvCell(value: string): string {
-  const safe = /^[=+\-@]/.test(value) ? `'${value}` : value;
+  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
   return `"${safe.replace(/"/g, '""')}"`;
 }
 

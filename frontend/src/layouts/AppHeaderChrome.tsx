@@ -9,6 +9,7 @@ import GlobalSearch from "@/features/system/components/GlobalSearch";
 import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
 import { useT } from "@/shared/i18n/useT";
 import { useProvisionUser } from "@/shared/auth/useProvisionUser";
+import { clearOffline } from "@/shared/lib/offlineCache";
 
 export function AppHeaderBrand() {
   return (
@@ -80,7 +81,7 @@ export function AppHeaderActions({ showSearch = false, showLanguage = false }: {
                 { key: "profile", icon: <UserOutlined />, label: t("shell.manageProfile"), onClick: openProfile },
                 { key: "password", icon: <LockOutlined />, label: t("shell.changePassword"), onClick: () => setChangingPassword(true) },
                 { type: "divider" },
-                { key: "signout", icon: <LogoutOutlined />, label: t("shell.signOut"), danger: true, onClick: signOut },
+                { key: "signout", icon: <LogoutOutlined />, label: t("shell.signOut"), danger: true, onClick: () => { clearOffline(); signOut(); } },
               ],
             }}
           >

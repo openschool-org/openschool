@@ -10,13 +10,18 @@ import (
 
 var ErrNotAssignedToSubject = errors.New("you are not assigned to teach this subject for this class")
 
+// ErrTermOutsideClassYear stops marks being written into, or deleted from, a
+// term of another academic year (S4).
+var ErrTermOutsideClassYear = errors.New("this term is not part of the class's academic year")
+
 type termMarkStore interface {
 	authorizeSubject(context.Context, TermMarkActor, uuid.UUID, uuid.UUID) error
 	enrolled(context.Context, uuid.UUID, []uuid.UUID) ([]uuid.UUID, error)
 	upsert(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, pgtype.Numeric, pgtype.Numeric, bool, uuid.UUID) (any, error)
 	listClass(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (any, error)
 	listStudent(context.Context, uuid.UUID, uuid.UUID) (any, error)
-	markOwner(context.Context, uuid.UUID) (uuid.UUID, uuid.UUID, error)
+	markOwner(context.Context, uuid.UUID) (student, subject, term uuid.UUID, err error)
+	termInClassYear(ctx context.Context, term, class uuid.UUID) (bool, error)
 	studentClass(context.Context, uuid.UUID) (uuid.UUID, error)
 	authorizeClass(context.Context, TermMarkActor, uuid.UUID) error
 	delete(context.Context, uuid.UUID) error
@@ -41,6 +46,9 @@ func (s *termMarkService) BulkUpsertMarks(ctx context.Context, class uuid.UUID, 
 		return nil, e
 	}
 	if e = s.store.authorizeSubject(ctx, actor, class, subject); e != nil {
+		return nil, e
+	}
+	if e = s.checkTerm(ctx, term, class); e != nil {
 		return nil, e
 	}
 	ids := make([]uuid.UUID, len(req.Entries))
@@ -107,7 +115,7 @@ func (s *termMarkService) ListStudentMarksForTeacher(ctx context.Context, actor 
 	return s.store.listStudent(ctx, student, term)
 }
 func (s *termMarkService) DeleteMark(ctx context.Context, actor TermMarkActor, id uuid.UUID) error {
-	student, subject, e := s.store.markOwner(ctx, id)
+	student, subject, term, e := s.store.markOwner(ctx, id)
 	if e != nil {
 		return errors.New("mark not found")
 	}
@@ -119,6 +127,23 @@ func (s *termMarkService) DeleteMark(ctx context.Context, actor TermMarkActor, i
 		if e = s.store.authorizeSubject(ctx, actor, class, subject); e != nil {
 			return e
 		}
+		// Only an admin may remove a mark from an earlier year's term.
+		if actor.Role != "admin" {
+			if e = s.checkTerm(ctx, term, class); e != nil {
+				return e
+			}
+		}
 	}
 	return s.store.delete(ctx, id)
+}
+
+func (s *termMarkService) checkTerm(ctx context.Context, term, class uuid.UUID) error {
+	ok, err := s.store.termInClassYear(ctx, term, class)
+	if err != nil {
+		return fmt.Errorf("failed to check the term: %w", err)
+	}
+	if !ok {
+		return ErrTermOutsideClassYear
+	}
+	return nil
 }

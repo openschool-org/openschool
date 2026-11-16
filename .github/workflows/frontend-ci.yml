@@ -13,6 +13,10 @@ on:
       - "frontend/**"
       - ".github/workflows/frontend-ci.yml"
 
+# Read-only token: this workflow only lints, tests and builds.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest

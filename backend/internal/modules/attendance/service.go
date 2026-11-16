@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -97,6 +98,7 @@ type store interface {
 	deleteSession(context.Context, uuid.UUID) error
 	listRecords(context.Context, uuid.UUID) ([]Record, error)
 	markBatch(ctx context.Context, sessionID uuid.UUID, records []MarkInput, cleared []uuid.UUID) ([]Record, error)
+	enrolledIn(ctx context.Context, classID uuid.UUID, studentIDs []uuid.UUID) ([]uuid.UUID, error)
 	listBySession(context.Context, uuid.UUID) ([]SessionRecord, error)
 	listByStudent(context.Context, uuid.UUID) ([]StudentRecord, error)
 	summary(context.Context, uuid.UUID, uuid.UUID) (Summary, error)
@@ -161,6 +163,35 @@ func (s *Service) authorizeClass(ctx context.Context, actor Actor, classID uuid.
 	}
 	if !assigned {
 		return ErrNotAssignedToClass
+	}
+	return nil
+}
+
+// ErrStudentNotInClass rejects a record for a student outside the session's
+// class, which would otherwise write their history and notify their guardians (S2).
+var ErrStudentNotInClass = errors.New("one or more students are not enrolled in this class")
+
+func (s *Service) checkEnrolled(ctx context.Context, classID uuid.UUID, batch []MarkInput, cleared []uuid.UUID) error {
+	ids := make([]uuid.UUID, 0, len(batch)+len(cleared))
+	for _, input := range batch {
+		ids = append(ids, input.StudentID)
+	}
+	ids = append(ids, cleared...)
+	if len(ids) == 0 {
+		return nil
+	}
+	enrolled, err := s.store.enrolledIn(ctx, classID, ids)
+	if err != nil {
+		return fmt.Errorf("failed to check class enrolment: %w", err)
+	}
+	allowed := make(map[uuid.UUID]bool, len(enrolled))
+	for _, id := range enrolled {
+		allowed[id] = true
+	}
+	for _, id := range ids {
+		if !allowed[id] {
+			return ErrStudentNotInClass
+		}
 	}
 	return nil
 }
@@ -325,6 +356,9 @@ func (s *Service) MarkAttendance(ctx context.Context, actor Actor, sessionID uui
 		}
 		cleared = append(cleared, studentID)
 	}
+	if err := s.checkEnrolled(ctx, session.ClassID, batch, cleared); err != nil {
+		return err
+	}
 	updated, err := s.store.markBatch(ctx, sessionID, batch, cleared)
 	if err != nil {
 		return fmt.Errorf("failed to mark attendance: %w", err)
@@ -370,7 +404,9 @@ func (s *Service) notifyAbsent(ctx context.Context, session Session, studentID, 
 		return
 	}
 	message := fmt.Sprintf("%s was marked absent on %s in class %s.", student, session.Date.Time.Format("2006-01-02"), class)
-	_ = s.notifier.SendDirect(ctx, "Absence recorded", message, "attendance", "normal", takenBy, users)
+	if err := s.notifier.SendDirect(ctx, "Absence recorded", message, "attendance", "normal", takenBy, users); err != nil {
+		slog.Error("attendance: absence notice not sent", "session_id", session.ID, "student_id", studentID, "error", err)
+	}
 }
 
 func (s *Service) ListBySession(ctx context.Context, actor Actor, sessionID uuid.UUID) ([]SessionRecord, error) {

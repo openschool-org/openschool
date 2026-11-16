@@ -118,6 +118,10 @@ func PerAccountRateLimit(rps float64, burst int) gin.HandlerFunc {
 	})
 }
 
+// maxPeekBytes caps how much of the body the per-field limiter reads; the
+// login-style bodies it guards are a few hundred bytes.
+const maxPeekBytes = 4 << 10
+
 // PerJSONFieldRateLimit throttles requests keyed by a top-level string field
 // in the JSON body (case-insensitively), e.g. the "identifier" on
 // /auth/forgot-password (S2): a per-IP limiter alone is either useless
@@ -126,21 +130,54 @@ func PerAccountRateLimit(rps float64, burst int) gin.HandlerFunc {
 // account across many IPs. This limiter targets the account instead. The
 // body is peeked and restored so the handler's own binding still works.
 func PerJSONFieldRateLimit(rps float64, burst int, field string) gin.HandlerFunc {
-	return keyedRateLimit(rps, burst, func(c *gin.Context) string {
-		body, err := io.ReadAll(c.Request.Body)
-		if err != nil {
-			return ""
+	limit := keyedRateLimit(rps, burst, func(c *gin.Context) string {
+		return c.GetString(jsonFieldKey)
+	})
+	return func(c *gin.Context) {
+		body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxPeekBytes+1))
+		if err != nil || len(body) > maxPeekBytes {
+			c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, gin.H{"error": "request body too large"})
+			return
 		}
 		c.Request.Body = io.NopCloser(bytes.NewReader(body))
-
-		var payload map[string]string
-		if err := json.Unmarshal(body, &payload); err != nil {
-			return ""
+		// A request without the field is refused here: an empty key would mean
+		// "no limit", which a padded or re-cased body could otherwise reach (S1).
+		key, ok := jsonStringField(body, field)
+		if !ok {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+			return
 		}
-		key := strings.ToLower(strings.TrimSpace(payload[field]))
+		c.Set(jsonFieldKey, key)
+		limit(c)
+	}
+}
+
+const jsonFieldKey = "ratelimit_json_field"
+
+// jsonStringField finds a top-level string field by name, ignoring case the
+// way encoding/json does when the handler binds the same body, and tolerating
+// other fields of any type.
+func jsonStringField(body []byte, field string) (string, bool) {
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return "", false
+	}
+	for name, raw := range payload {
+		if !strings.EqualFold(name, field) {
+			continue
+		}
+		var value string
+		if err := json.Unmarshal(raw, &value); err != nil {
+			return "", false
+		}
+		key := strings.ToLower(strings.TrimSpace(value))
+		if key == "" {
+			return "", false
+		}
 		if len(key) > maxKeyLength {
 			key = key[:maxKeyLength]
 		}
-		return key
-	})
+		return key, true
+	}
+	return "", false
 }

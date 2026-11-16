@@ -55,7 +55,8 @@ func TestIntakeWorkflowWithPostgres(t *testing.T) {
 	router := gin.New()
 	group := router.Group("")
 	group.Use(func(c *gin.Context) { c.Set("userID", admin.String()); c.Next() })
-	RegisterRoutes(group, NewEngine(NewStore(pool), nil, []Definition{NewStudentIntake(provider)}))
+	engine := NewEngine(NewStore(pool), nil, []Definition{NewStudentIntake(provider)})
+	RegisterRoutes(group, engine)
 
 	csvText := strings.Join([]string{
 		"Index Number,Full Name,Gender,Medium,Phone,Email,Guardian Name,Guardian Relationship,Guardian Phone,Guardian NIC",
@@ -110,6 +111,7 @@ func TestIntakeWorkflowWithPostgres(t *testing.T) {
 	if n := scalar[int](t, pool, "SELECT COUNT(*) FROM student_guardians WHERE guardian_id = $1", existingGuardian); n != 1 {
 		t.Fatal("IN-3 should be linked to the guardian already on record")
 	}
+	engine.Wait() // logins are created in the background after apply
 	if len(provider.created) != 1 || provider.created[0] != "IN-1" {
 		t.Fatalf("accounts created for %v, want only IN-1 (the one with an email)", provider.created)
 	}

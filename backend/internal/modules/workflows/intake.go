@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/openschool-org/openschool/internal/authz"
@@ -409,11 +410,16 @@ func (w StudentIntake) AfterApply(ctx context.Context, s *Store, in Inputs, _ uu
 	if err != nil {
 		return err
 	}
+	failed := 0
 	for _, st := range pending {
 		if err := w.createAccount(ctx, s, st.ID, st.IndexNumber, st.FullName, emails[st.IndexNumber]); err != nil {
+			failed++
 			log.Printf("intake: account for %s: %v", st.IndexNumber, err)
 		}
 	}
+	// One line an operator can grep for; a student without a login can be
+	// given one from their page with "Set up login".
+	log.Printf("intake: logins created %d, failed %d", len(pending)-failed, failed)
 	return nil
 }
 
@@ -428,16 +434,18 @@ func (w StudentIntake) createAccount(ctx context.Context, s *Store, student uuid
 	}
 	uid, err := uuid.Parse(user.ID)
 	if err != nil {
-		_ = w.provider.DeleteUser(ctx, user.ID)
+		w.undoLogin(ctx, user.ID)
 		return err
 	}
 	if err := s.createStudentUser(ctx, uid, email, name); err != nil {
-		_ = w.provider.DeleteUser(ctx, user.ID)
+		w.undoLogin(ctx, user.ID)
 		return err
 	}
 	if err := w.provider.AssignRole(ctx, idp.RoleID(authz.RoleStudent), user.ID); err != nil {
-		_ = w.provider.DeleteUser(ctx, user.ID)
-		_ = s.deleteUser(ctx, uid)
+		w.undoLogin(ctx, user.ID)
+		if err := s.deleteUser(context.WithoutCancel(ctx), uid); err != nil {
+			log.Printf("intake: rollback left local user %s: %v", uid, err)
+		}
 		return err
 	}
 	return s.setStudentUser(ctx, student, uid)
@@ -490,4 +498,14 @@ func createStudentRows(ctx context.Context, tx *Store, rows []Row, taken map[str
 		}
 	}
 	return students, guardians, nil
+}
+
+// undoLogin removes a half-made identity provider login and says so when it
+// cannot, instead of leaving a working login behind silently (E1).
+func (w StudentIntake) undoLogin(ctx context.Context, idpUserID string) {
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+	if err := w.provider.DeleteUser(ctx, idpUserID); err != nil {
+		log.Printf("intake: rollback left identity provider login %s: %v", idpUserID, err)
+	}
 }

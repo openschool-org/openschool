@@ -18,6 +18,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/openschool-org/openschool/internal/idp"
+	"golang.org/x/time/rate"
 )
 
 // StringOrSlice unmarshals a JSON value that may be either a single string or an array of strings.
@@ -124,6 +125,10 @@ func InitJWKS(jwksURL string) error {
 	k, err := keyfunc.NewDefaultOverrideCtx(context.Background(), []string{jwksURL},
 		keyfunc.Override{
 			Client: client,
+			// The first fetch may fail (identity provider still starting); the API
+			// starts anyway and refetches when a token names a key it has not seen.
+			// 30s instead of the 5 min default, so sign-in recovers quickly (E4).
+			RefreshUnknownKID: rate.NewLimiter(rate.Every(30*time.Second), 1),
 		},
 	)
 	if err != nil {
@@ -158,6 +163,8 @@ func AuthMiddleware() gin.HandlerFunc {
 			jwt.WithValidMethods([]string{"RS256"}),
 			jwt.WithIssuer(idp.Issuer()),
 			jwt.WithLeeway(30 * time.Second),
+			// A token without exp would never expire.
+			jwt.WithExpirationRequired(),
 		}
 
 		claims := &Claims{}

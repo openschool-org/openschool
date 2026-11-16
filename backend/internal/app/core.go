@@ -73,7 +73,9 @@ func newMailSender(pool *pgxpool.Pool) *emails.Sender {
 	if err != nil {
 		log.Fatalf("mail configuration: %v", err)
 	}
-	if os.Getenv("APP_ENV") == "production" {
+	// Fails closed: anything other than an explicit "development" (including
+	// unset) must have a real mail sender, never the console one (V2).
+	if os.Getenv("APP_ENV") != "development" {
 		if err := cfg.CheckProduction(); err != nil {
 			log.Fatalf("mail configuration: %v", err)
 		}

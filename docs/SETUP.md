@@ -102,6 +102,16 @@ transit - this isn't optional for anything beyond a local/dev instance. See
 backend's `.env` to that proxy's address so `ClientIP()` reads the real
 client IP instead of the proxy's.
 
+**Production note - `APP_ENV`:** set `APP_ENV=production` in
+`backend/.env` on a real server (the example file ships `development`).
+Only an explicit `development` turns on Swagger, the console mail sender
+(which writes reset links to the log) and skipped TLS checks against the
+identity provider; unset counts as production.
+
+**Production note - Postgres:** `docker-compose.yml` publishes Postgres on
+`127.0.0.1` only. Change `DB_PASSWORD` from the `postgres` default before
+the first start, since it is set when the volume is created.
+
 **Production note - secrets:** `backend/.env` holds `DB_PASSWORD`,
 `SMTP_PASSWORD` or `RESEND_API_KEY`, `ACTIVATION_CODE_KEY` and
 `THUNDERID_CLIENT_SECRET`. Don't leave it world-readable
@@ -120,6 +130,15 @@ writes. For backups, set `BACKUP_AGE_RECIPIENT` and `BACKUP_OFFSITE_DIR`
 (see `backend/.env.example`, S11) and run a **restore drill quarterly**:
 restore the latest encrypted dump into a scratch database and confirm the
 app can start against it — an untested backup is not a backup.
+
+To restore, use `scripts/restore.sh BACKUP_FILE TARGET_DB [AGE_IDENTITY_FILE]`.
+It decrypts a `.dump.age` file with your age key, checks the dump, creates
+the target database if needed and restores into it, then prints the
+migration version and student count. For a drill, restore into a new name
+such as `openschool_restore`; restoring over the live `DB_NAME` asks you to
+type the name first. Mount the API's backup directory (`JOB_BACKUP_DIR`,
+`/home/openschool/backups` in the image) on a volume, or a container rebuild
+loses every local backup.
 
 ## 2. Register the first admin (one time only)
 

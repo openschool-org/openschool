@@ -22,3 +22,15 @@ export function writeOffline<T>(key: string, data: T) {
     // Storage full or blocked: the live data still shows.
   }
 }
+
+// Drops every saved copy. Called on sign-out so the next person on a shared
+// lab computer cannot read the last user's timetable.
+export function clearOffline() {
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith(PREFIX)) localStorage.removeItem(key);
+    }
+  } catch {
+    // Storage blocked: nothing was saved either.
+  }
+}

@@ -26,11 +26,42 @@ const maxRunsPerJob = 50
 // in this module, not a full entity's CRUD, so they're grouped here rather
 // than split across the repositories each query's subject already has.
 type Repository struct {
+	pool    *pgxpool.Pool
 	queries *db.Queries
 }
 
 func NewRepository(pool *pgxpool.Pool) *Repository {
-	return &Repository{queries: db.New(pool)}
+	return &Repository{pool: pool, queries: db.New(pool)}
+}
+
+// TryJobLock takes a session advisory lock named after the job on one
+// dedicated connection, so with several API replicas only one runs a job at a
+// time (E3). ok is false when another instance holds it. release must be called.
+func (r *Repository) TryJobLock(ctx context.Context, job string) (release func(), ok bool, err error) {
+	if r == nil || r.pool == nil {
+		return func() {}, true, nil
+	}
+	conn, err := r.pool.Acquire(ctx)
+	if err != nil {
+		return nil, false, err
+	}
+	if err := conn.QueryRow(ctx, "SELECT pg_try_advisory_lock(hashtext('openschool.job.' || $1))", job).Scan(&ok); err != nil {
+		conn.Release()
+		return nil, false, err
+	}
+	if !ok {
+		conn.Release()
+		return func() {}, false, nil
+	}
+	return func() {
+		unlockCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if _, err := conn.Exec(unlockCtx, "SELECT pg_advisory_unlock(hashtext('openschool.job.' || $1))", job); err != nil {
+			// Closing the connection releases the lock even if the unlock failed.
+			_ = conn.Conn().Close(unlockCtx)
+		}
+		conn.Release()
+	}, true, nil
 }
 
 func (r *Repository) ListAdminUserIDs(ctx context.Context) ([]uuid.UUID, error) {

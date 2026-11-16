@@ -133,3 +133,11 @@ FROM attendance_records ar
 INNER JOIN attendance_sessions ats ON ats.id = ar.session_id
 WHERE ar.student_id = $1
   AND ats.class_id  = $2;
+
+-- name: ListClassStudentsAmong :many
+-- Of the given student_ids, the ones enrolled in class_id. Attendance may only
+-- be recorded for these (S2).
+SELECT student_id
+FROM class_students
+WHERE class_id = sqlc.arg(class_id)
+  AND student_id = ANY(sqlc.arg(student_ids)::uuid[]);

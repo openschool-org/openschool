@@ -19,7 +19,7 @@ func registerPeople(groups HTTPGroups, pool *pgxpool.Pool, houses ports.HouseAss
 	studentService := peoplemodule.NewStudentService(studentStore, thunderid.NewClient(), houses, audit, schoolmodule.NewSchoolTypeReader(pool), pendingEraser)
 	peoplemodule.RegisterStudentRoutes(groups.Admin, groups.TeacherOrAdmin, studentService, studentStore, studentService, audit, access)
 
-	teacherService := peoplemodule.NewTeacherService(studentStore, thunderid.NewClient(), houses, audit)
+	teacherService := peoplemodule.NewTeacherService(studentStore, thunderid.NewClient(), houses, audit, pendingEraser)
 	peoplemodule.RegisterTeacherReadRoutes(groups.TeacherOrAdmin, groups.Admin, peoplemodule.NewTeacherReader(pool))
 	peoplemodule.RegisterTeacherWriteRoutes(groups.Admin, teacherService)
 

@@ -70,7 +70,7 @@ func TestTermMarkWorkflowAPIWithPostgres(t *testing.T) {
 
 	request.Entries[0] = MarkEntry{StudentID: fixture.studentID.String(), Marks: 75, MaxMarks: 100}
 	forbidden := performAcademicRequest(t, otherTeacherRouter, http.MethodPut, marksPath, request)
-	if forbidden.Code != http.StatusBadRequest {
+	if forbidden.Code != http.StatusForbidden {
 		t.Fatalf("unassigned teacher mark: code=%d body=%s", forbidden.Code, forbidden.Body.String())
 	}
 	assertTermMark(t, pool, fixture, "0.00", "100.00", true, fixture.teacherUserID, 1)

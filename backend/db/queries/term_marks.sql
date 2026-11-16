@@ -74,3 +74,13 @@ WHERE id = $1;
 -- name: DeleteTermMark :exec
 DELETE FROM term_marks
 WHERE id = $1;
+
+-- name: TermInClassYear :one
+-- True when the term belongs to the class's academic year, so marks cannot be
+-- written into another year's term (S4).
+SELECT EXISTS (
+    SELECT 1
+    FROM terms t
+    INNER JOIN classes c ON c.academic_year_id = t.academic_year_id
+    WHERE t.id = sqlc.arg(term_id) AND c.id = sqlc.arg(class_id)
+) AS ok;

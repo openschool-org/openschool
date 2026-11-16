@@ -51,8 +51,8 @@ type RecipientRule struct {
 }
 
 type CreateNotificationRequest struct {
-	Title          string          `json:"title" binding:"required"`
-	Message        string          `json:"message" binding:"required"`
+	Title          string          `json:"title" binding:"required,max=200"`
+	Message        string          `json:"message" binding:"required,max=5000"`
 	Category       string          `json:"category" binding:"required"`
 	Priority       string          `json:"priority" binding:"required"`
 	SaveAsDraft    bool            `json:"save_as_draft"`
@@ -60,8 +60,8 @@ type CreateNotificationRequest struct {
 }
 
 type UpdateNotificationRequest struct {
-	Title          string          `json:"title" binding:"required"`
-	Message        string          `json:"message" binding:"required"`
+	Title          string          `json:"title" binding:"required,max=200"`
+	Message        string          `json:"message" binding:"required,max=5000"`
 	Category       string          `json:"category" binding:"required"`
 	Priority       string          `json:"priority" binding:"required"`
 	RecipientRules []RecipientRule `json:"recipient_rules" binding:"required,min=1"`

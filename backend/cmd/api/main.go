@@ -1,6 +1,9 @@
 package main
 
 import (
+	// Embedded zone data, so SCHOOL_TIMEZONE works in a minimal container image.
+	_ "time/tzdata"
+
 	"context"
 	"log"
 	"net/http"
@@ -79,6 +82,12 @@ func splitEnvList(key string) []string {
 func main() {
 	config.LoadEnv()
 
+	loc, err := database.SetSchoolTimezone()
+	if err != nil {
+		log.Fatalf("timezone: %v", err)
+	}
+	log.Printf("timezone: %s", loc)
+
 	dsn := database.BuildDSN()
 
 	if err := database.RunMigrations(dsn); err != nil {
@@ -109,6 +118,10 @@ func main() {
 	// terms, names and index numbers would end up in plain-text logs (S10).
 	// gin.New() plus an explicit Recovery and StructuredLogger replaces it.
 	r := gin.New()
+	// Handlers that pass *gin.Context as a context get the request's deadline
+	// and cancellation too; without this gin.Context.Done() is nil and the
+	// 15s RequestTimeout below never reached them (S9).
+	r.ContextWithFallback = true
 	r.Use(gin.Recovery())
 	r.Use(middleware.RequestID())
 	r.Use(middleware.StructuredLogger())
@@ -119,7 +132,15 @@ func main() {
 	// returns the proxy's own address for every request, making per-IP rate
 	// limits and audit IPs meaningless (S3). Empty means "no proxy in front",
 	// matching the previous SetTrustedProxies(nil) default.
+	// Outside development an empty value is refused: behind nginx it would put
+	// the whole school in one rate-limit bucket (E7). A server reached
+	// directly, with no proxy, says so with TRUSTED_PROXIES=none.
 	trustedProxies := splitEnvList("TRUSTED_PROXIES")
+	if len(trustedProxies) == 1 && strings.EqualFold(trustedProxies[0], "none") {
+		trustedProxies = nil
+	} else if len(trustedProxies) == 0 && os.Getenv("APP_ENV") != "development" {
+		log.Fatal("TRUSTED_PROXIES is required outside development: set the reverse proxy's address, or \"none\" if clients reach the API directly")
+	}
 	if len(trustedProxies) == 0 {
 		r.SetTrustedProxies(nil)
 	} else if err := r.SetTrustedProxies(trustedProxies); err != nil {

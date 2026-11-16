@@ -2,12 +2,14 @@ package people
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/openschool-org/openschool/internal/apierror"
+	"github.com/openschool-org/openschool/internal/authz"
 	"github.com/openschool-org/openschool/internal/middleware"
 	"github.com/openschool-org/openschool/internal/platform/httpx"
 	"github.com/openschool-org/openschool/internal/ports"
@@ -73,13 +75,17 @@ func RegisterStudentRoutes(admin, teacherOrAdmin *gin.RouterGroup, runner Studen
 			Grade:      c.Query("grade"), Class: c.Query("class"), Gender: c.Query("gender"), House: c.Query("house"),
 		}
 		v, e := reader.ListPage(c, params)
+		if e == nil && !middleware.HasRole(c, authz.RoleAdmin) {
+			v, e = redactStudentContacts(v)
+		}
 		if e != nil {
 			apierror.RespondInternal(c, e)
 			return
 		}
 		c.JSON(200, v)
 	})
-	teacherOrAdmin.GET("/students/:id", func(c *gin.Context) {
+	// A teacher may open only a student in a class they teach or lead (S3).
+	teacherOrAdmin.GET("/students/:id", middleware.RequireStudentWorkAccess(access, "id"), func(c *gin.Context) {
 		id, ok := studentID(c)
 		if !ok {
 			return
@@ -92,7 +98,7 @@ func RegisterStudentRoutes(admin, teacherOrAdmin *gin.RouterGroup, runner Studen
 		auditStudentProfileRead(c, audit, id)
 		c.JSON(200, v)
 	})
-	teacherOrAdmin.GET("/students/:id/class", func(c *gin.Context) {
+	teacherOrAdmin.GET("/students/:id/class", middleware.RequireStudentWorkAccess(access, "id"), func(c *gin.Context) {
 		id, ok := studentID(c)
 		if !ok {
 			return
@@ -244,4 +250,31 @@ func studentActor(c *gin.Context) (uuid.UUID, bool) {
 		return uuid.Nil, false
 	}
 	return id, true
+}
+
+// studentContactFields are left out of the school-wide student list for
+// non-admins: teachers use it as a picker (name, index number, class, house)
+// and must not see every student's contact details or remarks (S3).
+var studentContactFields = []string{"address", "phone", "whatsapp", "special_remarks", "email"}
+
+// redactStudentContacts drops studentContactFields from every item of a page.
+// The page type lives in the repository, so it is edited as JSON here.
+func redactStudentContacts(page any) (any, error) {
+	raw, err := json.Marshal(page)
+	if err != nil {
+		return nil, err
+	}
+	var out map[string]any
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	items, _ := out["items"].([]any)
+	for _, item := range items {
+		if row, ok := item.(map[string]any); ok {
+			for _, field := range studentContactFields {
+				delete(row, field)
+			}
+		}
+	}
+	return out, nil
 }

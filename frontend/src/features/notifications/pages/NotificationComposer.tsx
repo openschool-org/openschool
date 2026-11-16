@@ -123,8 +123,8 @@ export default function NotificationComposer() {
       >
         {create.isError && <Alert type="error" showIcon closable onClose={() => create.reset()} className="os-mb-4" title="Could not send notification" description={getErrorMessage(create.error)} />}
         <div className="os-flex os-col os-gap-5">
-          <TextField id="notification-title" label="Title" placeholder="e.g. Term Test Timetable Released" value={title} onChange={setTitle} disabled={create.isPending} />
-          <TextAreaField id="notification-message" label="Message" placeholder="Type your message here…" rows={5} value={message} onChange={setMessage} disabled={create.isPending} />
+          <TextField id="notification-title" label="Title" placeholder="e.g. Term Test Timetable Released" value={title} onChange={setTitle} maxLength={200} showCount disabled={create.isPending} />
+          <TextAreaField id="notification-message" label="Message" placeholder="Type your message here…" rows={5} value={message} onChange={setMessage} maxLength={5000} disabled={create.isPending} />
 
           <div className="os-modal-form">
             <SelectField

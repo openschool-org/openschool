@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/openschool-org/openschool/internal/apierror"
 	"github.com/openschool-org/openschool/internal/middleware"
 )
@@ -31,7 +32,13 @@ func (h *reconciliationHandler) deleteOrphaned(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.deleteOrphaned(c.Request.Context(), c.Param("id"), actorID); err != nil {
+	// The id goes into the identity provider's URL, so only a UUID is accepted.
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid account id"})
+		return
+	}
+	if err := h.service.deleteOrphaned(c.Request.Context(), id.String(), actorID); err != nil {
 		if errors.Is(err, ErrOrphanNoLongerOrphaned) {
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return

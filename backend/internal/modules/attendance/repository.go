@@ -346,3 +346,7 @@ func (r *Repository) markUnmarkedAbsent(ctx context.Context, date time.Time, kin
 	}
 	return r.queries.MarkUnmarkedNonAcademicStaffAbsent(ctx, db.MarkUnmarkedNonAcademicStaffAbsentParams{Date: dateValue(date), MarkedBy: markedBy})
 }
+
+func (r *Repository) enrolledIn(ctx context.Context, classID uuid.UUID, studentIDs []uuid.UUID) ([]uuid.UUID, error) {
+	return r.queries.ListClassStudentsAmong(ctx, db.ListClassStudentsAmongParams{ClassID: classID, StudentIds: studentIDs})
+}

@@ -133,10 +133,10 @@ func (s *StudentService) Create(ctx context.Context, req CreateStudentRequest, a
 	if err != nil {
 		return nil, fmt.Errorf("invalid identity provider user ID: %w", err)
 	}
-	rollback := func() { _ = s.idp.DeleteUser(ctx, idpUser.ID); _ = s.store.DeleteUser(ctx, uid) }
+	rollback := func() { rollbackAccount(ctx, s.idp, s.pending, idpUser.ID, uid, s.store.DeleteUser) }
 	fullName := req.FullName
 	if err = s.store.CreateStudentUser(ctx, studentUserCreate{ID: uid, Email: req.Email, FullName: fullName, MustChangePassword: true}); err != nil {
-		_ = s.idp.DeleteUser(ctx, idpUser.ID)
+		rollbackAccount(ctx, s.idp, s.pending, idpUser.ID, uid, nil)
 		return nil, fmt.Errorf("failed to create user record: %w", err)
 	}
 	if err = s.idp.AssignRole(ctx, idp.RoleID(authz.RoleStudent), idpUser.ID); err != nil {

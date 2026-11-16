@@ -51,8 +51,20 @@ func (f *fakeStore) usableCodeByID(_ context.Context, id uuid.UUID) (codeRecord,
 	}
 	return *f.code, nil
 }
-func (f *fakeStore) recordFailure(context.Context, uuid.UUID) error { f.failures++; return nil }
-func (f *fakeStore) resetFailures(context.Context, uuid.UUID) error { f.resets++; return nil }
+
+// claimAttempt mirrors ClaimActivationAttempt: refused while locked, else counted.
+func (f *fakeStore) claimAttempt(context.Context, uuid.UUID) (bool, error) {
+	if f.code != nil && f.code.LockedUntil != nil && now.Before(*f.code.LockedUntil) {
+		return false, nil
+	}
+	f.failures++
+	return true, nil
+}
+func (f *fakeStore) resetFailures(context.Context, uuid.UUID) error {
+	f.failures = 0
+	f.resets++
+	return nil
+}
 func (f *fakeStore) createEmailToken(_ context.Context, hash string, _ uuid.UUID, email string, _ time.Time) error {
 	f.tokenHash, f.tokenEmail = hash, email
 	return nil

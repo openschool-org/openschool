@@ -16,7 +16,7 @@ import (
 
 // referenceDataMaxAgeSeconds is how long a client may cache rarely-changing
 // reference data (mediums) before revalidating (section 5).
-const referenceDataMaxAgeSeconds = 300
+const referenceDataMaxAgeSeconds = 0 // revalidate every time; the ETag keeps it cheap (E12)
 
 var (
 	errMediumNotFound = errors.New("medium not found")

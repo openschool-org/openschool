@@ -10,7 +10,8 @@ services:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      # Loopback only: Docker port publishing bypasses ufw, and the API runs on this host (V3).
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/openschool-org/openschool/internal/authz"
@@ -64,17 +65,13 @@ func (s *Service) RegisterFirstAdmin(ctx context.Context, req RegisterAdminReque
 		return AdminUser{}, fmt.Errorf("invalid identity provider user id: %w", err)
 	}
 
-	// Re-check immediately before the local write to reduce the first-run race.
-	needsSetup, err = s.NeedsSetup(ctx)
-	if err != nil {
-		return AdminUser{}, err
-	}
-	if !needsSetup {
+	// createAdmin re-checks under a database lock; the loser of a race
+	// removes the identity provider account it just made.
+	user, err := s.store.createAdmin(ctx, userID, req.Email, req.GivenName+" "+req.FamilyName)
+	if errors.Is(err, ErrAlreadyDone) {
 		s.rollbackIDPUser(ctx, idpUser.ID)
 		return AdminUser{}, ErrAlreadyDone
 	}
-
-	user, err := s.store.createAdmin(ctx, userID, req.Email, req.GivenName+" "+req.FamilyName)
 	if err != nil {
 		s.rollbackIDPUser(ctx, idpUser.ID)
 		return AdminUser{}, fmt.Errorf("failed to create user record: %w", err)
@@ -92,6 +89,9 @@ func (s *Service) RegisterFirstAdmin(ctx context.Context, req RegisterAdminReque
 }
 
 func (s *Service) rollbackIDPUser(ctx context.Context, userID string) {
+	// Its own deadline: the request's may already be spent by the time a rollback runs.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
 	if err := s.idp.DeleteUser(ctx, userID); err != nil {
 		log.Printf("RegisterFirstAdmin: failed to roll back identity provider user %s: %v (identity provider account now orphaned)", userID, err)
 	}

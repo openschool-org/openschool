@@ -1,3 +1,4 @@
+import { clearOffline } from "@/shared/lib/offlineCache";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useThunderID } from "@thunderid/react";
 import { useNavigate } from "react-router";
@@ -37,6 +38,7 @@ export function useIdleLogout(timeoutMs: number = IDLE_TIMEOUT_MS) {
 
   const handleIdleTimeout = useCallback(() => {
     setWarning(false);
+    clearOffline();
     Promise.resolve(signOut()).finally(() => {
       navigate("/signin", { replace: true });
     });

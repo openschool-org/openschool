@@ -74,3 +74,17 @@ func TestCacheReferenceSkipsCachingOnNonOKStatus(t *testing.T) {
 		t.Fatal("ETag should not be set on a non-200 response")
 	}
 }
+
+func TestCacheReferenceZeroMeansRevalidate(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.GET("/grades", CacheReference(0), func(c *gin.Context) { c.JSON(http.StatusOK, []string{"Grade 6"}) })
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/grades", nil))
+	if got := response.Header().Get("Cache-Control"); got != "private, no-cache" {
+		t.Fatalf("Cache-Control = %q, want private, no-cache", got)
+	}
+	if response.Header().Get("ETag") == "" {
+		t.Fatal("no ETag, so revalidation could not return 304")
+	}
+}

@@ -2,10 +2,12 @@ package activation
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	db "github.com/openschool-org/openschool/db/sqlc"
@@ -93,8 +95,13 @@ func (r *Repository) usableCodeByID(ctx context.Context, id uuid.UUID) (codeReco
 		row.IndexNumber, row.StudentUserID, row.NicNumber, row.GuardianUserID), nil
 }
 
-func (r *Repository) recordFailure(ctx context.Context, id uuid.UUID) error {
-	return r.queries.RecordActivationFailure(ctx, id)
+// claimAttempt counts one attempt atomically; false means the code is locked.
+func (r *Repository) claimAttempt(ctx context.Context, id uuid.UUID) (bool, error) {
+	_, err := r.queries.ClaimActivationAttempt(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 func (r *Repository) resetFailures(ctx context.Context, id uuid.UUID) error {
