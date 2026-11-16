@@ -55,15 +55,29 @@ export default function GeneralSettingsTab() {
     showToast({ kind: "success", title: "Saved" });
   };
 
+  const toRequest = (f: SettingsForm) => ({
+    ...f,
+    grade_from: f.grade_from === "" ? null : Number(f.grade_from),
+    grade_to: f.grade_to === "" ? null : Number(f.grade_to),
+  });
+
   const save = () => {
     if (rangeInvalid || !form.name.trim()) return;
-    const data = {
-      ...form,
-      grade_from: form.grade_from === "" ? null : Number(form.grade_from),
-      grade_to: form.grade_to === "" ? null : Number(form.grade_to),
-    };
+    const data = toRequest(form);
     if (noSchoolYet) createSchool.mutate(data, { onSuccess: flashSaved });
     else if (school) updateSchool.mutate({ id: school.id, data }, { onSuccess: flashSaved });
+  };
+
+  // The logo saves on its own, from the saved school, so it never needs the Edit button.
+  const saveLogo = (logo: string) => {
+    if (!school) {
+      set("logo_url", logo);
+      return;
+    }
+    updateSchool.mutate(
+      { id: school.id, data: toRequest({ ...schoolToForm(school), logo_url: logo }) },
+      { onSuccess: () => { set("logo_url", logo); showToast({ kind: "success", title: logo ? "Logo updated" : "Logo removed" }); } },
+    );
   };
 
   const set = <K extends keyof SettingsForm>(field: K, value: SettingsForm[K]) => setForm((f) => ({ ...f, [field]: value }));
@@ -98,7 +112,7 @@ export default function GeneralSettingsTab() {
         </Col>
         <Col xs={24} lg={8}>
           <Card className="os-form-card" title="Logo">
-            <LogoUpload value={form.logo_url} editing={editable} onChange={(v) => set("logo_url", v)} />
+            <LogoUpload value={form.logo_url} editing onChange={saveLogo} saving={updateSchool.isPending && !editing} />
           </Card>
           <SystemInfoCards />
         </Col>
