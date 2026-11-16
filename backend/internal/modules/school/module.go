@@ -46,6 +46,7 @@ func RegisterSchoolRoutes(admin, teacherOrAdmin, authenticated *gin.RouterGroup,
 	handler := newSchoolHandler(newSchoolRepository(pool))
 	admin.POST("/school", handler.createSchool)
 	teacherOrAdmin.GET("/school", handler.getSchool)
+	authenticated.GET("/school/branding", handler.getBranding)
 	admin.PUT("/school/:id", handler.updateSchool)
 	admin.POST("/academic-years", handler.createYear)
 	teacherOrAdmin.GET("/academic-years", handler.listYears)

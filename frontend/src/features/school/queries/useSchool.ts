@@ -6,6 +6,10 @@ import { useInvalidate } from "@/shared/api/useInvalidate";
 
 export const useSchool = () => useQuery({ queryKey: schoolKeys.info(), queryFn: schoolApi.get });
 
+// Every portal's dashboard header. The key sits under info, so saving the school refreshes it.
+export const useSchoolBranding = () =>
+  useQuery({ queryKey: schoolKeys.branding(), queryFn: schoolApi.branding, staleTime: 10 * 60 * 1000, retry: false });
+
 export const useCreateSchool = () => {
   const invalidate = useInvalidate();
   return useMutation({ mutationFn: (data: CreateSchoolRequest) => schoolApi.create(data), onSuccess: () => invalidate(schoolKeys.info()) });

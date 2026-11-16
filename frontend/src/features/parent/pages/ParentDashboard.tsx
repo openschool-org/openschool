@@ -10,6 +10,7 @@ import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import EmptyState from "@/shared/ui/EmptyState";
 import DashboardHero from "@/shared/ui/DashboardHero";
+import SchoolLogo from "@/features/school/components/SchoolLogo";
 import { formatDateTime } from "@/shared/lib/date";
 import { formatPercent } from "@/shared/lib/number";
 import { useT } from "@/shared/i18n/useT";
@@ -40,7 +41,7 @@ export default function ParentDashboard() {
 
   return (
     <div className="os-page">
-      <DashboardHero title={t("parent.title")} subtitle={t("parent.subtitle")} />
+      <DashboardHero title={t("parent.title")} subtitle={t("parent.subtitle")} aside={<SchoolLogo />} />
 
       <div className="os-stat-grid">
         <StatCard label={t("parent.statChildren")} value={children?.length ?? 0} loading={false} Icon={TeamOutlined} />

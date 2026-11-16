@@ -9,6 +9,7 @@ import StatCard from "@/features/reports/components/dashboard/StatCard";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import DashboardHero from "@/shared/ui/DashboardHero";
+import SchoolLogo from "@/features/school/components/SchoolLogo";
 import { todayISODate } from "@/shared/lib/date";
 import { formatPercent } from "@/shared/lib/number";
 import { isNotFoundError } from "@/shared/api/errors";
@@ -62,7 +63,12 @@ export default function StudentDashboard() {
       <DashboardHero
         title={profile.full_name}
         subtitle={[profile.index_number, profile.grade_name, profile.class_name].filter(Boolean).join(" · ")}
-        aside={profile.house_name && <Tag color="blue" variant="filled">{t("student.houseTag", { house: profile.house_name })}</Tag>}
+        aside={
+          <>
+            {profile.house_name && <Tag color="blue" variant="filled">{t("student.houseTag", { house: profile.house_name })}</Tag>}
+            <SchoolLogo />
+          </>
+        }
       />
 
       <div className="os-stat-grid">

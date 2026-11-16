@@ -28,8 +28,15 @@ export interface CreateSchoolRequest {
   school_type?: SchoolType;
 }
 
+// Name and logo only; readable by every signed-in user.
+export interface SchoolBranding {
+  name: string;
+  logo_url: string | null;
+}
+
 export const schoolApi = {
   get: () => api.get<School>("/school").then((r) => r.data),
+  branding: () => api.get<SchoolBranding>("/school/branding").then((r) => r.data),
 
   create: (data: CreateSchoolRequest) =>
     api.post<School>("/school", data).then((r) => r.data),

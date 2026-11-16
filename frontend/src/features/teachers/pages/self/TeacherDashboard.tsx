@@ -10,6 +10,7 @@ import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import EmptyState from "@/shared/ui/EmptyState";
 import DashboardHero from "@/shared/ui/DashboardHero";
+import SchoolLogo from "@/features/school/components/SchoolLogo";
 import LinkButton from "@/shared/ui/LinkButton";
 import StatCard from "@/features/reports/components/dashboard/StatCard";
 import RoleBadge from "@/features/teachers/components/dashboard/RoleBadge";
@@ -100,6 +101,7 @@ export default function TeacherDashboard() {
                 <CalendarOutlined />Academic year <strong>{currentYear.label}</strong>{currentTerm ? ` · ${currentTerm.name}` : ""}
               </span>
             )}
+            <SchoolLogo />
           </>
         }
       />
