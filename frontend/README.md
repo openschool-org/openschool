@@ -84,5 +84,6 @@ When changing frontend behavior:
 7. Run `pnpm lint` and `pnpm build` before opening a pull request.
 
 For backend API and architecture details, see
-[`../backend/README.md`](../backend/README.md) and
+[`../backend/README.md`](../backend/README.md),
+[`../docs/architecture/frontend.md`](../docs/architecture/frontend.md) and
 [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md).

@@ -1,6 +1,6 @@
 name: Nightly load test
 
-# docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 5/7: k6 script simulating
+# k6 script simulating
 # ~7,000 sessions against a real deployment, p95 < 500ms. This needs a
 # reachable staging URL and a pool of pre-issued bearer tokens (see
 # frontend/scripts/loadtest_school_day.js's auth note — ThunderID's browser

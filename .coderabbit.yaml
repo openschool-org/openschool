@@ -154,9 +154,11 @@ knowledge_base:
   code_guidelines:
     filePatterns:
       - "docs/ARCHITECTURE.md"
+      - "docs/architecture/**"
       - "docs/FEATURES.md"
+      - "docs/features/**"
       - "docs/adr/**"
-      - "audit.md"
+      - "docs/development/issue.md"
   learnings:
     scope: "auto"
   issues:

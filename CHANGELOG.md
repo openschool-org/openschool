@@ -7,6 +7,29 @@ and follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- Fixed the valid findings from the October review (S1-S4, S6-S9, V2, V3,
+  V6, E1-E7, E9, E11, E12 and hardening): rate-limit bypass and
+  forgot-password oracle, attendance and marks scoping, student contact data
+  hidden from teachers, atomic activation lockout, first-admin race, raw
+  error text, request deadlines, fail-closed `APP_ENV`, retried account
+  rollbacks, background intake logins, per-job locks, `SCHOOL_TIMEZONE`,
+  a restore script and required `TRUSTED_PROXIES`. Open items are in
+  `docs/development/issue.md`.
+
+### Changed
+
+- The school logo shows on the teacher, student and parent dashboards
+  (new `GET /school/branding`).
+- Documentation reorganised: `docs/setup/` (server and school guides),
+  `docs/architecture/` and `docs/features/` hold the detail behind short
+  overview pages; review notes moved to `docs/development/`; the backend's
+  own architecture and refactor-progress files were folded in and removed.
+- The security-audit skill now ships in `.claude/skills/security-audit/`.
+- CI uses the project's own pnpm and Node versions, cancels superseded runs
+  and runs every integration test.
+
 ## [0.4.0] - 2026-11-16
 
 ### Added

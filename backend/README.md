@@ -149,7 +149,9 @@ go build ./...
 git diff --check
 ```
 
-For architecture decisions and the complete feature map, see
+For the module layout and dependency rules see
+[`../docs/architecture/backend.md`](../docs/architecture/backend.md); for the
+wider picture and the complete feature map see
 [`../docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md),
 [`../docs/FEATURES.md`](../docs/FEATURES.md), and the architecture decision
 records in [`../docs/adr/`](../docs/adr/).
@@ -162,5 +164,5 @@ When `APP_ENV=development`, Swagger is available at:
 http://localhost:8080/swagger/index.html
 ```
 
-The generated OpenAPI files are kept in `docs/`. Update the API annotations
-and regenerate the documentation when endpoint contracts change.
+The OpenAPI files in `docs/` are a frozen snapshot, not regenerated from
+source; see [ADR 0007](../docs/adr/0007-plain-comments-over-swaggo.md).

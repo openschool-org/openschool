@@ -12,7 +12,9 @@ OpenSchool is a self-hosted school management system. It is a monorepo with two 
 For anything beyond a quick fix, read further before making changes:
 
 - [`docs/FEATURES.md`](docs/FEATURES.md) - current feature list by module
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - component layout, full data model, external interfaces
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - overview; detail in [`docs/architecture/`](docs/architecture/) (backend, frontend, data model, jobs, interfaces, security)
+- [`docs/setup/`](docs/setup/) - [server setup](docs/setup/server.md) and [school setup](docs/setup/school.md)
+- [`docs/development/`](docs/development/) - open review findings (`issue.md`) and the code health plan
 - [`docs/adr/`](docs/adr/) - *why* behind non-obvious decisions (e.g. why positions aren't ThunderID roles, why the current-academic-year invariant exists) - check here before "fixing" something that looks wrong but is deliberate
 
 ## Backend
@@ -140,6 +142,6 @@ Core entities, enough to orient yourself:
 The schema has grown well beyond this (56 migrations, ~70 tables - also
 covering timetable, notifications, prefects, staff/positions, teacher
 leave, student portfolio, and the audit log). Don't hand-maintain a full list here - see
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#4-data-model) for the
+[`docs/architecture/data-model.md`](docs/architecture/data-model.md) for the
 current, grouped breakdown, or `db/sqlc/models.go` (generated from the
 migrations) for exact columns/types.
