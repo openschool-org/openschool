@@ -2,6 +2,7 @@
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import pkg from "./package.json" with { type: "json" };
 
 // Keep only stable, genuinely shared dependencies in vendor chunks. antd
 // components stay with their lazy route so the first page load stays small.
@@ -13,6 +14,8 @@ const vendorGroups = [
 
 export default defineConfig({
   plugins: [react()],
+  // package.json is the one place the app version is set.
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },

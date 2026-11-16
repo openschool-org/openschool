@@ -68,7 +68,7 @@ func splitEnvList(key string) []string {
 }
 
 // @title           OpenSchool API
-// @version         1.0
+// @version         0.4.0
 // @description     Digital Infrastructure for Sri Lankan Schools
 // @host            localhost:8080
 // @BasePath        /api/v1

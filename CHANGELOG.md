@@ -7,6 +7,59 @@ and follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-16
+
+### Added
+
+- Teacher leave: applications for casual, medical, short, duty, maternity
+  and no-pay leave, relief teachers per missed period, Principal and Vice
+  Principal approval, balances and a daily relief sheet
+  ([ADR 0010](docs/adr/0010-teacher-leave-rules.md)).
+- Settings > Leave, where admins set the leave limits (casual and medical
+  days a year, short leaves a month and their length, maternity days).
+- Settings tabs can be linked to with `?tab=`, for example the audit log.
+- After adding a student, their page lists the next steps: add a guardian,
+  enrol in a class and choose subjects.
+- The admin attendance page can be filtered by grade with `?grade=`.
+
+### Changed
+
+- The whole frontend moved from IBM Carbon to Ant Design, with a blue
+  theme, rounded corners, IBM Plex Sans and a collapsible sidebar with
+  sections. Carbon is removed and ESLint blocks it; the CSS bundle went from
+  about 656 KB to 122 KB.
+- Teacher, principal, student and parent dashboards share the admin
+  dashboard's header and stat cards.
+- The top bar shows who is signed in and their role; change password moved
+  into the user menu, and icon buttons have tooltips.
+- Collapsing the sidebar on a desktop keeps an icon rail, and the choice is
+  remembered.
+- The notification bell shows the unread count, and a notice expands in
+  place to show the full message.
+- Inputs and selects show a visible focus ring again.
+- In Sinhala and Tamil, Ant Design's own text (paging, OK and Cancel, empty
+  states) is translated.
+- "Add student" now means creating a student and "Enrol in class" means
+  adding one to a class.
+- The app version is set once in `frontend/package.json` and shown under
+  Settings.
+
+### Fixed
+
+- Dashboards no longer show 0 or "set up" prompts when a query fails, and
+  the teacher dashboard no longer shows every class as unmarked while
+  attendance is loading.
+- The student dashboard's marks card no longer loads forever when there is
+  no current term.
+- The school logo can be changed without first pressing Edit.
+- Adding a student now confirms it worked and opens the new record; errors
+  scroll into view and leaving a half-filled form asks first.
+- Global search opens the chosen guardian or staff member instead of just
+  the list page.
+- Classes with no attendance session today count as not marked on the
+  admin dashboard, instead of as neither marked nor pending.
+- Go toolchain bumped to 1.26.11 for GO-2026-6859.
+
 ## [0.3.0] - 2026-09-30
 
 ### Added

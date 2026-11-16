@@ -4,7 +4,7 @@
         "description": "Digital Infrastructure for Sri Lankan Schools",
         "title": "OpenSchool API",
         "contact": {},
-        "version": "1.0"
+        "version": "0.4.0"
     },
     "host": "localhost:8080",
     "basePath": "/api/v1",
