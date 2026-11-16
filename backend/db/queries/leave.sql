@@ -252,3 +252,17 @@ WHERE (u.role = 'admin' AND EXISTS (SELECT 1 FROM teacher_positions applicant WH
 
 -- name: ListUserIDsForTeachers :many
 SELECT user_id FROM teacher_profiles WHERE id = ANY(@teacher_ids::uuid[]);
+
+-- name: GetLeaveSettings :one
+SELECT * FROM leave_settings WHERE id;
+
+-- name: UpdateLeaveSettings :one
+UPDATE leave_settings
+SET casual_days_per_year    = sqlc.arg('casual_days_per_year'),
+    sick_days_per_year      = sqlc.arg('sick_days_per_year'),
+    short_leaves_per_month  = sqlc.arg('short_leaves_per_month'),
+    short_leave_max_minutes = sqlc.arg('short_leave_max_minutes'),
+    maternity_days          = sqlc.arg('maternity_days'),
+    updated_at              = NOW()
+WHERE id
+RETURNING *;

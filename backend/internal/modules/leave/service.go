@@ -82,6 +82,8 @@ type store interface {
 	reliefForDate(context.Context, time.Time) ([]DailyRelief, error)
 	reliefDuties(ctx context.Context, teacherID uuid.UUID, from time.Time) ([]ReliefDuty, error)
 	approverUserIDs(ctx context.Context, exclude uuid.UUID) ([]uuid.UUID, error)
+	policy(context.Context) (Policy, error)
+	updatePolicy(context.Context, Policy) (Policy, error)
 	userIDsForTeachers(context.Context, []uuid.UUID) ([]uuid.UUID, error)
 }
 
@@ -105,7 +107,11 @@ func (s *Service) Apply(ctx context.Context, teacherID, userID uuid.UUID, req Ap
 	if err != nil {
 		return RequestDetail{}, invalid(err)
 	}
-	if app.Days, err = chargedDays(app); err != nil {
+	policy, err := s.store.policy(ctx)
+	if err != nil {
+		return RequestDetail{}, err
+	}
+	if app.Days, err = chargedDays(app, policy); err != nil {
 		return RequestDetail{}, invalid(err)
 	}
 	if err := s.validateRelief(ctx, app); err != nil {
@@ -114,7 +120,7 @@ func (s *Service) Apply(ctx context.Context, teacherID, userID uuid.UUID, req Ap
 		}
 		return RequestDetail{}, err
 	}
-	id, err := s.store.create(ctx, app, func(r limitReader) error { return checkLimits(ctx, r, app) })
+	id, err := s.store.create(ctx, app, func(r limitReader) error { return checkLimits(ctx, r, app, policy) })
 	if err != nil {
 		return RequestDetail{}, err
 	}
@@ -131,7 +137,7 @@ func (s *Service) Apply(ctx context.Context, teacherID, userID uuid.UUID, req Ap
 	return detail, nil
 }
 
-func checkLimits(ctx context.Context, r limitReader, app Application) error {
+func checkLimits(ctx context.Context, r limitReader, app Application, policy Policy) error {
 	overlaps, err := r.overlapping(ctx, app.TeacherID, app.Start, app.End)
 	if err != nil {
 		return err
@@ -144,8 +150,8 @@ func checkLimits(ctx context.Context, r limitReader, app Application) error {
 		if err != nil {
 			return err
 		}
-		if count >= ShortLeavePerMonth {
-			return invalid(ErrShortLeaveUsedUp)
+		if count >= int64(policy.ShortLeavesPerMonth) {
+			return invalid(fmt.Errorf("%w: %d short leaves are allowed in a month", ErrShortLeaveUsedUp, policy.ShortLeavesPerMonth))
 		}
 		return nil
 	}
@@ -153,7 +159,7 @@ func checkLimits(ctx context.Context, r limitReader, app Application) error {
 	if err != nil {
 		return err
 	}
-	if err := checkEntitlement(app.LeaveType, app.Days, usage); err != nil {
+	if err := checkEntitlement(app.LeaveType, app.Days, usage, policy); err != nil {
 		return invalid(err)
 	}
 	return nil
@@ -236,6 +242,10 @@ func (s *Service) MyRequests(ctx context.Context, teacherID uuid.UUID, year int)
 
 // MyBalance is the teacher's allowance, use and remaining leave for a year.
 func (s *Service) MyBalance(ctx context.Context, teacherID uuid.UUID, year int) (Balance, error) {
+	policy, err := s.store.policy(ctx)
+	if err != nil {
+		return Balance{}, err
+	}
 	usage, err := s.store.usage(ctx, teacherID, year)
 	if err != nil {
 		return Balance{}, err
@@ -243,7 +253,8 @@ func (s *Service) MyBalance(ctx context.Context, teacherID uuid.UUID, year int) 
 	items := make([]BalanceItem, 0, 5)
 	for _, leaveType := range []string{TypeCasual, TypeSick, TypeDuty, TypeMaternity, TypeNoPay} {
 		used := usage[leaveType]
-		item := BalanceItem{LeaveType: leaveType, Entitlement: annualEntitlement[leaveType], Used: used.Approved, Pending: used.Pending}
+		entitlement, _ := policy.annualEntitlement(leaveType)
+		item := BalanceItem{LeaveType: leaveType, Entitlement: entitlement, Used: used.Approved, Pending: used.Pending}
 		if item.Entitlement > 0 {
 			remaining := item.Entitlement - used.Approved - used.Pending
 			item.Remaining = &remaining
@@ -255,8 +266,8 @@ func (s *Service) MyBalance(ctx context.Context, teacherID uuid.UUID, year int) 
 	if err != nil {
 		return Balance{}, err
 	}
-	remaining := float64(ShortLeavePerMonth - shortUsed)
-	short := BalanceItem{LeaveType: TypeShort, Entitlement: ShortLeavePerMonth, Used: float64(shortUsed), Remaining: &remaining}
+	remaining := float64(int64(policy.ShortLeavesPerMonth) - shortUsed)
+	short := BalanceItem{LeaveType: TypeShort, Entitlement: float64(policy.ShortLeavesPerMonth), Used: float64(shortUsed), Remaining: &remaining}
 	return Balance{Year: year, Items: items, ShortLeaveMonth: short}, nil
 }
 
@@ -268,7 +279,11 @@ func (s *Service) AffectedPeriods(ctx context.Context, teacherID uuid.UUID, req 
 	if err != nil {
 		return AffectedPeriods{}, invalid(err)
 	}
-	if _, err := chargedDays(app); err != nil {
+	policy, err := s.store.policy(ctx)
+	if err != nil {
+		return AffectedPeriods{}, err
+	}
+	if _, err := chargedDays(app, policy); err != nil {
 		return AffectedPeriods{}, invalid(err)
 	}
 	yearID, err := s.years.CurrentAcademicYearID(ctx)
@@ -612,4 +627,28 @@ func optionalID(id uuid.UUID) *uuid.UUID {
 		return nil
 	}
 	return &id
+}
+
+// Policy is the leave limits in force.
+func (s *Service) Policy(ctx context.Context) (Policy, error) {
+	return s.store.policy(ctx)
+}
+
+// UpdatePolicy changes the leave limits; only an administrator reaches it.
+func (s *Service) UpdatePolicy(ctx context.Context, p Policy, userID uuid.UUID) (Policy, error) {
+	if err := p.Validate(); err != nil {
+		return Policy{}, invalid(err)
+	}
+	before, err := s.store.policy(ctx)
+	if err != nil {
+		return Policy{}, err
+	}
+	saved, err := s.store.updatePolicy(ctx, p)
+	if err != nil {
+		return Policy{}, err
+	}
+	if s.audit != nil {
+		_ = s.audit.Record(ctx, "leave_settings", uuid.Nil, "updated", userID, before, saved, "")
+	}
+	return saved, nil
 }

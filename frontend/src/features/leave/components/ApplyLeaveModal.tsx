@@ -6,9 +6,9 @@ import { useToast } from "@/shared/ui/toast/useToast";
 import { useTeachers } from "@/features/teachers/queries/useTeachers";
 import { displayName } from "@/shared/lib/name";
 import type { DayPart, LeaveType } from "@/features/leave/api/leave";
-import { DAY_PARTS, HALF_DAY_TYPES, LEAVE_TYPES } from "@/features/leave/constants";
+import { DAY_PARTS, HALF_DAY_TYPES, LEAVE_TYPES, leaveTypeHelp } from "@/features/leave/constants";
 import { useLeaveForm } from "@/features/leave/hooks/useLeaveForm";
-import { useApplyLeave } from "@/features/leave/queries/useLeave";
+import { useApplyLeave, useLeavePolicy } from "@/features/leave/queries/useLeave";
 import ReliefPeriodsTable from "@/features/leave/components/ReliefPeriodsTable";
 import SelectField from "@/shared/ui/SelectField";
 import TextAreaField from "@/shared/ui/TextAreaField";
@@ -30,7 +30,8 @@ export default function ApplyLeaveModal({ open, onClose }: Props) {
   const { values, set, isShort, singleDay, errors } = form;
   // A half day is offered once the leave is a single date of a type that allows it.
   const canHalfDay = HALF_DAY_TYPES.includes(values.leaveType) && (values.dayPart !== "full" || values.startDate === values.endDate);
-  const typeHelp = LEAVE_TYPES.find((t) => t.value === values.leaveType)?.help;
+  const { data: policy } = useLeavePolicy();
+  const typeHelp = leaveTypeHelp(values.leaveType, policy);
 
   const close = () => {
     form.reset();

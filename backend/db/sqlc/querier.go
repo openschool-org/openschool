@@ -282,6 +282,7 @@ type Querier interface {
 	GetHouseByID(ctx context.Context, id uuid.UUID) (House, error)
 	GetJobSetting(ctx context.Context, jobName string) (JobSetting, error)
 	GetLeaveRequest(ctx context.Context, id uuid.UUID) (GetLeaveRequestRow, error)
+	GetLeaveSettings(ctx context.Context) (LeaveSetting, error)
 	GetLevelByID(ctx context.Context, id uuid.UUID) (Level, error)
 	GetMaxVersionForClass(ctx context.Context, arg GetMaxVersionForClassParams) (int32, error)
 	GetMediumByID(ctx context.Context, id uuid.UUID) (Medium, error)
@@ -535,7 +536,7 @@ type Querier interface {
 	ListJobSettings(ctx context.Context) ([]JobSetting, error)
 	// one row per job_name: its most recent run, for the Automation panel.
 	ListLatestJobRuns(ctx context.Context) ([]JobRun, error)
-	// the Principal and every Vice Principal, who receive new applications
+	// administrators review the Principal's applications; the Principal reviews a Vice Principal's.
 	ListLeaveApproverUserIDs(ctx context.Context, excludeTeacherID uuid.UUID) ([]uuid.UUID, error)
 	// approved days per type for every active teacher in a leave year
 	ListLeaveBalances(ctx context.Context, arg ListLeaveBalancesParams) ([]ListLeaveBalancesRow, error)
@@ -849,6 +850,7 @@ type Querier interface {
 	UpdateGradeSection(ctx context.Context, arg UpdateGradeSectionParams) (GradeSection, error)
 	UpdateGuardian(ctx context.Context, arg UpdateGuardianParams) (Guardian, error)
 	UpdateHouse(ctx context.Context, arg UpdateHouseParams) (House, error)
+	UpdateLeaveSettings(ctx context.Context, arg UpdateLeaveSettingsParams) (LeaveSetting, error)
 	UpdateLevel(ctx context.Context, arg UpdateLevelParams) (Level, error)
 	UpdateMedium(ctx context.Context, arg UpdateMediumParams) (Medium, error)
 	UpdateNonAcademicStaff(ctx context.Context, arg UpdateNonAcademicStaffParams) (NonAcademicStaff, error)

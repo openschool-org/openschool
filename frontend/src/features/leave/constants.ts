@@ -1,14 +1,31 @@
-import type { DayPart, LeaveStatus, LeaveType } from "@/features/leave/api/leave";
+import type { DayPart, LeavePolicy, LeaveStatus, LeaveType } from "@/features/leave/api/leave";
 
-// Mirrors the rules in backend/internal/modules/leave/rules.go.
-export const LEAVE_TYPES: { value: LeaveType; label: string; help: string }[] = [
-  { value: "casual", label: "Casual leave", help: "21 days a year. Can be taken as a morning or afternoon." },
-  { value: "sick", label: "Medical leave", help: "20 days a year. Hand in a medical certificate for more than 2 days." },
-  { value: "short", label: "Short leave", help: "Leave school early or come late: up to 90 minutes, twice a month." },
-  { value: "duty", label: "Duty leave", help: "Official work away from school, such as paper marking or a seminar." },
-  { value: "maternity", label: "Maternity leave", help: "84 working days on full pay for each confinement." },
-  { value: "no_pay", label: "No-pay leave", help: "Leave without salary once other leave is used up." },
+export const LEAVE_TYPES: { value: LeaveType; label: string }[] = [
+  { value: "casual", label: "Casual leave" },
+  { value: "sick", label: "Medical leave" },
+  { value: "short", label: "Short leave" },
+  { value: "duty", label: "Duty leave" },
+  { value: "maternity", label: "Maternity leave" },
+  { value: "no_pay", label: "No-pay leave" },
 ];
+
+// Help text for the apply form, using the limits set in Settings.
+export function leaveTypeHelp(type: LeaveType, p: LeavePolicy | undefined): string {
+  switch (type) {
+    case "casual":
+      return `${p ? `${p.casual_days_per_year} days a year. ` : ""}Can be taken as a morning or afternoon.`;
+    case "sick":
+      return `${p ? `${p.sick_days_per_year} days a year. ` : ""}Hand in a medical certificate for more than 2 days.`;
+    case "short":
+      return p ? `Leave school early or come late: up to ${p.short_leave_max_minutes} minutes, ${p.short_leaves_per_month} times a month.` : "Leave school early or come late.";
+    case "duty":
+      return "Official work away from school, such as paper marking or a seminar.";
+    case "maternity":
+      return p ? `${p.maternity_days} working days on full pay for each confinement.` : "Full pay for each confinement.";
+    case "no_pay":
+      return "Leave without salary once other leave is used up.";
+  }
+}
 
 export const LEAVE_TYPE_LABELS = Object.fromEntries(LEAVE_TYPES.map((t) => [t.value, t.label])) as Record<LeaveType, string>;
 

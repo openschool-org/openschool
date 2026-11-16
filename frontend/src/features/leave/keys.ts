@@ -1,5 +1,6 @@
 export const leaveKeys = {
   all: ["leave"] as const,
+  policy: () => ["leave", "policy"] as const,
   mine: (year: number) => ["leave", "me", year] as const,
   myBalance: (year: number) => ["leave", "me", "balance", year] as const,
   myReliefDuties: () => ["leave", "me", "relief-duties"] as const,

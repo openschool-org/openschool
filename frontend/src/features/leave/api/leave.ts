@@ -155,7 +155,18 @@ export type PeriodsParams = Pick<ApplyLeaveRequest, "leave_type" | "start_date" 
 const clean = <T extends object>(params: T) =>
   Object.fromEntries(Object.entries(params).filter(([, v]) => v !== "" && v !== undefined));
 
+// Leave limits an administrator sets in Settings.
+export interface LeavePolicy {
+  casual_days_per_year: number;
+  sick_days_per_year: number;
+  short_leaves_per_month: number;
+  short_leave_max_minutes: number;
+  maternity_days: number;
+}
+
 export const leaveApi = {
+  policy: () => api.get<LeavePolicy>("/leave/settings").then((r) => r.data),
+  updatePolicy: (data: LeavePolicy) => api.put<LeavePolicy>("/leave/settings", data).then((r) => r.data),
   mine: (year: number) => api.get<LeaveRequest[]>("/me/teacher/leave", { params: { year } }).then((r) => r.data),
   myBalance: (year: number) => api.get<LeaveBalance>("/me/teacher/leave/balance", { params: { year } }).then((r) => r.data),
   affectedPeriods: (params: PeriodsParams) =>

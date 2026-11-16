@@ -58,5 +58,5 @@ func registerLeave(groups HTTPGroups, pool *pgxpool.Pool, profiles portalProfile
 		leaveAttendance{staff: attendancemodule.NewStaffService(attendancemodule.NewRepository(pool))},
 		shared.notifications, profiles.teacher, shared.audit,
 	)
-	leavemodule.RegisterRoutes(groups.Teacher, groups.TeacherOrAdmin, service, profiles.teacher)
+	leavemodule.RegisterRoutes(groups.Teacher, groups.TeacherOrAdmin, groups.Admin, service, profiles.teacher)
 }

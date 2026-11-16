@@ -1,9 +1,17 @@
 import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import { leaveApi } from "@/features/leave/api/leave";
-import type { ApplyLeaveRequest, LeaveRegisterParams, PeriodsParams } from "@/features/leave/api/leave";
+import type { ApplyLeaveRequest, LeavePolicy, LeaveRegisterParams, PeriodsParams } from "@/features/leave/api/leave";
 import { leaveKeys } from "@/features/leave/keys";
 import { staffAttendanceKeys } from "@/features/attendance/keys";
 import { useInvalidate } from "@/shared/api/useInvalidate";
+
+export const useLeavePolicy = () => useQuery({ queryKey: leaveKeys.policy(), queryFn: leaveApi.policy });
+
+// Limits change balances and help text, so every leave query refreshes.
+export const useUpdateLeavePolicy = () => {
+  const invalidate = useInvalidate();
+  return useMutation({ mutationFn: (data: LeavePolicy) => leaveApi.updatePolicy(data), onSuccess: () => invalidate(leaveKeys.all) });
+};
 
 export const useMyLeave = (year: number) => useQuery({ queryKey: leaveKeys.mine(year), queryFn: () => leaveApi.mine(year) });
 

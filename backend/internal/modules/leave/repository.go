@@ -276,3 +276,31 @@ func idPointer(id pgtype.UUID) *uuid.UUID {
 func textValue(value string) pgtype.Text {
 	return pgtype.Text{String: value, Valid: value != ""}
 }
+
+func (r *Repository) policy(ctx context.Context) (Policy, error) {
+	row, err := r.queries.GetLeaveSettings(ctx)
+	if err != nil {
+		return Policy{}, err
+	}
+	return policyFromRow(row), nil
+}
+
+func (r *Repository) updatePolicy(ctx context.Context, p Policy) (Policy, error) {
+	row, err := r.queries.UpdateLeaveSettings(ctx, db.UpdateLeaveSettingsParams{
+		CasualDaysPerYear: int32(p.CasualDaysPerYear), SickDaysPerYear: int32(p.SickDaysPerYear),
+		ShortLeavesPerMonth: int32(p.ShortLeavesPerMonth), ShortLeaveMaxMinutes: int32(p.ShortLeaveMaxMinutes),
+		MaternityDays: int32(p.MaternityDays),
+	})
+	if err != nil {
+		return Policy{}, err
+	}
+	return policyFromRow(row), nil
+}
+
+func policyFromRow(row db.LeaveSetting) Policy {
+	return Policy{
+		CasualDaysPerYear: int(row.CasualDaysPerYear), SickDaysPerYear: int(row.SickDaysPerYear),
+		ShortLeavesPerMonth: int(row.ShortLeavesPerMonth), ShortLeaveMaxMinutes: int(row.ShortLeaveMaxMinutes),
+		MaternityDays: int(row.MaternityDays),
+	}
+}

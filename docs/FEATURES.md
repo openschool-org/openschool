@@ -261,15 +261,17 @@ teachers and guardians, so only admins see them.
   students'* attendance).
 - **Teacher leave** - a teacher applies from **"My Leave"** in the teacher
   portal for casual, medical, short, duty, maternity or no-pay leave,
-  including a morning or afternoon half day or a short leave of up to 90
-  minutes for the day they are already at school. The form lists the
+  including a morning or afternoon half day or a short leave (up to 90
+  minutes by default) for the day they are already at school. The form lists the
   timetabled periods they will miss and they name a relief teacher for
   each from the colleagues free in that period. The Principal or a Vice
   Principal approves or rejects it from **"Teacher Leave"** (admins from
   the same page in the admin portal), which also shows each teacher's
   balance for the year and the day's relief sheet. Approval marks the
   leave days on staff attendance and notifies the teacher and their
-  relief teachers. Rules and limits are in
+  relief teachers. Admins set the limits (casual and medical days a year,
+  short leaves a month and their length, maternity days) under
+  **Settings > Leave**. Rules and default limits are in
   [ADR 0010](adr/0010-teacher-leave-rules.md).
 
 ## Academic records
