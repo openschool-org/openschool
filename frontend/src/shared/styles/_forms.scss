@@ -92,3 +92,8 @@ fieldset.os-field { margin: 0; padding: 0; border: 0; }
 
   @media (max-width: 640px) { grid-template-columns: 1fr; }
 }
+
+// Select's focus border fades in like the other fields (antd's Select motion is off so its dropdown
+// opens instantly, which would otherwise make the focus border snap).
+.ant-select,
+.ant-select .ant-select-selector { transition: border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important; }
