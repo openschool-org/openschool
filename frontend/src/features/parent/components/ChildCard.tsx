@@ -1,6 +1,6 @@
 import { Link } from "react-router";
-import { SkeletonText } from "@carbon/react";
-import { ChevronRight, EventSchedule, Report } from "@carbon/icons-react";
+import { FileDoneOutlined, RightOutlined, ScheduleOutlined } from "@ant-design/icons";
+import { SkeletonText } from "@/shared/ui/Skeleton";
 import type { Child, ChildSummary } from "@/features/parent/api/parent";
 import { formatPercent } from "@/shared/lib/number";
 import { useT } from "@/shared/i18n/useT";
@@ -32,12 +32,12 @@ export default function ChildCard({ child, summary, summaryLoading }: Props) {
             {child.class_name ? ` · ${classLabel(child.grade_name, child.class_name)}` : ""}
           </p>
         </div>
-        <ChevronRight size={18} className="os-fill-tertiary os-shrink-0" />
+        <RightOutlined className="os-c-tertiary os-shrink-0" />
       </div>
 
       <dl className="os-child-card__stats">
         <div>
-          <dt><EventSchedule size={14} /> {t("student.attendanceThisMonth")}</dt>
+          <dt><ScheduleOutlined /> {t("student.attendanceThisMonth")}</dt>
           <dd>
             {summaryLoading ? <SkeletonText width="3rem" /> : attendance === null ? t("parent.noData") : formatPercent(attendance)}
             {!summaryLoading && sessions > 0 && (
@@ -49,7 +49,7 @@ export default function ChildCard({ child, summary, summaryLoading }: Props) {
           </dd>
         </div>
         <div>
-          <dt><Report size={14} /> {t("parent.latestAverage")}</dt>
+          <dt><FileDoneOutlined /> {t("parent.latestAverage")}</dt>
           <dd>
             {summaryLoading ? <SkeletonText width="3rem" /> : summary?.has_marks ? formatPercent(summary.latest_average_percent) : t("parent.noData")}
             {!summaryLoading && summary?.has_marks && <span className="os-child-card__meta">{summary.latest_term_name}</span>}

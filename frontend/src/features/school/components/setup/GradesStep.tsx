@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
-import { Checkbox } from "@carbon/react";
-import { Education } from "@carbon/icons-react";
+import { Checkbox } from "antd";
+import { ReadOutlined } from "@ant-design/icons";
 import StepShell from "@/features/school/components/setup/StepShell";
 
 interface Props {
@@ -17,27 +17,28 @@ export default function GradesStep({
   setSelectedGrades,
 }: Props) {
   return (
-    <StepShell icon={Education} title="Grades" subtitle="Pre-selected from the range you set. Grades 12 and 13 are paired because they share the same A/L streams.">
+    <StepShell icon={ReadOutlined} title="Grades" subtitle="Pre-selected from the range you set. Grades 12 and 13 are paired because they share the same A/L streams.">
       <div className="os-grid os-grid-cols-4 os-gap-3">
         {Array.from({ length: gradeRangeEnd - gradeRangeStart + 1 }, (_, i) => i + gradeRangeStart).map((n) => (
           <Checkbox
             key={n}
             id={`grade-${n}`}
-            labelText={`Grade ${n}`}
             checked={selectedGrades.has(n)}
-            onChange={(_e, { checked }) =>
+            onChange={(e) =>
               setSelectedGrades((prev) => {
                 const next = new Set(prev);
                 const linkedGrades = n === 12 || n === 13 ? [12, 13] : [n];
                 for (const linkedGrade of linkedGrades) {
                   if (linkedGrade < gradeRangeStart || linkedGrade > gradeRangeEnd) continue;
-                  if (checked) next.add(linkedGrade);
+                  if (e.target.checked) next.add(linkedGrade);
                   else next.delete(linkedGrade);
                 }
                 return next;
               })
             }
-          />
+          >
+            Grade {n}
+          </Checkbox>
         ))}
       </div>
     </StepShell>

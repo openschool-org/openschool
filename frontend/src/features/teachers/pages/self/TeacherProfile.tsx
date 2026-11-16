@@ -1,12 +1,13 @@
 import { useQueries } from "@tanstack/react-query";
-import { Tag } from "@carbon/react";
-import { Book } from "@carbon/icons-react";
+import { Tag } from "antd";
+import { BookOutlined } from "@ant-design/icons";
 import { useMyTeacherProfile, useTeacherSubjects, useMyClasses } from "@/features/teachers/queries/useTeachers";
 import { classSessionsOptions } from "@/features/attendance/queries/useAttendance";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import InfoRow from "@/shared/ui/InfoRow";
-import { getInitials, displayName } from "@/shared/lib/name";
+import ProfileBanner from "@/shared/ui/ProfileBanner";
+import { displayName } from "@/shared/lib/name";
 
 export default function TeacherProfile() {
   const { data: profile, isLoading, isError, refetch } = useMyTeacherProfile();
@@ -30,16 +31,11 @@ export default function TeacherProfile() {
 
   return (
     <div className="os-bg-layer-hover os-min-h-content">
-      <div className="os-profile__banner">
-        <div className="os-profile__avatar">{getInitials(displayName(profile))}</div>
-        <div className="os-flex-1">
-          <p className="os-profile__name">{profile.title ? `${profile.title} ` : ""}{displayName(profile)}</p>
-          <p className="os-profile__meta">{profile.employee_number}</p>
-        </div>
-        <div className="os-profile__actions">
-          <Tag type={profile.is_active ? "green" : "gray"} size="sm">{profile.is_active ? "Active" : "Inactive"}</Tag>
-        </div>
-      </div>
+      <ProfileBanner
+        name={`${profile.title ? `${profile.title} ` : ""}${displayName(profile)}`}
+        meta={profile.employee_number}
+        actions={<Tag color={profile.is_active ? "success" : undefined} variant="filled">{profile.is_active ? "Active" : "Inactive"}</Tag>}
+      />
 
       <div className="os-py-6 os-px-8">
         <div className="os-grid os-grid-cols-2-1 os-gap-6 os-items-grid-start">
@@ -72,7 +68,7 @@ export default function TeacherProfile() {
                 ) : (
                   subjects.map((s) => (
                     <div key={s.id} className="os-flex os-items-center os-gap-2 os-py-2 os-px-3h os-border os-bg-layer-hover">
-                      <Book size={14} className="os-fill-accent" />
+                      <BookOutlined className="os-c-accent" />
                       <span className="os-text-md os-fw-500">{s.name}</span>
                     </div>
                   ))

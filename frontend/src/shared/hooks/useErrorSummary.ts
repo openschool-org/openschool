@@ -9,7 +9,7 @@ export interface FieldError {
 
 const INVALID = 'input[data-invalid="true"], select[data-invalid="true"], textarea[data-invalid="true"], [aria-invalid="true"]';
 
-// Reads Carbon's invalid fields from the DOM, so any form gets a summary without restating its rules.
+// Reads invalid fields (aria-invalid) from the DOM, so any form gets a summary without restating its rules.
 function scan(root: HTMLElement | null): FieldError[] {
   if (!root) return [];
   const seen = new Set<string>();

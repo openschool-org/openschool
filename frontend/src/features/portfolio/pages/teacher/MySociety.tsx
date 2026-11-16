@@ -1,5 +1,5 @@
-import { Idea } from "@carbon/icons-react";
-import { SkeletonText } from "@carbon/react";
+import { BulbOutlined } from "@ant-design/icons";
+import { SkeletonText } from "@/shared/ui/Skeleton";
 import { useMySociety } from "@/features/portfolio/queries/useSocieties";
 import { isNotFoundError } from "@/shared/api/errors";
 import EmptyState from "@/shared/ui/EmptyState";
@@ -35,7 +35,7 @@ export default function MySociety() {
         <div className="os-section">
           <div className="os-section__header">
             <h2 className="os-section__title os-flex os-items-center os-gap-2">
-              <Idea size={16} className="os-fill-accent" /> {society.name}
+              <BulbOutlined className="os-c-accent" /> {society.name}
             </h2>
           </div>
           <div className="os-section__body">

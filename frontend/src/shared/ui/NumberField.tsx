@@ -17,10 +17,11 @@ interface Props {
   helperText?: string;
   disabled?: boolean;
   size?: "small" | "middle" | "large";
+  onBlur?: () => void;
 }
 
-// Labelled number input for forms that are not antd Forms (replaces Carbon NumberInput).
-export default function NumberField({ id, label, hideLabel, value, onChange, min, max, step, placeholder, invalid, invalidText, helperText, disabled, size }: Props) {
+// Labelled number input for forms that are not antd Forms.
+export default function NumberField({ id, label, hideLabel, value, onChange, min, max, step, placeholder, invalid, invalidText, helperText, disabled, size, onBlur }: Props) {
   return (
     <Field id={id} label={label} hideLabel={hideLabel} error={invalid ? invalidText : undefined} helper={helperText}>
       <InputNumber
@@ -35,8 +36,10 @@ export default function NumberField({ id, label, hideLabel, value, onChange, min
         size={size}
         status={invalid ? "error" : undefined}
         aria-invalid={invalid || undefined}
+        aria-describedby={invalid ? `${id}-error` : undefined}
         aria-label={hideLabel ? label : undefined}
         onChange={(v) => onChange(typeof v === "number" ? v : null)}
+        onBlur={onBlur}
       />
     </Field>
   );

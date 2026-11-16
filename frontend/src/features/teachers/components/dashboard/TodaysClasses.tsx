@@ -1,68 +1,62 @@
-import { Link } from "react-router";
-import { Button, Tag } from "@carbon/react";
-import { ArrowRight } from "@carbon/icons-react";
+import { Card, Progress, Skeleton, Tag } from "antd";
+import { ArrowRightOutlined } from "@ant-design/icons";
 import type { MyClass } from "@/features/teachers/queries/useTeachers";
 import type { AttendanceSession } from "@/features/attendance/api/attendance";
+import StartSessionButton from "@/features/attendance/components/StartSessionButton";
 import { formatLongDate } from "@/shared/lib/date";
 import { classLabel } from "@/shared/lib/classLabel";
-import GradeAvatar from "@/shared/ui/GradeAvatar";
-import ProgressBar from "@/shared/ui/ProgressBar";
+import LinkButton from "@/shared/ui/LinkButton";
+import ErrorMessage from "@/shared/ui/ErrorMessage";
+
+interface Props {
+  myClasses: MyClass[];
+  todaySessionByClass: Map<string, AttendanceSession>;
+  loading: boolean;
+  error: boolean;
+  onRetry: () => void;
+}
 
 // Each of the teacher's classes with today's attendance state and the next step.
-export default function TodaysClasses({
-  myClasses,
-  studentCountByClass,
-  todaySessionByClass,
-  markedCount,
-}: {
-  myClasses: MyClass[];
-  studentCountByClass: Map<string, number>;
-  todaySessionByClass: Map<string, AttendanceSession>;
-  markedCount: number;
-}) {
+export default function TodaysClasses({ myClasses, todaySessionByClass, loading, error, onRetry }: Props) {
+  const marked = todaySessionByClass.size;
+  const total = myClasses.length;
+
   return (
-    <div className="os-section">
-      <div className="os-section__header">
-        <h2 className="os-section__title">Today's attendance</h2>
-        <span className="os-text-xs os-c-tertiary">{formatLongDate(new Date())}</span>
-      </div>
-      {myClasses.length === 0 ? (
-        <p className="os-p-6 os-c-tertiary os-text-sm">No classes assigned yet. Ask the office to add you as a class or subject teacher.</p>
+    <Card className="os-dash-card is-flush" title="Today's attendance" extra={<span className="os-text-sm os-c-tertiary">{formatLongDate(new Date())}</span>}>
+      {loading ? (
+        <div className="os-dash-empty"><Skeleton title={false} paragraph={{ rows: 3 }} /></div>
+      ) : error ? (
+        <div className="os-dash-empty"><ErrorMessage message="Could not load today's attendance." onRetry={onRetry} /></div>
       ) : (
         <>
-          <div className="os-teacher-today__progress">
-            <ProgressBar value={markedCount} max={myClasses.length} label="Classes marked today" tone={markedCount === myClasses.length ? "success" : "accent"} />
-            <span className="os-text-sm os-fw-600 os-nowrap">{markedCount} of {myClasses.length} marked</span>
+          <div className="os-dash-progress">
+            <Progress percent={total ? Math.round((marked / total) * 100) : 0} showInfo={false} status={marked === total ? "success" : "active"} aria-label="Classes marked today" />
+            <span className="os-text-sm os-fw-500 os-nowrap">{marked} of {total} marked</span>
           </div>
           {myClasses.map((cls) => {
             const session = todaySessionByClass.get(cls.class_id);
             return (
-              <div key={cls.class_id} className="os-list-row os-py-3h os-px-6 os-wrap">
-                <GradeAvatar gradeName={cls.grade_name} className={cls.class_name} />
-                <div className="os-flex-1 os-min-w-0">
-                  <div className="os-flex os-items-center os-gap-2 os-mb-h">
-                    <span className="os-fw-600 os-text-md os-c-primary">{classLabel(cls.grade_name, cls.class_name)}</span>
-                    {cls.isFormTeacher && <Tag type="teal" size="sm">Class teacher</Tag>}
-                  </div>
-                  <p className="os-m-0 os-text-xs os-c-secondary os-truncate">
-                    {cls.subjects.length > 0 ? `${cls.subjects.join(", ")} · ` : ""}{studentCountByClass.get(cls.class_id) ?? 0} students
+              <div key={cls.class_id} className="os-dash-item">
+                <div className="os-dash-item__body">
+                  <p className="os-dash-item__title">
+                    {classLabel(cls.grade_name, cls.class_name)}
+                    {cls.isFormTeacher && <Tag variant="filled">Class teacher</Tag>}
+                  </p>
+                  <p className="os-dash-item__sub">
+                    {cls.subjects.length > 0 ? `${cls.subjects.join(", ")} · ` : ""}{cls.studentCount} students
                   </p>
                 </div>
-                <Tag type={session ? "green" : "warm-gray"} size="sm">{session ? "Marked" : "Not marked"}</Tag>
+                {session ? <Tag color="success" variant="filled">Marked</Tag> : <Tag color="warning" variant="filled">Not marked</Tag>}
                 {session ? (
-                  <Button as={Link} to={`/attendance/sessions/${session.id}/mark`} kind="ghost" size="sm" renderIcon={ArrowRight}>
-                    View
-                  </Button>
+                  <LinkButton to={`/attendance/sessions/${session.id}/mark`} icon={<ArrowRightOutlined />} iconPlacement="end">View</LinkButton>
                 ) : (
-                  <Button as={Link} to="/t/attendance" kind="tertiary" size="sm" renderIcon={ArrowRight}>
-                    Mark now
-                  </Button>
+                  <StartSessionButton classId={cls.class_id}>Mark now</StartSessionButton>
                 )}
               </div>
             );
           })}
         </>
       )}
-    </div>
+    </Card>
   );
 }

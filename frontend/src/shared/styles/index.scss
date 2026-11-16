@@ -1,71 +1,6 @@
-// Carbon's default @use "@carbon/react" pulls in every component's styles
-// (~874 KB uncompiled), most of which this app never renders.
-// @carbon/styles' own index.scss (the package @carbon/react re-exports)
-// forwards this same
-// foundational layer, then does `@use 'components'` for the full set -
-// this mirrors everything except that last line, importing only the
-// component partials this codebase actually uses. Re-run the component
-// list below (`grep -rhoE 'from "@carbon/react"'`-style scan across
-// src/**/*.tsx) whenever a new Carbon component is imported, since a
-// missing partial fails silently - the component still renders, just
-// unstyled - rather than as a build error.
-@forward "@carbon/react/scss/config";
-@forward "@carbon/react/scss/spacing";
-@forward "@carbon/react/scss/colors" hide $white;
-@forward "@carbon/react/scss/motion";
-@forward "@carbon/react/scss/type";
-@forward "@carbon/react/scss/themes";
-@forward "@carbon/react/scss/theme";
-@use "@carbon/react/scss/reset";
-// Google Sans is self-hosted in shared/styles/_fonts.scss. Carbon's font partial
-// references the full package font tree and adds unused font-face declarations.
-@forward "@carbon/react/scss/grid";
-@forward "@carbon/react/scss/layer";
-@forward "@carbon/react/scss/layout";
-@forward "@carbon/react/scss/zone";
-
-// Components actually used in src/**/*.tsx, plus a small safety margin
-// (form, list-box, loading, popover, tooltip, icon-indicator, menu) for
-// primitives several of the above compose internally.
-@use "@carbon/react/scss/components/accordion";
-@use "@carbon/react/scss/components/notification";
-@use "@carbon/react/scss/components/button";
-@use "@carbon/react/scss/components/checkbox";
-@use "@carbon/react/scss/components/tile";
-@use "@carbon/react/scss/components/combo-box";
-@use "@carbon/react/scss/components/modal";
-@use "@carbon/react/scss/components/date-picker";
-@use "@carbon/react/scss/components/dropdown";
-@use "@carbon/react/scss/components/ui-shell";
-@use "@carbon/react/scss/components/inline-loading";
-@use "@carbon/react/scss/components/multiselect";
-@use "@carbon/react/scss/components/number-input";
-@use "@carbon/react/scss/components/overflow-menu";
-@use "@carbon/react/scss/components/pagination";
-@use "@carbon/react/scss/components/text-input";
-@use "@carbon/react/scss/components/radio-button";
-@use "@carbon/react/scss/components/search";
-@use "@carbon/react/scss/components/select";
-@use "@carbon/react/scss/components/skeleton-styles";
-@use "@carbon/react/scss/components/stack";
-@use "@carbon/react/scss/components/tabs";
-@use "@carbon/react/scss/components/data-table";
-@use "@carbon/react/scss/components/data-table/action";
-@use "@carbon/react/scss/components/data-table/sort";
-@use "@carbon/react/scss/components/tag";
-@use "@carbon/react/scss/components/text-area";
-@use "@carbon/react/scss/components/toggle";
-@use "@carbon/react/scss/components/form";
-@use "@carbon/react/scss/components/list-box";
-@use "@carbon/react/scss/components/loading";
-@use "@carbon/react/scss/components/popover";
-@use "@carbon/react/scss/components/tooltip";
-@use "@carbon/react/scss/components/toggletip";
-@use "@carbon/react/scss/components/icon-indicator";
-@use "@carbon/react/scss/components/menu";
-
-@use "fonts";
 @use "tokens";
+@use "reset";
+@use "fonts";
 @use "base";
 @use "auth";
 @use "brand-loading";
@@ -76,7 +11,6 @@
 @use "dashboard";
 @use "table";
 @use "forms";
-@use "carbon-overrides";
 @use "attendance";
 @use "utilities";
 @use "print";

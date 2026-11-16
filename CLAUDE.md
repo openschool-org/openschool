@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 OpenSchool is a self-hosted school management system. It is a monorepo with two workspaces:
 
 - `backend/` - Go REST API (Gin framework)
-- `frontend/` - React SPA (Vite, TypeScript, Carbon Design System)
+- `frontend/` - React SPA (Vite, TypeScript, Ant Design)
 
 For anything beyond a quick fix, read further before making changes:
 
@@ -123,7 +123,7 @@ Authentication is handled by **ThunderID** (`@thunderid/react`). The provider is
 - No inline `style={{}}` except for runtime values, and no hex colours outside `_tokens.scss`. Layout and text use the `os-*` utility classes in `shared/styles/_utilities.scss`; state-driven looks use toggle classes such as `is-active`
 - Files stay under 250 lines (ESLint error). A page that grows past it moves logic into `features/<name>/hooks/` and markup into `components/`
 
-UI uses **IBM Carbon Design System** (`@carbon/react`, `@carbon/icons-react`). Data fetching uses **TanStack Query** (`@tanstack/react-query`). Styles are SCSS (`index.scss`).
+UI uses **Ant Design** (`antd`, `@ant-design/icons`); Carbon was removed and ESLint blocks `@carbon/*` imports. Data fetching uses **TanStack Query** (`@tanstack/react-query`). Styles are SCSS (`index.scss`).
 
 ## Data Model
 

@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { Card } from "antd";
 import type { AttendanceSession } from "@/features/attendance/api/attendance";
 import DataGrid from "@/shared/ui/DataGrid";
 import SessionCountCell from "@/features/attendance/components/SessionCountCell";
@@ -9,11 +10,7 @@ type Row = { session: AttendanceSession; className: string };
 
 export default function RecentSessions({ sessions }: { sessions: Row[] }) {
   return (
-    <div className="os-section">
-      <div className="os-section__header">
-        <h2 className="os-section__title">Recent sessions</h2>
-        <Link to="/t/attendance" className="os-text-xs os-c-accent os-no-underline">View all →</Link>
-      </div>
+    <Card className="os-dash-card is-flush" title="Recent sessions" extra={<Link to="/t/attendance">View all</Link>}>
       {sessions.length === 0 ? (
         <EmptyState title="No attendance sessions recorded yet" description="Sessions you take will appear here." />
       ) : (
@@ -30,6 +27,6 @@ export default function RecentSessions({ sessions }: { sessions: Row[] }) {
           ]}
         />
       )}
-    </div>
+    </Card>
   );
 }

@@ -1,58 +1,59 @@
-import { POSITION_RANK } from "@/shared/lib/constants/people";
 import { useQueries } from "@tanstack/react-query";
+import { ArrowRightOutlined, BankOutlined, BellOutlined, CalendarOutlined, CheckCircleOutlined, ClockCircleOutlined, FileDoneOutlined, ScheduleOutlined, TeamOutlined } from "@ant-design/icons";
+import { POSITION_RANK } from "@/shared/lib/constants/people";
 import { useMyClasses, useTeacherSubjects } from "@/features/teachers/queries/useTeachers";
 import { classSessionsOptions } from "@/features/attendance/queries/useAttendance";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useTerms } from "@/features/school/queries/useTerms";
-import { useMyPosition, useMyLeadershipOverview } from "@/features/positions/queries/usePositions";
+import { useMyPosition } from "@/features/positions/queries/usePositions";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
-import WelcomeBanner from "@/features/teachers/components/dashboard/WelcomeBanner";
+import EmptyState from "@/shared/ui/EmptyState";
+import DashboardHero from "@/shared/ui/DashboardHero";
+import LinkButton from "@/shared/ui/LinkButton";
+import StatCard from "@/features/reports/components/dashboard/StatCard";
+import RoleBadge from "@/features/teachers/components/dashboard/RoleBadge";
 import TodaysClasses from "@/features/teachers/components/dashboard/TodaysClasses";
 import RecentSessions from "@/features/teachers/components/dashboard/RecentSessions";
-import QuickActions from "@/features/teachers/components/dashboard/QuickActions";
-import StatCard from "@/features/reports/components/dashboard/StatCard";
 import LeadershipPanel from "@/features/teachers/components/dashboard/LeadershipPanel";
 import LeadershipOverviewPanel from "@/features/teachers/components/dashboard/LeadershipOverviewPanel";
 import TimetableReviewPanel from "@/features/teachers/components/dashboard/TimetableReviewPanel";
 import { todayISODate } from "@/shared/lib/date";
 import { classLabel } from "@/shared/lib/classLabel";
-import { Building, UserMultiple, CheckmarkOutline, Time } from "@carbon/icons-react";
+import { displayName } from "@/shared/lib/name";
+
+function greeting(): string {
+  const hour = new Date().getHours();
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+}
 
 export default function TeacherDashboard() {
   const { teacher: profile, classes: myClasses, isLoading: profileLoading, isError: profileError, refetch } = useMyClasses();
   const { data: qualified } = useTeacherSubjects(profile?.id ?? "");
   const { data: currentYear } = useCurrentAcademicYear();
   const { data: terms } = useTerms(currentYear?.id);
-  const { data: positionSummary } = useMyPosition();
-  const showLeadershipPanel = !!positionSummary && positionSummary.rank <= POSITION_RANK.sectionHead;
-  const { data: leadershipOverview } = useMyLeadershipOverview(showLeadershipPanel);
-  const isSectionHead = positionSummary?.rank === POSITION_RANK.sectionHead;
+  const { data: position } = useMyPosition();
+  const isLeader = !!position && position.rank <= POSITION_RANK.sectionHead;
+  const isSectionHead = position?.rank === POSITION_RANK.sectionHead;
 
-  const classIds = myClasses.map((c) => c.class_id);
-
-  const sessionQueries = useQueries({ queries: classIds.map(classSessionsOptions) });
-
-  const studentCountByClass = new Map(myClasses.map((c) => [c.class_id, c.studentCount]));
-  const totalStudents = [...studentCountByClass.values()].reduce((sum, n) => sum + n, 0);
+  const sessionQueries = useQueries({ queries: myClasses.map((c) => classSessionsOptions(c.class_id)) });
+  const sessionsLoading = sessionQueries.some((q) => q.isLoading);
+  const sessionsError = sessionQueries.some((q) => q.isError);
+  const retrySessions = () => sessionQueries.forEach((q) => q.isError && q.refetch());
 
   // From each class's own sessions: the date-wide list is leadership-only and is empty for most teachers.
   const today = todayISODate();
   const todaySessionByClass = new Map(
-    classIds.flatMap((id, i) => (sessionQueries[i]?.data ?? []).filter((s) => s.date === today).map((s) => [id, s] as const)),
+    myClasses.flatMap((c, i) => (sessionQueries[i]?.data ?? []).filter((s) => s.date === today).map((s) => [c.class_id, s] as const)),
   );
   const markedCount = todaySessionByClass.size;
   const pendingCount = Math.max(myClasses.length - markedCount, 0);
+  const totalStudents = myClasses.reduce((sum, c) => sum + c.studentCount, 0);
 
-  const recentSessions = classIds
-    .flatMap((id, i) => {
-      const cls = myClasses.find((c) => c.class_id === id);
-      return (sessionQueries[i]?.data ?? []).map((s) => ({ session: s, className: cls ? classLabel(cls.grade_name, cls.class_name) : "" }));
-    })
+  const recentSessions = myClasses
+    .flatMap((c, i) => (sessionQueries[i]?.data ?? []).map((s) => ({ session: s, className: classLabel(c.grade_name, c.class_name) })))
     .sort((a, b) => b.session.date.localeCompare(a.session.date))
     .slice(0, 6);
-
-  const currentTerm = terms?.find((t) => t.is_current);
 
   if (profileLoading) return <LoadingSpinner />;
   if (profileError || !profile) {
@@ -66,45 +67,75 @@ export default function TeacherDashboard() {
   // Subjects assigned in classes, else the teacher's qualifications until an admin assigns classes.
   const classSubjects = [...new Set(myClasses.flatMap((c) => c.subjects))];
   const subjectSummary = (classSubjects.length > 0 ? classSubjects : (qualified ?? []).map((q) => q.name)).join(", ") || "No subjects yet";
-  const rankLabel = positionSummary?.rank_label ?? "Teacher";
+  const currentTerm = terms?.find((t) => t.is_current);
+  const hasClasses = myClasses.length > 0;
+  const sessionCard = { loading: sessionsLoading, error: sessionsError };
+
+  const aside = (
+    <>
+      {isLeader && position && <LeadershipPanel summary={position} />}
+      {isSectionHead && currentYear && <TimetableReviewPanel academicYearId={currentYear.id} />}
+    </>
+  );
+
+  const classesColumn = hasClasses ? (
+    <div>
+      <TodaysClasses myClasses={myClasses} todaySessionByClass={todaySessionByClass} loading={sessionsLoading} error={sessionsError} onRetry={retrySessions} />
+      <RecentSessions sessions={recentSessions} />
+    </div>
+  ) : !isLeader ? (
+    <EmptyState title="No classes assigned yet" description="Ask the office to add you as a class or subject teacher." />
+  ) : null;
 
   return (
     <div className="os-page">
-      <WelcomeBanner
-        profile={profile}
-        subjectSummary={subjectSummary}
-        currentYearLabel={currentYear?.label}
-        currentTermName={currentTerm?.name}
-        pendingCount={pendingCount}
-        classCount={myClasses.length}
-        rankLabel={rankLabel}
+      <DashboardHero
+        title={`${greeting()}, ${profile.title ? `${profile.title} ` : ""}${displayName(profile)}`}
+        subtitle={`${subjectSummary} · ${profile.employee_number}`}
+        aside={
+          <>
+            <RoleBadge rankLabel={position?.rank_label ?? "Teacher"} />
+            {currentYear && (
+              <span className="os-dash-year">
+                <CalendarOutlined />Academic year <strong>{currentYear.label}</strong>{currentTerm ? ` · ${currentTerm.name}` : ""}
+              </span>
+            )}
+          </>
+        }
       />
 
-      <div className="os-stat-grid">
-        <StatCard label="My classes" value={myClasses.length} loading={false} Icon={Building} path="/t/classes" />
-        <StatCard label="Students" value={totalStudents} loading={false} Icon={UserMultiple} path="/t/classes" />
-        <StatCard label="Marked today" value={markedCount} loading={false} Icon={CheckmarkOutline} path="/t/attendance" />
-        <StatCard label="Not marked yet" value={pendingCount} loading={false} Icon={Time} path="/t/attendance" />
+      <div className="os-dash-actions" aria-label="Quick actions">
+        <LinkButton to="/t/attendance" size="large" type="primary" icon={<ScheduleOutlined />}>Take attendance</LinkButton>
+        <LinkButton to="/t/marks" size="large" icon={<FileDoneOutlined />}>Enter marks</LinkButton>
+        <LinkButton to="/t/notifications" size="large" icon={<BellOutlined />}>Send notification</LinkButton>
+        <LinkButton to="/t/timetable" size="large" type="link" icon={<ArrowRightOutlined />} iconPlacement="end" className="os-dash-actions__end">My timetable</LinkButton>
       </div>
 
-      <div className="os-grid os-grid-cols-2-1 os-gap-6 os-items-grid-start">
-        <div>
-          <TodaysClasses
-            myClasses={myClasses}
-            studentCountByClass={studentCountByClass}
-            todaySessionByClass={todaySessionByClass}
-            markedCount={markedCount}
-          />
-          <RecentSessions sessions={recentSessions} />
-        </div>
+      {isLeader && <LeadershipOverviewPanel />}
 
-        <div>
-          {showLeadershipPanel && leadershipOverview && <LeadershipOverviewPanel overview={leadershipOverview} />}
-          {showLeadershipPanel && positionSummary && <LeadershipPanel summary={positionSummary} />}
-          {isSectionHead && currentYear && <TimetableReviewPanel academicYearId={currentYear.id} />}
-          <QuickActions rankLabel={rankLabel} notifyWholeSchool={positionSummary?.notify_whole_school ?? false} />
+      {hasClasses && (
+        <>
+          {isLeader && <p className="os-dash-section-label">Your classes</p>}
+          <div className="os-stat-grid">
+            <StatCard label="My classes" value={myClasses.length} loading={false} Icon={BankOutlined} path="/t/classes" />
+            <StatCard label="Students" value={totalStudents} loading={false} Icon={TeamOutlined} path="/t/classes" />
+            <StatCard {...sessionCard} label="Marked today" value={markedCount} Icon={CheckCircleOutlined} path="/t/attendance" />
+            <StatCard {...sessionCard} label="Not marked yet" value={pendingCount} Icon={ClockCircleOutlined} path="/t/attendance" />
+          </div>
+        </>
+      )}
+
+      {hasClasses && isLeader ? (
+        <div className="os-dash-lower">
+          {classesColumn}
+          <div>{aside}</div>
         </div>
-      </div>
+      ) : (
+        <>
+          {classesColumn}
+          {isLeader && aside}
+        </>
+      )}
     </div>
   );
 }

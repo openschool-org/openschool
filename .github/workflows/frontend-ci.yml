@@ -50,12 +50,9 @@ jobs:
         run: pnpm build
 
       - name: Bundle size budget
-        # Informational only for now: trimming Carbon to per-component @use
-        # imports (shared/styles/index.scss) got CSS from ~874 KB to ~616
-        # KB, still over the 400 KB budget — ui-shell and data-table (both
-        # genuinely used everywhere) account for most of what's left.
-        # Drop --warn-only once/if that's trimmed further
-        # (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 5).
+        # Informational only for now. Removing Carbon took CSS from ~656 KB
+        # to ~122 KB, under the 400 KB budget; check the JS numbers before
+        # dropping --warn-only (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 5).
         run: node scripts/check-bundle-size.mjs --warn-only
 
       - name: Dependency audit

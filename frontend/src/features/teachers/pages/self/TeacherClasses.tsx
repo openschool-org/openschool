@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Link } from "react-router";
-import { Button } from "@carbon/react";
-import { Search, EventSchedule } from "@carbon/icons-react";
+import { Input } from "antd";
+import { ScheduleOutlined, SearchOutlined } from "@ant-design/icons";
+import LinkButton from "@/shared/ui/LinkButton";
 import { useMyClasses, useTeacherSubjects } from "@/features/teachers/queries/useTeachers";
 import { useStudentsByClass } from "@/features/students/queries/useStudents";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
@@ -82,18 +82,18 @@ export default function TeacherClasses() {
               <span className="os-text-xs os-c-tertiary">{roster?.length ?? 0} students</span>
             </div>
             <div className="os-toolbar">
-              <div className="os-search os-max-w-22">
-                <Search size={16} className="os-search__icon" />
-                <input
-                  className="os-search__input"
-                  placeholder="Search students…"
-                  value={query}
-                  onChange={e => setQuery(e.target.value)}
-                />
-              </div>
-              <Button as={Link} to="/t/attendance" renderIcon={EventSchedule} kind="primary" size="md" className="os-ml-auto">
-                Mark attendance
-              </Button>
+              <Input
+                className="os-max-w-22"
+                allowClear
+                prefix={<SearchOutlined />}
+                aria-label="Search students"
+                placeholder="Search students…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <LinkButton to="/t/attendance" type="primary" icon={<ScheduleOutlined />} className="os-ml-auto">
+                Take attendance
+              </LinkButton>
             </div>
             {rosterLoading ? (
               <LoadingSpinner />

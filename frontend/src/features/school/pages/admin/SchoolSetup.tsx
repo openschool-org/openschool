@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router";
-import { Button, InlineNotification } from "@carbon/react";
+import { Alert, Button } from "antd";
 import { useSchool } from "@/features/school/queries/useSchool";
 import SchoolStep from "@/features/school/components/setup/SchoolStep";
 import HousesStep from "@/features/school/components/setup/HousesStep";
@@ -95,7 +95,7 @@ export default function SchoolSetup() {
         </div>
         <CustomStepper currentIndex={step} steps={STEPS} />
 
-        {error && <InlineNotification kind="error" title="Could not continue" subtitle={error} hideCloseButton lowContrast className="os-school-setup-error" />}
+        {error && <Alert type="error" showIcon title="Could not continue" description={error} className="os-school-setup-error" />}
 
         <ErrorSummary errors={summaryErrors} />
 
@@ -128,10 +128,10 @@ export default function SchoolSetup() {
 
         {step < DONE_STEP && (
           <div className="os-school-setup-actions">
-            <Button kind="ghost" onClick={goBack} disabled={step === 0}>Back</Button>
+            <Button type="text" size="large" onClick={goBack} disabled={step === 0}>Back</Button>
             <div className="os-school-setup-actions__right">
-              {SKIPPABLE.has(step) && <Button kind="secondary" onClick={() => advance(true)}>Skip</Button>}
-              <Button kind="primary" onClick={() => advance(false)}>{step === ROOMS_STEP ? "Finish setup" : "Continue"}</Button>
+              {SKIPPABLE.has(step) && <Button size="large" onClick={() => advance(true)}>Skip</Button>}
+              <Button type="primary" size="large" onClick={() => advance(false)}>{step === ROOMS_STEP ? "Finish setup" : "Continue"}</Button>
             </div>
           </div>
         )}

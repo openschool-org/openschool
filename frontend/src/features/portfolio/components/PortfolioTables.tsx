@@ -1,8 +1,8 @@
-import { Tag } from "@carbon/react";
+import { Tag } from "antd";
 import type { PrefectAppointment, StudentActivity, LeadershipRole, StudentAward, DisciplinaryRecord } from "@/features/portfolio/api/studentPortfolio";
 import type { SocietyMembership } from "@/features/portfolio/api/society";
 import DataGrid from "@/shared/ui/DataGrid";
-import { SEVERITY_TAG } from "@/shared/lib/constants/tags";
+import { SEVERITY_COLOR } from "@/shared/lib/constants/tags";
 import { capitalize } from "@/shared/lib/text";
 import { formatISODate } from "@/shared/lib/date";
 import { useT } from "@/shared/i18n/useT";
@@ -73,7 +73,7 @@ export function DisciplineTable({ rows }: { rows: DisciplinaryRecord[] }) {
     <DataGrid {...grid} rows={rows} getRowId={(d) => d.id} columns={[
       { key: "date", header: t("table.date"), render: (d) => <span className="os-table__mono">{formatISODate(d.incident_date)}</span> },
       { key: "incident", header: t("table.incident"), render: (d) => <span className="os-fw-500">{d.description}</span> },
-      { key: "severity", header: t("table.severity"), render: (d) => <Tag type={SEVERITY_TAG[d.severity] ?? "gray"} size="sm">{translateValue(t, "severity", d.severity, t("severity.minor"))}</Tag> },
+      { key: "severity", header: t("table.severity"), render: (d) => <Tag color={SEVERITY_COLOR[d.severity]} variant="filled">{translateValue(t, "severity", d.severity, t("severity.minor"))}</Tag> },
       { key: "action", header: t("table.actionTaken"), render: (d) => d.action_taken || "-" },
     ]} />
   );

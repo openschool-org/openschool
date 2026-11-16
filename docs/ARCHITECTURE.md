@@ -30,7 +30,7 @@ flowchart TB
         direction TB
 
         subgraph FRONTEND["Frontend Application"]
-            REACT["React 19 + TypeScript<br/>Vite + Carbon Design System"]
+            REACT["React 19 + TypeScript<br/>Vite + Ant Design"]
             ROUTES["Role-Based Portal Routing<br/>Admin · Teacher · Student · Parent"]
             QUERY["TanStack Query<br/>Server State Management"]
             API_CLIENT["Typed API Services<br/>Axios Client"]
@@ -297,8 +297,8 @@ agent. There is no separate alerting channel - see
 
 ## 3. Frontend architecture
 
-Vite + TypeScript + React 19, using IBM's
-[Carbon Design System](https://carbondesignsystem.com/) for components and
+Vite + TypeScript + React 19, using
+[Ant Design](https://ant.design/) for components and
 [TanStack Query](https://tanstack.com/query) for server-state management.
 
 - **`src/app/main.tsx`** - composition root: `ThunderIDProvider` →
@@ -322,7 +322,7 @@ Vite + TypeScript + React 19, using IBM's
 - **`src/app/routes/`** - one lazy route module per portal; `App.tsx`
   picks the module for the JWT role.
 - **Layer rules** (enforced in `eslint.config.js`): `api/` imports no
-  React, Carbon or TanStack; only `api/` and `shared/api` use axios; a
+  React, antd or TanStack; only `api/` and `shared/api` use axios; a
   feature may import another feature's `queries`, `keys` and `components`
   and its `api` types, never its `pages` or `api` values; `shared/` never
   imports features.

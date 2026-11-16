@@ -8,7 +8,7 @@ The frontend uses:
 
 - React and TypeScript
 - Vite for development and production builds
-- IBM Carbon Design System for UI components
+- Ant Design (`antd`, `@ant-design/icons`) for UI components
 - TanStack Query for server state and data fetching
 - React Router for navigation
 - Axios for API requests
@@ -78,7 +78,7 @@ When changing frontend behavior:
 1. Keep API calls in the service and query layers.
 2. Use the backend module contract when adding or changing API requests.
 3. Keep reusable UI in `src/components/` instead of duplicating it in pages.
-4. Use Carbon components and existing project styles for consistent UI.
+4. Use antd components, the shared `shared/ui` wrappers and existing project styles for consistent UI.
 5. Keep role-specific behavior inside the appropriate route or layout.
 6. Handle loading, empty, error, and success states for data-driven pages.
 7. Run `pnpm lint` and `pnpm build` before opening a pull request.

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Navigate } from "react-router";
 import { SignInButton } from "@thunderid/react";
-import { Button, TextInput, PasswordInput, InlineLoading } from "@carbon/react";
-import { CheckmarkFilled, Information, UserMultiple } from "@carbon/icons-react";
+import { Button } from "antd";
+import { CheckCircleFilled, LockOutlined, TeamOutlined } from "@ant-design/icons";
+import TextField from "@/shared/ui/TextField";
+import PasswordField from "@/shared/ui/PasswordField";
 import { useSetupStatus, useRegisterAdmin } from "@/features/school/queries/useSetup";
 import { EMAIL_RE } from "@/shared/lib/validation";
 import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "@/shared/lib/phone";
@@ -49,11 +51,12 @@ export default function FirstRunSetup() {
   // very first admin account could be created with a blank password.
   const canSubmit = pw.valid && Object.values(errors).every((e) => !e);
 
-  const input = (field: Field, labelText: string, extra: Record<string, unknown> = {}) => ({
+  const input = (field: Field, label: string, extra: Record<string, unknown> = {}) => ({
     id: `setup-${field}`,
-    labelText,
+    label,
+    size: "large" as const,
     value: form[field],
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [field]: e.target.value })),
+    onChange: (value: string) => setForm((f) => ({ ...f, [field]: value })),
     onBlur: () => setTouched((t) => ({ ...t, [field]: true })),
     invalid: !!touched[field] && !!errors[field],
     invalidText: errors[field],
@@ -80,12 +83,12 @@ export default function FirstRunSetup() {
     return (
       <div className="os-setup-wrapper">
         <div className="os-setup-card os-setup-card--success">
-          <div className="os-setup-success-icon"><CheckmarkFilled size={28} /></div>
+          <div className="os-setup-success-icon"><CheckCircleFilled /></div>
           <h1 className="os-setup-card__title">Admin account created</h1>
           <p className="os-setup-card__subtitle">
             Sign in with the credentials you just set, then head to <strong>Settings</strong> to register your school's details.
           </p>
-          <Button href="/signin" className="os-full-width-btn">Go to sign in</Button>
+          <Button type="primary" size="large" href="/signin" className="os-full-width-btn">Go to sign in</Button>
         </div>
       </div>
     );
@@ -115,33 +118,33 @@ export default function FirstRunSetup() {
           <form className="os-setup-form" ref={summaryRef} onChange={recheck} onSubmit={(event) => { event.preventDefault(); submit(); }} noValidate>
             <div className="os-setup-form__section">
               <div className="os-setup-form__section-heading">
-                <span className="os-setup-form__section-icon"><UserMultiple size={20} /></span>
+                <span className="os-setup-form__section-icon"><TeamOutlined /></span>
                 <div><h2>Personal details</h2><p>Tell us who will manage this OpenSchool instance.</p></div>
               </div>
               <div className="os-setup-name-grid">
-                <TextInput {...input("givenName", "First name", { autoComplete: "given-name" })} />
-                <TextInput {...input("familyName", "Last name", { autoComplete: "family-name" })} />
-                <TextInput {...input("email", "Email", { type: "email", autoComplete: "email", helperText: "Used for account recovery." })} />
-                <TextInput {...input("username", "Username", { autoComplete: "username", helperText: "Your sign-in name." })} />
-                <TextInput {...input("phone", "Phone number (optional)", { type: "tel", autoComplete: "tel", helperText: "Sri Lankan number, for example 0771234567." })} />
+                <TextField {...input("givenName", "First name", { autoComplete: "given-name" })} />
+                <TextField {...input("familyName", "Last name", { autoComplete: "family-name" })} />
+                <TextField {...input("email", "Email", { type: "email", autoComplete: "email", helperText: "Used for account recovery." })} />
+                <TextField {...input("username", "Username", { autoComplete: "username", helperText: "Your sign-in name." })} />
+                <TextField {...input("phone", "Phone number (optional)", { type: "tel", autoComplete: "tel", helperText: "Sri Lankan number, for example 0771234567." })} />
               </div>
             </div>
 
             <div className="os-setup-form__section">
               <div className="os-setup-form__section-heading">
-                <span className="os-setup-form__section-icon"><Information size={20} /></span>
+                <span className="os-setup-form__section-icon"><LockOutlined /></span>
                 <div><h2>Secure your account</h2><p>Choose a strong password that only you know.</p></div>
               </div>
               <div className="os-setup-security-grid">
-                <PasswordInput {...input("password", "Password", { autoComplete: "new-password" })} />
-                <PasswordInput {...input("confirmPassword", "Confirm password", { autoComplete: "new-password" })} />
+                <PasswordField {...input("password", "Password", { autoComplete: "new-password" })} />
+                <PasswordField {...input("confirmPassword", "Confirm password", { autoComplete: "new-password" })} />
               </div>
               <PasswordRequirements password={form.password} confirm={form.confirmPassword} />
             </div>
 
             <div className="os-setup-form__footer">
-              <Button type="submit" disabled={registerAdmin.isPending} className="os-full-width-btn">
-                {registerAdmin.isPending ? <InlineLoading description="Creating admin account…" /> : "Create admin account"}
+              <Button type="primary" size="large" htmlType="submit" loading={registerAdmin.isPending} className="os-full-width-btn">
+                {registerAdmin.isPending ? "Creating admin account…" : "Create admin account"}
               </Button>
               <div className="os-setup-signin-link">
                 Already set up an admin account?{" "}

@@ -4,7 +4,7 @@ export default function StepShell({
   subtitle,
   children,
 }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: React.ComponentType<{ className?: string }>;
   title: string;
   subtitle: string;
   children: React.ReactNode;
@@ -14,7 +14,7 @@ export default function StepShell({
       <div className="os-wizard-step-header">
         <div className="os-w-2h os-h-2h os-rounded-full os-bg-accent-light os-flex os-items-center os-justify-center os-shrink-0"
         >
-          <Icon size={20} className="os-fill-accent" />
+          <Icon className="os-c-accent os-text-lg" />
         </div>
         <div>
           <h2 className="os-m-0 os-text-lg os-fw-600 os-c-primary">{title}</h2>
