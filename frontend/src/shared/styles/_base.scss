@@ -1,7 +1,9 @@
 @use "tokens" as *;
 
 // Global Base
-* {
+// The app font is set on html, after _reset.scss: the reset gives almost every element
+// `font: inherit`, which beats a `*` selector, so the font must come from the root and inherit down.
+html {
   font-family: 'IBM Plex Sans', system-ui, sans-serif;
 }
 
