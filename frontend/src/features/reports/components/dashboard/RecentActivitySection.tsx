@@ -13,15 +13,15 @@ export type RecentActivityItem = {
 
 export default function RecentActivitySection({ items, loading }: { items: RecentActivityItem[]; loading: boolean }) {
   return (
-    <Card className="os-dash-card is-flush" title="Recent activity" extra={<Link to="/students">View all</Link>}>
+    <Card className="os-dash-card is-flush" title="Recent activity" extra={<Link to="/settings?tab=audit">View all in audit log</Link>}>
       {loading ? (
         <div className="os-dash-empty"><Skeleton title={false} paragraph={{ rows: 4 }} /></div>
       ) : items.length === 0 ? (
         <Empty
           className="os-dash-empty"
-          description="Nothing here yet. Enrol students and add teachers to see recent activity."
+          description="Nothing here yet. Add students and teachers to see recent activity."
         >
-          <Link to="/students/new">Enrol a student</Link>
+          <Link to="/students/new">Add a student</Link>
         </Empty>
       ) : (
         items.map((item) => (

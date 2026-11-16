@@ -17,7 +17,7 @@ const NEXT_STEPS = [
   },
   {
     title: "Students & teachers",
-    body: "Enrol students and add teachers - each gets their own sign-in and profile automatically.",
+    body: "Add students and teachers - each gets their own sign-in and profile automatically.",
     path: "/students",
     icon: TeamOutlined,
   },

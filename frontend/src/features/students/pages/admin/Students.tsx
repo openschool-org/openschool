@@ -126,7 +126,7 @@ export default function Students() {
             Import students
           </LinkButton>
           <LinkButton to="/students/new" type="primary" icon={<PlusOutlined />}>
-            Enrol student
+            Add student
           </LinkButton>
         </div>
       </div>
@@ -218,7 +218,7 @@ export default function Students() {
           errorMessage="Failed to load students"
           onRetry={refetch}
           skeleton={<TableSkeleton headers={columns.map((c) => c.header)} />}
-          empty={{ title: "No students found", description: "Enrol your first student or adjust your search filters to get started." }}
+          empty={{ title: "No students found", description: "Add your first student or adjust your search filters to get started." }}
         >
           <DataGrid
             rows={students}

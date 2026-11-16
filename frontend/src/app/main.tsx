@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router";
 import { ThunderIDProvider } from "@thunderid/react";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { ConfigProvider } from "antd";
+import { App as AntApp, ConfigProvider } from "antd";
 import "@/shared/styles/index.scss";
 import App from "@/app/App";
 import { queryClient } from "@/app/queryClient";
@@ -33,11 +33,14 @@ createRoot(document.getElementById("root")!).render(
       >
         <QueryClientProvider client={queryClient}>
           <ConfigProvider theme={antdTheme}>
-            <ToastProvider>
-              <I18nProvider>
-                <RouterProvider router={router} />
-              </I18nProvider>
-            </ToastProvider>
+            {/* antd App gives message, notification and Modal.confirm (via App.useApp) the theme and locale. */}
+            <I18nProvider>
+              <AntApp component={false}>
+                <ToastProvider>
+                  <RouterProvider router={router} />
+                </ToastProvider>
+              </AntApp>
+            </I18nProvider>
           </ConfigProvider>
         </QueryClientProvider>
       </ThunderIDProvider>

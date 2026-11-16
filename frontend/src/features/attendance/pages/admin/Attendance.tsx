@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { Button, Tag } from "antd";
 import { CheckCircleFilled, ExclamationCircleFilled, PlusCircleOutlined } from "@ant-design/icons";
 import LinkButton from "@/shared/ui/LinkButton";
@@ -22,8 +23,13 @@ const HEADERS = ["Class", "Grade", "Teacher", "Records", "Status", "Actions"];
 
 export default function Attendance() {
   const [date, setDate] = useState(todayISODate());
-  const { data: sessions, isLoading, isError, refetch } = useDailySessions(date);
-  const { data: classes } = useCurrentClasses();
+  const { data: allSessions, isLoading, isError, refetch } = useDailySessions(date);
+  const { data: allClasses } = useCurrentClasses();
+  // ?grade=<name> (from the dashboard's attendance by grade) narrows the page to one grade.
+  const [params, setParams] = useSearchParams();
+  const grade = params.get("grade");
+  const sessions = grade ? allSessions?.filter((s) => s.grade_name === grade) : allSessions;
+  const classes = grade ? allClasses?.filter((c) => c.grade_name === grade) : allClasses;
   const deleteSession = useDeleteSession();
   const createSession = useCreateSession();
   const { role } = useRole();
@@ -112,6 +118,12 @@ export default function Attendance() {
       </div>
 
       <AgentFindingsBanner />
+
+      {grade && (
+        <div className="os-mb-4">
+          <Tag color="processing" closable onClose={(e) => { e.preventDefault(); setParams({}, { replace: true }); }}>Grade: {grade}</Tag>
+        </div>
+      )}
 
       {!isToday && (
         <div className="os-mb-4">

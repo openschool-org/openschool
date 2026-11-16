@@ -22,7 +22,20 @@
   // Bigger icon buttons: 40px targets with 20px icons.
   &__actions .ant-btn { width: 2.5rem; height: 2.5rem; .anticon { font-size: 1.25rem; } }
   &__avatar.ant-avatar { color: $os-accent-dark; background: var(--os-accent-light); }
+  // User button: avatar plus name and role, so a shared computer shows who is signed in.
+  &__actions .ant-btn.os-topbar__user { width: auto; padding: 0 0.5rem 0 0.25rem; border-radius: 999px; gap: 0.5rem; }
+  &__user-text { display: flex; flex-direction: column; align-items: flex-start; max-width: 11rem; line-height: 1.2; text-align: left; }
+  &__user-name { overflow: hidden; max-width: 100%; color: $os-text-primary; font-size: 0.875rem; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+  &__user-role { color: $os-text-tertiary; font-size: 0.75rem; }
+  @media (max-width: 42rem) { &__user-text { display: none; } }
 }
+
+// "Signed in as" header row at the top of the user menu.
+.ant-dropdown-menu-item.os-topbar__who { cursor: default; }
+.os-topbar__who-body { display: flex; flex-direction: column; gap: 0.125rem; padding: 0.25rem 0; }
+.os-topbar__who-hint { color: $os-text-tertiary; font-size: 0.75rem; }
+.os-topbar__who-name { color: $os-text-primary; font-weight: 500; }
+.os-topbar__who-role { color: $os-text-secondary; font-size: 0.8125rem; }
 
 // App-shell placeholder (shared/ui/SkeletonShell.tsx): same bar as the real top bar.
 .os-skeleton-header {
@@ -124,6 +137,8 @@
       transform: translateX(-100%);
     }
 
+    &.is-rail { width: $os-rail-w; overflow-x: hidden; }
+
     scrollbar-width: thin;
     scrollbar-color: $os-border-strong transparent;
   }
@@ -139,6 +154,8 @@
     &.is-expanded {
       margin-left: 0;
     }
+
+    &.is-rail { margin-left: $os-rail-w; }
   }
 }
 
@@ -271,14 +288,17 @@
 .os-bell__list { max-height: 24rem; overflow-y: auto; }
 .os-bell__day { margin: 0; padding: 0.75rem 1rem 0.25rem; color: var(--os-text-tertiary); font-size: 0.75rem; font-weight: 500; }
 .os-bell__item {
-  display: block; width: 100%; padding: 0.75rem 1rem; font: inherit; text-align: left; cursor: default;
+  display: block; width: 100%; padding: 0.75rem 1rem; font: inherit; text-align: left;
   background: transparent; border: 0; border-bottom: 1px solid $os-border-subtle;
-  &.is-unread { cursor: pointer; background: var(--os-canvas); }
+  cursor: pointer;
+  &:hover { background: var(--os-layer-hover); }
+  &.is-unread { background: var(--os-canvas); }
   &:focus-visible { outline: 2px solid $os-accent; outline-offset: -2px; }
   &-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
   &-title { flex: 1; color: var(--os-text-primary); font-size: 0.875rem; font-weight: 500; }
   &-msg { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--os-text-secondary); font-size: 0.875rem; }
   &-meta { display: block; margin-top: 0.25rem; color: var(--os-text-tertiary); font-size: 0.75rem; }
+  &.is-expanded &-msg { display: block; -webkit-line-clamp: unset; overflow: visible; white-space: pre-line; }
 }
 .os-bell__all { display: block; padding: 0.75rem; color: var(--os-accent-dark); font-size: 0.875rem; font-weight: 500; text-align: center; text-decoration: none; border-top: 1px solid $os-border-subtle; }
 

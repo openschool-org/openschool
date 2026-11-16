@@ -10,6 +10,8 @@ import type { NavGroup } from "@/layouts/nav/types";
 interface Props {
   groups: NavGroup[];
   activePath?: string;
+  // Icon-only rail: section pages open in a flyout and labels show as tooltips.
+  collapsed?: boolean;
   "aria-label": string;
 }
 
@@ -35,7 +37,7 @@ function store(keys: string[]) {
 
 // Sidebar for every portal, following antd's inline menu pattern: one-page groups are plain links,
 // larger groups are collapsible sections with an icon; pages inside a section have no icon.
-export default function SidebarNav({ groups, activePath, "aria-label": ariaLabel }: Props) {
+export default function SidebarNav({ groups, activePath, collapsed = false, "aria-label": ariaLabel }: Props) {
   const queryClient = useQueryClient();
 
   const activeGroup = useMemo(
@@ -73,7 +75,11 @@ export default function SidebarNav({ groups, activePath, "aria-label": ariaLabel
 
   return (
     <nav aria-label={ariaLabel} className="os-sidenav">
-      <Menu mode="inline" items={items} selectedKeys={activePath ? [activePath] : []} openKeys={openKeys} onOpenChange={onOpenChange} />
+      {collapsed ? (
+        <Menu mode="inline" inlineCollapsed items={items} selectedKeys={activePath ? [activePath] : []} />
+      ) : (
+        <Menu mode="inline" items={items} selectedKeys={activePath ? [activePath] : []} openKeys={openKeys} onOpenChange={onOpenChange} />
+      )}
     </nav>
   );
 }

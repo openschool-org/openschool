@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { CloseOutlined, SearchOutlined } from "@ant-design/icons";
 import { Button, Checkbox, Drawer, Input, Tag } from "antd";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
@@ -21,6 +22,23 @@ export default function GuardiansDirectory() {
   const debouncedSearch = useDebounced(search, 300);
   const [orphansOnly, setOrphansOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Global search links here with ?q=<name>&open=<id>: the name filters the list so the
+  // person is on the page, and their drawer opens straight away.
+  const [params, setParams] = useSearchParams();
+  const openParam = params.get("open");
+  const [seenOpen, setSeenOpen] = useState<string | null>(null);
+  if (openParam !== seenOpen) {
+    setSeenOpen(openParam);
+    if (openParam) {
+      setSelectedId(openParam);
+      setSearch(params.get("q") ?? "");
+    }
+  }
+  // Closing clears the link, so picking the same person from search again reopens them.
+  const closeDetail = () => {
+    setSelectedId(null);
+    if (openParam) setParams({}, { replace: true });
+  };
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = usePersistedPageSize("guardians");
   const isSearching = search.trim().length > 0;
@@ -129,8 +147,8 @@ export default function GuardiansDirectory() {
         </ListState>
       </div>
 
-      <Drawer open={!!selected} onClose={() => setSelectedId(null)} size={640} title="Guardian" className="os-detail-drawer" destroyOnHidden>
-        {selected && <GuardianDetail key={selected.id} guardian={selected} onDeleted={() => setSelectedId(null)} />}
+      <Drawer open={!!selected} onClose={closeDetail} size={640} title="Guardian" className="os-detail-drawer" destroyOnHidden>
+        {selected && <GuardianDetail key={selected.id} guardian={selected} onDeleted={closeDetail} />}
       </Drawer>
     </div>
   );

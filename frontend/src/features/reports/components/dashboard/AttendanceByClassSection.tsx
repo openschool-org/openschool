@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { Card, Empty, Modal, Progress, Skeleton, Tag } from "antd";
+import { Button, Card, Empty, Modal, Progress, Skeleton, Tag } from "antd";
 import { RightOutlined } from "@ant-design/icons";
 import type { ClassWithDetails } from "@/features/academics/api/class";
 import type { DailySession } from "@/features/attendance/api/attendance";
@@ -60,20 +60,19 @@ export default function AttendanceByClassSection({
       ) : (
         <ul className="os-dash-rows">
           {grades.map((grade) => {
+            // A class with no session yet is still waiting, so it counts as not marked.
             const marked = grade.classes.filter((cls) => sessionByClassId.get(cls.id)?.marked_count).length;
-            const pending = grade.classes.filter((cls) => {
-              const session = sessionByClassId.get(cls.id);
-              return !!session && session.marked_count === 0;
-            }).length;
+            const pending = grade.classes.length - marked;
             return (
-              <li key={grade.name}>
-                <button type="button" className="os-dash-row" onClick={() => setSelectedGradeName(grade.name)} aria-label={`View attendance for ${grade.name}`}>
+              <li key={grade.name} className="os-dash-row-wrap">
+                <Link to={`/attendance?${new URLSearchParams({ grade: grade.name })}`} className="os-dash-row" aria-label={`Open attendance for ${grade.name}`}>
                   <span className="os-dash-row__name">{grade.name}</span>
                   <span className="os-dash-row__muted">{grade.classes.length} class{grade.classes.length === 1 ? "" : "es"}</span>
                   <Progress size={{ height: 6 }} showInfo={false} percent={Math.round((marked / grade.classes.length) * 100)} aria-label={`${grade.name} classes marked`} />
-                  <span className="os-dash-row__counts"><strong>{marked}</strong> marked · <strong>{pending}</strong> pending</span>
+                  <span className="os-dash-row__counts"><strong>{marked}</strong> marked · <strong>{pending}</strong> not marked</span>
                   <RightOutlined className="os-dash-row__chev" />
-                </button>
+                </Link>
+                <Button type="link" size="small" className="os-dash-row__peek" onClick={() => setSelectedGradeName(grade.name)}>Quick view</Button>
               </li>
             );
           })}

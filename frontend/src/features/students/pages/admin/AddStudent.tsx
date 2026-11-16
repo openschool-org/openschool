@@ -1,6 +1,7 @@
 import { Alert, Button, Card, Col, Form, Input, Radio, Row, Typography } from "antd";
 import { ArrowLeftOutlined, InfoCircleOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import { useBlocker, useNavigate } from "react-router";
 import { useCreateStudent } from "@/features/students/queries/useStudents";
 import { getErrorMessage } from "@/shared/api/errors";
 import { EMAIL_RE } from "@/shared/lib/validation";
@@ -8,6 +9,9 @@ import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "@/shared/lib/phone";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
 import LinkButton from "@/shared/ui/LinkButton";
 import PersonNameItems from "@/shared/ui/PersonNameItems";
+import UnsavedChangesModal from "@/shared/ui/UnsavedChangesModal";
+import { useUnsavedChangesGuard } from "@/shared/hooks/useUnsavedChangesGuard";
+import { useToast } from "@/shared/ui/toast/useToast";
 
 interface Values {
   full_name: string;
@@ -31,10 +35,22 @@ const phoneRule = {
 const clean = (value?: string) => value?.trim() || undefined;
 
 export default function AddStudent() {
-  usePageTitle("Enrol student");
+  usePageTitle("Add student");
   const navigate = useNavigate();
   const createStudent = useCreateStudent();
+  const { showToast } = useToast();
   const [form] = Form.useForm<Values>();
+  const errorRef = useRef<HTMLDivElement>(null);
+  // Typing anything arms the leave warning; a successful save disarms it before navigating away.
+  const [dirty, setDirty] = useState(false);
+  const saved = useRef(false);
+  useUnsavedChangesGuard(dirty);
+  const blocker = useBlocker(() => dirty && !saved.current);
+
+  // The error shows above the form while the user is at Save, so bring it into view.
+  useEffect(() => {
+    if (createStudent.isError) errorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [createStudent.isError, createStudent.error]);
 
   const handleFinish = (v: Values) =>
     createStudent.mutate(
@@ -50,14 +66,21 @@ export default function AddStudent() {
         special_remarks: clean(v.special_remarks),
         gender: v.gender,
       },
-      { onSuccess: () => navigate("/students") },
+      {
+        onSuccess: (student) => {
+          saved.current = true;
+          showToast({ kind: "success", title: "Student added", subtitle: `${student.full_name} can now sign in with their index number.` });
+          // Land on the new record with the next steps (guardian, class, subjects).
+          navigate(`/students/${student.id}`, { state: { justAdded: true } });
+        },
+      },
     );
 
   return (
     <div className="os-page">
       <div className="os-page__header">
         <div className="os-page__header-left">
-          <h1 className="os-page__title">Enrol new student</h1>
+          <h1 className="os-page__title">Add student</h1>
           <p className="os-page__subtitle">Create a student account and profile</p>
         </div>
         <LinkButton to="/students" type="text" icon={<ArrowLeftOutlined />}>Back</LinkButton>
@@ -68,10 +91,20 @@ export default function AddStudent() {
         <span><Typography.Text strong>Initial password:</Typography.Text> the student's index number. They'll be asked to change it on first sign-in.</span>
       </Typography.Paragraph>
       {createStudent.isError && (
-        <Alert type="error" showIcon className="os-mb-6" title="Error" description={getErrorMessage(createStudent.error, "Failed to enrol student")} />
+        <div ref={errorRef}>
+          <Alert type="error" showIcon className="os-mb-6" title="Could not add student" description={getErrorMessage(createStudent.error, "Please check the details and try again.")} />
+        </div>
       )}
 
-      <Form form={form} layout="vertical" requiredMark={false} validateTrigger="onBlur" onFinish={handleFinish}>
+      <Form
+        form={form}
+        layout="vertical"
+        requiredMark={false}
+        validateTrigger="onBlur"
+        scrollToFirstError={{ behavior: "smooth", block: "center", focus: true }}
+        onValuesChange={() => setDirty(true)}
+        onFinish={handleFinish}
+      >
         <Row gutter={24} className="os-form-columns">
           <Col xs={24} lg={12}>
           <Card className="os-form-card" title="Account">
@@ -136,10 +169,11 @@ export default function AddStudent() {
         </Row>
 
         <div className="os-form-actions">
-          <Button size="large" type="primary" htmlType="submit" loading={createStudent.isPending}>Save and enrol</Button>
+          <Button size="large" type="primary" htmlType="submit" loading={createStudent.isPending}>Add student</Button>
           <LinkButton to="/students" size="large">Cancel</LinkButton>
         </div>
       </Form>
+      <UnsavedChangesModal open={blocker.state === "blocked"} onStay={() => blocker.reset?.()} onLeave={() => blocker.proceed?.()} />
     </div>
   );
 }

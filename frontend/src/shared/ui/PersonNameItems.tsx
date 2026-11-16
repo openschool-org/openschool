@@ -24,7 +24,7 @@ export default function PersonNameItems({ form }: { form: FormInstance }) {
         <Form.Item
           name="full_name"
           label="Full name"
-          extra="As on the birth certificate or NIC, e.g. Hettiwatta Arachchige Hasitha Erandika Wickramasinghe."
+          extra="As on the birth certificate or NIC, e.g. Mudiyanselage Kasun Nuwan Perera."
           rules={[{ required: true, whitespace: true, message: "Full name is required." }]}
         >
           <Input size="large" onChange={onFullNameChange} />

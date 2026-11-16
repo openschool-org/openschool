@@ -36,7 +36,7 @@ export default function StudentsTab({
       title="Enrolled students"
       meta={
         <Button type="text" size="small" icon={<PlusOutlined />} onClick={onOpenEnrol}>
-          Enrol
+          Enrol in class
         </Button>
       }
     >
@@ -80,7 +80,7 @@ export default function StudentsTab({
           description="Enrol a student from this school into the class."
           action={
             <Button type="primary" icon={<PlusOutlined />} onClick={onOpenEnrol}>
-              Enrol student
+              Enrol in class
             </Button>
           }
         />

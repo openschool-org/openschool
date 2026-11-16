@@ -14,6 +14,7 @@ $os-accent-soft:   #E3EDFF; // active menu item: a light, clean blue tint
 $os-accent-border: #B3CDF9;
 $os-brand-orange:  $os-accent;
 $os-sidebar-w:     16rem;
+$os-rail-w:        5rem; // collapsed sidebar: icons only (antd Menu collapsedWidth is 80px)
 $os-header-h:      3.5rem;
 
 $os-canvas:        #F6F7F9; // cool light neutral page background

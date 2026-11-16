@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { Tabs } from "antd";
 import GeneralSettingsTab from "@/features/school/components/GeneralSettingsTab";
 import ActivationTab from "@/features/activation/components/ActivationTab";
@@ -21,8 +21,12 @@ const TABS = [
 ];
 
 // Only the open tab is mounted, so each tab's queries run when it is opened.
+// The tab lives in ?tab= so other pages can link straight to one (e.g. the audit log).
 export default function SettingsPage() {
-  const [tab, setTab] = useState("general");
+  const [params, setParams] = useSearchParams();
+  const requested = params.get("tab");
+  const tab = TABS.some((t) => t.key === requested) ? requested! : "general";
+  const setTab = (key: string) => setParams({ tab: key }, { replace: true });
   return (
     <div className="os-page">
       <div className="os-page__header">
