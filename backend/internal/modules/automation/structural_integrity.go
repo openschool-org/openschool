@@ -92,11 +92,10 @@ func (a *StructuralIntegrityAgent) checkGenderSchoolType(ctx context.Context) ch
 	}
 	summary := fmt.Sprintf("%d student(s) with gender inconsistent with the school's single-sex type: %s", len(students), strings.Join(names, ", "))
 
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Student gender / school-type mismatches",
-		summary, "general", SeverityElevated); err != nil {
-		return checkOutcome{findings: len(students), label: fmt.Sprintf("%d gender/school-type mismatch(es)", len(students)), err: fmt.Errorf("found %d issue(s) but failed to notify admins: %w", len(students), err)}
-	}
-	return checkOutcome{findings: len(students), label: fmt.Sprintf("%d gender/school-type mismatch(es)", len(students))}
+	return reportFinding(ctx, a.checks, a.notifSvc, finding{
+		count: len(students), noun: "issue(s)", label: fmt.Sprintf("%d gender/school-type mismatch(es)", len(students)),
+		title: "Student gender / school-type mismatches", summary: summary, category: "general", severity: SeverityElevated,
+	})
 }
 
 // checkEmptyGrades flags grades with zero classes in the current academic year.
@@ -115,11 +114,10 @@ func (a *StructuralIntegrityAgent) checkEmptyGrades(ctx context.Context) checkOu
 	}
 	summary := fmt.Sprintf("%d grade(s) with no classes this year: %s", len(grades), strings.Join(names, ", "))
 
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Grades with no current-year classes",
-		summary, "general", SeverityLow); err != nil {
-		return checkOutcome{findings: len(grades), label: fmt.Sprintf("%d empty grade(s)", len(grades)), err: fmt.Errorf("found %d grade(s) but failed to notify admins: %w", len(grades), err)}
-	}
-	return checkOutcome{findings: len(grades), label: fmt.Sprintf("%d empty grade(s)", len(grades))}
+	return reportFinding(ctx, a.checks, a.notifSvc, finding{
+		count: len(grades), noun: "grade(s)", label: fmt.Sprintf("%d empty grade(s)", len(grades)),
+		title: "Grades with no current-year classes", summary: summary, category: "general", severity: SeverityLow,
+	})
 }
 
 // checkEmptyStreams flags A/L streams with zero classes in the current academic year.
@@ -138,11 +136,10 @@ func (a *StructuralIntegrityAgent) checkEmptyStreams(ctx context.Context) checkO
 	}
 	summary := fmt.Sprintf("%d stream(s) with no classes this year: %s", len(streams), strings.Join(names, ", "))
 
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Streams with no current-year classes",
-		summary, "general", SeverityLow); err != nil {
-		return checkOutcome{findings: len(streams), label: fmt.Sprintf("%d empty stream(s)", len(streams)), err: fmt.Errorf("found %d stream(s) but failed to notify admins: %w", len(streams), err)}
-	}
-	return checkOutcome{findings: len(streams), label: fmt.Sprintf("%d empty stream(s)", len(streams))}
+	return reportFinding(ctx, a.checks, a.notifSvc, finding{
+		count: len(streams), noun: "stream(s)", label: fmt.Sprintf("%d empty stream(s)", len(streams)),
+		title: "Streams with no current-year classes", summary: summary, category: "general", severity: SeverityLow,
+	})
 }
 
 // checkUnclassedStudents flags active students with no class in the current academic year, escalating severity as the count grows.
@@ -166,11 +163,10 @@ func (a *StructuralIntegrityAgent) checkUnclassedStudents(ctx context.Context) c
 		severity = SeverityElevated
 	}
 
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Students with no current-year class",
-		summary, "general", severity); err != nil {
-		return checkOutcome{findings: len(students), label: fmt.Sprintf("%d unclassed student(s)", len(students)), err: fmt.Errorf("found %d student(s) but failed to notify admins: %w", len(students), err)}
-	}
-	return checkOutcome{findings: len(students), label: fmt.Sprintf("%d unclassed student(s)", len(students))}
+	return reportFinding(ctx, a.checks, a.notifSvc, finding{
+		count: len(students), noun: "student(s)", label: fmt.Sprintf("%d unclassed student(s)", len(students)),
+		title: "Students with no current-year class", summary: summary, category: "general", severity: severity,
+	})
 }
 
 // Title is the agent's name on the Automation panel.

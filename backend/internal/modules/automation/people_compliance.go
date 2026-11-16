@@ -70,11 +70,10 @@ func (a *PeopleComplianceAgent) checkEmploymentConsistency(ctx context.Context) 
 	}
 	summary := fmt.Sprintf("%d teacher(s) still assigned despite employment status: %s", len(teachers), strings.Join(names, ", "))
 
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Inactive teachers still assigned to classes",
-		summary, "general", SeverityElevated); err != nil {
-		return checkOutcome{findings: len(teachers), label: fmt.Sprintf("%d inactive teacher(s) still assigned", len(teachers)), err: fmt.Errorf("found %d teacher(s) but failed to notify admins: %w", len(teachers), err)}
-	}
-	return checkOutcome{findings: len(teachers), label: fmt.Sprintf("%d inactive teacher(s) still assigned", len(teachers))}
+	return reportFinding(ctx, a.checks, a.notifSvc, finding{
+		count: len(teachers), noun: "teacher(s)", label: fmt.Sprintf("%d inactive teacher(s) still assigned", len(teachers)),
+		title: "Inactive teachers still assigned to classes", summary: summary, category: "general", severity: SeverityElevated,
+	})
 }
 
 // checkZeroGuardians flags active students with zero guardians on file.
@@ -93,11 +92,10 @@ func (a *PeopleComplianceAgent) checkZeroGuardians(ctx context.Context) checkOut
 	}
 	summary := fmt.Sprintf("%d active student(s) with no guardian on file: %s", len(students), strings.Join(names, ", "))
 
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Students with no guardian on file",
-		summary, "general", SeverityElevated); err != nil {
-		return checkOutcome{findings: len(students), label: fmt.Sprintf("%d student(s) with no guardian", len(students)), err: fmt.Errorf("found %d student(s) but failed to notify admins: %w", len(students), err)}
-	}
-	return checkOutcome{findings: len(students), label: fmt.Sprintf("%d student(s) with no guardian", len(students))}
+	return reportFinding(ctx, a.checks, a.notifSvc, finding{
+		count: len(students), noun: "student(s)", label: fmt.Sprintf("%d student(s) with no guardian", len(students)),
+		title: "Students with no guardian on file", summary: summary, category: "general", severity: SeverityElevated,
+	})
 }
 
 // checkOnboarding flags accounts of the given role stuck on first-login setup, escalating severity as account age grows.

@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Alert, Button } from "antd";
 import { PlusOutlined, TrophyOutlined } from "@ant-design/icons";
 import SelectField from "@/shared/ui/SelectField";
-import { useCurrentAcademicYear, useAcademicYears } from "@/features/school/queries/useAcademicYears";
+import { useArchiveYear } from "@/features/portfolio/hooks/useArchiveYear";
 import { usePrefects, useRemovePrefect, usePrefectYears } from "@/features/portfolio/queries/usePrefects";
 import AppointPrefectModal from "@/features/portfolio/components/AppointPrefectModal";
 import { PREFECT_RANKS } from "@/features/portfolio/constants";
@@ -17,24 +17,14 @@ import SectionCard from "@/shared/ui/SectionCard";
 import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
 
 export default function Prefects() {
-  const { data: currentYear, isLoading: yearLoading } = useCurrentAcademicYear();
-  const { data: allYears } = useAcademicYears();
   const { data: pastYears } = usePrefectYears();
-  const [selectedYearId, setSelectedYearId] = useState<string | null>(null);
-  const viewingYearId = selectedYearId ?? currentYear?.id ?? "";
-  const isArchive = !!currentYear && viewingYearId !== currentYear.id;
+  const { currentYear, yearLoading, viewingYearId, viewingLabel, isArchive, yearOptions, selectYear } = useArchiveYear(pastYears);
 
   const { data: prefects, isLoading: prefectsLoading, isError, refetch } = usePrefects(viewingYearId);
   const removePrefect = useRemovePrefect();
   const [assignOpen, setAssignOpen] = useState(false);
   const [toRemove, setToRemove] = useState<Prefect | null>(null);
   const loading = yearLoading || prefectsLoading;
-
-  // Years with a board on record, plus the current year even when empty.
-  const yearById = new Map((allYears ?? []).map((y) => [y.id, y]));
-  const yearIds = new Set((pastYears ?? []).map((y) => y.id));
-  if (currentYear) yearIds.add(currentYear.id);
-  const selectableYears = [...yearIds].map((id) => yearById.get(id)).filter((y) => !!y).sort((a, b) => (b.start_date ?? "").localeCompare(a.start_date ?? ""));
 
   return (
     <div className="os-page">
@@ -43,7 +33,7 @@ export default function Prefects() {
           <h1 className="os-page__title">School prefects</h1>
           <p className="os-page__subtitle">
             {isArchive
-              ? `Read only. Past board for ${yearById.get(viewingYearId)?.label ?? "this year"}.`
+              ? `Read only. Past board for ${viewingLabel ?? "this year"}.`
               : `Prefects and house captains for ${currentYear?.label ?? "the current year"}.`}
           </p>
         </div>
@@ -54,8 +44,8 @@ export default function Prefects() {
             hideLabel
             className="os-min-w-12"
             value={viewingYearId}
-            onChange={(v) => setSelectedYearId(v || null)}
-            options={selectableYears.map((y) => ({ value: y.id, label: y.id === currentYear?.id ? `${y.label} (current)` : y.label }))}
+            onChange={selectYear}
+            options={yearOptions}
           />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setAssignOpen(true)} disabled={!currentYear || isArchive}>Appoint prefect</Button>
         </div>

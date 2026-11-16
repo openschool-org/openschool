@@ -22,38 +22,32 @@ function hasSequentialPattern(value: string): boolean {
   return false;
 }
 
+// Checked in order; the first failing rule supplies the message under the field.
+const RULES: { fails: (password: string, long: boolean) => boolean; message: string }[] = [
+  { fails: (p, long) => p.length > 0 && !long, message: `Must be at least ${PASSWORD_MIN_LENGTH} characters.` },
+  { fails: (p, long) => long && COMMON_PASSWORDS.has(p.toLowerCase()), message: "That password is too common. Choose something less guessable." },
+  { fails: (p, long) => long && hasSequentialPattern(p), message: "Avoid predictable sequences such as 1234 or abcd." },
+  { fails: (p) => !!p && !/[A-Z]/.test(p), message: "Add at least one uppercase letter." },
+  { fails: (p) => !!p && !/[a-z]/.test(p), message: "Add at least one lowercase letter." },
+  { fails: (p) => !!p && !/\d/.test(p), message: "Add at least one number." },
+  { fails: (p) => !!p && !/[^A-Za-z0-9]/.test(p), message: "Add at least one special character." },
+];
+
 // One place for the password policy shown in every password form.
 export function validateNewPassword(password: string, confirm: string) {
-  const tooShort = password.length > 0 && password.length < PASSWORD_MIN_LENGTH;
-  const hasSequence = password.length >= PASSWORD_MIN_LENGTH && hasSequentialPattern(password);
-  const tooCommon = password.length >= PASSWORD_MIN_LENGTH && COMMON_PASSWORDS.has(password.toLowerCase());
+  const long = password.length >= PASSWORD_MIN_LENGTH;
   const criteria = {
-    minLength: password.length >= PASSWORD_MIN_LENGTH,
+    minLength: long,
     uppercase: /[A-Z]/.test(password),
     lowercase: /[a-z]/.test(password),
     number: /\d/.test(password),
     special: /[^A-Za-z0-9]/.test(password),
-      notCommon: password.length >= PASSWORD_MIN_LENGTH && !tooCommon && !hasSequence,
+    notCommon: long && !COMMON_PASSWORDS.has(password.toLowerCase()) && !hasSequentialPattern(password),
   };
-  const mismatch = confirm.length > 0 && confirm !== password;
   return {
     criteria,
     valid: Object.values(criteria).every(Boolean) && confirm === password,
-    passwordError: tooShort
-      ? `Must be at least ${PASSWORD_MIN_LENGTH} characters.`
-      : tooCommon
-        ? "That password is too common. Choose something less guessable."
-        : hasSequence
-          ? "Avoid predictable sequences such as 1234 or abcd."
-        : password && !criteria.uppercase
-          ? "Add at least one uppercase letter."
-          : password && !criteria.lowercase
-            ? "Add at least one lowercase letter."
-            : password && !criteria.number
-              ? "Add at least one number."
-              : password && !criteria.special
-                ? "Add at least one special character."
-        : undefined,
-    confirmError: mismatch ? "Passwords do not match." : undefined,
+    passwordError: RULES.find((rule) => rule.fails(password, long))?.message,
+    confirmError: confirm.length > 0 && confirm !== password ? "Passwords do not match." : undefined,
   };
 }

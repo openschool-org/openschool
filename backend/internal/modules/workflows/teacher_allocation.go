@@ -53,15 +53,7 @@ func (TeacherAllocation) Inputs(ctx context.Context, s *Store) ([]InputField, er
 		{Key: "max_periods", Label: "Most periods a teacher takes each week", Type: "text", Required: true, Default: defaultMaxPeriods},
 		{Key: "form_teachers", Label: "Suggest form teachers for classes without one", Type: "boolean", Default: "true"},
 	}
-	if cur := currentYear(years); cur != nil {
-		fields[0].Default = cur.ID.String()
-		for _, y := range years {
-			if !y.Current && y.Start.After(cur.Start) {
-				fields[1].Default = y.ID.String()
-				break
-			}
-		}
-	}
+	fields[0].Default, fields[1].Default = yearDefaults(years)
 	return fields, nil
 }
 
@@ -169,69 +161,12 @@ func (w TeacherAllocation) Propose(ctx context.Context, s *Store, in Inputs, tra
 		return Proposal{}, "", err
 	}
 
-	teacherName := map[uuid.UUID]string{}
-	active := map[uuid.UUID]bool{}
-	allOptions := make([]Option, len(teachers))
-	for i, t := range teachers {
-		teacherName[t.ID] = t.Name
-		active[t.ID] = true
-		allOptions[i] = Option{Value: t.ID.String(), Label: t.Name}
-	}
-	sourceByID := map[uuid.UUID]YearClass{}
-	for _, c := range sourceClasses {
-		sourceByID[c.ID] = c
-	}
 	grades, err := s.grades(ctx)
 	if err != nil {
 		return Proposal{}, "", err
 	}
-	prevGrade := previousGrades(grades)
-	// Fall back to the same section letter in the grade below when no students are placed yet.
-	previousOf := func(c YearClass) (YearClass, bool) {
-		if id, ok := predecessors[c.ID]; ok {
-			sc, found := sourceByID[id]
-			return sc, found
-		}
-		for _, sc := range sourceClasses {
-			if sc.GradeID == prevGrade[c.GradeID] && sectionOf(sc.Name) == sectionOf(c.Name) {
-				return sc, true
-			}
-		}
-		return YearClass{}, false
-	}
-	type pair struct{ class, subject uuid.UUID }
-	current, previous := map[pair]uuid.UUID{}, map[pair]uuid.UUID{}
-	for _, a := range existing {
-		current[pair{a.ClassID, a.SubjectID}] = a.TeacherID
-	}
-	for _, a := range lastYear {
-		previous[pair{a.ClassID, a.SubjectID}] = a.TeacherID
-	}
-	hoursByGrade := map[uuid.UUID][]SubjectHours{}
-	for _, h := range hours {
-		hoursByGrade[h.GradeID] = append(hoursByGrade[h.GradeID], h)
-	}
-	sort.SliceStable(classes, func(i, j int) bool {
-		if classes[i].GradeOrder != classes[j].GradeOrder {
-			return classes[i].GradeOrder < classes[j].GradeOrder
-		}
-		return naturalLess(classes[i].Name, classes[j].Name)
-	})
-
-	var needs []AllocNeed
-	for _, c := range classes {
-		prev, hasPrev := previousOf(c)
-		for _, h := range hoursByGrade[c.GradeID] {
-			n := AllocNeed{ClassID: c.ID, ClassName: c.Name, GradeID: c.GradeID, GradeOrder: c.GradeOrder, SubjectID: h.SubjectID, SubjectName: h.SubjectName, Periods: h.Periods}
-			if t, ok := current[pair{c.ID, h.SubjectID}]; ok && active[t] {
-				n.Existing = t
-			}
-			if hasPrev {
-				n.Continuity, n.PreviousClass = previous[pair{prev.ID, h.SubjectID}], prev.Name
-			}
-			needs = append(needs, n)
-		}
-	}
+	plan := newAllocationPlan(classes, sourceClasses, teachers, predecessors, previousGrades(grades))
+	needs := plan.needs(hours, existing, lastYear)
 	var results map[int]AllocResult
 	var load map[uuid.UUID]int
 	_ = trace.Run(stepByKey(w, "allocate"), func() (string, error) {
@@ -245,92 +180,11 @@ func (w TeacherAllocation) Propose(ctx context.Context, s *Store, in Inputs, tra
 		return fmt.Sprintf("%d of %d class subjects filled", filled, len(needs)), nil
 	})
 
-	rows := make([]Row, len(needs))
-	unfilled := 0
-	classCount := map[uuid.UUID]map[uuid.UUID]bool{}
-	periodsInClass := map[uuid.UUID]map[uuid.UUID]int{}
-	for i, n := range needs {
-		r := results[i]
-		var options []Option
-		for _, t := range teachers {
-			if t.Subjects[n.SubjectID] {
-				options = append(options, Option{Value: t.ID.String(), Label: t.Name})
-			}
-		}
-		if len(options) == 0 {
-			options = allOptions
-		}
-		value := ""
-		if r.TeacherID != uuid.Nil {
-			value = r.TeacherID.String()
-			if classCount[r.TeacherID] == nil {
-				classCount[r.TeacherID] = map[uuid.UUID]bool{}
-			}
-			classCount[r.TeacherID][n.ClassID] = true
-			if periodsInClass[n.ClassID] == nil {
-				periodsInClass[n.ClassID] = map[uuid.UUID]int{}
-			}
-			periodsInClass[n.ClassID][r.TeacherID] += n.Periods
-		} else {
-			unfilled++
-		}
-		rows[i] = Row{ID: n.ClassID.String() + ":" + n.SubjectID.String(), Group: n.ClassName, Reason: r.Reason, Warning: r.Warning,
-			Options: map[string][]Option{"teacher": options},
-			Cells:   map[string]string{"class": n.ClassName, "subject": n.SubjectName, "periods": strconv.Itoa(n.Periods), "teacher": value, "class_id": n.ClassID.String(), "subject_id": n.SubjectID.String()}}
-	}
-
-	var loadRows []Row
-	for _, t := range teachers {
-		if load[t.ID] == 0 {
-			continue
-		}
-		row := Row{ID: t.ID.String(), Cells: map[string]string{"teacher": t.Name, "periods": strconv.Itoa(load[t.ID]), "classes": strconv.Itoa(len(classCount[t.ID]))}}
-		if load[t.ID] > limit {
-			row.Warning = "Over the limit because of assignments already made."
-		}
-		loadRows = append(loadRows, row)
-	}
-	sort.SliceStable(loadRows, func(i, j int) bool {
-		a, _ := strconv.Atoi(loadRows[i].Cells["periods"])
-		b, _ := strconv.Atoi(loadRows[j].Cells["periods"])
-		return a > b
-	})
-
+	rows, unfilled := plan.allocationRows(needs, results)
+	loadRows := plan.loadRows(load, limit)
 	var formRows []Row
 	if in["form_teachers"] == "true" {
-		taken := map[uuid.UUID]bool{}
-		for _, c := range classes {
-			if c.FormTeacherID != nil {
-				taken[*c.FormTeacherID] = true
-			}
-		}
-		for _, c := range classes {
-			if c.FormTeacherID != nil {
-				continue
-			}
-			var pick uuid.UUID
-			reason := "No teacher is free to suggest; pick one by hand."
-			if prev, ok := previousOf(c); ok && prev.FormTeacherID != nil && active[*prev.FormTeacherID] && !taken[*prev.FormTeacherID] {
-				pick, reason = *prev.FormTeacherID, "Form teacher of "+prev.Name+" last year."
-			} else {
-				best := 0
-				for t, p := range periodsInClass[c.ID] {
-					if !taken[t] && (p > best || (p == best && pick != uuid.Nil && t.String() < pick.String())) {
-						pick, best = t, p
-					}
-				}
-				if pick != uuid.Nil {
-					reason = fmt.Sprintf("Teaches this class the most (%d periods a week).", best)
-				}
-			}
-			value := ""
-			if pick != uuid.Nil {
-				taken[pick] = true
-				value = pick.String()
-			}
-			formRows = append(formRows, Row{ID: c.ID.String(), Group: c.GradeName, Reason: reason,
-				Cells: map[string]string{"class": c.Name, "teacher": value, "set": strconv.FormatBool(pick != uuid.Nil)}})
-		}
+		formRows = plan.formTeacherRows()
 	}
 
 	p := Proposal{
@@ -350,7 +204,7 @@ func (w TeacherAllocation) Propose(ctx context.Context, s *Store, in Inputs, tra
 				{Key: "teacher", Label: "Teacher", Type: "text"}, {Key: "periods", Label: "Periods a week", Type: "number"}, {Key: "classes", Label: "Classes", Type: "number"},
 			}, Rows: loadRows},
 			{Key: "form_teachers", Title: "Form teachers", Description: "Classes without a form teacher. Untick to leave a class without one.", Columns: []Column{
-				{Key: "class", Label: "Class", Type: "text"}, {Key: "teacher", Label: "Form teacher", Type: "select", Editable: true, Options: allOptions},
+				{Key: "class", Label: "Class", Type: "text"}, {Key: "teacher", Label: "Form teacher", Type: "select", Editable: true, Options: plan.allOptions},
 				{Key: "set", Label: "Set", Type: "boolean", Editable: true},
 			}, Rows: formRows},
 		},
@@ -359,6 +213,192 @@ func (w TeacherAllocation) Propose(ctx context.Context, s *Store, in Inputs, tra
 		p.Warnings = append(p.Warnings, fmt.Sprintf("%s have no teacher. The timetable will show them as gaps until you pick one.", plural(unfilled, "class subject", "class subjects")))
 	}
 	return p, "teacher_allocation:" + target.String(), nil
+}
+
+type classSubject struct{ class, subject uuid.UUID }
+
+// allocationPlan holds what the allocation proposal reads, plus the per-class results it builds up.
+type allocationPlan struct {
+	classes, sourceClasses []YearClass
+	sourceByID             map[uuid.UUID]YearClass
+	teachers               []TeacherInfo
+	active                 map[uuid.UUID]bool
+	allOptions             []Option
+	predecessors           map[uuid.UUID]uuid.UUID
+	prevGrade              map[uuid.UUID]uuid.UUID
+
+	classCount     map[uuid.UUID]map[uuid.UUID]bool // teacher -> classes taught
+	periodsInClass map[uuid.UUID]map[uuid.UUID]int  // class -> teacher -> periods
+}
+
+func newAllocationPlan(classes, sourceClasses []YearClass, teachers []TeacherInfo, predecessors, prevGrade map[uuid.UUID]uuid.UUID) *allocationPlan {
+	p := &allocationPlan{classes: classes, sourceClasses: sourceClasses, teachers: teachers, predecessors: predecessors, prevGrade: prevGrade,
+		sourceByID: map[uuid.UUID]YearClass{}, active: map[uuid.UUID]bool{}, allOptions: make([]Option, len(teachers)),
+		classCount: map[uuid.UUID]map[uuid.UUID]bool{}, periodsInClass: map[uuid.UUID]map[uuid.UUID]int{}}
+	for i, t := range teachers {
+		p.active[t.ID] = true
+		p.allOptions[i] = Option{Value: t.ID.String(), Label: t.Name}
+	}
+	for _, c := range sourceClasses {
+		p.sourceByID[c.ID] = c
+	}
+	sort.SliceStable(p.classes, func(i, j int) bool {
+		if p.classes[i].GradeOrder != p.classes[j].GradeOrder {
+			return p.classes[i].GradeOrder < p.classes[j].GradeOrder
+		}
+		return naturalLess(p.classes[i].Name, p.classes[j].Name)
+	})
+	return p
+}
+
+// previousOf finds last year's class; it falls back to the same section letter in the grade below when no students are placed yet.
+func (p *allocationPlan) previousOf(c YearClass) (YearClass, bool) {
+	if id, ok := p.predecessors[c.ID]; ok {
+		sc, found := p.sourceByID[id]
+		return sc, found
+	}
+	for _, sc := range p.sourceClasses {
+		if sc.GradeID == p.prevGrade[c.GradeID] && sectionOf(sc.Name) == sectionOf(c.Name) {
+			return sc, true
+		}
+	}
+	return YearClass{}, false
+}
+
+func (p *allocationPlan) needs(hours []SubjectHours, existing, lastYear []SubjectTeacher) []AllocNeed {
+	current, previous := map[classSubject]uuid.UUID{}, map[classSubject]uuid.UUID{}
+	for _, a := range existing {
+		current[classSubject{a.ClassID, a.SubjectID}] = a.TeacherID
+	}
+	for _, a := range lastYear {
+		previous[classSubject{a.ClassID, a.SubjectID}] = a.TeacherID
+	}
+	hoursByGrade := map[uuid.UUID][]SubjectHours{}
+	for _, h := range hours {
+		hoursByGrade[h.GradeID] = append(hoursByGrade[h.GradeID], h)
+	}
+	var needs []AllocNeed
+	for _, c := range p.classes {
+		prev, hasPrev := p.previousOf(c)
+		for _, h := range hoursByGrade[c.GradeID] {
+			n := AllocNeed{ClassID: c.ID, ClassName: c.Name, GradeID: c.GradeID, GradeOrder: c.GradeOrder, SubjectID: h.SubjectID, SubjectName: h.SubjectName, Periods: h.Periods}
+			if t, ok := current[classSubject{c.ID, h.SubjectID}]; ok && p.active[t] {
+				n.Existing = t
+			}
+			if hasPrev {
+				n.Continuity, n.PreviousClass = previous[classSubject{prev.ID, h.SubjectID}], prev.Name
+			}
+			needs = append(needs, n)
+		}
+	}
+	return needs
+}
+
+// subjectOptions lists teachers qualified for the subject, or every teacher when none is.
+func (p *allocationPlan) subjectOptions(subject uuid.UUID) []Option {
+	var options []Option
+	for _, t := range p.teachers {
+		if t.Subjects[subject] {
+			options = append(options, Option{Value: t.ID.String(), Label: t.Name})
+		}
+	}
+	if len(options) == 0 {
+		return p.allOptions
+	}
+	return options
+}
+
+func (p *allocationPlan) record(teacher, class uuid.UUID, periods int) {
+	if p.classCount[teacher] == nil {
+		p.classCount[teacher] = map[uuid.UUID]bool{}
+	}
+	p.classCount[teacher][class] = true
+	if p.periodsInClass[class] == nil {
+		p.periodsInClass[class] = map[uuid.UUID]int{}
+	}
+	p.periodsInClass[class][teacher] += periods
+}
+
+func (p *allocationPlan) allocationRows(needs []AllocNeed, results map[int]AllocResult) ([]Row, int) {
+	rows := make([]Row, len(needs))
+	unfilled := 0
+	for i, n := range needs {
+		r := results[i]
+		value := ""
+		if r.TeacherID != uuid.Nil {
+			value = r.TeacherID.String()
+			p.record(r.TeacherID, n.ClassID, n.Periods)
+		} else {
+			unfilled++
+		}
+		rows[i] = Row{ID: n.ClassID.String() + ":" + n.SubjectID.String(), Group: n.ClassName, Reason: r.Reason, Warning: r.Warning,
+			Options: map[string][]Option{"teacher": p.subjectOptions(n.SubjectID)},
+			Cells:   map[string]string{"class": n.ClassName, "subject": n.SubjectName, "periods": strconv.Itoa(n.Periods), "teacher": value, "class_id": n.ClassID.String(), "subject_id": n.SubjectID.String()}}
+	}
+	return rows, unfilled
+}
+
+func (p *allocationPlan) loadRows(load map[uuid.UUID]int, limit int) []Row {
+	var rows []Row
+	for _, t := range p.teachers {
+		if load[t.ID] == 0 {
+			continue
+		}
+		row := Row{ID: t.ID.String(), Cells: map[string]string{"teacher": t.Name, "periods": strconv.Itoa(load[t.ID]), "classes": strconv.Itoa(len(p.classCount[t.ID]))}}
+		if load[t.ID] > limit {
+			row.Warning = "Over the limit because of assignments already made."
+		}
+		rows = append(rows, row)
+	}
+	sort.SliceStable(rows, func(i, j int) bool {
+		a, _ := strconv.Atoi(rows[i].Cells["periods"])
+		b, _ := strconv.Atoi(rows[j].Cells["periods"])
+		return a > b
+	})
+	return rows
+}
+
+// formTeacherRows suggests a form teacher for each class without one.
+func (p *allocationPlan) formTeacherRows() []Row {
+	taken := map[uuid.UUID]bool{}
+	for _, c := range p.classes {
+		if c.FormTeacherID != nil {
+			taken[*c.FormTeacherID] = true
+		}
+	}
+	var rows []Row
+	for _, c := range p.classes {
+		if c.FormTeacherID != nil {
+			continue
+		}
+		pick, reason := p.suggestFormTeacher(c, taken)
+		value := ""
+		if pick != uuid.Nil {
+			taken[pick] = true
+			value = pick.String()
+		}
+		rows = append(rows, Row{ID: c.ID.String(), Group: c.GradeName, Reason: reason,
+			Cells: map[string]string{"class": c.Name, "teacher": value, "set": strconv.FormatBool(pick != uuid.Nil)}})
+	}
+	return rows
+}
+
+// suggestFormTeacher keeps last year's form teacher when free, else picks the free teacher with the most periods in the class.
+func (p *allocationPlan) suggestFormTeacher(c YearClass, taken map[uuid.UUID]bool) (uuid.UUID, string) {
+	if prev, ok := p.previousOf(c); ok && prev.FormTeacherID != nil && p.active[*prev.FormTeacherID] && !taken[*prev.FormTeacherID] {
+		return *prev.FormTeacherID, "Form teacher of " + prev.Name + " last year."
+	}
+	var pick uuid.UUID
+	best := 0
+	for t, n := range p.periodsInClass[c.ID] {
+		if !taken[t] && (n > best || (n == best && pick != uuid.Nil && t.String() < pick.String())) {
+			pick, best = t, n
+		}
+	}
+	if pick == uuid.Nil {
+		return pick, "No teacher is free to suggest; pick one by hand."
+	}
+	return pick, fmt.Sprintf("Teaches this class the most (%d periods a week).", best)
 }
 
 type allocationSnapshot struct {

@@ -257,47 +257,60 @@ func (Timetable) planBlocks(ctx context.Context, s *Store, year uuid.UUID, class
 			if err != nil {
 				return nil, nil, err
 			}
-			var cls []SectionClass
-			for _, id := range ids {
-				if c, ok := className[id]; ok && c.GradeID == l.GradeID {
-					cls = append(cls, c)
-				}
+			row, note, ok := blockRow(l, g, classesInGrade(ids, className, l.GradeID), periods, len(levels) > 1)
+			if note != "" {
+				notes = append(notes, note)
 			}
-			if len(cls) == 0 {
-				continue
+			if ok {
+				rows = append(rows, row)
 			}
-			sort.Slice(cls, func(i, j int) bool { return naturalLess(cls[i].ClassName, cls[j].ClassName) })
-			most := 0
-			var subjectIDs, subjectNames, classIDs, classNames []string
-			for _, o := range g.Subjects {
-				sid, _ := parseID(o.Value)
-				if p := periods[[2]uuid.UUID{l.GradeID, sid}]; p > 0 {
-					subjectIDs = append(subjectIDs, o.Value)
-					subjectNames = append(subjectNames, o.Label)
-					if p > most {
-						most = p
-					}
-				}
-			}
-			if most == 0 {
-				notes = append(notes, fmt.Sprintf("%s %s: none of its subjects has subject hours, so no block was planned.", l.GradeName, g.Label))
-				continue
-			}
-			for _, c := range cls {
-				classIDs = append(classIDs, c.ClassID.String())
-				classNames = append(classNames, c.ClassName)
-			}
-			name := g.Label
-			if len(levels) > 1 && !strings.Contains(strings.ToLower(g.Label), strings.ToLower(l.Label)) {
-				name = l.Label + " " + g.Label
-			}
-			rows = append(rows, Row{ID: "block:" + l.GradeID.String() + ":" + g.ID.String(), Group: l.GradeName,
-				Reason: fmt.Sprintf("Students in these classes chose from %s; the block takes the most hours of its subjects.", g.Label),
-				Cells: map[string]string{"grade": l.GradeName, "name": name, "subjects": strings.Join(subjectNames, ", "), "classes": strings.Join(classNames, ", "),
-					"periods": strconv.Itoa(most), "create": "true", "grade_id": l.GradeID.String(), "subject_ids": strings.Join(subjectIDs, ","), "class_ids": strings.Join(classIDs, ",")}})
 		}
 	}
 	return rows, notes, nil
+}
+
+// classesInGrade keeps the group's classes that are in scope and in this grade, in natural name order.
+func classesInGrade(ids []uuid.UUID, inScope map[uuid.UUID]SectionClass, grade uuid.UUID) []SectionClass {
+	var cls []SectionClass
+	for _, id := range ids {
+		if c, ok := inScope[id]; ok && c.GradeID == grade {
+			cls = append(cls, c)
+		}
+	}
+	sort.Slice(cls, func(i, j int) bool { return naturalLess(cls[i].ClassName, cls[j].ClassName) })
+	return cls
+}
+
+// blockRow plans one option block for a one-pick group; it runs for the most hours any of its subjects needs.
+func blockRow(l LevelInfo, g ChoiceGroup, cls []SectionClass, periods map[[2]uuid.UUID]int, multiLevel bool) (Row, string, bool) {
+	if len(cls) == 0 {
+		return Row{}, "", false
+	}
+	most := 0
+	var subjectIDs, subjectNames, classIDs, classNames []string
+	for _, o := range g.Subjects {
+		sid, _ := parseID(o.Value)
+		if p := periods[[2]uuid.UUID{l.GradeID, sid}]; p > 0 {
+			subjectIDs = append(subjectIDs, o.Value)
+			subjectNames = append(subjectNames, o.Label)
+			most = max(most, p)
+		}
+	}
+	if most == 0 {
+		return Row{}, fmt.Sprintf("%s %s: none of its subjects has subject hours, so no block was planned.", l.GradeName, g.Label), false
+	}
+	for _, c := range cls {
+		classIDs = append(classIDs, c.ClassID.String())
+		classNames = append(classNames, c.ClassName)
+	}
+	name := g.Label
+	if multiLevel && !strings.Contains(strings.ToLower(g.Label), strings.ToLower(l.Label)) {
+		name = l.Label + " " + g.Label
+	}
+	return Row{ID: "block:" + l.GradeID.String() + ":" + g.ID.String(), Group: l.GradeName,
+		Reason: fmt.Sprintf("Students in these classes chose from %s; the block takes the most hours of its subjects.", g.Label),
+		Cells: map[string]string{"grade": l.GradeName, "name": name, "subjects": strings.Join(subjectNames, ", "), "classes": strings.Join(classNames, ", "),
+			"periods": strconv.Itoa(most), "create": "true", "grade_id": l.GradeID.String(), "subject_ids": strings.Join(subjectIDs, ","), "class_ids": strings.Join(classIDs, ",")}}, "", true
 }
 
 // build saves the ticked blocks (replacing the grades' old ones) and generates every chosen section.

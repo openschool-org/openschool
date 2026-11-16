@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Button, Tag, Tooltip } from "antd";
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
+import { Tag } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import LinkButton from "@/shared/ui/LinkButton";
 import SelectField from "@/shared/ui/SelectField";
 import { useTeachers, useDeleteTeacher } from "@/features/teachers/queries/useTeachers";
@@ -19,6 +19,7 @@ import { useListFilters } from "@/shared/hooks/useListFilters";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
 import { formatDateOnly } from "@/shared/lib/date";
 import { displayName } from "@/shared/lib/name";
+import RowActions from "@/shared/ui/RowActions";
 
 const STATUS_TAG: Record<string, string> = { active: "success", resigned: "error", transferred: "magenta" };
 const FILTER_LABELS: Record<string, string> = { query: "Search", status: "Status" };
@@ -67,14 +68,12 @@ export default function Teachers() {
       header: "Actions",
       align: "end",
       render: (t) => (
-        <div className="os-grid__actions">
-          <Tooltip title="Edit profile">
-            <Button type="text" size="small" aria-label="Edit profile" icon={<EditOutlined />} onClick={() => navigate(`/teachers/${t.id}`, { state: { edit: true } })} />
-          </Tooltip>
-          <Tooltip title="Delete teacher">
-            <Button type="text" size="small" danger aria-label="Delete teacher" icon={<DeleteOutlined />} onClick={() => { deleteTeacher.reset(); setToDelete(t); }} />
-          </Tooltip>
-        </div>
+        <RowActions
+          editLabel="Edit profile"
+          deleteLabel="Delete teacher"
+          onEdit={() => navigate(`/teachers/${t.id}`, { state: { edit: true } })}
+          onDelete={() => { deleteTeacher.reset(); setToDelete(t); }}
+        />
       ),
     },
   ];

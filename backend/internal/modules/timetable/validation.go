@@ -87,49 +87,17 @@ func (s *validationService) validate(ctx context.Context, timetableID uuid.UUID)
 			continue
 		}
 		if entry.TeacherID != nil {
-			teacherID := *entry.TeacherID
-			for _, booking := range crossBookings {
-				if booking.TeacherID != nil && *booking.TeacherID == teacherID && booking.DayOfWeek == entry.DayOfWeek && booking.PeriodNumber == entry.PeriodNumber {
-					addError(entry.DayOfWeek, entry.PeriodNumber, "Teacher %s is already booked for %s at this time", nameOrID(entry.TeacherName, teacherID), booking.ClassName)
-				}
-			}
-			unavailable, err := s.store.teacherUnavailable(ctx, teacherID, metadata.AcademicYearID, entry.DayOfWeek, entry.PeriodNumber)
-			if err == nil && unavailable {
-				addError(entry.DayOfWeek, entry.PeriodNumber, "Teacher %s marked themselves unavailable at this time", nameOrID(entry.TeacherName, teacherID))
-			}
-			if entry.SubjectID != nil {
-				subjectID := *entry.SubjectID
-				isFormTeacher := metadata.FormTeacherID != nil && *metadata.FormTeacherID == teacherID
-				if !isFormTeacher {
-					assignedTeacherID, err := s.store.classSubjectTeacher(ctx, metadata.ClassID, subjectID)
-					if err == nil && assignedTeacherID != teacherID {
-						addError(entry.DayOfWeek, entry.PeriodNumber, "%s is not the class's assigned teacher for this subject", nameOrID(entry.TeacherName, teacherID))
-					} else if errors.Is(err, pgx.ErrNoRows) {
-						assigned, err := s.store.teacherAssignedSubject(ctx, teacherID, subjectID)
-						if err == nil && !assigned {
-							addError(entry.DayOfWeek, entry.PeriodNumber, "%s is not assigned to teach this subject", nameOrID(entry.TeacherName, teacherID))
-						}
-					}
-				}
-			}
+			s.validateTeacherEntry(ctx, metadata, entry, crossBookings, addError)
 		}
 		if entry.ClassroomID != nil {
 			for _, booking := range crossBookings {
-				if booking.ClassroomID != nil && *booking.ClassroomID == *entry.ClassroomID && booking.DayOfWeek == entry.DayOfWeek && booking.PeriodNumber == entry.PeriodNumber {
+				if booking.ClassroomID != nil && *booking.ClassroomID == *entry.ClassroomID && booking.at(entry) {
 					addError(entry.DayOfWeek, entry.PeriodNumber, "Classroom is already booked by %s at this time", booking.ClassName)
 				}
 			}
 		}
 	}
-	if requirements, err := s.store.requirements(ctx, metadata.AcademicYearID, metadata.GradeID); err == nil {
-		if counts, err := s.store.entrySubjectCounts(ctx, timetableID); err == nil {
-			for _, requirement := range requirements {
-				if got := counts[requirement.SubjectID]; got < requirement.PeriodsPerWeek {
-					issues = append(issues, ValidationIssue{Severity: "error", Message: fmt.Sprintf("%s requires %d period(s)/week, only %d scheduled", requirement.SubjectName, requirement.PeriodsPerWeek, got)})
-				}
-			}
-		}
-	}
+	issues = append(issues, s.requirementIssues(ctx, metadata, timetableID)...)
 	reviewers, err := s.store.authorizedReviewers(ctx, metadata.AcademicYearID, metadata.GradeID)
 	if err != nil {
 		return ValidationResult{}, err
@@ -147,6 +115,57 @@ func (s *validationService) validate(ctx context.Context, timetableID uuid.UUID)
 	return result, nil
 }
 
+func (b crossBooking) at(entry TimetableEntry) bool {
+	return b.DayOfWeek == entry.DayOfWeek && b.PeriodNumber == entry.PeriodNumber
+}
+
+// validateTeacherEntry flags a double booking, an unavailable period, or a teacher not assigned to the subject.
+func (s *validationService) validateTeacherEntry(ctx context.Context, metadata validationContext, entry TimetableEntry, bookings []crossBooking, addError func(int16, int16, string, ...any)) {
+	teacherID := *entry.TeacherID
+	name := nameOrID(entry.TeacherName, teacherID)
+	for _, booking := range bookings {
+		if booking.TeacherID != nil && *booking.TeacherID == teacherID && booking.at(entry) {
+			addError(entry.DayOfWeek, entry.PeriodNumber, "Teacher %s is already booked for %s at this time", name, booking.ClassName)
+		}
+	}
+	unavailable, err := s.store.teacherUnavailable(ctx, teacherID, metadata.AcademicYearID, entry.DayOfWeek, entry.PeriodNumber)
+	if err == nil && unavailable {
+		addError(entry.DayOfWeek, entry.PeriodNumber, "Teacher %s marked themselves unavailable at this time", name)
+	}
+	isFormTeacher := metadata.FormTeacherID != nil && *metadata.FormTeacherID == teacherID
+	if entry.SubjectID == nil || isFormTeacher {
+		return
+	}
+	subjectID := *entry.SubjectID
+	assignedTeacherID, err := s.store.classSubjectTeacher(ctx, metadata.ClassID, subjectID)
+	if err == nil && assignedTeacherID != teacherID {
+		addError(entry.DayOfWeek, entry.PeriodNumber, "%s is not the class's assigned teacher for this subject", name)
+	} else if errors.Is(err, pgx.ErrNoRows) {
+		if assigned, err := s.store.teacherAssignedSubject(ctx, teacherID, subjectID); err == nil && !assigned {
+			addError(entry.DayOfWeek, entry.PeriodNumber, "%s is not assigned to teach this subject", name)
+		}
+	}
+}
+
+// requirementIssues lists subjects scheduled fewer times than the grade requires; lookup errors are skipped.
+func (s *validationService) requirementIssues(ctx context.Context, metadata validationContext, timetableID uuid.UUID) []ValidationIssue {
+	requirements, err := s.store.requirements(ctx, metadata.AcademicYearID, metadata.GradeID)
+	if err != nil {
+		return nil
+	}
+	counts, err := s.store.entrySubjectCounts(ctx, timetableID)
+	if err != nil {
+		return nil
+	}
+	var issues []ValidationIssue
+	for _, requirement := range requirements {
+		if got := counts[requirement.SubjectID]; got < requirement.PeriodsPerWeek {
+			issues = append(issues, ValidationIssue{Severity: "error", Message: fmt.Sprintf("%s requires %d period(s)/week, only %d scheduled", requirement.SubjectName, requirement.PeriodsPerWeek, got)})
+		}
+	}
+	return issues
+}
+
 // validateBlockEntry checks each teacher of an option block period; the same block in another
 // class is the same lesson, so it is not a clash.
 func (s *validationService) validateBlockEntry(ctx context.Context, metadata validationContext, entry TimetableEntry, bookings []crossBooking, addError func(int16, int16, string, ...any)) error {
@@ -161,7 +180,7 @@ func (s *validationService) validateBlockEntry(ctx context.Context, metadata val
 	for _, teacher := range teachers {
 		for _, booking := range bookings {
 			sameBlock := booking.OptionBlockID != nil && *booking.OptionBlockID == *entry.OptionBlockID
-			if !sameBlock && booking.TeacherID != nil && *booking.TeacherID == teacher.ID && booking.DayOfWeek == entry.DayOfWeek && booking.PeriodNumber == entry.PeriodNumber {
+			if !sameBlock && booking.TeacherID != nil && *booking.TeacherID == teacher.ID && booking.at(entry) {
 				addError(entry.DayOfWeek, entry.PeriodNumber, "Teacher %s (%s) is already booked for %s at this time", teacher.Name, block, booking.ClassName)
 			}
 		}

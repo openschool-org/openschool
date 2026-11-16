@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Alert, Button, Card, Drawer, Skeleton, Tag, Tooltip } from "antd";
 import { BulbOutlined, EditOutlined, PlusOutlined, TeamOutlined } from "@ant-design/icons";
 import SelectField from "@/shared/ui/SelectField";
-import { useCurrentAcademicYear, useAcademicYears } from "@/features/school/queries/useAcademicYears";
+import { useArchiveYear } from "@/features/portfolio/hooks/useArchiveYear";
 import { useSocieties, useSocietyYears, useDeleteSociety } from "@/features/portfolio/queries/useSocieties";
 import EmptyState from "@/shared/ui/EmptyState";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
@@ -14,13 +14,8 @@ import type { Society } from "@/features/portfolio/api/society";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 
 export default function Societies() {
-  const { data: currentYear, isLoading: yearLoading } = useCurrentAcademicYear();
-  const { data: allYears } = useAcademicYears();
   const { data: pastYears } = useSocietyYears();
-
-  const [selectedYearId, setSelectedYearId] = useState<string | null>(null);
-  const viewingYearId = selectedYearId ?? currentYear?.id ?? "";
-  const isArchive = !!currentYear && viewingYearId !== currentYear.id;
+  const { currentYear, yearLoading, viewingYearId, viewingLabel, isArchive, yearOptions, selectYear } = useArchiveYear(pastYears);
 
   const { data: societies, isLoading: societiesLoading, isError, refetch } = useSocieties(viewingYearId);
   const deleteSociety = useDeleteSociety();
@@ -32,17 +27,6 @@ export default function Societies() {
   const selected = (societies ?? []).find((s) => s.id === selectedId) ?? null;
 
   const loading = yearLoading || societiesLoading;
-
-  // Every year with a society on record, plus the current year even when empty.
-  const selectableYears = (() => {
-    const byId = new Map((allYears ?? []).map((y) => [y.id, y]));
-    const ids = new Set((pastYears ?? []).map((y) => y.id));
-    if (currentYear) ids.add(currentYear.id);
-    return Array.from(ids)
-      .map((id) => byId.get(id))
-      .filter((y): y is NonNullable<typeof y> => !!y)
-      .sort((a, b) => (b.start_date ?? "").localeCompare(a.start_date ?? ""));
-  })();
 
   const handleDelete = () => {
     if (!deleting) return;
@@ -56,7 +40,7 @@ export default function Societies() {
           <h1 className="os-page__title">Societies</h1>
           <p className="os-page__subtitle">
             {isArchive
-              ? `Read only. Societies for ${allYears?.find((y) => y.id === viewingYearId)?.label ?? "this year"}.`
+              ? `Read only. Societies for ${viewingLabel ?? "this year"}.`
               : `Clubs and societies for ${currentYear?.label ?? "the current year"}.`}
           </p>
         </div>
@@ -67,8 +51,8 @@ export default function Societies() {
             hideLabel
             className="os-min-w-12"
             value={viewingYearId}
-            onChange={(v) => setSelectedYearId(v || null)}
-            options={selectableYears.map((y) => ({ value: y.id, label: y.id === currentYear?.id ? `${y.label} (current)` : y.label }))}
+            onChange={selectYear}
+            options={yearOptions}
           />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setFormSociety("new")} disabled={!currentYear || isArchive}>
             New society

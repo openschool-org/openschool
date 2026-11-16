@@ -49,6 +49,23 @@ func (h *ParentHandler) requireOwnChild(c *gin.Context, callerID, studentID uuid
 	return true
 }
 
+// ownChild parses the :id student and checks the caller is their guardian, or writes the error.
+func (h *ParentHandler) ownChild(c *gin.Context) (uuid.UUID, bool) {
+	callerID, ok := h.callerID(c)
+	if !ok {
+		return uuid.Nil, false
+	}
+	studentID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return uuid.Nil, false
+	}
+	if !h.requireOwnChild(c, callerID, studentID) {
+		return uuid.Nil, false
+	}
+	return studentID, true
+}
+
 // ListChildren lists the signed-in parent's children.
 func (h *ParentHandler) ListChildren(c *gin.Context) {
 	callerID, ok := h.callerID(c)
@@ -83,16 +100,8 @@ func (h *ParentHandler) ChildrenSummary(c *gin.Context) {
 
 // ChildAttendance returns a linked child's attendance history.
 func (h *ParentHandler) ChildAttendance(c *gin.Context) {
-	callerID, ok := h.callerID(c)
+	studentID, ok := h.ownChild(c)
 	if !ok {
-		return
-	}
-	studentID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
-	if !h.requireOwnChild(c, callerID, studentID) {
 		return
 	}
 
@@ -107,21 +116,13 @@ func (h *ParentHandler) ChildAttendance(c *gin.Context) {
 
 // ChildMarks returns a linked child's term marks.
 func (h *ParentHandler) ChildMarks(c *gin.Context) {
-	callerID, ok := h.callerID(c)
+	studentID, ok := h.ownChild(c)
 	if !ok {
-		return
-	}
-	studentID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
 	termID, err := uuid.Parse(c.Query("term_id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or missing term_id"})
-		return
-	}
-	if !h.requireOwnChild(c, callerID, studentID) {
 		return
 	}
 
@@ -136,16 +137,8 @@ func (h *ParentHandler) ChildMarks(c *gin.Context) {
 
 // ChildTimetable returns a linked child's published class timetable.
 func (h *ParentHandler) ChildTimetable(c *gin.Context) {
-	callerID, ok := h.callerID(c)
+	studentID, ok := h.ownChild(c)
 	if !ok {
-		return
-	}
-	studentID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return
-	}
-	if !h.requireOwnChild(c, callerID, studentID) {
 		return
 	}
 

@@ -136,11 +136,10 @@ func (a *SecurityAuditAgent) checkAuditAnomaly(ctx context.Context) checkOutcome
 
 	summary := fmt.Sprintf("%d account(s) with unusually high activity this hour: %s", len(descriptions), strings.Join(descriptions, "; "))
 
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Unusual audit-log activity",
-		summary, "emergency", SeverityCritical); err != nil {
-		return checkOutcome{findings: len(descriptions), label: fmt.Sprintf("%d account(s) with anomalous activity", len(descriptions)), err: fmt.Errorf("found %d account(s) but failed to notify admins: %w", len(descriptions), err)}
-	}
-	return checkOutcome{findings: len(descriptions), label: fmt.Sprintf("%d account(s) with anomalous activity", len(descriptions))}
+	return reportFinding(ctx, a.checks, a.notifSvc, finding{
+		count: len(descriptions), noun: "account(s)", label: fmt.Sprintf("%d account(s) with anomalous activity", len(descriptions)),
+		title: "Unusual audit-log activity", summary: summary, category: "emergency", severity: SeverityCritical,
+	})
 }
 
 // checkOffHoursActivity flags actors with several audit-logged changes between midnight and 5am Sri Lanka time.
@@ -162,11 +161,10 @@ func (a *SecurityAuditAgent) checkOffHoursActivity(ctx context.Context) checkOut
 	}
 	summary := fmt.Sprintf("%d account(s) with overnight (00:00-05:00) activity: %s", len(actors), strings.Join(descriptions, "; "))
 
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Unusual off-hours account activity",
-		summary, "emergency", SeverityElevated); err != nil {
-		return checkOutcome{findings: len(actors), label: fmt.Sprintf("%d account(s) active off-hours", len(actors)), err: fmt.Errorf("found %d account(s) but failed to notify admins: %w", len(actors), err)}
-	}
-	return checkOutcome{findings: len(actors), label: fmt.Sprintf("%d account(s) active off-hours", len(actors))}
+	return reportFinding(ctx, a.checks, a.notifSvc, finding{
+		count: len(actors), noun: "account(s)", label: fmt.Sprintf("%d account(s) active off-hours", len(actors)),
+		title: "Unusual off-hours account activity", summary: summary, category: "emergency", severity: SeverityElevated,
+	})
 }
 
 // checkPasswordResetTokenSweep deletes expired, unused password-reset and activation links; pure housekeeping, nothing to notify about.

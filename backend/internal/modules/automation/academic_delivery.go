@@ -97,11 +97,10 @@ func (a *AcademicDeliveryAgent) checkMissingAttendanceToday(ctx context.Context)
 		severity = SeverityElevated
 	}
 
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Classes missing today's attendance session",
-		summary, "attendance", severity); err != nil {
-		return checkOutcome{findings: len(classes), label: fmt.Sprintf("%d class(es) missing today's session", len(classes)), err: fmt.Errorf("found %d class(es) but failed to notify admins: %w", len(classes), err)}
-	}
-	return checkOutcome{findings: len(classes), label: fmt.Sprintf("%d class(es) missing today's session", len(classes))}
+	return reportFinding(ctx, a.checks, a.notifSvc, finding{
+		count: len(classes), noun: "class(es)", label: fmt.Sprintf("%d class(es) missing today's session", len(classes)),
+		title: "Classes missing today's attendance session", summary: summary, category: "attendance", severity: severity,
+	})
 }
 
 // checkAttendanceCompliance flags classes whose session-taking rate over the trailing window has fallen below threshold.
@@ -138,11 +137,10 @@ func (a *AcademicDeliveryAgent) checkAttendanceCompliance(ctx context.Context) c
 		severity = SeverityCritical
 	}
 
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Classes with inconsistent attendance-taking",
-		summary, "attendance", severity); err != nil {
-		return checkOutcome{findings: len(flagged), label: fmt.Sprintf("%d class(es) with inconsistent attendance", len(flagged)), err: fmt.Errorf("found %d class(es) but failed to notify admins: %w", len(flagged), err)}
-	}
-	return checkOutcome{findings: len(flagged), label: fmt.Sprintf("%d class(es) with inconsistent attendance", len(flagged))}
+	return reportFinding(ctx, a.checks, a.notifSvc, finding{
+		count: len(flagged), noun: "class(es)", label: fmt.Sprintf("%d class(es) with inconsistent attendance", len(flagged)),
+		title: "Classes with inconsistent attendance-taking", summary: summary, category: "attendance", severity: severity,
+	})
 }
 
 // checkStaleAttendance flags attendance sessions older than the threshold with fewer records than the class roster, escalating severity with age.
@@ -173,11 +171,10 @@ func (a *AcademicDeliveryAgent) checkStaleAttendance(ctx context.Context) checkO
 	}
 	summary := fmt.Sprintf("%d stale incomplete session(s): %s", len(sessions), strings.Join(descriptions, ", "))
 
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Incomplete attendance sessions",
-		summary, "attendance", severity); err != nil {
-		return checkOutcome{findings: len(sessions), label: fmt.Sprintf("%d stale attendance session(s)", len(sessions)), err: fmt.Errorf("found %d session(s) but failed to notify admins: %w", len(sessions), err)}
-	}
-	return checkOutcome{findings: len(sessions), label: fmt.Sprintf("%d stale attendance session(s)", len(sessions))}
+	return reportFinding(ctx, a.checks, a.notifSvc, finding{
+		count: len(sessions), noun: "session(s)", label: fmt.Sprintf("%d stale attendance session(s)", len(sessions)),
+		title: "Incomplete attendance sessions", summary: summary, category: "attendance", severity: severity,
+	})
 }
 
 // checkTermMarksDeadline flags terms within termDeadlineWindowDays of their lock date with zero marks entered anywhere.
@@ -196,11 +193,10 @@ func (a *AcademicDeliveryAgent) checkTermMarksDeadline(ctx context.Context) chec
 	}
 	summary := fmt.Sprintf("%d term(s) near their deadline with zero marks entered: %s", len(terms), strings.Join(names, ", "))
 
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Terms nearing deadline with no marks entered",
-		summary, "academic", SeverityCritical); err != nil {
-		return checkOutcome{findings: len(terms), label: fmt.Sprintf("%d term(s) at zero-marks deadline", len(terms)), err: fmt.Errorf("found %d term(s) but failed to notify admins: %w", len(terms), err)}
-	}
-	return checkOutcome{findings: len(terms), label: fmt.Sprintf("%d term(s) at zero-marks deadline", len(terms))}
+	return reportFinding(ctx, a.checks, a.notifSvc, finding{
+		count: len(terms), noun: "term(s)", label: fmt.Sprintf("%d term(s) at zero-marks deadline", len(terms)),
+		title: "Terms nearing deadline with no marks entered", summary: summary, category: "academic", severity: SeverityCritical,
+	})
 }
 
 // checkTermMarksPace flags terms whose marks-entry coverage is meaningfully behind a straight-line time-elapsed pace.
@@ -247,11 +243,10 @@ func (a *AcademicDeliveryAgent) checkTermMarksPace(ctx context.Context) checkOut
 		severity = SeverityCritical
 	}
 
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Terms falling behind on marks-entry pace",
-		summary, "academic", severity); err != nil {
-		return checkOutcome{findings: len(flagged), label: fmt.Sprintf("%d term(s) behind pace", len(flagged)), err: fmt.Errorf("found %d term(s) but failed to notify admins: %w", len(flagged), err)}
-	}
-	return checkOutcome{findings: len(flagged), label: fmt.Sprintf("%d term(s) behind pace", len(flagged))}
+	return reportFinding(ctx, a.checks, a.notifSvc, finding{
+		count: len(flagged), noun: "term(s)", label: fmt.Sprintf("%d term(s) behind pace", len(flagged)),
+		title: "Terms falling behind on marks-entry pace", summary: summary, category: "academic", severity: severity,
+	})
 }
 
 // clamp01 restricts v to the [0, 1] range.

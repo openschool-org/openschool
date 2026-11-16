@@ -1,0 +1,158 @@
+{
+  "Result": {
+    "classes": [
+      {
+        "class_id": "00000000-0000-0000-0000-000000000101",
+        "class_name": "10-A",
+        "timetable_id": "00000000-0000-0000-0000-000000009001",
+        "placed": 20,
+        "required": 20,
+        "gaps": [],
+        "skipped": false
+      },
+      {
+        "class_id": "00000000-0000-0000-0000-000000000102",
+        "class_name": "10-B",
+        "timetable_id": "00000000-0000-0000-0000-000000009002",
+        "placed": 17,
+        "required": 17,
+        "gaps": [
+          {
+            "subject_name": "Sinhala",
+            "reason": "no teacher assigned for this subject"
+          }
+        ],
+        "skipped": false
+      },
+      {
+        "class_id": "00000000-0000-0000-0000-000000000103",
+        "class_name": "10-C",
+        "timetable_id": "00000000-0000-0000-0000-000000009003",
+        "placed": 13,
+        "required": 15,
+        "gaps": [
+          {
+            "subject_name": "Art",
+            "reason": "no teacher assigned for this subject"
+          },
+          {
+            "subject_name": "Sinhala",
+            "reason": "no teacher assigned for this subject"
+          },
+          {
+            "subject_name": "PE",
+            "reason": "no teacher assigned for this subject"
+          },
+          {
+            "subject_name": "Maths",
+            "teacher_name": "Maths T",
+            "reason": "no available slot — the week is fully booked for this class/teacher"
+          }
+        ],
+        "skipped": false
+      },
+      {
+        "class_id": "00000000-0000-0000-0000-000000000104",
+        "class_name": "11-A",
+        "timetable_id": "00000000-0000-0000-0000-000000009004",
+        "placed": 7,
+        "required": 10,
+        "gaps": [
+          {
+            "subject_name": "Partial",
+            "reason": "this option block also covers a class whose timetable is not being regenerated, so it was not placed"
+          },
+          {
+            "subject_name": "Maths",
+            "teacher_name": "Maths T",
+            "reason": "no available slot — the week is fully booked for this class/teacher"
+          },
+          {
+            "subject_name": "Maths",
+            "teacher_name": "Maths T",
+            "reason": "no available slot — the week is fully booked for this class/teacher"
+          },
+          {
+            "subject_name": "Maths",
+            "teacher_name": "Maths T",
+            "reason": "no available slot — the week is fully booked for this class/teacher"
+          }
+        ],
+        "skipped": false
+      },
+      {
+        "class_id": "00000000-0000-0000-0000-000000000105",
+        "class_name": "11-B",
+        "placed": 0,
+        "required": 0,
+        "gaps": [],
+        "skipped": true,
+        "skip_reason": "already has a published timetable — delete or revise it manually first"
+      }
+    ]
+  },
+  "Writes": [
+    "delete 00000000-0000-0000-0000-000000000501",
+    "create 00000000-0000-0000-0000-000000009001 for 00000000-0000-0000-0000-000000000101",
+    "entry 000000009001 d2 p3 subj 000000000301 teacher 000000000401 room 000000000201",
+    "entry 000000009001 d2 p4 subj 000000000301 teacher 000000000401 room 000000000201",
+    "entry 000000009001 d5 p3 subj 000000000301 teacher 000000000401 room 000000000201",
+    "entry 000000009001 d3 p4 subj 000000000301 teacher 000000000401 room 000000000201",
+    "entry 000000009001 d4 p4 subj 000000000301 teacher 000000000401 room 000000000201",
+    "entry 000000009001 d1 p4 subj 000000000301 teacher 000000000401 room 000000000201",
+    "entry 000000009001 d2 p1 subj 000000000302 teacher 000000000402 room 000000000203",
+    "entry 000000009001 d2 p2 subj 000000000302 teacher 000000000402 room 000000000203",
+    "entry 000000009001 d4 p1 subj 000000000302 teacher 000000000402 room 000000000201",
+    "entry 000000009001 d5 p2 subj 000000000302 teacher 000000000402 room 000000000201",
+    "entry 000000009001 d3 p3 subj 000000000303 teacher 000000000403 room 000000000201",
+    "entry 000000009001 d1 p3 subj 000000000303 teacher 000000000403 room 000000000201",
+    "entry 000000009001 d4 p3 subj 000000000303 teacher 000000000403 room 000000000201",
+    "entry 000000009001 d5 p1 subj 000000000306 teacher 000000000406 room 000000000201",
+    "entry 000000009001 d3 p1 subj 000000000306 teacher 000000000406 room 000000000201",
+    "entry 000000009001 d1 p2 subj 000000000306 teacher 000000000406 room 000000000201",
+    "entry 000000009001 d3 p2 subj 000000000307 teacher 000000000407 room 000000000201",
+    "entry 000000009001 d5 p4 subj 000000000307 teacher 000000000407 room 000000000201",
+    "block 000000009001 d1 p1 000000000601",
+    "block 000000009001 d4 p2 000000000601",
+    "create 00000000-0000-0000-0000-000000009002 for 00000000-0000-0000-0000-000000000102",
+    "entry 000000009002 d2 p1 subj 000000000301 teacher 000000000401 room 000000000202",
+    "entry 000000009002 d2 p2 subj 000000000301 teacher 000000000401 room 000000000202",
+    "entry 000000009002 d3 p2 subj 000000000301 teacher 000000000401 room 000000000202",
+    "entry 000000009002 d1 p3 subj 000000000301 teacher 000000000401 room 000000000202",
+    "entry 000000009002 d5 p4 subj 000000000301 teacher 000000000401 room 000000000202",
+    "entry 000000009002 d4 p1 subj 000000000301 teacher 000000000401 room 000000000202",
+    "entry 000000009002 d4 p3 subj 000000000302 teacher 000000000402 room 000000000203",
+    "entry 000000009002 d4 p4 subj 000000000302 teacher 000000000402 room 000000000203",
+    "entry 000000009002 d1 p2 subj 000000000302 teacher 000000000402 room 000000000202",
+    "entry 000000009002 d2 p4 subj 000000000302 teacher 000000000402 room 000000000202",
+    "entry 000000009002 d5 p2 subj 000000000303 teacher 000000000403 room 000000000202",
+    "entry 000000009002 d1 p4 subj 000000000303 teacher 000000000403 room 000000000202",
+    "entry 000000009002 d3 p4 subj 000000000303 teacher 000000000403 room 000000000202",
+    "entry 000000009002 d5 p3 subj 000000000307 teacher 000000000407 room 000000000202",
+    "entry 000000009002 d3 p1 subj 000000000307 teacher 000000000407 room 000000000202",
+    "block 000000009002 d1 p1 000000000601",
+    "block 000000009002 d4 p2 000000000601",
+    "create 00000000-0000-0000-0000-000000009003 for 00000000-0000-0000-0000-000000000103",
+    "entry 000000009003 d3 p3 subj 000000000301 teacher 000000000401 room -",
+    "entry 000000009003 d1 p2 subj 000000000301 teacher 000000000401 room -",
+    "entry 000000009003 d4 p3 subj 000000000301 teacher 000000000401 room -",
+    "entry 000000009003 d5 p2 subj 000000000301 teacher 000000000401 room -",
+    "entry 000000009003 d5 p3 subj 000000000302 teacher 000000000402 room 000000000203",
+    "entry 000000009003 d5 p4 subj 000000000302 teacher 000000000402 room 000000000203",
+    "entry 000000009003 d1 p1 subj 000000000302 teacher 000000000402 room -",
+    "entry 000000009003 d4 p2 subj 000000000302 teacher 000000000402 room -",
+    "entry 000000009003 d2 p1 subj 000000000303 teacher 000000000403 room -",
+    "entry 000000009003 d3 p1 subj 000000000303 teacher 000000000403 room -",
+    "entry 000000009003 d4 p4 subj 000000000303 teacher 000000000403 room -",
+    "entry 000000009003 d1 p4 subj 000000000304 teacher 000000000404 room -",
+    "entry 000000009003 d3 p2 subj 000000000304 teacher 000000000404 room -",
+    "create 00000000-0000-0000-0000-000000009004 for 00000000-0000-0000-0000-000000000104",
+    "entry 000000009004 d3 p1 subj 000000000301 teacher 000000000401 room -",
+    "entry 000000009004 d4 p2 subj 000000000301 teacher 000000000401 room -",
+    "entry 000000009004 d5 p1 subj 000000000302 teacher 000000000402 room 000000000203",
+    "entry 000000009004 d3 p4 subj 000000000302 teacher 000000000402 room 000000000203",
+    "entry 000000009004 d2 p3 subj 000000000302 teacher 000000000402 room 000000000204",
+    "entry 000000009004 d1 p3 subj 000000000306 teacher 000000000406 room -",
+    "entry 000000009004 d2 p4 subj 000000000306 teacher 000000000406 room -"
+  ]
+}

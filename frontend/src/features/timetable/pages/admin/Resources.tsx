@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Button, Card, Segmented, Tag, Tooltip } from "antd";
-import { BankOutlined, DeleteOutlined, EditOutlined, ExperimentOutlined, HomeOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button, Card, Segmented, Tag } from "antd";
+import { BankOutlined, ExperimentOutlined, HomeOutlined, PlusOutlined } from "@ant-design/icons";
 import { useClassrooms, useCreateClassroom, useUpdateClassroom, useDeleteClassroom } from "@/features/timetable/queries/useClassrooms";
 import type { Classroom, ClassroomType } from "@/features/timetable/api/classroom";
 import ClassroomFormModal from "@/features/timetable/components/ClassroomFormModal";
@@ -13,6 +13,7 @@ import EmptyState from "@/shared/ui/EmptyState";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import FilterBar from "@/shared/ui/FilterBar";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
+import RowActions from "@/shared/ui/RowActions";
 
 // The three zones a resource belongs to; the dot colour reuses the school-section palette.
 const ZONES: { key: ClassroomType; label: string; description: string; band: string; Icon: typeof HomeOutlined }[] = [
@@ -81,10 +82,7 @@ export default function Resources() {
       header: "Actions",
       align: "end",
       render: (r) => (
-        <div className="os-grid__actions">
-          <Tooltip title={`Edit ${r.name}`}><Button type="text" size="small" aria-label={`Edit ${r.name}`} icon={<EditOutlined />} onClick={() => openEdit(r)} /></Tooltip>
-          <Tooltip title={`Delete ${r.name}`}><Button type="text" size="small" danger aria-label={`Delete ${r.name}`} icon={<DeleteOutlined />} onClick={() => setToDelete(r)} /></Tooltip>
-        </div>
+        <RowActions editLabel={`Edit ${r.name}`} deleteLabel={`Delete ${r.name}`} onEdit={() => openEdit(r)} onDelete={() => setToDelete(r)} />
       ),
     },
   ];

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Button, Tag, Tooltip } from "antd";
-import { DeleteOutlined, EditOutlined, PlusOutlined, UploadOutlined } from "@ant-design/icons";
+import { Tag } from "antd";
+import { PlusOutlined, UploadOutlined } from "@ant-design/icons";
 import LinkButton from "@/shared/ui/LinkButton";
 import SelectField from "@/shared/ui/SelectField";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
@@ -21,6 +21,7 @@ import { useHouses } from "@/features/school/queries/useHouses";
 import { useCurrentClasses } from "@/features/academics/queries/useClasses";
 import type { Student } from "@/features/students/api/student";
 import { displayName } from "@/shared/lib/name";
+import RowActions from "@/shared/ui/RowActions";
 
 const FILTER_LABELS: Record<string, string> = {
   query: "Search",
@@ -102,14 +103,12 @@ export default function Students() {
       header: "Actions",
       align: "end",
       render: (s) => (
-        <div className="os-grid__actions">
-          <Tooltip title="Edit profile">
-            <Button type="text" size="small" aria-label="Edit profile" icon={<EditOutlined />} onClick={() => navigate(`/students/${s.id}`, { state: { edit: true } })} />
-          </Tooltip>
-          <Tooltip title="Delete student">
-            <Button type="text" size="small" danger aria-label="Delete student" icon={<DeleteOutlined />} onClick={() => setToDelete(s)} />
-          </Tooltip>
-        </div>
+        <RowActions
+          editLabel="Edit profile"
+          deleteLabel="Delete student"
+          onEdit={() => navigate(`/students/${s.id}`, { state: { edit: true } })}
+          onDelete={() => setToDelete(s)}
+        />
       ),
     },
   ];

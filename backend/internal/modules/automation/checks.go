@@ -3,6 +3,7 @@ package automation
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -38,6 +39,26 @@ type checkOutcome struct {
 	findings int
 	label    string
 	err      error
+}
+
+// finding describes what a sub-check found and how to tell admins about it.
+type finding struct {
+	count    int
+	noun     string
+	label    string
+	title    string
+	summary  string
+	category string
+	severity Severity
+}
+
+// reportFinding notifies admins and returns the outcome; the count is kept even if the notification fails.
+func reportFinding(ctx context.Context, checks *Repository, notifSvc *notifications.NotificationService, f finding) checkOutcome {
+	out := checkOutcome{findings: f.count, label: f.label}
+	if err := notifyAdmins(ctx, checks, notifSvc, f.title, f.summary, f.category, f.severity); err != nil {
+		out.err = fmt.Errorf("found %d %s but failed to notify admins: %w", f.count, f.noun, err)
+	}
+	return out
 }
 
 // runChecks runs every sub-check of a multi-check agent concurrently and aggregates their outcomes into one Result, without short-circuiting on the first error.

@@ -64,15 +64,7 @@ func (SubjectChoices) Inputs(ctx context.Context, s *Store) ([]InputField, error
 			Help: "Subjects by name or code, separated by ;. Leave level blank or use the level's name; rows for other levels are ignored."},
 		{Key: "lock", Label: "Lock saved choices so students cannot change them in the portal", Type: "boolean", Default: "true"},
 	}
-	if cur := currentYear(years); cur != nil {
-		fields[0].Default = cur.ID.String()
-		for _, y := range years {
-			if !y.Current && y.Start.After(cur.Start) {
-				fields[1].Default = y.ID.String()
-				break
-			}
-		}
-	}
+	fields[0].Default, fields[1].Default = yearDefaults(years)
 	for _, l := range levels {
 		if withChoice[l.GradeID] {
 			fields[2].Default = l.ID.String()
@@ -333,133 +325,180 @@ func (w SubjectChoices) Propose(ctx context.Context, s *Store, in Inputs, trace 
 
 	var students []PromotionCandidate
 	if err := trace.Run(stepByKey(w, "read_students"), func() (string, error) {
-		grades, err := s.grades(ctx)
-		if err != nil {
+		var err error
+		if students, err = choiceStudents(ctx, s, source, target, level.GradeID); err != nil {
 			return "", err
 		}
-		next := nextGrades(grades)
-		current, err := s.promotionStudents(ctx, source)
-		if err != nil {
-			return "", err
-		}
-		for _, c := range current {
-			if g := next[c.FromGradeID]; g != nil && g.ID == level.GradeID {
-				students = append(students, c)
-			}
-		}
-		intake, err := s.intakeStudents(ctx, target)
-		if err != nil {
-			return "", err
-		}
-		for _, c := range intake {
-			if *c.IntakeGradeID == level.GradeID {
-				students = append(students, c)
-			}
-		}
-		sort.SliceStable(students, func(i, j int) bool { return students[i].Name < students[j].Name })
 		return fmt.Sprintf("%s moving into %s", plural(len(students), "student", "students"), level.GradeName), nil
 	}); err != nil {
 		return Proposal{}, "", err
 	}
 
+	b := choiceRows{level: level, groups: groups, siblings: siblings}
+	if err := trace.Run(stepByKey(w, "read_choices"), func() (string, error) {
+		if err := b.load(ctx, s, target, students, in["csv"]); err != nil {
+			return "", err
+		}
+		for _, st := range students {
+			b.add(st)
+		}
+		return fmt.Sprintf("%d complete, %d still to enter", b.complete, b.missing), nil
+	}); err != nil {
+		return Proposal{}, "", err
+	}
+	return b.proposal(), "subject_choices:" + target.String() + ":" + level.ID.String(), nil
+}
+
+// choiceStudents lists the students moving into the grade next year: promoted ones first, then intake, sorted by name.
+func choiceStudents(ctx context.Context, s *Store, source, target, gradeID uuid.UUID) ([]PromotionCandidate, error) {
+	grades, err := s.grades(ctx)
+	if err != nil {
+		return nil, err
+	}
+	next := nextGrades(grades)
+	current, err := s.promotionStudents(ctx, source)
+	if err != nil {
+		return nil, err
+	}
+	var students []PromotionCandidate
+	for _, c := range current {
+		if g := next[c.FromGradeID]; g != nil && g.ID == gradeID {
+			students = append(students, c)
+		}
+	}
+	intake, err := s.intakeStudents(ctx, target)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range intake {
+		if *c.IntakeGradeID == gradeID {
+			students = append(students, c)
+		}
+	}
+	sort.SliceStable(students, func(i, j int) bool { return students[i].Name < students[j].Name })
+	return students, nil
+}
+
+// choiceRows builds one proposal row per student and keeps the summary counts.
+type choiceRows struct {
+	level    *LevelInfo
+	groups   []ChoiceGroup
+	siblings int
+
+	here    map[uuid.UUID][]uuid.UUID
+	other   map[uuid.UUID]bool
+	locked  map[uuid.UUID]bool
+	fromCSV map[string]choiceRecord
+	codes   map[string]uuid.UUID
+
+	rows                                    []Row
+	complete, missing, elsewhere, lockedCnt int
+}
+
+func (b *choiceRows) load(ctx context.Context, s *Store, target uuid.UUID, students []PromotionCandidate, csv string) error {
 	ids := make([]uuid.UUID, len(students))
 	for i, st := range students {
 		ids[i] = st.ID
 	}
-	var rows []Row
-	var complete, missing, elsewhere, lockedCount int
-	if err := trace.Run(stepByKey(w, "read_choices"), func() (string, error) {
-		existing, err := s.yearEnrollments(ctx, target, ids)
-		if err != nil {
-			return "", err
-		}
-		locked, err := s.lockedStudents(ctx, target, level.ID, ids)
-		if err != nil {
-			return "", err
-		}
-		fromCSV := map[string]choiceRecord{}
-		if in["csv"] != "" {
-			if fromCSV, err = parseChoicesCSV(in["csv"]); err != nil {
-				return "", err
-			}
-		}
-		here, other := map[uuid.UUID][]uuid.UUID{}, map[uuid.UUID]bool{}
-		for _, e := range existing {
-			if e.LevelID == level.ID {
-				here[e.StudentID] = append(here[e.StudentID], e.SubjectID)
-			} else {
-				other[e.StudentID] = true
-			}
-		}
-		codes := map[string]uuid.UUID{}
-		for _, g := range groups {
-			for k, v := range g.Codes {
-				codes[k] = v
-			}
-		}
-		for _, st := range students {
-			if other[st.ID] && len(here[st.ID]) == 0 {
-				elsewhere++
-				continue
-			}
-			cells := map[string]string{"index": st.Index, "name": st.Name, "from": st.ClassName, "medium": st.MediumID}
-			include := siblings == 1 || len(here[st.ID]) > 0
-			reason := "No choice recorded yet."
-			var warning string
-			fillSlots(groups, cells, here[st.ID])
-			if len(here[st.ID]) > 0 {
-				reason = "Choice already recorded."
-			}
-			if rec, ok := fromCSV[st.Index]; ok && (rec.level == "" || normalise(rec.level) == normalise(level.Label)) {
-				include = true
-				reason = fmt.Sprintf("From the CSV, line %d.", rec.line)
-				for _, c := range choiceColumns(groups) {
-					cells[c.Key] = ""
-				}
-				var subjects []uuid.UUID
-				var unknown []string
-				for _, name := range rec.subjects {
-					if id, ok := codes[normalise(name)]; ok {
-						subjects = append(subjects, id)
-					} else {
-						unknown = append(unknown, name)
-					}
-				}
-				if left := fillSlots(groups, cells, subjects); len(left) > 0 {
-					warning = fmt.Sprintf("%s did not fit the groups' limits.", plural(len(left), "subject", "subjects"))
-				}
-				if len(unknown) > 0 {
-					warning = "Not offered in this level: " + strings.Join(unknown, ", ") + "."
-				}
-			}
-			picks := picksFromCells(groups, cells)
-			if warning == "" && len(picks) > 0 {
-				if problems := choiceProblems(groups, picks); len(problems) > 0 {
-					warning = strings.Join(problems, "; ") + "."
-				}
-			}
-			if locked[st.ID] {
-				lockedCount++
-				reason += " Locked in the portal; saving here replaces it."
-			}
-			if len(picks) > 0 && warning == "" {
-				complete++
-			} else if include {
-				missing++
-			}
-			cells["include"] = strconv.FormatBool(include)
-			rows = append(rows, Row{ID: st.ID.String(), Group: st.ClassName, Reason: reason, Warning: warning, Cells: cells})
-		}
-		return fmt.Sprintf("%d complete, %d still to enter", complete, missing), nil
-	}); err != nil {
-		return Proposal{}, "", err
+	existing, err := s.yearEnrollments(ctx, target, ids)
+	if err != nil {
+		return err
 	}
+	if b.locked, err = s.lockedStudents(ctx, target, b.level.ID, ids); err != nil {
+		return err
+	}
+	b.fromCSV = map[string]choiceRecord{}
+	if csv != "" {
+		if b.fromCSV, err = parseChoicesCSV(csv); err != nil {
+			return err
+		}
+	}
+	b.here, b.other = map[uuid.UUID][]uuid.UUID{}, map[uuid.UUID]bool{}
+	for _, e := range existing {
+		if e.LevelID == b.level.ID {
+			b.here[e.StudentID] = append(b.here[e.StudentID], e.SubjectID)
+		} else {
+			b.other[e.StudentID] = true
+		}
+	}
+	b.codes = map[string]uuid.UUID{}
+	for _, g := range b.groups {
+		for k, v := range g.Codes {
+			b.codes[k] = v
+		}
+	}
+	return nil
+}
 
+func (b *choiceRows) add(st PromotionCandidate) {
+	here := b.here[st.ID]
+	if b.other[st.ID] && len(here) == 0 {
+		b.elsewhere++
+		return
+	}
+	cells := map[string]string{"index": st.Index, "name": st.Name, "from": st.ClassName, "medium": st.MediumID}
+	include := b.siblings == 1 || len(here) > 0
+	reason := "No choice recorded yet."
+	var warning string
+	fillSlots(b.groups, cells, here)
+	if len(here) > 0 {
+		reason = "Choice already recorded."
+	}
+	if rec, ok := b.fromCSV[st.Index]; ok && (rec.level == "" || normalise(rec.level) == normalise(b.level.Label)) {
+		include = true
+		reason = fmt.Sprintf("From the CSV, line %d.", rec.line)
+		warning = b.fillFromCSV(cells, rec)
+	}
+	picks := picksFromCells(b.groups, cells)
+	if warning == "" && len(picks) > 0 {
+		if problems := choiceProblems(b.groups, picks); len(problems) > 0 {
+			warning = strings.Join(problems, "; ") + "."
+		}
+	}
+	if b.locked[st.ID] {
+		b.lockedCnt++
+		reason += " Locked in the portal; saving here replaces it."
+	}
+	if len(picks) > 0 && warning == "" {
+		b.complete++
+	} else if include {
+		b.missing++
+	}
+	cells["include"] = strconv.FormatBool(include)
+	b.rows = append(b.rows, Row{ID: st.ID.String(), Group: st.ClassName, Reason: reason, Warning: warning, Cells: cells})
+}
+
+// fillFromCSV replaces the row's slots with the CSV subjects and returns a warning, if any.
+func (b *choiceRows) fillFromCSV(cells map[string]string, rec choiceRecord) string {
+	for _, c := range choiceColumns(b.groups) {
+		cells[c.Key] = ""
+	}
+	var subjects []uuid.UUID
+	var unknown []string
+	for _, name := range rec.subjects {
+		if id, ok := b.codes[normalise(name)]; ok {
+			subjects = append(subjects, id)
+		} else {
+			unknown = append(unknown, name)
+		}
+	}
+	var warning string
+	if left := fillSlots(b.groups, cells, subjects); len(left) > 0 {
+		warning = fmt.Sprintf("%s did not fit the groups' limits.", plural(len(left), "subject", "subjects"))
+	}
+	if len(unknown) > 0 {
+		warning = "Not offered in this level: " + strings.Join(unknown, ", ") + "."
+	}
+	return warning
+}
+
+func (b *choiceRows) proposal() Proposal {
+	level := b.level
 	columns := []Column{{Key: "from", Label: "Now in", Type: "text"}, {Key: "index", Label: "Index no.", Type: "text"}, {Key: "name", Label: "Name", Type: "text"},
 		{Key: "include", Label: "In " + level.Label, Type: "boolean", Editable: true}}
-	columns = append(columns, choiceColumns(groups)...)
+	columns = append(columns, choiceColumns(b.groups)...)
 	var fixed []string
-	for _, g := range groups {
+	for _, g := range b.groups {
 		if g.Fixed() {
 			for _, o := range g.Subjects {
 				fixed = append(fixed, o.Label)
@@ -473,21 +512,21 @@ func (w SubjectChoices) Propose(ctx context.Context, s *Store, in Inputs, trace 
 	p := Proposal{
 		Summary: []Stat{
 			{Label: "Level", Value: level.GradeName + ": " + level.Label},
-			{Label: "Students", Value: strconv.Itoa(len(rows))},
-			{Label: "Choice complete", Value: strconv.Itoa(complete)},
-			{Label: "Still to enter", Value: strconv.Itoa(missing)},
-			{Label: "In another stream", Value: strconv.Itoa(elsewhere)},
-			{Label: "Locked in the portal", Value: strconv.Itoa(lockedCount)},
+			{Label: "Students", Value: strconv.Itoa(len(b.rows))},
+			{Label: "Choice complete", Value: strconv.Itoa(b.complete)},
+			{Label: "Still to enter", Value: strconv.Itoa(b.missing)},
+			{Label: "In another stream", Value: strconv.Itoa(b.elsewhere)},
+			{Label: "Locked in the portal", Value: strconv.Itoa(b.lockedCnt)},
 		},
-		Sections: []Section{{Key: "choices", Title: "Choices", Description: description, Columns: columns, Rows: rows}},
+		Sections: []Section{{Key: "choices", Title: "Choices", Description: description, Columns: columns, Rows: b.rows}},
 	}
-	if missing > 0 {
-		p.Warnings = append(p.Warnings, fmt.Sprintf("%s have no complete choice yet. Fill them in here, or save now and finish later.", plural(missing, "student", "students")))
+	if b.missing > 0 {
+		p.Warnings = append(p.Warnings, fmt.Sprintf("%s have no complete choice yet. Fill them in here, or save now and finish later.", plural(b.missing, "student", "students")))
 	}
-	if siblings > 1 {
-		p.Warnings = append(p.Warnings, fmt.Sprintf("%s has %d levels. Tick the students in %s; run again for each other stream.", level.GradeName, siblings, level.Label))
+	if b.siblings > 1 {
+		p.Warnings = append(p.Warnings, fmt.Sprintf("%s has %d levels. Tick the students in %s; run again for each other stream.", level.GradeName, b.siblings, level.Label))
 	}
-	return p, "subject_choices:" + target.String() + ":" + level.ID.String(), nil
+	return p
 }
 
 type choicesSnapshot struct {

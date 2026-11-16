@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Button, Tag, Tooltip } from "antd";
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button, Tag } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import { useSubjects, useUpdateSubject, useDeleteSubject } from "@/features/curriculum/queries/useSubjects";
 import type { Subject } from "@/features/curriculum/api/subject";
 import EditSubjectModal, { type SubjectForm } from "@/features/curriculum/components/EditSubjectModal";
@@ -13,6 +13,7 @@ import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import { useListFilters } from "@/shared/hooks/useListFilters";
+import RowActions from "@/shared/ui/RowActions";
 
 // antd preset tag colour for a free-text subject type; undefined is the neutral default tag.
 function subjectTypeTag(type: string): string | undefined {
@@ -70,14 +71,7 @@ export default function SubjectsPanel() {
       header: "Actions",
       align: "end",
       render: (s) => (
-        <div className="os-grid__actions">
-          <Tooltip title="Edit subject">
-            <Button type="text" size="small" aria-label="Edit subject" icon={<EditOutlined />} onClick={() => openEdit(s)} />
-          </Tooltip>
-          <Tooltip title="Delete subject">
-            <Button type="text" size="small" danger aria-label="Delete subject" icon={<DeleteOutlined />} onClick={() => setToDelete(s)} />
-          </Tooltip>
-        </div>
+        <RowActions editLabel="Edit subject" deleteLabel="Delete subject" onEdit={() => openEdit(s)} onDelete={() => setToDelete(s)} />
       ),
     },
   ];

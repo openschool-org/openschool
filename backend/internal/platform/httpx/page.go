@@ -96,3 +96,28 @@ func ParseSort(c *gin.Context, allowed ...string) SortParams {
 	}
 	return SortParams{}
 }
+
+// ListPage fetches one page whose rows carry COUNT(*) OVER () as their total.
+// An offset past the last page returns no rows, so it re-probes at offset 0 to keep the total right.
+func ListPage[T any](limit, offset int32, list func(limit, offset int32) ([]T, error), total func(T) int64) (Page[T], error) {
+	rows, err := list(limit, offset)
+	if err != nil {
+		return Page[T]{}, err
+	}
+	page := Page[T]{Items: rows, Limit: limit, Offset: offset}
+	if len(rows) > 0 {
+		page.Total = total(rows[0])
+		return page, nil
+	}
+	if offset == 0 {
+		return page, nil
+	}
+	probe, err := list(1, 0)
+	if err != nil {
+		return Page[T]{}, err
+	}
+	if len(probe) > 0 {
+		page.Total = total(probe[0])
+	}
+	return page, nil
+}

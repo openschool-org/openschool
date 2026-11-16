@@ -44,22 +44,38 @@ func NewStudentPortfolioHandler(service studentPortfolioService) *StudentPortfol
 
 // studentIDParam parses and validates the :id URL parameter as a student ID.
 func studentIDParam(c *gin.Context) (uuid.UUID, bool) {
-	id, err := uuid.Parse(c.Param("id"))
+	return uuidParam(c, "id", "invalid student id")
+}
+
+// recordIDParam parses and validates the :record_id URL parameter.
+func recordIDParam(c *gin.Context) (uuid.UUID, bool) {
+	return uuidParam(c, "record_id", "invalid record id")
+}
+
+func uuidParam(c *gin.Context, name, message string) (uuid.UUID, bool) {
+	id, err := uuid.Parse(c.Param(name))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid student id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": message})
 		return uuid.UUID{}, false
 	}
 	return id, true
 }
 
-// recordIDParam parses and validates the :record_id URL parameter.
-func recordIDParam(c *gin.Context) (uuid.UUID, bool) {
-	id, err := uuid.Parse(c.Param("record_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid record id"})
-		return uuid.UUID{}, false
+// deleteRecord parses the student and record ids, runs del and writes the response.
+func deleteRecord(c *gin.Context, del func(context.Context, uuid.UUID, uuid.UUID) error, message string) {
+	studentID, ok := studentIDParam(c)
+	if !ok {
+		return
 	}
-	return id, true
+	id, ok := recordIDParam(c)
+	if !ok {
+		return
+	}
+	if err := del(c.Request.Context(), id, studentID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": message})
 }
 
 // optionalActorID returns the caller's user ID, or nil if the claim is missing or invalid.
@@ -136,19 +152,7 @@ func (h *StudentPortfolioHandler) UpdateProgressReport(c *gin.Context) {
 
 // DeleteProgressReport deletes a progress report.
 func (h *StudentPortfolioHandler) DeleteProgressReport(c *gin.Context) {
-	studentID, ok := studentIDParam(c)
-	if !ok {
-		return
-	}
-	id, ok := recordIDParam(c)
-	if !ok {
-		return
-	}
-	if err := h.service.DeleteProgressReport(c.Request.Context(), id, studentID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "progress report deleted"})
+	deleteRecord(c, h.service.DeleteProgressReport, "progress report deleted")
 }
 
 // --- Activities --------------------------------------------------------------
@@ -211,19 +215,7 @@ func (h *StudentPortfolioHandler) UpdateActivity(c *gin.Context) {
 
 // DeleteActivity deletes a student activity.
 func (h *StudentPortfolioHandler) DeleteActivity(c *gin.Context) {
-	studentID, ok := studentIDParam(c)
-	if !ok {
-		return
-	}
-	id, ok := recordIDParam(c)
-	if !ok {
-		return
-	}
-	if err := h.service.DeleteActivity(c.Request.Context(), id, studentID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "activity deleted"})
+	deleteRecord(c, h.service.DeleteActivity, "activity deleted")
 }
 
 // --- Leadership roles ----------------------------------------------------------
@@ -263,19 +255,7 @@ func (h *StudentPortfolioHandler) ListLeadershipRoles(c *gin.Context) {
 
 // DeleteLeadershipRole deletes a student leadership role.
 func (h *StudentPortfolioHandler) DeleteLeadershipRole(c *gin.Context) {
-	studentID, ok := studentIDParam(c)
-	if !ok {
-		return
-	}
-	id, ok := recordIDParam(c)
-	if !ok {
-		return
-	}
-	if err := h.service.DeleteLeadershipRole(c.Request.Context(), id, studentID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "leadership role deleted"})
+	deleteRecord(c, h.service.DeleteLeadershipRole, "leadership role deleted")
 }
 
 // --- Awards ------------------------------------------------------------------
@@ -315,19 +295,7 @@ func (h *StudentPortfolioHandler) ListAwards(c *gin.Context) {
 
 // DeleteAward deletes a student award.
 func (h *StudentPortfolioHandler) DeleteAward(c *gin.Context) {
-	studentID, ok := studentIDParam(c)
-	if !ok {
-		return
-	}
-	id, ok := recordIDParam(c)
-	if !ok {
-		return
-	}
-	if err := h.service.DeleteAward(c.Request.Context(), id, studentID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "award deleted"})
+	deleteRecord(c, h.service.DeleteAward, "award deleted")
 }
 
 // --- Disciplinary records -------------------------------------------------------
@@ -367,19 +335,7 @@ func (h *StudentPortfolioHandler) ListDisciplinaryRecords(c *gin.Context) {
 
 // DeleteDisciplinaryRecord deletes a disciplinary record.
 func (h *StudentPortfolioHandler) DeleteDisciplinaryRecord(c *gin.Context) {
-	studentID, ok := studentIDParam(c)
-	if !ok {
-		return
-	}
-	id, ok := recordIDParam(c)
-	if !ok {
-		return
-	}
-	if err := h.service.DeleteDisciplinaryRecord(c.Request.Context(), id, studentID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "disciplinary record deleted"})
+	deleteRecord(c, h.service.DeleteDisciplinaryRecord, "disciplinary record deleted")
 }
 
 // RegisterStudentPortfolioRoutes owns all student portfolio HTTP endpoints.

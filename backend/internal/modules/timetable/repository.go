@@ -385,14 +385,19 @@ func (r *timetableRepository) teachersByIDs(ctx context.Context, ids []uuid.UUID
 }
 
 func (r *timetableRepository) authorizedReviewers(ctx context.Context, gradeID, yearID uuid.UUID) ([]uuid.UUID, error) {
+	return gradeReviewers(ctx, r.queries, yearID, gradeID)
+}
+
+// gradeReviewers returns the grade TIC and the section head for a grade, skipping either when unset.
+func gradeReviewers(ctx context.Context, q *db.Queries, yearID, gradeID uuid.UUID) ([]uuid.UUID, error) {
 	result := make([]uuid.UUID, 0, 2)
-	tic, err := r.queries.GetGradeTICForGrade(ctx, db.GetGradeTICForGradeParams{AcademicYearID: yearID, GradeID: gradeID})
+	tic, err := q.GetGradeTICForGrade(ctx, db.GetGradeTICForGradeParams{AcademicYearID: yearID, GradeID: gradeID})
 	if err == nil {
 		result = append(result, tic)
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
-	section, err := r.queries.GetGradeSectionForGrade(ctx, db.GetGradeSectionForGradeParams{AcademicYearID: yearID, GradeID: gradeID})
+	section, err := q.GetGradeSectionForGrade(ctx, db.GetGradeSectionForGradeParams{AcademicYearID: yearID, GradeID: gradeID})
 	if err == nil && section.SectionHeadTeacherID.Valid {
 		result = append(result, uuid.UUID(section.SectionHeadTeacherID.Bytes))
 	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -761,20 +766,7 @@ func (r *timetableEntryRepository) entrySubjectCounts(ctx context.Context, timet
 	return result, nil
 }
 func (r *timetableEntryRepository) authorizedReviewers(ctx context.Context, yearID, gradeID uuid.UUID) ([]uuid.UUID, error) {
-	result := make([]uuid.UUID, 0, 2)
-	tic, err := r.queries.GetGradeTICForGrade(ctx, db.GetGradeTICForGradeParams{AcademicYearID: yearID, GradeID: gradeID})
-	if err == nil {
-		result = append(result, tic)
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, err
-	}
-	section, err := r.queries.GetGradeSectionForGrade(ctx, db.GetGradeSectionForGradeParams{AcademicYearID: yearID, GradeID: gradeID})
-	if err == nil && section.SectionHeadTeacherID.Valid {
-		result = append(result, uuid.UUID(section.SectionHeadTeacherID.Bytes))
-	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, err
-	}
-	return result, nil
+	return gradeReviewers(ctx, r.queries, yearID, gradeID)
 }
 
 type settingsRepository struct{ queries *db.Queries }
