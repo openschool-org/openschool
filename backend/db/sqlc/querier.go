@@ -52,6 +52,10 @@ type Querier interface {
 	// since sqlc's static analyzer doesn't resolve that overload.
 	BulkInsertClassStudents(ctx context.Context, arg BulkInsertClassStudentsParams) error
 	CancelLeaveRequest(ctx context.Context, arg CancelLeaveRequestParams) (int64, error)
+	// Counts an attempt before the identifier is compared, in one statement, so
+	// parallel guesses cannot all pass the lock check first (S6). Returns no row
+	// while the code is locked. A correct identifier resets the count afterwards.
+	ClaimActivationAttempt(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	// Marks the code used before any account is created, so two requests can't both activate.
 	ClaimActivationCode(ctx context.Context, id uuid.UUID) (int64, error)
 	// Removes marks the teacher un-set, so a cleared student goes back to "not marked".
@@ -282,6 +286,7 @@ type Querier interface {
 	GetHouseByID(ctx context.Context, id uuid.UUID) (House, error)
 	GetJobSetting(ctx context.Context, jobName string) (JobSetting, error)
 	GetLeaveRequest(ctx context.Context, id uuid.UUID) (GetLeaveRequestRow, error)
+	GetLeaveSettings(ctx context.Context) (LeaveSetting, error)
 	GetLevelByID(ctx context.Context, id uuid.UUID) (Level, error)
 	GetMaxVersionForClass(ctx context.Context, arg GetMaxVersionForClassParams) (int32, error)
 	GetMediumByID(ctx context.Context, id uuid.UUID) (Medium, error)
@@ -464,6 +469,9 @@ type Querier interface {
 	// has been entered yet (NULL columns otherwise) — powers the marks-entry
 	// grid, which needs to show blanks for students not yet marked.
 	ListClassMarksForTermSubject(ctx context.Context, arg ListClassMarksForTermSubjectParams) ([]ListClassMarksForTermSubjectRow, error)
+	// Of the given student_ids, the ones enrolled in class_id. Attendance may only
+	// be recorded for these (S2).
+	ListClassStudentsAmong(ctx context.Context, arg ListClassStudentsAmongParams) ([]uuid.UUID, error)
 	ListClassesByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]ListClassesByAcademicYearRow, error)
 	// every class belonging to any grade in a grade_section, for a given
 	// academic year — the auto-generator's unit of work (teachers/labs shared
@@ -535,7 +543,7 @@ type Querier interface {
 	ListJobSettings(ctx context.Context) ([]JobSetting, error)
 	// one row per job_name: its most recent run, for the Automation panel.
 	ListLatestJobRuns(ctx context.Context) ([]JobRun, error)
-	// the Principal and every Vice Principal, who receive new applications
+	// administrators review the Principal's applications; the Principal reviews a Vice Principal's.
 	ListLeaveApproverUserIDs(ctx context.Context, excludeTeacherID uuid.UUID) ([]uuid.UUID, error)
 	// approved days per type for every active teacher in a leave year
 	ListLeaveBalances(ctx context.Context, arg ListLeaveBalancesParams) ([]ListLeaveBalancesRow, error)
@@ -789,8 +797,6 @@ type Querier interface {
 	// unbounded on a job that runs hourly/daily forever.
 	PruneJobRuns(ctx context.Context, arg PruneJobRunsParams) error
 	PublishTimetable(ctx context.Context, arg PublishTimetableParams) (Timetable, error)
-	// Five wrong identifiers lock the code for an hour; each later miss locks it again.
-	RecordActivationFailure(ctx context.Context, id uuid.UUID) error
 	RejectTimetable(ctx context.Context, arg RejectTimetableParams) (Timetable, error)
 	ReleaseActivationCode(ctx context.Context, id uuid.UUID) error
 	RemoveGradeFromSection(ctx context.Context, arg RemoveGradeFromSectionParams) error
@@ -804,6 +810,9 @@ type Querier interface {
 	RevokeActivationBatch(ctx context.Context, batchID uuid.UUID) (int64, error)
 	RevokeLiveActivationCodesForGuardians(ctx context.Context, ids []uuid.UUID) error
 	RevokeLiveActivationCodesForStudents(ctx context.Context, ids []uuid.UUID) error
+	// Ends every unused reset link for a user: run when a new link is issued and
+	// when the password changes, so an older email cannot be used afterwards.
+	RevokePasswordResetTokens(ctx context.Context, userID uuid.UUID) error
 	// Top 5 guardians matching a name/phone fragment, for the admin header's
 	// global search.
 	SearchGuardians(ctx context.Context, dollar_1 pgtype.Text) ([]SearchGuardiansRow, error)
@@ -839,6 +848,9 @@ type Querier interface {
 	SumLeaveDaysByType(ctx context.Context, arg SumLeaveDaysByTypeParams) ([]SumLeaveDaysByTypeRow, error)
 	// The caller's teacher profile, the class's grade and year, and whether they teach the class.
 	TeacherClassAccess(ctx context.Context, arg TeacherClassAccessParams) (TeacherClassAccessRow, error)
+	// True when the term belongs to the class's academic year, so marks cannot be
+	// written into another year's term (S4).
+	TermInClassYear(ctx context.Context, arg TermInClassYearParams) (bool, error)
 	UnenrollStudentFromClass(ctx context.Context, arg UnenrollStudentFromClassParams) error
 	UnlinkGuardianFromStudent(ctx context.Context, arg UnlinkGuardianFromStudentParams) error
 	UnlockStudentEnrollment(ctx context.Context, arg UnlockStudentEnrollmentParams) (int64, error)
@@ -849,6 +861,7 @@ type Querier interface {
 	UpdateGradeSection(ctx context.Context, arg UpdateGradeSectionParams) (GradeSection, error)
 	UpdateGuardian(ctx context.Context, arg UpdateGuardianParams) (Guardian, error)
 	UpdateHouse(ctx context.Context, arg UpdateHouseParams) (House, error)
+	UpdateLeaveSettings(ctx context.Context, arg UpdateLeaveSettingsParams) (LeaveSetting, error)
 	UpdateLevel(ctx context.Context, arg UpdateLevelParams) (Level, error)
 	UpdateMedium(ctx context.Context, arg UpdateMediumParams) (Medium, error)
 	UpdateNonAcademicStaff(ctx context.Context, arg UpdateNonAcademicStaffParams) (NonAcademicStaff, error)

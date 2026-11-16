@@ -186,6 +186,29 @@ func (q *Queries) ListStudentMarksByTerm(ctx context.Context, arg ListStudentMar
 	return items, nil
 }
 
+const termInClassYear = `-- name: TermInClassYear :one
+SELECT EXISTS (
+    SELECT 1
+    FROM terms t
+    INNER JOIN classes c ON c.academic_year_id = t.academic_year_id
+    WHERE t.id = $1 AND c.id = $2
+) AS ok
+`
+
+type TermInClassYearParams struct {
+	TermID  uuid.UUID `json:"term_id"`
+	ClassID uuid.UUID `json:"class_id"`
+}
+
+// True when the term belongs to the class's academic year, so marks cannot be
+// written into another year's term (S4).
+func (q *Queries) TermInClassYear(ctx context.Context, arg TermInClassYearParams) (bool, error) {
+	row := q.db.QueryRow(ctx, termInClassYear, arg.TermID, arg.ClassID)
+	var ok bool
+	err := row.Scan(&ok)
+	return ok, err
+}
+
 const upsertTermMark = `-- name: UpsertTermMark :one
 INSERT INTO term_marks (
     student_id,

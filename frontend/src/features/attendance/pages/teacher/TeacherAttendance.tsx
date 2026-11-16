@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 import { Input, Tag } from "antd";
 import { useQueries } from "@tanstack/react-query";
-import { ClockCircleOutlined, ScheduleOutlined, SearchOutlined } from "@ant-design/icons";
+import { ClockCircleOutlined, SearchOutlined } from "@ant-design/icons";
 import { useMyClasses } from "@/features/teachers/queries/useTeachers";
-import { useCreateSession, classSessionsOptions } from "@/features/attendance/queries/useAttendance";
+import { classSessionsOptions } from "@/features/attendance/queries/useAttendance";
+import StartSessionButton from "@/features/attendance/components/StartSessionButton";
 import SessionCountCell from "@/features/attendance/components/SessionCountCell";
 import DataGrid from "@/shared/ui/DataGrid";
 import EmptyState from "@/shared/ui/EmptyState";
@@ -12,27 +13,6 @@ import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import { todayISODate } from "@/shared/lib/date";
 import { classLabel } from "@/shared/lib/classLabel";
-
-function PendingClassAction({ classId, className, gradeName }: { classId: string; className: string; gradeName: string }) {
-  const navigate = useNavigate();
-  const createSession = useCreateSession();
-
-  const handleClick = () => {
-    createSession.mutate(
-      { class_id: classId, date: todayISODate() },
-      { onSuccess: (session) => navigate(`/attendance/sessions/${session.id}/mark`) }
-    );
-  };
-
-  return (
-    <button
-      onClick={handleClick}
-      disabled={createSession.isPending} className="os-py-2 os-px-4 os-bg-accent os-c-layer os-border-none os-pointer os-text-sm os-fw-500 os-nowrap os-flex os-items-center os-gap-1h"
-    >
-      <ScheduleOutlined /> {createSession.isPending ? "Starting…" : classLabel(gradeName, className)}
-    </button>
-  );
-}
 
 export default function TeacherAttendance() {
   const { classes: myClasses, isLoading, isError, refetch } = useMyClasses();
@@ -86,7 +66,7 @@ export default function TeacherAttendance() {
             <p className="os-m-0 os-text-xs os-c-warning-text">Start today's session for a class.</p>
           </div>
           {pendingToday.map((c) => (
-            <PendingClassAction key={c.class_id} classId={c.class_id} className={c.class_name} gradeName={c.grade_name} />
+            <StartSessionButton key={c.class_id} classId={c.class_id}>{classLabel(c.grade_name, c.class_name)}</StartSessionButton>
           ))}
         </div>
       )}

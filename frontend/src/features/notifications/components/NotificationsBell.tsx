@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Badge, Button, Empty, Popover, Tag } from "antd";
+import { Badge, Button, Empty, Popover, Tag, Tooltip } from "antd";
 import { BellOutlined } from "@ant-design/icons";
 import { formatDayGroup, formatTime } from "@/shared/lib/date";
 import {
@@ -24,6 +24,8 @@ function groupByDay(items: MyNotification[], words: { today: string; yesterday: 
 export default function NotificationsBell() {
   const { t } = useT();
   const [open, setOpen] = useState(false);
+  // One notice at a time opens in place to show its full message.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const { data: unreadCount } = useUnreadNotificationCount();
   const { data: notifications } = useMyNotifications({ enabled: open });
   const markRead = useMarkNotificationRead();
@@ -53,8 +55,12 @@ export default function NotificationsBell() {
                 <button
                   type="button"
                   key={n.recipient_id}
-                  onClick={() => !n.is_read && markRead.mutate(n.notification_id)}
-                  className={`os-bell__item${n.is_read ? "" : " is-unread"}`}
+                  aria-expanded={expandedId === n.recipient_id}
+                  onClick={() => {
+                    if (!n.is_read) markRead.mutate(n.notification_id);
+                    setExpandedId((id) => (id === n.recipient_id ? null : n.recipient_id));
+                  }}
+                  className={`os-bell__item${n.is_read ? "" : " is-unread"}${expandedId === n.recipient_id ? " is-expanded" : ""}`}
                 >
                   <span className="os-bell__item-head">
                     <span className="os-bell__item-title">{n.title}</span>
@@ -66,7 +72,9 @@ export default function NotificationsBell() {
                     )}
                   </span>
                   <span className="os-bell__item-msg">{n.message}</span>
-                  <span className="os-bell__item-meta">{n.sender_name} &middot; {formatTime(n.sent_at)}</span>
+                  <span className="os-bell__item-meta">
+                    {n.sender_name} &middot; {formatTime(n.sent_at)} &middot; {expandedId === n.recipient_id ? t("bell.showLess") : t("bell.showMore")}
+                  </span>
                 </button>
               ))}
             </section>
@@ -79,8 +87,10 @@ export default function NotificationsBell() {
 
   return (
     <Popover open={open} onOpenChange={setOpen} trigger="click" placement="bottomRight" arrow={false} content={content} classNames={{ root: "os-bell-pop" }}>
-      <Badge dot={!!unreadCount} offset={[-6, 6]}>
-        <Button type="text" shape="circle" aria-label={label} aria-expanded={open} icon={<BellOutlined />} />
+      <Badge count={unreadCount ?? 0} overflowCount={9} size="small" offset={[-6, 6]}>
+        <Tooltip title={t("bell.title")}>
+          <Button type="text" shape="circle" aria-label={label} aria-expanded={open} icon={<BellOutlined />} />
+        </Tooltip>
       </Badge>
     </Popover>
   );

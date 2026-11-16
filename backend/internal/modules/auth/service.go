@@ -32,6 +32,9 @@ var (
 	ErrPasswordAlreadyChanged = errors.New("this account has already set a password")
 )
 
+// forgotPasswordMessage is the one reply for a match or a mismatch.
+const forgotPasswordMessage = "If those details match an account, a password reset link has been sent to the email on file."
+
 // passwordResetTokenTTL bounds how long an emailed reset link stays valid.
 const passwordResetTokenTTL = 15 * time.Minute
 
@@ -43,6 +46,7 @@ type authStore interface {
 	createResetToken(context.Context, uuid.UUID, string, time.Time) error
 	consumeResetToken(context.Context, string) (resetToken, error)
 	clearMustChangePassword(ctx context.Context, id uuid.UUID, keptDefault bool) error
+	revokeResetTokens(ctx context.Context, userID uuid.UUID) error
 }
 
 // DefaultPasswordExpiry bounds how long a "keep this password" choice
@@ -127,9 +131,7 @@ func (s *Service) ForgotPassword(ctx context.Context, req ForgotPasswordRequest)
 	}
 
 	logAttempt("reset link sent")
-	return ForgotPasswordResponse{
-		Message: "If those details match an account, a password reset link has been sent to the email on file.",
-	}, nil
+	return ForgotPasswordResponse{Message: forgotPasswordMessage}, nil
 }
 
 func (s *Service) issueAndEmailResetToken(ctx context.Context, userID uuid.UUID, email string) error {
@@ -216,6 +218,10 @@ func (s *Service) setPassword(ctx context.Context, userID uuid.UUID, newPassword
 
 	if err := s.store.clearMustChangePassword(ctx, userID, false); err != nil {
 		return err
+	}
+	// A reset link emailed earlier must not work once the password changed.
+	if err := s.store.revokeResetTokens(ctx, userID); err != nil {
+		slog.Warn("auth: earlier reset links not revoked", "user_id", userID, "error", err)
 	}
 	// Best effort: the password already changed, so a mail failure must not report the change as failed.
 	if user.Email != "" {

@@ -10,6 +10,8 @@ function token(name: string, fallback: string): string {
   return value || fallback;
 }
 
+// Built once at start-up (main.tsx). There is no dark mode yet; if one is added, rebuild
+// this theme when the colour scheme changes, since the token values are read only here.
 export function buildAntdTheme(): ThemeConfig {
   return {
     cssVar: { key: "os" },
@@ -32,9 +34,9 @@ export function buildAntdTheme(): ThemeConfig {
       motionDurationFast: "0.08s",
       motionDurationMid: "0.12s",
       motionDurationSlow: "0.16s",
-      // Focus shows the coloured border ring only, no glow around it.
-      controlOutline: "transparent",
-      controlOutlineWidth: 0,
+      // Visible 2px focus ring in a light accent tint (WCAG 2.4.7), on top of the border colour change.
+      controlOutline: token("--os-accent-border", "currentColor"),
+      controlOutlineWidth: 2,
       fontSize: 14,
       fontWeightStrong: 500,
       // Controls (buttons, inputs, selects) 6px at every size; cards, modals and popups 8px.

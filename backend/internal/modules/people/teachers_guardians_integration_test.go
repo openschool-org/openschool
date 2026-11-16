@@ -25,7 +25,7 @@ func TestTeacherProvisioningAPIWithPostgres(t *testing.T) {
 	store := NewStudentStore(pool)
 	firstUserID, duplicateEmailUserID, duplicateNICUserID := uuid.New(), uuid.New(), uuid.New()
 	provider := &peopleIntegrationIdentity{userIDs: []uuid.UUID{firstUserID, duplicateEmailUserID, duplicateNICUserID}}
-	service := NewTeacherService(store, provider, nil, nil)
+	service := NewTeacherService(store, provider, nil, nil, nil)
 	router := gin.New()
 	group := router.Group("")
 	actorID := uuid.New()

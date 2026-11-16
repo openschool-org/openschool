@@ -7,6 +7,8 @@ import (
 )
 
 func TestSetupRegistersRoutesPreviouslyOwnedByCompatibilityBridge(t *testing.T) {
+	// Unset APP_ENV counts as production, which needs a real mail provider.
+	t.Setenv("APP_ENV", "development")
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	if scheduler := Setup(router, nil); scheduler == nil {

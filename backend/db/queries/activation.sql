@@ -103,13 +103,6 @@ LEFT JOIN student_profiles sp ON sp.id = ac.student_id
 LEFT JOIN guardians g         ON g.id  = ac.guardian_id
 WHERE ac.id = $1 AND ac.used_at IS NULL AND ac.revoked_at IS NULL AND ac.expires_at > NOW();
 
--- name: RecordActivationFailure :exec
--- Five wrong identifiers lock the code for an hour; each later miss locks it again.
-UPDATE activation_codes
-SET failed_attempts = failed_attempts + 1,
-    locked_until = CASE WHEN failed_attempts + 1 >= 5 THEN NOW() + INTERVAL '1 hour' ELSE locked_until END
-WHERE id = $1;
-
 -- name: ResetActivationFailures :exec
 UPDATE activation_codes SET failed_attempts = 0, locked_until = NULL WHERE id = $1;
 
@@ -206,3 +199,13 @@ ORDER BY grade_order, class_name, name;
 
 -- name: ActivationBatchRole :one
 SELECT role, MAX(expires_at)::timestamptz AS expires_at FROM activation_codes WHERE batch_id = $1 GROUP BY role LIMIT 1;
+
+-- name: ClaimActivationAttempt :one
+-- Counts an attempt before the identifier is compared, in one statement, so
+-- parallel guesses cannot all pass the lock check first (S6). Returns no row
+-- while the code is locked. A correct identifier resets the count afterwards.
+UPDATE activation_codes
+SET failed_attempts = failed_attempts + 1,
+    locked_until = CASE WHEN failed_attempts + 1 >= 5 THEN NOW() + INTERVAL '1 hour' ELSE locked_until END
+WHERE id = $1 AND (locked_until IS NULL OR locked_until <= NOW())
+RETURNING id;

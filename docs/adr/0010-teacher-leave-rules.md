@@ -18,6 +18,14 @@ Establishments Code (Chapter XII) and the maternity leave circulars as
 they apply to teachers. They are encoded in
 `backend/internal/modules/leave/rules.go`.
 
+**Update (16 Nov 2026):** the numbers in the table below are now the
+defaults, not fixed values. Schools differ (private and international
+schools set their own scheme), so an administrator can change casual and
+medical days a year, short leaves a month, the longest short leave and
+the full-pay maternity days under Settings > Leave. They are stored in the
+single-row `leave_settings` table (migration 000056). Changing a limit
+affects balances and new applications; approved leave is not recalculated.
+
 ## Decision
 
 **Leave types and limits**

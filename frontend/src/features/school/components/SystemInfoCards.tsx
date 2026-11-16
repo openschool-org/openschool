@@ -20,7 +20,7 @@ export default function SystemInfoCards() {
         <h2 id="about-openschool" className="os-about-card__title">OpenSchool</h2>
         <p className="os-about-card__tagline">Open-source school management</p>
         <dl className="os-about-card__facts">
-          {[["Version", "0.1.0 · development build"], ["License", "Apache 2.0"], ["Repository", "github.com/openschool-org"]].map(([k, v]) => (
+          {[["Version", __APP_VERSION__], ["License", "Apache 2.0"], ["Repository", "github.com/openschool-org"]].map(([k, v]) => (
             <div key={k}><dt>{k}</dt><dd>{v}</dd></div>
           ))}
         </dl>

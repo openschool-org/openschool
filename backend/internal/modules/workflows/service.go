@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"slices"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/openschool-org/openschool/internal/ports"
@@ -16,7 +18,12 @@ type Engine struct {
 	store       *Store
 	audit       ports.AuditRecorder
 	definitions []Definition
+	// background tracks after-apply work still running.
+	background sync.WaitGroup
 }
+
+// Wait blocks until background after-apply work has finished (tests, shutdown).
+func (e *Engine) Wait() { e.background.Wait() }
 
 func NewEngine(store *Store, audit ports.AuditRecorder, definitions []Definition) *Engine {
 	return &Engine{store: store, audit: audit, definitions: definitions}
@@ -246,15 +253,29 @@ func (e *Engine) Apply(ctx context.Context, id uuid.UUID, actor uuid.UUID) (RunR
 		return RunRecord{}, checks, err
 	}
 	e.record(ctx, id, "workflow_applied", actor, run.WorkflowKey)
-	// Side effects outside the database transaction (a school notice) are best effort.
+	// Side effects outside the database transaction (a school notice, intake
+	// logins) run in the background on their own deadline: a 200-student
+	// intake makes three identity provider calls per student, far past the
+	// 15s request limit that used to cut it short (E2).
 	if after, ok := d.(afterApplier); ok {
-		if err := after.AfterApply(ctx, e.store, run.Inputs, actor); err != nil {
-			log.Printf("workflow %s after-apply: %v", run.WorkflowKey, err)
-		}
+		key, inputs := run.WorkflowKey, run.Inputs
+		e.background.Add(1)
+		go func() {
+			defer e.background.Done()
+			bg, cancel := context.WithTimeout(context.WithoutCancel(ctx), afterApplyTimeout)
+			defer cancel()
+			if err := after.AfterApply(bg, e.store, inputs, actor); err != nil {
+				log.Printf("workflow %s after-apply: %v", key, err)
+			}
+		}()
 	}
 	out, err := e.store.getRun(ctx, id, false)
 	return out, checks, err
 }
+
+// afterApplyTimeout bounds background work after an apply, such as creating
+// intake logins one student at a time.
+const afterApplyTimeout = 30 * time.Minute
 
 // Discard closes an open proposal without applying it.
 func (e *Engine) Discard(ctx context.Context, id uuid.UUID, actor uuid.UUID) error {

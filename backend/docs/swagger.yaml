@@ -1133,7 +1133,7 @@ info:
   contact: {}
   description: Digital Infrastructure for Sri Lankan Schools
   title: OpenSchool API
-  version: "1.0"
+  version: "0.4.0"
 paths:
   /academic-years:
     get:

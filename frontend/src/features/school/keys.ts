@@ -1,6 +1,7 @@
 export const schoolKeys = {
   all: ["school"] as const,
   info: () => ["school", "info"] as const,
+  branding: () => ["school", "info", "branding"] as const,
   setupStatus: () => ["school", "setup-status"] as const,
   houses: () => ["school", "houses"] as const,
 };

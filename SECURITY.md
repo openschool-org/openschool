@@ -44,15 +44,16 @@ reported to the relevant project or your own operations team.
 ## Known issues and disclosure
 
 OpenSchool undergoes periodic internal security/code-quality review, with
-findings tracked in [`audit.md`](./audit.md) at the repository root
-alongside remediation status. If you find something not already listed
-there, please still report it privately rather than assuming it's known -
-`audit.md` reflects the state as of its last update, not necessarily the
-current `main` branch.
+open findings tracked in
+[`docs/development/issue.md`](./docs/development/issue.md). If you find
+something not already listed there, please still report it privately
+rather than assuming it's known - that file reflects the state as of its
+last update, not necessarily the current `main` branch.
 
 **Operators:** before deploying an instance that will hold real student,
-guardian, or staff data, review `audit.md`'s Critical and High findings.
+guardian, or staff data, review the open findings in
+`docs/development/issue.md`.
 The self-service password-reset flow's previously-Critical finding (the
 reset token being returned directly in the API response) is resolved -
 see [ADR 0005](docs/adr/0005-hand-rolled-password-reset.md) - but review
-`audit.md` for whatever is currently open.
+`docs/development/issue.md` for whatever is currently open.

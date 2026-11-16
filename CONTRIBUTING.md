@@ -15,7 +15,7 @@ Please follow the [Code of Conduct](CODE_OF_CONDUCT.md). For a security problem,
 OpenSchool has a Go backend, a React frontend, PostgreSQL, and ThunderID for sign-in.
 
 1. Follow [ThunderID setup](docs/THUNDERID.md) once for your local machine.
-2. Follow [project setup](docs/SETUP.md) to start PostgreSQL, the backend, and the frontend.
+2. Follow the [server setup guide](docs/setup/server.md) to start PostgreSQL, the backend, and the frontend.
 3. Open `http://localhost:5173` and confirm that you can sign in.
 
 Useful project maps:

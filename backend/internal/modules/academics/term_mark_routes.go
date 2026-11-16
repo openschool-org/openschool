@@ -2,6 +2,7 @@ package academics
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -45,7 +46,7 @@ func RegisterTermMarkRoutes(teacherOrAdmin *gin.RouterGroup, runner TermMarkRunn
 		}
 		marks, err := runner.BulkUpsertMarks(c.Request.Context(), classID, actor, request)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			respondTermMarkError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, marks)
@@ -104,12 +105,27 @@ func RegisterTermMarkRoutes(teacherOrAdmin *gin.RouterGroup, runner TermMarkRunn
 			return
 		}
 		if err := runner.DeleteMark(c, actor, id); err != nil {
-			apierror.RespondInternal(c, err)
+			respondTermMarkError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "mark deleted"})
 	})
 }
+
+// respondTermMarkError keeps permission and term errors as 4xx and hides database detail.
+func respondTermMarkError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, ErrNotAssignedToSubject):
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+	case errors.Is(err, ErrTermOutsideClassYear):
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	case err.Error() == "mark not found":
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	default:
+		apierror.Respond(c, err)
+	}
+}
+
 func termMarkID(c *gin.Context, name, message string) (uuid.UUID, bool) {
 	id, err := uuid.Parse(c.Param(name))
 	if err != nil {

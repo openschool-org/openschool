@@ -17,6 +17,18 @@ type fakeStore struct {
 	marked      []MarkInput
 	assigned    bool
 	userPresent bool
+	// outside lists students not enrolled in the session's class.
+	outside map[uuid.UUID]bool
+}
+
+func (f *fakeStore) enrolledIn(_ context.Context, _ uuid.UUID, ids []uuid.UUID) ([]uuid.UUID, error) {
+	out := make([]uuid.UUID, 0, len(ids))
+	for _, id := range ids {
+		if !f.outside[id] {
+			out = append(out, id)
+		}
+	}
+	return out, nil
 }
 
 func (f *fakeStore) createSession(context.Context, uuid.UUID, uuid.UUID, time.Time) (Session, error) {
@@ -145,5 +157,23 @@ func TestAdminLockedCorrectionIsAuditedAndNewAbsenceNotified(t *testing.T) {
 	}
 	if notifier.calls != 1 {
 		t.Fatalf("expected one notification call, got %d", notifier.calls)
+	}
+}
+
+func TestMarkAttendanceRejectsStudentOutsideClass(t *testing.T) {
+	now := time.Now()
+	stranger := uuid.New()
+	store := &fakeStore{session: testSession(now), assigned: true, userPresent: true, outside: map[uuid.UUID]bool{stranger: true}}
+	notifier := &fakeNotifier{}
+	service := NewService(store, notifier, nil, nil)
+	service.now = func() time.Time { return now }
+
+	req := MarkAttendanceRequest{Records: []AttendanceRecord{{StudentID: uuid.NewString(), Status: AttendanceStatusPresent}, {StudentID: stranger.String(), Status: AttendanceStatusAbsent}}}
+	err := service.MarkAttendance(context.Background(), Actor{ID: uuid.New(), Role: authz.RoleTeacher}, store.session.ID, req)
+	if !errors.Is(err, ErrStudentNotInClass) {
+		t.Fatalf("expected ErrStudentNotInClass, got %v", err)
+	}
+	if len(store.marked) != 0 || notifier.calls != 0 {
+		t.Fatal("a record or absence notice went out for a student outside the class")
 	}
 }

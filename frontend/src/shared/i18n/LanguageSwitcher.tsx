@@ -1,4 +1,4 @@
-import { Button, Dropdown } from "antd";
+import { Button, Dropdown, Tooltip } from "antd";
 import { TranslationOutlined } from "@ant-design/icons";
 import { LANGUAGES } from "@/shared/i18n/i18nContext";
 import { useT } from "@/shared/i18n/useT";
@@ -14,7 +14,11 @@ export default function LanguageSwitcher() {
         items: LANGUAGES.map((l) => ({ key: l.value, label: <span lang={l.value}>{l.label}</span>, onClick: () => setLang(l.value) })),
       }}
     >
-      <Button type="text" shape="circle" aria-label={t("shell.language")} icon={<TranslationOutlined />} />
+      <span>
+        <Tooltip title={t("shell.language")}>
+          <Button type="text" shape="circle" aria-label={t("shell.language")} icon={<TranslationOutlined />} />
+        </Tooltip>
+      </span>
     </Dropdown>
   );
 }

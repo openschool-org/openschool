@@ -504,6 +504,40 @@ func (q *Queries) ListAttendanceSessionsByDate(ctx context.Context, arg ListAtte
 	return items, nil
 }
 
+const listClassStudentsAmong = `-- name: ListClassStudentsAmong :many
+SELECT student_id
+FROM class_students
+WHERE class_id = $1
+  AND student_id = ANY($2::uuid[])
+`
+
+type ListClassStudentsAmongParams struct {
+	ClassID    uuid.UUID   `json:"class_id"`
+	StudentIds []uuid.UUID `json:"student_ids"`
+}
+
+// Of the given student_ids, the ones enrolled in class_id. Attendance may only
+// be recorded for these (S2).
+func (q *Queries) ListClassStudentsAmong(ctx context.Context, arg ListClassStudentsAmongParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listClassStudentsAmong, arg.ClassID, arg.StudentIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var student_id uuid.UUID
+		if err := rows.Scan(&student_id); err != nil {
+			return nil, err
+		}
+		items = append(items, student_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markAttendance = `-- name: MarkAttendance :one
 INSERT INTO attendance_records (session_id, student_id, status, note)
 VALUES ($1, $2, $3, $4)

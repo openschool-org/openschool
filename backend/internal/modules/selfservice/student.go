@@ -2,7 +2,6 @@
 package selfservice
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -125,67 +124,4 @@ func (h *StudentSelfHandler) ListEnrollments(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"picks": picks, "locked": locked})
-}
-
-// SubmitEnrollment validates then replaces the student's picks for a level+year; rejected if already confirmed/locked.
-func (h *StudentSelfHandler) SubmitEnrollment(c *gin.Context) {
-	studentID, ok := h.resolveStudentID(c)
-	if !ok {
-		return
-	}
-
-	var req academicsmodule.SubmitEnrollmentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	validationErrs, err := h.enrollments.Submit(c.Request.Context(), studentID, req)
-	if err != nil {
-		switch {
-		case errors.Is(err, academicsmodule.ErrEnrollmentInvalid):
-			c.JSON(http.StatusUnprocessableEntity, academicsmodule.EnrollmentValidationResponse{Valid: false, Errors: validationErrs})
-		case errors.Is(err, academicsmodule.ErrEnrollmentLocked):
-			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-		case errors.Is(err, academicsmodule.ErrLevelHasNoGroups):
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		default:
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		}
-		return
-	}
-
-	c.JSON(http.StatusOK, academicsmodule.EnrollmentValidationResponse{Valid: true, Errors: nil})
-}
-
-// ConfirmEnrollment locks the student's picks for this level and year until an admin unlocks them.
-func (h *StudentSelfHandler) ConfirmEnrollment(c *gin.Context) {
-	studentID, ok := h.resolveStudentID(c)
-	if !ok {
-		return
-	}
-
-	var req academicsmodule.ConfirmEnrollmentRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	levelID, err := uuid.Parse(req.LevelID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid level_id"})
-		return
-	}
-	academicYearID, err := uuid.Parse(req.AcademicYearID)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid academic_year_id"})
-		return
-	}
-
-	if err := h.enrollments.Confirm(c.Request.Context(), studentID, levelID, academicYearID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "subject selection confirmed and locked"})
 }

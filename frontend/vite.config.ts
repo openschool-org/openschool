@@ -2,19 +2,20 @@
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import pkg from "./package.json" with { type: "json" };
 
-// Keep only stable, genuinely shared dependencies in vendor chunks. Route-specific
-// Carbon components should remain with their lazy route instead of forcing the
-// complete Carbon bundle into the first page load.
+// Keep only stable, genuinely shared dependencies in vendor chunks. antd
+// components stay with their lazy route so the first page load stays small.
 const vendorGroups = [
   { name: "react", test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/ },
-  { name: "carbon-icons", test: /node_modules[\\/]@carbon[\\/]icons-react[\\/]/ },
   { name: "query", test: /node_modules[\\/](@tanstack|axios)[\\/]/ },
   { name: "thunderid", test: /node_modules[\\/]@thunderid[\\/]/ },
 ];
 
 export default defineConfig({
   plugins: [react()],
+  // package.json is the one place the app version is set.
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },

@@ -60,6 +60,7 @@ func (s *authStoreStub) consumeResetToken(_ context.Context, hash string) (reset
 	return s.consumed, s.consumeErr
 }
 
+func (s *authStoreStub) revokeResetTokens(context.Context, uuid.UUID) error { return nil }
 func (s *authStoreStub) clearMustChangePassword(_ context.Context, user uuid.UUID, keptDefault bool) error {
 	if s.events != nil {
 		*s.events = append(*s.events, "clear-flag")

@@ -4,6 +4,7 @@ package audit
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -64,8 +65,10 @@ func toJSON(value interface{}) []byte {
 }
 
 // Record appends one best-effort audit event through the shared AuditRecorder port.
+// Record writes one audit entry. Many callers treat auditing as best effort
+// and drop the error, so a failure is always logged here and never lost (E11).
 func (s *Service) Record(ctx context.Context, entityType string, entityID uuid.UUID, action string, actorID uuid.UUID, before, after interface{}, reason string) error {
-	return s.store.create(ctx, createCommand{
+	err := s.store.create(ctx, createCommand{
 		EntityType: entityType,
 		EntityID:   entityID,
 		Action:     action,
@@ -74,6 +77,10 @@ func (s *Service) Record(ctx context.Context, entityType string, entityID uuid.U
 		After:      toJSON(after),
 		Reason:     pgtype.Text{String: reason, Valid: reason != ""},
 	})
+	if err != nil {
+		slog.Error("audit entry not recorded", "entity_type", entityType, "entity_id", entityID, "action", action, "actor_id", actorID, "error", err)
+	}
+	return err
 }
 
 // EntityTypes lists every entity type that has at least one entry.

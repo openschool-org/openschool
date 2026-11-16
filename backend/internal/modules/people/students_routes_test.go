@@ -73,6 +73,7 @@ func TestGetStudentAuditsTheRead(t *testing.T) {
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		c.Set("userID", actorID.String())
+		c.Set("roles", []string{"admin"})
 		c.Next()
 	})
 	group := router.Group("")
@@ -88,5 +89,52 @@ func TestGetStudentAuditsTheRead(t *testing.T) {
 	}
 	if audit.calls != 1 || audit.entityType != "student_profile" || audit.entityID != studentUUID || audit.action != "viewed" || audit.actorID != actorID {
 		t.Fatalf("unexpected audit record: %+v", audit)
+	}
+}
+
+type denyStudentAccess struct{}
+
+func (denyStudentAccess) CanAccessClass(context.Context, uuid.UUID, uuid.UUID) (bool, error) {
+	return false, nil
+}
+func (denyStudentAccess) CanAccessStudent(context.Context, uuid.UUID, uuid.UUID) (bool, error) {
+	return false, nil
+}
+
+func TestTeacherCannotOpenStudentOutsideTheirClasses(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(func(c *gin.Context) {
+		c.Set("userID", uuid.NewString())
+		c.Set("roles", []string{"teacher"})
+		c.Next()
+	})
+	group := router.Group("")
+	RegisterStudentRoutes(group, group, nil, &studentListReaderStub{}, nil, &auditRecorderStub{}, denyStudentAccess{})
+
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/students/"+uuid.NewString(), nil))
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403", response.Code)
+	}
+}
+
+func TestRedactStudentContactsKeepsPickerFields(t *testing.T) {
+	page := httpx.Page[map[string]any]{Items: []map[string]any{{
+		"id": "1", "full_name": "Kasun Perera", "index_number": "2026/1", "class_name": "6-A",
+		"address": "Kandy", "phone": "0771234567", "whatsapp": "0771234567", "special_remarks": "note",
+	}}, Total: 1}
+	out, err := redactStudentContacts(page)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := out.(map[string]any)["items"].([]any)[0].(map[string]any)
+	for _, field := range studentContactFields {
+		if _, present := row[field]; present {
+			t.Fatalf("%s was not removed", field)
+		}
+	}
+	if row["full_name"] != "Kasun Perera" || row["index_number"] != "2026/1" || row["class_name"] != "6-A" {
+		t.Fatalf("picker fields lost: %v", row)
 	}
 }

@@ -1,6 +1,6 @@
 name: Nightly load test
 
-# docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 5/7: k6 script simulating
+# k6 script simulating
 # ~7,000 sessions against a real deployment, p95 < 500ms. This needs a
 # reachable staging URL and a pool of pre-issued bearer tokens (see
 # frontend/scripts/loadtest_school_day.js's auth note — ThunderID's browser
@@ -29,11 +29,16 @@ jobs:
 
       - name: Check load test is configured
         id: config
+        # Secrets go in through env, never pasted into the script text, so a
+        # value with quotes or $(...) cannot run as shell code.
+        env:
+          BASE_URL: ${{ secrets.LOAD_TEST_BASE_URL }}
+          TOKENS: ${{ secrets.LOAD_TEST_TOKENS }}
         run: |
-          if [ -z "${{ secrets.LOAD_TEST_BASE_URL }}" ]; then
+          if [ -z "$BASE_URL" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
             echo "LOAD_TEST_BASE_URL secret is not set — skipping. See frontend/scripts/loadtest_school_day.js for what's needed."
-          elif ! echo '${{ secrets.LOAD_TEST_TOKENS }}' | jq -e 'type == "array" and length > 0' > /dev/null 2>&1; then
+          elif ! printf '%s' "$TOKENS" | jq -e 'type == "array" and length > 0' > /dev/null 2>&1; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
             echo "LOAD_TEST_TOKENS secret is not a non-empty JSON array — skipping. See frontend/scripts/loadtest_school_day.js for what's needed."
           else
@@ -42,7 +47,9 @@ jobs:
 
       - name: Write token pool
         if: steps.config.outputs.configured == 'true'
-        run: printf '%s' '${{ secrets.LOAD_TEST_TOKENS }}' > TOKENS.json
+        env:
+          TOKENS: ${{ secrets.LOAD_TEST_TOKENS }}
+        run: printf '%s' "$TOKENS" > TOKENS.json
 
       - name: Run k6
         if: steps.config.outputs.configured == 'true'
@@ -55,3 +62,7 @@ jobs:
           filename: frontend/scripts/loadtest_school_day.js
         env:
           BASE_URL: ${{ secrets.LOAD_TEST_BASE_URL }}
+
+      - name: Remove token pool
+        if: always()
+        run: rm -f TOKENS.json

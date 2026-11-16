@@ -53,13 +53,14 @@ make dev     # run the backend (:8080) and the frontend (:5173)
 
 Open <http://localhost:5173> and create the first administrator account.
 
-`make setup` starts ThunderID with OpenSchool's resources preloaded, generates a client secret, and writes the `.env` files. To configure ThunderID by hand, see the [ThunderID guide](docs/THUNDERID.md). For a step-by-step manual setup, see the [setup guide](docs/SETUP.md).
+`make setup` starts ThunderID with OpenSchool's resources preloaded, generates a client secret, and writes the `.env` files. To configure ThunderID by hand, see the [ThunderID guide](docs/THUNDERID.md). For a step-by-step manual setup, see the [server setup guide](docs/setup/server.md); to set up a school in the running app, see the [school setup guide](docs/setup/school.md).
 
 ## Documentation
 
 | Document | Description |
 | --- | --- |
-| [Setup](docs/SETUP.md) | Run OpenSchool locally and set up a new school |
+| [Server setup](docs/setup/server.md) | Install and run OpenSchool, production settings, backups |
+| [School setup](docs/setup/school.md) | First admin, school wizard, teachers, students, timetables, parents |
 | [ThunderID](docs/THUNDERID.md) | Configure the identity provider |
 | [Features](docs/FEATURES.md) | What the system can do, by module |
 | [Architecture](docs/ARCHITECTURE.md) | Project structure and data model |

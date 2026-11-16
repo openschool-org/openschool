@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
 import { AutoComplete, Input } from "antd";
@@ -6,14 +6,17 @@ import type { InputRef } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import { useDebounced } from "@/shared/hooks/useDebounced";
 import { useGlobalSearch } from "@/features/system/queries/useGlobalSearch";
+import { useT } from "@/shared/i18n/useT";
+import type { MessageKey } from "@/shared/i18n/messages/en";
 
 type GroupKey = "students" | "teachers" | "guardians" | "non_academic_staff";
 
-const GROUPS: { key: GroupKey; label: string; route: (id: string) => string }[] = [
-  { key: "students", label: "Students", route: (id) => `/students/${id}` },
-  { key: "teachers", label: "Teachers", route: (id) => `/teachers/${id}` },
-  { key: "guardians", label: "Guardians", route: () => "/guardians" },
-  { key: "non_academic_staff", label: "Non-academic staff", route: () => "/non-academic-staff" },
+// Guardians and staff have no page of their own; their list opens the person's drawer from ?open=.
+const GROUPS: { key: GroupKey; labelKey: MessageKey; route: (id: string, name: string) => string }[] = [
+  { key: "students", labelKey: "search.students", route: (id) => `/students/${id}` },
+  { key: "teachers", labelKey: "search.teachers", route: (id) => `/teachers/${id}` },
+  { key: "guardians", labelKey: "search.guardians", route: (id, name) => `/guardians?${new URLSearchParams({ q: name, open: id })}` },
+  { key: "non_academic_staff", labelKey: "search.staff", route: (id, name) => `/non-academic-staff?${new URLSearchParams({ q: name, open: id })}` },
 ];
 
 const ACTIONS: { id: string; name: string; route: string }[] = [
@@ -35,6 +38,7 @@ interface Props {
 }
 
 export default function GlobalSearch({ autoFocus, onClose }: Props) {
+  const { t } = useT();
   const [query, setQuery] = useState("");
   const inputRef = useRef<InputRef>(null);
   const navigate = useNavigate();
@@ -51,20 +55,20 @@ export default function GlobalSearch({ autoFocus, onClose }: Props) {
   const routes = useMemo(() => {
     const map = new Map<string, string>();
     for (const a of matchedActions) map.set(a.id, a.route);
-    for (const g of GROUPS) for (const item of data?.[g.key] ?? []) map.set(item.id, g.route(item.id));
+    for (const g of GROUPS) for (const item of data?.[g.key] ?? []) map.set(item.id, g.route(item.id, item.name));
     return map;
   }, [data, matchedActions]);
 
   const options = useMemo(() => {
     const groups: { label: ReactNode; options: { value: string; label: ReactNode }[] }[] = [];
     if (matchedActions.length > 0) {
-      groups.push({ label: "Actions", options: matchedActions.map((a) => ({ value: a.id, label: <span className="os-search-opt__name">{a.name}</span> })) });
+      groups.push({ label: t("search.actions"), options: matchedActions.map((a) => ({ value: a.id, label: <span className="os-search-opt__name">{a.name}</span> })) });
     }
     for (const g of GROUPS) {
       const items = data?.[g.key] ?? [];
       if (items.length === 0) continue;
       groups.push({
-        label: g.label,
+        label: t(g.labelKey),
         options: items.map((item) => ({
           value: item.id,
           label: (
@@ -77,18 +81,7 @@ export default function GlobalSearch({ autoFocus, onClose }: Props) {
       });
     }
     return groups;
-  }, [data, matchedActions]);
-
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", handleGlobalKeyDown);
-    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, []);
+  }, [data, matchedActions, t]);
 
   const goTo = (id: string) => {
     const route = routes.get(id);
@@ -98,7 +91,7 @@ export default function GlobalSearch({ autoFocus, onClose }: Props) {
   };
 
   const showPanel = debounced.trim().length >= 2;
-  const emptyText = isFetching ? "Searching…" : isError ? "Search failed - please try again." : `No matches for "${debounced}"`;
+  const emptyText = isFetching ? t("search.searching") : isError ? t("search.failed") : t("search.noMatches", { query: debounced });
   const shortcut = typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/i.test(navigator.userAgent) ? "⌘K" : "Ctrl+K";
 
   return (
@@ -118,8 +111,8 @@ export default function GlobalSearch({ autoFocus, onClose }: Props) {
         ref={inputRef}
         autoFocus={autoFocus}
         allowClear
-        aria-label="Search"
-        placeholder="Search or run an action…"
+        aria-label={t("shell.search")}
+        placeholder={t("search.placeholder")}
         prefix={<SearchOutlined />}
         suffix={query ? null : <kbd className="os-topbar-search__kbd">{shortcut}</kbd>}
         onBlur={() => onClose?.()}

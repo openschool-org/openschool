@@ -222,7 +222,7 @@ Examples:
 ## Checklist
 
 * [ ] I have tested the changes relevant to this PR
-* [ ] I have checked for existing related work in `audit.md`
+* [ ] I have checked for existing related work in `docs/development/issue.md`
 * [ ] I have followed the relevant architecture/documentation guidance
 * [ ] I have kept generated code out of manual edits
 * [ ] I have added or updated tests where appropriate

@@ -5,7 +5,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/openschool-org/openschool/internal/apierror"
 	"github.com/openschool-org/openschool/internal/middleware"
+	"github.com/openschool-org/openschool/internal/platform/httpx"
 )
 
 // AuthHandler exposes the unauthenticated password-lifecycle endpoints (forgot/reset/change password).
@@ -21,14 +23,20 @@ func NewAuthHandler(service *Service) *AuthHandler {
 // ForgotPassword verifies identity (email + NIC/index number) and issues a one-time reset token. Not available for admin accounts.
 func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 	var req ForgotPasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := httpx.BindStrict(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "enter your role, email and NIC or index number"})
 		return
 	}
 
+	// A match and a mismatch get the same 200, so the endpoint cannot be used
+	// to test whether a NIC or index number belongs to an email (S1).
 	resp, err := h.service.ForgotPassword(c.Request.Context(), req)
+	if errors.Is(err, ErrInvalidCredentials) {
+		c.JSON(http.StatusOK, ForgotPasswordResponse{Message: forgotPasswordMessage})
+		return
+	}
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		apierror.RespondInternal(c, err)
 		return
 	}
 
@@ -44,11 +52,7 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	}
 
 	if err := h.service.ResetPassword(c.Request.Context(), req); err != nil {
-		status := http.StatusBadRequest
-		if errors.Is(err, ErrResetTokenInvalid) {
-			status = http.StatusUnauthorized
-		}
-		c.JSON(status, gin.H{"error": err.Error()})
+		respondPasswordError(c, err)
 		return
 	}
 
@@ -70,7 +74,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	}
 
 	if err := h.service.ChangePassword(c.Request.Context(), actorID, req.NewPassword); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondPasswordError(c, err)
 		return
 	}
 
@@ -86,9 +90,23 @@ func (h *AuthHandler) KeepDefaultPassword(c *gin.Context) {
 	}
 
 	if err := h.service.KeepDefaultPassword(c.Request.Context(), actorID); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		respondPasswordError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "password kept"})
+}
+
+// respondPasswordError sends the hand-written password errors as they are and
+// hides anything else (identity provider URLs, SMTP hosts, SQL) behind a 500 (S8).
+func respondPasswordError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, ErrResetTokenInvalid):
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+	case errors.Is(err, ErrWeakPassword), errors.Is(err, ErrPasswordTooShort),
+		errors.Is(err, ErrDefaultPasswordExpired), errors.Is(err, ErrPasswordAlreadyChanged):
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	default:
+		apierror.RespondInternal(c, err)
+	}
 }

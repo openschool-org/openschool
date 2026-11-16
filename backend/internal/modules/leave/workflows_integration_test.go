@@ -43,7 +43,7 @@ func TestLeaveWorkflowWithPostgres(t *testing.T) {
 		c.Set("roles", []string{c.GetHeader("X-Role")})
 		c.Next()
 	})
-	RegisterRoutes(group, group, service, sqlTeachers{pool})
+	RegisterRoutes(group, group, group, service, sqlTeachers{pool})
 	call := func(user uuid.UUID, role, method, path string, body any) *httptest.ResponseRecorder {
 		t.Helper()
 		var payload []byte
@@ -186,8 +186,8 @@ func TestLeaveWorkflowWithPostgres(t *testing.T) {
 			created++
 		}
 	}
-	if created != ShortLeavePerMonth {
-		t.Fatalf("concurrent short leave created %d, want %d", created, ShortLeavePerMonth)
+	if want := DefaultPolicy().ShortLeavesPerMonth; created != want {
+		t.Fatalf("concurrent short leave created %d, want %d", created, want)
 	}
 
 	balances := call(f.principal.userID, "teacher", http.MethodGet, "/leave/balances?year=2026", nil)

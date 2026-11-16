@@ -1,25 +1,4 @@
 allowBuilds:
-  '@carbon/colors': true
-  '@carbon/feature-flags': true
-  '@carbon/grid': true
-  '@carbon/icon-helpers': true
-  '@carbon/icons-react': true
-  '@carbon/layout': true
-  '@carbon/motion': true
-  '@carbon/react': true
-  '@carbon/styles': true
-  '@carbon/themes': true
-  '@carbon/type': true
-  '@carbon/utilities': true
-  '@ibm/plex': set this to true or false
-  '@ibm/plex-mono': true
-  '@ibm/plex-sans': true
-  '@ibm/plex-sans-arabic': true
-  '@ibm/plex-sans-devanagari': true
-  '@ibm/plex-sans-hebrew': true
-  '@ibm/plex-sans-thai': true
-  '@ibm/plex-sans-thai-looped': true
-  '@ibm/plex-serif': true
   '@parcel/watcher': true
   core-js: true
 
@@ -31,6 +10,3 @@ overrides:
   # Drop each once the parent package ships the patched version itself.
   dompurify: '>=3.4.17'          # via @thunderid/react
   follow-redirects: '>=1.16.2'   # via axios
-  source-map-js: '>=1.2.2'       # via @carbon/react > sass (goes away with Carbon)
-  immutable: '>=5.1.8 <6'       # via @carbon/react > sass (goes away with Carbon)
-  '@ibm/plex': npm:empty-npm-package@1.0.0

@@ -13,6 +13,15 @@ on:
       - "frontend/**"
       - ".github/workflows/frontend-ci.yml"
 
+# Read-only token: this workflow only lints, tests and builds.
+# A newer push to the same branch or PR cancels the run it replaces.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,14 +35,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup pnpm
+        # No version here: the action reads "packageManager" from package.json,
+        # so CI always uses the same pnpm as developers.
         uses: pnpm/action-setup@v4
         with:
-          version: 11.12.0
+          package_json_file: frontend/package.json
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: frontend/package.json
           cache: "pnpm"
           cache-dependency-path: frontend/pnpm-lock.yaml
 
@@ -50,12 +61,9 @@ jobs:
         run: pnpm build
 
       - name: Bundle size budget
-        # Informational only for now: trimming Carbon to per-component @use
-        # imports (shared/styles/index.scss) got CSS from ~874 KB to ~616
-        # KB, still over the 400 KB budget — ui-shell and data-table (both
-        # genuinely used everywhere) account for most of what's left.
-        # Drop --warn-only once/if that's trimmed further
-        # (docs/SECURITY_AND_PERFORMANCE_PLAYBOOK.md section 5).
+        # Informational: CSS is ~123 KB (budget 400 KB) since Carbon was
+        # removed, but the app entry chunk is ~464 KB against a 100 KB budget.
+        # Make this blocking once the entry chunk is split down.
         run: node scripts/check-bundle-size.mjs --warn-only
 
       - name: Dependency audit

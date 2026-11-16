@@ -28,16 +28,16 @@ export default function EnrolStudentModal({
   return (
     <FormModal
       open={open}
-      title="Enrol student"
+      title="Enrol student in class"
       onClose={onClose}
       onSubmit={onEnrol}
       isPending={enrollStudent.isPending}
       submitDisabled={!studentChoice}
-      submitLabel="Enrol"
+      submitLabel="Enrol in class"
       pendingLabel="Enrolling…"
       isError={enrollStudent.isError}
       error={enrollStudent.error}
-      errorFallback="Failed to enrol student"
+      errorFallback="Could not enrol the student in this class"
     >
       {enrolCandidates.length === 0 ? (
         <p className="os-text-md">

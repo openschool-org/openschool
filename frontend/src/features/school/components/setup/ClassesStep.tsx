@@ -1,6 +1,9 @@
 import type { Dispatch, SetStateAction } from "react";
-import { Checkbox, NumberInput, Select, SelectItem, TextInput } from "@carbon/react";
-import { Building, Information } from "@carbon/icons-react";
+import { Checkbox } from "antd";
+import { BankOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import TextField from "@/shared/ui/TextField";
+import NumberField from "@/shared/ui/NumberField";
+import SelectField from "@/shared/ui/SelectField";
 import StepShell from "@/features/school/components/setup/StepShell";
 import { AL_STREAM_DEFS, type AlStreamsByGradeState } from "@/features/school/setupConstants";
 
@@ -39,33 +42,33 @@ export default function ClassesStep({
 }: Props) {
   return (
     <StepShell
-      icon={Building}
+      icon={BankOutlined}
       title="Classes"
       subtitle="Set the academic year, section counts, and A/L streams. OpenSchool will create the class names for you."
     >
       <div className="os-class-year-field">
-        <TextInput
+        <TextField
           id="ss-year-label"
-          labelText="Academic year label"
+          label="Academic year label"
           helperText="This label is used for the classes created in this setup."
           placeholder="e.g. 2026"
           value={yearLabel}
-          onChange={(e) => setYearLabel(e.target.value)}
+          onChange={setYearLabel}
         />
-        <NumberInput
+        <NumberField
           id="ss-class-capacity"
           label="Capacity for every class"
           helperText="Applies to all regular and A/L classes. Room capacities are configured separately."
           min={1}
           max={200}
           value={classCapacity}
-          onChange={(_e, { value }) => setClassCapacity(value === "" ? 1 : Number(value))}
+          onChange={(value) => setClassCapacity(value ?? 1)}
         />
       </div>
 
       {orderedSelectedGrades.length === 0 ? (
         <div className="os-class-empty-state">
-          <Information size={20} />
+          <InfoCircleOutlined className="os-text-lg" />
           <p>No grades were selected in the previous step, so there is nothing to add classes to yet.</p>
         </div>
       ) : (
@@ -88,32 +91,26 @@ export default function ClassesStep({
                           <h4>Grade {gradeNumber}</h4>
                           <p>{count > 0 ? `${count} section${count === 1 ? "" : "s"} will be created` : "No sections will be created"}</p>
                         </div>
-                        <NumberInput
+                        <NumberField
                           id={`sections-${gradeNumber}`}
                           label={`Sections for Grade ${gradeNumber}`}
-                          size="sm"
                           min={0}
                           max={10}
                           value={count}
-                          onChange={(_e, { value }) =>
-                            setSectionsPerGrade((prev) => ({ ...prev, [gradeNumber]: value === "" ? 0 : Number(value) }))
-                          }
+                          onChange={(value) => setSectionsPerGrade((prev) => ({ ...prev, [gradeNumber]: value ?? 0 }))}
                         />
                       </div>
                       {selectedMediumNames.length > 0 && count > 0 && (
                         <div className="os-class-medium-grid">
                           {Array.from({ length: count }).map((_, i) => (
-                            <Select
+                            <SelectField
                               key={i}
                               id={`section-medium-${gradeNumber}-${i}`}
-                              labelText={`Section ${gradeNumber}-${String.fromCharCode(65 + i)} medium`}
-                              size="sm"
+                              label={`Section ${gradeNumber}-${String.fromCharCode(65 + i)} medium`}
                               value={sectionMediums[`${gradeNumber}-${i}`] ?? selectedMediumNames[0] ?? ""}
-                              onChange={(e) => setSectionMediums((prev) => ({ ...prev, [`${gradeNumber}-${i}`]: e.target.value }))}
-                            >
-                              <SelectItem value="" text="No medium" />
-                              {selectedMediumNames.map((medium) => <SelectItem key={medium} value={medium} text={medium} />)}
-                            </Select>
+                              onChange={(value) => setSectionMediums((prev) => ({ ...prev, [`${gradeNumber}-${i}`]: value }))}
+                              options={[{ value: "", label: "No medium" }, ...selectedMediumNames.map((medium) => ({ value: medium, label: medium }))]}
+                            />
                           ))}
                         </div>
                       )}
@@ -143,29 +140,28 @@ export default function ClassesStep({
                         <div className="os-al-stream-row__name">
                           <Checkbox
                             id={`al-${gradeNumber}-${def.key}`}
-                            labelText={def.label}
                             checked={cfg.enabled}
-                            onChange={(_e, { checked }) => setAlStreams((prev) => ({ ...prev, [gradeNumber]: { ...prev[gradeNumber], [def.key]: { ...prev[gradeNumber][def.key], enabled: checked } } }))}
-                          />
+                            onChange={(e) => setAlStreams((prev) => ({ ...prev, [gradeNumber]: { ...prev[gradeNumber], [def.key]: { ...prev[gradeNumber][def.key], enabled: e.target.checked } } }))}
+                          >
+                            {def.label}
+                          </Checkbox>
                         </div>
-                        <TextInput
+                        <TextField
                           id={`al-code-${gradeNumber}-${def.key}`}
-                          labelText="Stream code"
-                          size="sm"
+                          label="Stream code"
                           maxLength={3}
                           disabled={!cfg.enabled}
                           value={cfg.code}
-                          onChange={(e) => setAlStreams((prev) => ({ ...prev, [gradeNumber]: { ...prev[gradeNumber], [def.key]: { ...prev[gradeNumber][def.key], code: e.target.value } } }))}
+                          onChange={(value) => setAlStreams((prev) => ({ ...prev, [gradeNumber]: { ...prev[gradeNumber], [def.key]: { ...prev[gradeNumber][def.key], code: value } } }))}
                         />
-                        <NumberInput
+                        <NumberField
                           id={`al-sections-${gradeNumber}-${def.key}`}
                           label="Sections"
-                          size="sm"
                           min={0}
                           max={10}
                           disabled={!cfg.enabled}
                           value={cfg.sections}
-                          onChange={(_e, { value }) => setAlStreams((prev) => ({ ...prev, [gradeNumber]: { ...prev[gradeNumber], [def.key]: { ...prev[gradeNumber][def.key], sections: value === "" ? 0 : Number(value) } } }))}
+                          onChange={(value) => setAlStreams((prev) => ({ ...prev, [gradeNumber]: { ...prev[gradeNumber], [def.key]: { ...prev[gradeNumber][def.key], sections: value ?? 0 } } }))}
                         />
                       </div>
                     );

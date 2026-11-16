@@ -210,6 +210,25 @@ func (q *Queries) GetLeaveRequest(ctx context.Context, id uuid.UUID) (GetLeaveRe
 	return i, err
 }
 
+const getLeaveSettings = `-- name: GetLeaveSettings :one
+SELECT id, casual_days_per_year, sick_days_per_year, short_leaves_per_month, short_leave_max_minutes, maternity_days, updated_at FROM leave_settings WHERE id
+`
+
+func (q *Queries) GetLeaveSettings(ctx context.Context) (LeaveSetting, error) {
+	row := q.db.QueryRow(ctx, getLeaveSettings)
+	var i LeaveSetting
+	err := row.Scan(
+		&i.ID,
+		&i.CasualDaysPerYear,
+		&i.SickDaysPerYear,
+		&i.ShortLeavesPerMonth,
+		&i.ShortLeaveMaxMinutes,
+		&i.MaternityDays,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 type InsertLeaveReliefParams struct {
 	LeaveRequestID  uuid.UUID   `json:"leave_request_id"`
 	Date            pgtype.Date `json:"date"`
@@ -220,13 +239,19 @@ type InsertLeaveReliefParams struct {
 }
 
 const listLeaveApproverUserIDs = `-- name: ListLeaveApproverUserIDs :many
-SELECT DISTINCT tp.user_id
-FROM teacher_positions p
-INNER JOIN teacher_profiles tp ON tp.id = p.teacher_id
-WHERE p.position IN ('principal', 'vice_principal') AND tp.id <> $1
+SELECT DISTINCT u.id
+FROM users u
+WHERE (u.role = 'admin' AND EXISTS (SELECT 1 FROM teacher_positions applicant WHERE applicant.teacher_id = $1 AND applicant.position = 'principal'))
+   OR u.id IN (
+       SELECT tp.user_id
+       FROM teacher_positions p
+       INNER JOIN teacher_profiles tp ON tp.id = p.teacher_id
+       WHERE (p.position = 'principal' AND NOT EXISTS (SELECT 1 FROM teacher_positions applicant WHERE applicant.teacher_id = $1 AND applicant.position = 'principal'))
+          OR (p.position = 'vice_principal' AND NOT EXISTS (SELECT 1 FROM teacher_positions applicant WHERE applicant.teacher_id = $1 AND applicant.position IN ('principal', 'vice_principal')))
+   )
 `
 
-// the Principal and every Vice Principal, who receive new applications
+// administrators review the Principal's applications; the Principal reviews a Vice Principal's.
 func (q *Queries) ListLeaveApproverUserIDs(ctx context.Context, excludeTeacherID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := q.db.Query(ctx, listLeaveApproverUserIDs, excludeTeacherID)
 	if err != nil {
@@ -235,11 +260,11 @@ func (q *Queries) ListLeaveApproverUserIDs(ctx context.Context, excludeTeacherID
 	defer rows.Close()
 	items := []uuid.UUID{}
 	for rows.Next() {
-		var user_id uuid.UUID
-		if err := rows.Scan(&user_id); err != nil {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
-		items = append(items, user_id)
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -868,4 +893,45 @@ func (q *Queries) SumLeaveDaysByType(ctx context.Context, arg SumLeaveDaysByType
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateLeaveSettings = `-- name: UpdateLeaveSettings :one
+UPDATE leave_settings
+SET casual_days_per_year    = $1,
+    sick_days_per_year      = $2,
+    short_leaves_per_month  = $3,
+    short_leave_max_minutes = $4,
+    maternity_days          = $5,
+    updated_at              = NOW()
+WHERE id
+RETURNING id, casual_days_per_year, sick_days_per_year, short_leaves_per_month, short_leave_max_minutes, maternity_days, updated_at
+`
+
+type UpdateLeaveSettingsParams struct {
+	CasualDaysPerYear    int32 `json:"casual_days_per_year"`
+	SickDaysPerYear      int32 `json:"sick_days_per_year"`
+	ShortLeavesPerMonth  int32 `json:"short_leaves_per_month"`
+	ShortLeaveMaxMinutes int32 `json:"short_leave_max_minutes"`
+	MaternityDays        int32 `json:"maternity_days"`
+}
+
+func (q *Queries) UpdateLeaveSettings(ctx context.Context, arg UpdateLeaveSettingsParams) (LeaveSetting, error) {
+	row := q.db.QueryRow(ctx, updateLeaveSettings,
+		arg.CasualDaysPerYear,
+		arg.SickDaysPerYear,
+		arg.ShortLeavesPerMonth,
+		arg.ShortLeaveMaxMinutes,
+		arg.MaternityDays,
+	)
+	var i LeaveSetting
+	err := row.Scan(
+		&i.ID,
+		&i.CasualDaysPerYear,
+		&i.SickDaysPerYear,
+		&i.ShortLeavesPerMonth,
+		&i.ShortLeaveMaxMinutes,
+		&i.MaternityDays,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

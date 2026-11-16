@@ -381,9 +381,12 @@ func (r *termMarkRepository) listClass(ctx context.Context, class, term, subject
 func (r *termMarkRepository) listStudent(ctx context.Context, student, term uuid.UUID) (any, error) {
 	return r.queries.ListStudentMarksByTerm(ctx, db.ListStudentMarksByTermParams{StudentID: student, TermID: term})
 }
-func (r *termMarkRepository) markOwner(ctx context.Context, id uuid.UUID) (uuid.UUID, uuid.UUID, error) {
+func (r *termMarkRepository) markOwner(ctx context.Context, id uuid.UUID) (student, subject, term uuid.UUID, err error) {
 	v, e := r.queries.GetTermMarkByID(ctx, id)
-	return v.StudentID, v.SubjectID, e
+	return v.StudentID, v.SubjectID, v.TermID, e
+}
+func (r *termMarkRepository) termInClassYear(ctx context.Context, term, class uuid.UUID) (bool, error) {
+	return r.queries.TermInClassYear(ctx, db.TermInClassYearParams{TermID: term, ClassID: class})
 }
 func (r *termMarkRepository) studentClass(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
 	v, e := r.queries.GetStudentCurrentClass(ctx, id)

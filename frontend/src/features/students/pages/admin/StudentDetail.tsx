@@ -20,6 +20,7 @@ import ProfileBanner from "@/shared/ui/ProfileBanner";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import ConfirmEditModal from "@/shared/ui/ConfirmEditModal";
 import UnsavedChangesModal from "@/shared/ui/UnsavedChangesModal";
+import NextStepsAlert from "@/features/students/components/NextStepsAlert";
 import { useUnsavedChangesGuard } from "@/shared/hooks/useUnsavedChangesGuard";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
 
@@ -36,6 +37,8 @@ export default function StudentDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
   const [activeTab, setActiveTab] = useState("profile");
+  // Set by Add student; dismissible, and not shown again on a later visit.
+  const [showNextSteps, setShowNextSteps] = useState(!!(location.state as { justAdded?: boolean } | null)?.justAdded);
 
   if (isLoading) return <LoadingSpinner />;
   if (isError || !student) {
@@ -74,6 +77,7 @@ export default function StudentDetail() {
       />
 
       <div className="os-py-6 os-px-8">
+        {showNextSteps && <NextStepsAlert onOpenTab={setActiveTab} onClose={() => setShowNextSteps(false)} />}
         <Tabs
           className="os-detail-tabs"
           activeKey={activeTab}

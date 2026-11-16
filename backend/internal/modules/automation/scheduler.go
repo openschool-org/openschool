@@ -113,6 +113,16 @@ func (s *Scheduler) execute(ctx context.Context, job Job) (Result, error) {
 	}
 	defer lock.Unlock()
 
+	// Across replicas: a second API instance skips a job the first is running.
+	release, ok, err := s.setting.TryJobLock(ctx, job.Name())
+	if err != nil {
+		return Result{}, fmt.Errorf("job %q: could not take the run lock: %w", job.Name(), err)
+	}
+	defer release()
+	if !ok {
+		return Result{}, fmt.Errorf("job %q is already running on another server", job.Name())
+	}
+
 	runCtx, cancel := context.WithTimeout(ctx, runTimeout)
 	defer cancel()
 

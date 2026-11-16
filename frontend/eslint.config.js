@@ -10,7 +10,9 @@ const features = readdirSync(new URL("./src/features", import.meta.url), { withF
   .filter((d) => d.isDirectory())
   .map((d) => d.name);
 
-const restrict = (patterns) => ["error", { patterns }];
+// Carbon was replaced by Ant Design; every folder rule bans it so it cannot come back.
+const NO_CARBON = { group: ["@carbon/*"], message: "Carbon was removed. Use antd and @ant-design/icons." };
+const restrict = (patterns) => ["error", { patterns: [...patterns, NO_CARBON] }];
 const RULE = "@typescript-eslint/no-restricted-imports";
 
 const BRITISH_SPELLING_WORDS = [
@@ -131,7 +133,7 @@ const layerRules = [
     rules: {
       [RULE]: restrict([
         { group: ["../*"], message: "Use the @/ alias instead of relative parent paths." },
-        { group: ["react", "react-dom", "react-router", "@carbon/*", "@tanstack/*"], message: "api/ files are plain HTTP wrappers with no UI or hook imports." },
+        { group: ["react", "react-dom", "react-router", "antd", "@ant-design/*", "@tanstack/*"], message: "api/ files are plain HTTP wrappers with no UI or hook imports." },
         { group: ["@/features/*/queries/*", "@/features/*/components/*", "@/features/*/pages/*", "@/shared/ui/*", "@/shared/hooks/*"], message: "api/ may import only other api types and shared/api." },
         { group: ["@/features/*/api/*"], allowTypeImports: true, message: "api/ files share types only, never call each other." },
       ]),

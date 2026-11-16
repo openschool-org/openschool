@@ -129,13 +129,6 @@
   display: grid;
   gap: 0.75rem;
 
-  .cds--text-input,
-  .cds--select-input,
-  .cds--number input {
-    background-color: #ffffff;
-    border-bottom-color: $os-border-strong;
-  }
-
   &__two-column {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -215,7 +208,7 @@
   &__topline { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
   h4 { margin: 0 0 0.25rem; color: $os-text-primary; font-size: 0.9375rem; font-weight: 600; }
   p { margin: 0; color: $os-text-tertiary; font-size: 0.75rem; }
-  .cds--number input { min-width: 4.5rem; }
+  .ant-input-number { min-width: 4.5rem; }
 }
 
 .os-class-medium-grid {
@@ -309,16 +302,6 @@
     height: 2rem;
     color: $os-accent-dark;
     background: $os-accent-light;
-  }
-
-  .cds--text-input {
-    background-color: var(--os-layer);
-    border-bottom-color: $os-border-strong;
-  }
-
-  .cds--text-input:hover {
-    background-color: var(--os-layer);
-    border-bottom-color: $os-text-primary;
   }
 }
 

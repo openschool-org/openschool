@@ -1,6 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
-import { Button, NumberInput, TextInput } from "@carbon/react";
-import { Add, Building } from "@carbon/icons-react";
+import { Button } from "antd";
+import { BankOutlined, PlusOutlined } from "@ant-design/icons";
+import TextField from "@/shared/ui/TextField";
+import NumberField from "@/shared/ui/NumberField";
 import StepShell from "@/features/school/components/setup/StepShell";
 import RepeatableRow from "@/features/school/components/setup/RepeatableRow";
 import { FACILITY_GROUPS, type FacilityRoom } from "@/features/school/setupConstants";
@@ -17,7 +19,7 @@ export default function RoomsStep({ facilityRooms, setFacilityRooms }: Props) {
 
   return (
     <StepShell
-      icon={Building}
+      icon={BankOutlined}
       title="Rooms & facilities"
       subtitle="Optional - add as many named libraries, labs, music rooms, or auditoriums as your school needs."
     >
@@ -31,29 +33,27 @@ export default function RoomsStep({ facilityRooms, setFacilityRooms }: Props) {
                   <h3 id={`facility-${group.key}`}>{group.label}</h3>
                   <p>{group.help}</p>
                 </div>
-                <Button kind="ghost" size="sm" renderIcon={Add} onClick={() => addFacility(group.key)}>
+                <Button type="text" icon={<PlusOutlined />} onClick={() => addFacility(group.key)}>
                   {group.addLabel}
                 </Button>
               </div>
               {rooms.map((room) => (
                 <RepeatableRow key={room.id} onRemove={() => setFacilityRooms((current) => current.filter((item) => item.id !== room.id))}>
-                  <TextInput
+                  <TextField
                     id={`facility-${room.id}`}
-                    labelText="Facility name"
+                    label="Facility name"
                     placeholder={group.placeholder}
-                    size="md"
                     value={room.name}
-                    onChange={(e) => setFacilityRooms((current) => current.map((item) => item.id === room.id ? { ...item, name: e.target.value } : item))}
+                    onChange={(value) => setFacilityRooms((current) => current.map((item) => item.id === room.id ? { ...item, name: value } : item))}
                   />
-                  <NumberInput
+                  <NumberField
                     id={`facility-capacity-${room.id}`}
                     label="Capacity"
                     helperText="Optional"
                     min={1}
                     max={2000}
-                    size="md"
-                    value={room.capacity}
-                    onChange={(_e, { value }) => setFacilityRooms((current) => current.map((item) => item.id === room.id ? { ...item, capacity: value === "" ? "" : Number(value) } : item))}
+                    value={room.capacity === "" ? null : room.capacity}
+                    onChange={(value) => setFacilityRooms((current) => current.map((item) => item.id === room.id ? { ...item, capacity: value ?? "" } : item))}
                   />
                 </RepeatableRow>
               ))}

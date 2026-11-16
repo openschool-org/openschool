@@ -108,7 +108,8 @@ func TestRegisterFirstAdminCreatesBothAccountsAndAssignsRole(t *testing.T) {
 func TestRegisterFirstAdminRollsBackIdentityWhenRaceIsLost(t *testing.T) {
 	userID := uuid.New()
 	idp := &setupIdentity{user: &idp.User{ID: userID.String()}}
-	_, err := NewService(&setupStore{counts: []int64{0, 1}}, idp).RegisterFirstAdmin(context.Background(), adminRequest())
+	// Another setup committed first: createAdmin's locked re-check reports it.
+	_, err := NewService(&setupStore{counts: []int64{0}, createErr: ErrAlreadyDone}, idp).RegisterFirstAdmin(context.Background(), adminRequest())
 	if !errors.Is(err, ErrAlreadyDone) || idp.deletedUserID != userID.String() {
 		t.Fatalf("error=%v deletedIdentity=%q", err, idp.deletedUserID)
 	}

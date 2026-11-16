@@ -304,6 +304,24 @@ func (q *Queries) ActivationStudentTargets(ctx context.Context, arg ActivationSt
 	return items, nil
 }
 
+const claimActivationAttempt = `-- name: ClaimActivationAttempt :one
+UPDATE activation_codes
+SET failed_attempts = failed_attempts + 1,
+    locked_until = CASE WHEN failed_attempts + 1 >= 5 THEN NOW() + INTERVAL '1 hour' ELSE locked_until END
+WHERE id = $1 AND (locked_until IS NULL OR locked_until <= NOW())
+RETURNING id
+`
+
+// Counts an attempt before the identifier is compared, in one statement, so
+// parallel guesses cannot all pass the lock check first (S6). Returns no row
+// while the code is locked. A correct identifier resets the count afterwards.
+func (q *Queries) ClaimActivationAttempt(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, claimActivationAttempt, id)
+	var id_2 uuid.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const claimActivationCode = `-- name: ClaimActivationCode :execrows
 UPDATE activation_codes SET used_at = NOW()
 WHERE id = $1 AND used_at IS NULL AND revoked_at IS NULL AND expires_at > NOW()
@@ -571,19 +589,6 @@ func (q *Queries) PeekActivationEmailToken(ctx context.Context, tokenHash string
 	var i PeekActivationEmailTokenRow
 	err := row.Scan(&i.CodeID, &i.Email)
 	return i, err
-}
-
-const recordActivationFailure = `-- name: RecordActivationFailure :exec
-UPDATE activation_codes
-SET failed_attempts = failed_attempts + 1,
-    locked_until = CASE WHEN failed_attempts + 1 >= 5 THEN NOW() + INTERVAL '1 hour' ELSE locked_until END
-WHERE id = $1
-`
-
-// Five wrong identifiers lock the code for an hour; each later miss locks it again.
-func (q *Queries) RecordActivationFailure(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, recordActivationFailure, id)
-	return err
 }
 
 const releaseActivationCode = `-- name: ReleaseActivationCode :exec

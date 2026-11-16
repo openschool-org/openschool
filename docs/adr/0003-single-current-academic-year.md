@@ -19,7 +19,7 @@ deployment rather than a multi-tenant model.
   implicitly filters by this flag rather than taking an explicit year
   parameter.
 - This same flag doubles as promotion's "publish switch" - see
-  [`FEATURES.md`'s promotion section](../FEATURES.md#promotion--class-reassignment):
+  [`FEATURES.md`'s promotion section](../features/year-end.md#promotion--class-reassignment):
   promotion and class-shuffle write into a **not-yet-current** year, which
   stays fully editable and invisible to the rest of the app until an
   admin flips it current. No separate "draft" schema was needed because
@@ -37,4 +37,4 @@ deployment rather than a multi-tenant model.
   permits. Creating a year as current goes through the same toggle.
 - **Promotion's preview-then-commit flow gets a "draft" concept for
   free.** This was a deliberate reuse, not an oversight - see
-  [`FEATURES.md`'s promotion section](../FEATURES.md#promotion--class-reassignment).
+  [`FEATURES.md`'s promotion section](../features/year-end.md#promotion--class-reassignment).

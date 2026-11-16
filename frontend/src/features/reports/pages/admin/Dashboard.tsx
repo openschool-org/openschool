@@ -17,16 +17,17 @@ import StatCard from "@/features/reports/components/dashboard/StatCard";
 import AttendanceByClassSection from "@/features/reports/components/dashboard/AttendanceByClassSection";
 import DashboardSnapshotSection from "@/features/reports/components/dashboard/DashboardSnapshotSection";
 import RecentActivitySection from "@/features/reports/components/dashboard/RecentActivitySection";
-import SetupChecklistCard from "@/features/reports/components/dashboard/SetupChecklistCard";
-import { useMemo } from "react";
+import SetupChecklistCard, { SetupChecklistSkeleton } from "@/features/reports/components/dashboard/SetupChecklistCard";
+import { rememberSetupDone, wasSetupDone } from "@/features/reports/lib/setupDone";
+import { useEffect, useMemo } from "react";
 
 export default function Dashboard() {
   const { data: school } = useSchool();
   // Only `total` is used from these two - a small limit keeps the request
   // light since the page doesn't render any of the individual rows.
-  const { data: studentPage, isLoading: studentsLoading } = useStudents({ limit: 1 });
+  const { data: studentPage, isLoading: studentsLoading, isError: studentsError } = useStudents({ limit: 1 });
   const studentCount = studentPage?.total ?? 0;
-  const { data: teacherPage, isLoading: teachersLoading } = useTeachers({ limit: 1 });
+  const { data: teacherPage, isLoading: teachersLoading, isError: teachersError } = useTeachers({ limit: 1 });
   const teacherCount = teacherPage?.total ?? 0;
   // The activity feed comes from a dedicated, server-sorted (created_at
   // DESC) query on the backend (dashboard.Service.recentActivity), not a
@@ -35,10 +36,10 @@ export default function Dashboard() {
   // one page of records exists.
   const { data: analytics, isLoading: analyticsLoading } = useDashboardAnalytics();
   const recentActivity = analytics?.school.recent_activity ?? [];
-  const { data: classes, isLoading: classesLoading } = useCurrentClasses();
-  const { data: grades, isLoading: gradesLoading } = useGrades();
-  const { data: subjects, isLoading: subjectsLoading } = useSubjects();
-  const { data: years, isLoading: yearsLoading } = useAcademicYears();
+  const { data: classes, isLoading: classesLoading, isError: classesError } = useCurrentClasses();
+  const { data: grades, isLoading: gradesLoading, isError: gradesError } = useGrades();
+  const { data: subjects, isLoading: subjectsLoading, isError: subjectsError } = useSubjects();
+  const { data: years, isLoading: yearsLoading, isError: yearsError } = useAcademicYears();
   const currentYear = years?.find((y) => y.is_current) ?? null;
   const { data: terms, isPending: termsPending, isError: termsError } = useTerms(currentYear?.id);
   const { data: todaySessions, isLoading: sessionsLoading } = useDailySessions(todayISODate());
@@ -56,6 +57,8 @@ export default function Dashboard() {
   // Terms only start loading once the current year is known, so wait for both before judging "Set up terms".
   const termsLoading = yearsLoading || (!!currentYear && termsPending);
   const setupLoading = classesLoading || gradesLoading || subjectsLoading || teachersLoading || studentsLoading || termsLoading;
+  // A failed query must not read as "nothing set up yet", so the checklist hides until all load.
+  const setupError = classesError || gradesError || subjectsError || teachersError || studentsError || yearsError;
   const setupItems = [
     { label: "Set a current academic year", done: !!currentYear, path: "/academic-years" },
     { label: "Set up terms", done: !!currentYear && !termsError && (terms?.length ?? 0) > 0, path: "/academic-years" },
@@ -65,6 +68,11 @@ export default function Dashboard() {
     { label: "Add a class", done: (classes?.length ?? 0) > 0, path: "/classes" },
     { label: "Add a student", done: studentCount > 0, path: "/students" },
   ];
+
+  const setupDone = !setupLoading && !setupError && setupItems.every((i) => i.done);
+  useEffect(() => {
+    if (!setupLoading && !setupError) rememberSetupDone(setupDone);
+  }, [setupLoading, setupError, setupDone]);
 
   return (
     <div className="os-page">
@@ -86,13 +94,13 @@ export default function Dashboard() {
         <LinkButton to="/analytics" size="large" type="link" icon={<ArrowRightOutlined />} iconPlacement="end" className="os-dash-actions__end">View analytics</LinkButton>
       </div>
 
-      {!setupLoading && <SetupChecklistCard items={setupItems} />}
+      {setupLoading ? !wasSetupDone() && <SetupChecklistSkeleton /> : !setupError && <SetupChecklistCard items={setupItems} />}
 
       <div className="os-stat-grid">
-        <StatCard label="Total students" value={studentCount} loading={studentsLoading} Icon={TeamOutlined} path="/students" />
-        <StatCard label="Teachers" value={teacherCount} loading={teachersLoading} Icon={ReadOutlined} path="/teachers" />
-        <StatCard label="Classes" value={classes?.length ?? 0} loading={classesLoading} Icon={BankOutlined} path="/classes" />
-        <StatCard label="Subjects" value={subjects?.length ?? 0} loading={subjectsLoading} Icon={BookOutlined} path="/subjects" />
+        <StatCard label="Total students" value={studentCount} loading={studentsLoading} error={studentsError} Icon={TeamOutlined} path="/students" />
+        <StatCard label="Teachers" value={teacherCount} loading={teachersLoading} error={teachersError} Icon={ReadOutlined} path="/teachers" />
+        <StatCard label="Classes" value={classes?.length ?? 0} loading={classesLoading} error={classesError} Icon={BankOutlined} path="/classes" />
+        <StatCard label="Subjects" value={subjects?.length ?? 0} loading={subjectsLoading} error={subjectsError} Icon={BookOutlined} path="/subjects" />
       </div>
 
       <div className="os-dash-lower">

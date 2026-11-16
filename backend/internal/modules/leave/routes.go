@@ -27,9 +27,10 @@ type handler struct {
 	teachers TeacherResolver
 }
 
-// RegisterRoutes mounts the applicant's endpoints on the teacher group and
-// the approver's on teacherOrAdmin, where the service checks the position.
-func RegisterRoutes(teacher, teacherOrAdmin *gin.RouterGroup, service *Service, teachers TeacherResolver) {
+// RegisterRoutes mounts the applicant's endpoints on the teacher group, the
+// approver's on teacherOrAdmin, where the service checks the position, and
+// the leave limits on admin.
+func RegisterRoutes(teacher, teacherOrAdmin, admin *gin.RouterGroup, service *Service, teachers TeacherResolver) {
 	h := &handler{service: service, teachers: teachers}
 	teacher.GET("/me/teacher/leave", h.myRequests)
 	teacher.POST("/me/teacher/leave", h.apply)
@@ -46,6 +47,36 @@ func RegisterRoutes(teacher, teacherOrAdmin *gin.RouterGroup, service *Service, 
 	teacherOrAdmin.POST("/leave/requests/:id/reject", h.decide(false))
 	teacherOrAdmin.GET("/leave/balances", h.balances)
 	teacherOrAdmin.GET("/leave/relief", h.dailyRelief)
+	teacherOrAdmin.GET("/leave/settings", h.policy)
+	admin.PUT("/leave/settings", h.updatePolicy)
+}
+
+func (h *handler) policy(c *gin.Context) {
+	policy, err := h.service.Policy(c)
+	if err != nil {
+		respond(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, policy)
+}
+
+func (h *handler) updatePolicy(c *gin.Context) {
+	userID, err := middleware.UserIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
+		return
+	}
+	var req Policy
+	if err := httpx.BindStrict(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	saved, err := h.service.UpdatePolicy(c, req, userID)
+	if err != nil {
+		respond(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, saved)
 }
 
 func (h *handler) teacherID(c *gin.Context) (uuid.UUID, uuid.UUID, bool) {

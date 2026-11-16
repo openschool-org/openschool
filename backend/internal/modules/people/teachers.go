@@ -62,10 +62,12 @@ type TeacherService struct {
 	idp    idp.Provider
 	houses ports.HouseAssignments
 	audit  ports.AuditRecorder
+	// pending queues identity cleanup that a failed rollback could not finish.
+	pending PendingEraser
 }
 
-func NewTeacherService(store teacherStore, idp idp.Provider, houses ports.HouseAssignments, audit ports.AuditRecorder) *TeacherService {
-	return &TeacherService{store: store, idp: idp, houses: houses, audit: audit}
+func NewTeacherService(store teacherStore, idp idp.Provider, houses ports.HouseAssignments, audit ports.AuditRecorder, pending PendingEraser) *TeacherService {
+	return &TeacherService{store: store, idp: idp, houses: houses, audit: audit, pending: pending}
 }
 func (s *TeacherService) Create(ctx context.Context, req CreateTeacherRequest, actor uuid.UUID) (any, error) {
 	if !validation.NormalizePhoneField(&req.PhoneNumber) {
@@ -87,10 +89,10 @@ func (s *TeacherService) Create(ctx context.Context, req CreateTeacherRequest, a
 	}
 	full := req.FullName
 	if err = s.store.CreateUser(ctx, teacherUserCreate{ID: uid, Email: req.Email, FullName: full, MustChangePassword: true}); err != nil {
-		_ = s.idp.DeleteUser(ctx, u.ID)
+		rollbackAccount(ctx, s.idp, s.pending, u.ID, uid, nil)
 		return nil, fmt.Errorf("failed to create user record: %w", err)
 	}
-	rollback := func() { _ = s.idp.DeleteUser(ctx, u.ID); _ = s.store.DeleteUser(ctx, uid) }
+	rollback := func() { rollbackAccount(ctx, s.idp, s.pending, u.ID, uid, s.store.DeleteUser) }
 	if err = s.idp.AssignRole(ctx, idp.RoleID(authz.RoleTeacher), u.ID); err != nil {
 		rollback()
 		return nil, fmt.Errorf("failed to assign teacher role: %w", err)

@@ -48,7 +48,11 @@ func (r *Repository) studentCredentialsMatch(ctx context.Context, userID uuid.UU
 	return err == nil && row.IndexNumber == indexNumber
 }
 
+// createResetToken issues a new link and ends any earlier unused one.
 func (r *Repository) createResetToken(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) error {
+	if err := r.queries.RevokePasswordResetTokens(ctx, userID); err != nil {
+		return err
+	}
 	_, err := r.queries.CreatePasswordResetToken(ctx, db.CreatePasswordResetTokenParams{
 		UserID:    userID,
 		TokenHash: tokenHash,
@@ -68,4 +72,8 @@ func (r *Repository) consumeResetToken(ctx context.Context, tokenHash string) (r
 // unchanged default password can still expire after a week (S1).
 func (r *Repository) clearMustChangePassword(ctx context.Context, id uuid.UUID, keptDefault bool) error {
 	return r.queries.ClearMustChangePassword(ctx, db.ClearMustChangePasswordParams{ID: id, KeptDefaultPassword: keptDefault})
+}
+
+func (r *Repository) revokeResetTokens(ctx context.Context, userID uuid.UUID) error {
+	return r.queries.RevokePasswordResetTokens(ctx, userID)
 }

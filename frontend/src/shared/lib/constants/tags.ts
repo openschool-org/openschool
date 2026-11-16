@@ -1,11 +1,4 @@
-// Carbon Tag colours for domain enums, shared by every portal that shows them.
-export const SEVERITY_TAG = {
-  minor: "gray",
-  major: "warm-gray",
-  severe: "red",
-} as const;
-
-// antd Tag colours for the same enums; undefined is the neutral default tag.
+// antd Tag colours for discipline severity; undefined is the neutral default tag.
 export const SEVERITY_COLOR: Record<"minor" | "major" | "severe", string | undefined> = {
   minor: undefined,
   major: "warning",

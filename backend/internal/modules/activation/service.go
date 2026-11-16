@@ -28,7 +28,7 @@ type store interface {
 	updateSettings(context.Context, Settings) (Settings, error)
 	usableCode(context.Context, string) (codeRecord, error)
 	usableCodeByID(context.Context, uuid.UUID) (codeRecord, error)
-	recordFailure(context.Context, uuid.UUID) error
+	claimAttempt(context.Context, uuid.UUID) (bool, error)
 	resetFailures(context.Context, uuid.UUID) error
 	createEmailToken(context.Context, string, uuid.UUID, string, time.Time) error
 	peekEmailToken(context.Context, string) (uuid.UUID, string, error)
@@ -116,14 +116,24 @@ func (s *Service) Start(ctx context.Context, req StartRequest) error {
 		logAttempt("unknown code")
 		return nil
 	}
-	if code.LockedUntil != nil && s.now().Before(*code.LockedUntil) {
+	// Every attempt is counted before the compare, so five wrong guesses lock
+	// the code even when they arrive at the same moment (S6).
+	allowed, err := s.store.claimAttempt(ctx, code.ID)
+	if err != nil {
+		return err
+	}
+	if !allowed {
 		logAttempt("code locked")
 		return nil
 	}
 	// The code knows its own role, so a wrong "I am a" choice on the form does not block a real match.
 	if !sameIdentifier(code.Identifier, req.Identifier) {
 		logAttempt("identifier mismatch")
-		return s.store.recordFailure(ctx, code.ID)
+		return nil
+	}
+	// The right identifier clears the attempts counted above.
+	if err := s.store.resetFailures(ctx, code.ID); err != nil {
+		return err
 	}
 	if !settings.openFor(code.Role, s.now()) {
 		logAttempt("role closed")
@@ -132,9 +142,6 @@ func (s *Service) Start(ctx context.Context, req StartRequest) error {
 	if code.HasLogin {
 		logAttempt("already activated")
 		return nil
-	}
-	if err := s.store.resetFailures(ctx, code.ID); err != nil {
-		return err
 	}
 
 	email := strings.ToLower(strings.TrimSpace(req.Email))

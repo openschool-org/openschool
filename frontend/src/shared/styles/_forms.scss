@@ -43,12 +43,7 @@
   width: 11rem;
   overflow: hidden;
 
-  .cds--date-picker,
-  .cds--date-picker-container,
-  .cds--date-picker-input__wrapper,
-  .cds--date-picker__input {
-    width: 100%;
-  }
+  .ant-picker { width: 100%; }
 }
 
 // Error summary shown at the top of a form after a failed submit.

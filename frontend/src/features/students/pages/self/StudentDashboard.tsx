@@ -5,41 +5,44 @@ import { useMyStudentProfile, useMyAttendance, useMyMarks } from "@/features/stu
 import { useMyClassTimetable } from "@/features/timetable/queries/useTimetables";
 import { useUnreadNotificationCount } from "@/features/notifications/queries/useNotifications";
 import { useCurrentTerm } from "@/features/school/queries/useTerms";
+import StatCard from "@/features/reports/components/dashboard/StatCard";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
-import TodayStatCard from "@/shared/ui/TodayStatCard";
-import { getInitials } from "@/shared/lib/name";
+import DashboardHero from "@/shared/ui/DashboardHero";
+import SchoolLogo from "@/features/school/components/SchoolLogo";
 import { todayISODate } from "@/shared/lib/date";
 import { formatPercent } from "@/shared/lib/number";
+import { isNotFoundError } from "@/shared/api/errors";
 import { useT } from "@/shared/i18n/useT";
 
 export default function StudentDashboard() {
   const { t } = useT();
   const { data: profile, isLoading, isError, refetch } = useMyStudentProfile();
-  const { data: attendance, isLoading: attendanceLoading } = useMyAttendance();
-  const { data: currentTerm } = useCurrentTerm();
-  const { data: marks, isLoading: marksLoading } = useMyMarks(currentTerm?.id ?? "");
-  const { data: timetable, isLoading: timetableLoading } = useMyClassTimetable();
-  const { data: unread, isLoading: unreadLoading } = useUnreadNotificationCount();
+  const attendance = useMyAttendance();
+  const term = useCurrentTerm();
+  const marks = useMyMarks(term.data?.id ?? "");
+  const timetable = useMyClassTimetable();
+  const unread = useUnreadNotificationCount();
 
   const attendanceThisMonth = useMemo(() => {
     const month = todayISODate().slice(0, 7);
-    const rows = (attendance ?? []).filter((r) => r.session_date.startsWith(month));
+    const rows = (attendance.data ?? []).filter((r) => r.session_date.startsWith(month));
     if (rows.length === 0) return null;
     const present = rows.filter((r) => r.status === "present" || r.status === "late").length;
     return Math.round((present / rows.length) * 100);
-  }, [attendance]);
+  }, [attendance.data]);
 
-  const marksAverage = useMemo(() => {
-    const graded = (marks ?? []).filter((m) => !m.is_absent && m.max_marks > 0);
+  const termAverage = useMemo(() => {
+    const graded = (marks.data ?? []).filter((m) => !m.is_absent && m.max_marks > 0);
     if (graded.length === 0) return null;
     const pct = graded.reduce((sum, m) => sum + m.marks / m.max_marks, 0) / graded.length;
     return Math.round(pct * 100);
-  }, [marks]);
+  }, [marks.data]);
 
+  // Timetable days run 1 (Mon) to 5 (Fri), the same as Date.getDay().
   const todayClasses = useMemo(
-    () => (timetable?.entries ?? []).filter((e) => e.day_of_week === new Date().getDay()),
-    [timetable],
+    () => (timetable.data?.entries ?? []).filter((e) => e.day_of_week === new Date().getDay()).sort((a, b) => a.period_number - b.period_number),
+    [timetable.data],
   );
 
   if (isLoading) return <LoadingSpinner />;
@@ -51,90 +54,58 @@ export default function StudentDashboard() {
     );
   }
 
+  // No current term is a normal state between terms, not a load failure.
+  const noTerm = !term.isLoading && !term.data;
+  const firstSubject = todayClasses[0]?.subject_name;
+
   return (
-    <div className="os-bg-layer-hover os-min-h-content">
-      <div className="os-profile__banner">
-        <div className="os-profile__avatar">
-          {getInitials(profile.full_name)}
-        </div>
-        <div className="os-flex-1">
-          <p className="os-profile__name">{profile.full_name}</p>
-          <p className="os-profile__meta">
-            {profile.index_number}
-            {profile.class_name ? ` · ${profile.class_name}` : ""}
-            {profile.grade_name ? ` · ${profile.grade_name}` : ""}
-          </p>
-        </div>
-        {profile.house_name && (
-          <div className="os-profile__actions">
-            <Tag color="blue" variant="filled">
-              {t("student.houseTag", { house: profile.house_name })}
-            </Tag>
-          </div>
-        )}
-      </div>
+    <div className="os-page">
+      <DashboardHero
+        title={profile.full_name}
+        subtitle={[profile.index_number, profile.grade_name, profile.class_name].filter(Boolean).join(" · ")}
+        aside={
+          <>
+            {profile.house_name && <Tag color="blue" variant="filled">{t("student.houseTag", { house: profile.house_name })}</Tag>}
+            <SchoolLogo />
+          </>
+        }
+      />
 
-      <div className="os-py-6 os-px-8">
-        <div className="os-stat-grid">
-          <TodayStatCard
-            label={t("student.attendanceThisMonth")}
-            value={formatPercent(attendanceThisMonth)}
-            loading={attendanceLoading}
-            Icon={ScheduleOutlined}
-            path="/s/attendance"
-          />
-          <TodayStatCard
-            label={t("student.latestMarks")}
-            value={formatPercent(marksAverage)}
-            meta={currentTerm?.name}
-            loading={marksLoading || !currentTerm}
-            Icon={FileDoneOutlined}
-            path="/s/marks"
-          />
-          <TodayStatCard
-            label={t("student.todaysClasses")}
-            value={todayClasses.length}
-            meta={todayClasses.length > 0 ? todayClasses[0].subject_name ?? undefined : undefined}
-            loading={timetableLoading}
-            Icon={TableOutlined}
-            path="/s/timetable"
-          />
-          <TodayStatCard
-            label={t("student.unreadNotices")}
-            value={unread ?? 0}
-            loading={unreadLoading}
-            Icon={BellOutlined}
-            path="/notification-center"
-          />
-        </div>
-
-        <div className="os-section">
-          <div className="os-section__header">
-            <h2 className="os-section__title">{t("student.details")}</h2>
-          </div>
-          <div className="os-section__body os-grid os-grid-auto-200 os-gap-4">
-            <div className="os-kv-item os-border os-bg-layer">
-              <p className="os-kv-item__label">{t("field.fullName")}</p>
-              <p className="os-kv-item__value">{profile.full_name}</p>
-            </div>
-            <div className="os-kv-item os-border os-bg-layer">
-              <p className="os-kv-item__label">{t("field.indexNumber")}</p>
-              <p className="os-kv-item__value">{profile.index_number}</p>
-            </div>
-            <div className="os-kv-item os-border os-bg-layer">
-              <p className="os-kv-item__label">{t("field.class")}</p>
-              <p className="os-kv-item__value">{profile.class_name || "-"}</p>
-            </div>
-            <div className="os-kv-item os-border os-bg-layer">
-              <p className="os-kv-item__label">{t("field.grade")}</p>
-              <p className="os-kv-item__value">{profile.grade_name || "-"}</p>
-            </div>
-            <div className="os-kv-item os-border os-bg-layer">
-              <p className="os-kv-item__label">{t("field.house")}</p>
-              <p className="os-kv-item__value">{profile.house_name || "-"}</p>
-            </div>
-          </div>
-        </div>
+      <div className="os-stat-grid">
+        <StatCard
+          label={t("student.attendanceThisMonth")}
+          value={formatPercent(attendanceThisMonth)}
+          loading={attendance.isLoading}
+          error={attendance.isError}
+          Icon={ScheduleOutlined}
+          path="/s/attendance"
+        />
+        <StatCard
+          label={t("student.latestMarks")}
+          value={noTerm ? "-" : formatPercent(termAverage)}
+          meta={noTerm ? t("student.noTerm") : term.data?.name}
+          loading={term.isLoading || marks.isLoading}
+          error={marks.isError}
+          Icon={FileDoneOutlined}
+          path="/s/marks"
+        />
+        <StatCard
+          label={t("student.todaysClasses")}
+          value={todayClasses.length}
+          meta={firstSubject ? t("student.firstPeriod", { subject: firstSubject }) : undefined}
+          loading={timetable.isLoading}
+          error={timetable.isError && !isNotFoundError(timetable.error)}
+          Icon={TableOutlined}
+          path="/s/timetable"
+        />
+        <StatCard
+          label={t("student.unreadNotices")}
+          value={unread.data ?? 0}
+          loading={unread.isLoading}
+          error={unread.isError}
+          Icon={BellOutlined}
+          path="/notification-center"
+        />
       </div>
     </div>
   );

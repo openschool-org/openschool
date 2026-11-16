@@ -7,12 +7,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 OpenSchool is a self-hosted school management system. It is a monorepo with two workspaces:
 
 - `backend/` - Go REST API (Gin framework)
-- `frontend/` - React SPA (Vite, TypeScript, Carbon Design System)
+- `frontend/` - React SPA (Vite, TypeScript, Ant Design)
 
 For anything beyond a quick fix, read further before making changes:
 
 - [`docs/FEATURES.md`](docs/FEATURES.md) - current feature list by module
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - component layout, full data model, external interfaces
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - overview; detail in [`docs/architecture/`](docs/architecture/) (backend, frontend, data model, jobs, interfaces, security)
+- [`docs/setup/`](docs/setup/) - [server setup](docs/setup/server.md) and [school setup](docs/setup/school.md)
+- [`docs/development/`](docs/development/) - open review findings (`issue.md`) and the code health plan
 - [`docs/adr/`](docs/adr/) - *why* behind non-obvious decisions (e.g. why positions aren't ThunderID roles, why the current-academic-year invariant exists) - check here before "fixing" something that looks wrong but is deliberate
 
 ## Backend
@@ -123,7 +125,7 @@ Authentication is handled by **ThunderID** (`@thunderid/react`). The provider is
 - No inline `style={{}}` except for runtime values, and no hex colours outside `_tokens.scss`. Layout and text use the `os-*` utility classes in `shared/styles/_utilities.scss`; state-driven looks use toggle classes such as `is-active`
 - Files stay under 250 lines (ESLint error). A page that grows past it moves logic into `features/<name>/hooks/` and markup into `components/`
 
-UI uses **IBM Carbon Design System** (`@carbon/react`, `@carbon/icons-react`). Data fetching uses **TanStack Query** (`@tanstack/react-query`). Styles are SCSS (`index.scss`).
+UI uses **Ant Design** (`antd`, `@ant-design/icons`); Carbon was removed and ESLint blocks `@carbon/*` imports. Data fetching uses **TanStack Query** (`@tanstack/react-query`). Styles are SCSS (`index.scss`).
 
 ## Data Model
 
@@ -137,9 +139,9 @@ Core entities, enough to orient yourself:
 - `Subject` / `Level` / `SelectionGroup` - curriculum; selection groups hold the optional subject choices for a level
 - `AttendanceSession` / `AttendanceRecord` - attendance tracking per class session
 
-The schema has grown well beyond this (55 migrations, ~69 tables - also
+The schema has grown well beyond this (56 migrations, ~70 tables - also
 covering timetable, notifications, prefects, staff/positions, teacher
 leave, student portfolio, and the audit log). Don't hand-maintain a full list here - see
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md#4-data-model) for the
+[`docs/architecture/data-model.md`](docs/architecture/data-model.md) for the
 current, grouped breakdown, or `db/sqlc/models.go` (generated from the
 migrations) for exact columns/types.

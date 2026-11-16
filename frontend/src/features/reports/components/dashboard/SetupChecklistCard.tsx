@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Card, Progress } from "antd";
+import { Card, Progress, Skeleton } from "antd";
 import { CheckCircleFilled } from "@ant-design/icons";
 
 export interface SetupChecklistItem {
@@ -36,6 +36,15 @@ export default function SetupChecklistCard({ items }: { items: SetupChecklistIte
           </Link>
         ))}
       </div>
+    </Card>
+  );
+}
+
+// Same footprint as the checklist, so the page does not jump when it loads.
+export function SetupChecklistSkeleton() {
+  return (
+    <Card className="os-dash-card" aria-busy="true">
+      <Skeleton active title={{ width: "40%" }} paragraph={{ rows: 5 }} />
     </Card>
   );
 }

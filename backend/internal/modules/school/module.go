@@ -8,7 +8,7 @@ import (
 
 // referenceDataMaxAgeSeconds is how long a client may cache rarely-changing
 // reference data (grades, houses) before revalidating (section 5).
-const referenceDataMaxAgeSeconds = 300
+const referenceDataMaxAgeSeconds = 0 // revalidate every time; the ETag keeps it cheap (E12)
 
 // RegisterHouseRoutes mounts house management using the shared assignment service.
 func RegisterHouseRoutes(admin, teacherOrAdmin *gin.RouterGroup, service *HouseService) {
@@ -46,6 +46,7 @@ func RegisterSchoolRoutes(admin, teacherOrAdmin, authenticated *gin.RouterGroup,
 	handler := newSchoolHandler(newSchoolRepository(pool))
 	admin.POST("/school", handler.createSchool)
 	teacherOrAdmin.GET("/school", handler.getSchool)
+	authenticated.GET("/school/branding", handler.getBranding)
 	admin.PUT("/school/:id", handler.updateSchool)
 	admin.POST("/academic-years", handler.createYear)
 	teacherOrAdmin.GET("/academic-years", handler.listYears)

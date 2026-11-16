@@ -1,34 +1,22 @@
-import { Location } from "@carbon/icons-react";
-import type { LeadershipOverviewSummary } from "@/features/positions/api/position";
-import InfoRow from "@/shared/ui/InfoRow";
+import { BankOutlined, CheckCircleOutlined, ClockCircleOutlined, TeamOutlined } from "@ant-design/icons";
+import { useMyLeadershipOverview } from "@/features/positions/queries/usePositions";
+import StatCard from "@/features/reports/components/dashboard/StatCard";
 
-// Scoped counts for Principal, Vice Principal and Section Head; complements LeadershipPanel.
-export default function LeadershipOverviewPanel({ overview }: { overview: LeadershipOverviewSummary }) {
-  const scopeLabel = overview.scope === "school" ? "Whole school" : overview.grade_names.join(", ") || "Your grades";
-
-  const rows = [
-    { label: "Classes", value: overview.class_count, color: "var(--os-text-primary)" },
-    { label: "Students", value: overview.student_count, color: "var(--os-accent)" },
-    { label: "Sessions marked today", value: overview.sessions_marked_today, color: "var(--os-success)" },
-    {
-      label: "Sessions pending today",
-      value: overview.sessions_pending_today,
-      color: overview.sessions_pending_today > 0 ? "var(--os-warning)" : "var(--os-text-tertiary)",
-    },
-  ];
+// Scoped counts for Principal, Vice Principal and Section Head, shown before the teacher's own classes.
+export default function LeadershipOverviewPanel() {
+  const { data: overview, isLoading, isError } = useMyLeadershipOverview(true);
+  const scope = !overview ? "" : overview.scope === "school" ? "Whole school" : overview.grade_names.join(", ") || "Your grades";
+  const card = { loading: isLoading, error: isError };
 
   return (
-    <div className="os-section">
-      <div className="os-section__header">
-        <h2 className="os-section__title os-flex os-items-center os-gap-2">
-          <Location size={16} className="os-fill-accent" /> Overview - {scopeLabel}
-        </h2>
+    <section aria-label="Leadership overview">
+      <p className="os-dash-section-label">{scope ? `Overview: ${scope}` : "Overview"}</p>
+      <div className="os-stat-grid">
+        <StatCard {...card} label="Classes" value={overview?.class_count ?? 0} Icon={BankOutlined} />
+        <StatCard {...card} label="Students" value={overview?.student_count ?? 0} Icon={TeamOutlined} />
+        <StatCard {...card} label="Sessions marked today" value={overview?.sessions_marked_today ?? 0} Icon={CheckCircleOutlined} />
+        <StatCard {...card} label="Sessions not marked yet" value={overview?.sessions_pending_today ?? 0} Icon={ClockCircleOutlined} />
       </div>
-      <div className="os-section__body os-py-3 os-px-6">
-        {rows.map(({ label, value, color }, i) => (
-          <InfoRow key={label} label={label} value={<span style={{ color }}>{value}</span>} bold divider={i < rows.length - 1} />
-        ))}
-      </div>
-    </div>
+    </section>
   );
 }

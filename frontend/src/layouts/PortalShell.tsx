@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router";
 import { Button } from "antd";
-import { CloseOutlined, MenuOutlined } from "@ant-design/icons";
+import { CloseOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import SidebarNav from "@/layouts/SidebarNav";
 import { AppHeaderBrand, AppHeaderActions } from "@/layouts/AppHeaderChrome";
 import Breadcrumbs from "@/layouts/Breadcrumbs";
@@ -25,6 +25,16 @@ function translateNav(groups: NavGroup[], t: Translate): NavGroup[] {
   }));
 }
 
+const RAIL_KEY = "os.sidenav.rail";
+
+function readRail(): boolean {
+  try {
+    return localStorage.getItem(RAIL_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 interface Props {
   navGroups: NavGroup[];
   showSearch?: boolean;
@@ -42,7 +52,8 @@ export default function PortalShell({ navGroups: rawGroups, showSearch = false, 
   const navGroups = useMemo(() => translateNav(rawGroups, t), [rawGroups, t]);
   const isDrawer = useMediaQuery(DRAWER_QUERY);
   const isPhone = useMediaQuery(PHONE_QUERY);
-  const [expanded, setExpanded] = useState(true);
+  // Desktop only: collapsed shows an icon rail, and the choice survives a reload.
+  const [expanded, setExpanded] = useState(() => !readRail());
   // The drawer remembers the route it was opened on, so navigating closes it.
   const [drawerOpenAt, setDrawerOpenAt] = useState<string | null>(null);
   const drawerOpen = drawerOpenAt === pathname;
@@ -52,6 +63,7 @@ export default function PortalShell({ navGroups: rawGroups, showSearch = false, 
   const { item: active, nested } = matchNav(pathname, navGroups, navAliases);
   const pageLabel = nested ? titleOverride ?? leafLabel(pathname, t) : titleOverride ?? active?.label;
   const sidebarOpen = isDrawer ? drawerOpen : expanded;
+  const rail = !isDrawer && !expanded;
   const showTabs = bottomTabs && isPhone;
 
   useEffect(() => {
@@ -65,7 +77,17 @@ export default function PortalShell({ navGroups: rawGroups, showSearch = false, 
     return () => window.removeEventListener("keydown", onKey);
   }, [drawerOpen]);
 
-  const toggle = () => (isDrawer ? setDrawerOpen(!drawerOpen) : setExpanded((v) => !v));
+  const toggle = () => {
+    if (isDrawer) return setDrawerOpen(!drawerOpen);
+    const next = !expanded;
+    setExpanded(next);
+    try {
+      localStorage.setItem(RAIL_KEY, next ? "0" : "1");
+    } catch {
+      // Storage blocked: the choice just resets on reload.
+    }
+  };
+  const toggleIcon = isDrawer ? (drawerOpen ? <CloseOutlined /> : <MenuOutlined />) : expanded ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />;
 
   return (
     <PageTitleContext.Provider value={setTitleOverride}>
@@ -78,7 +100,7 @@ export default function PortalShell({ navGroups: rawGroups, showSearch = false, 
           className="os-sidebar-toggle"
           aria-label={sidebarOpen ? t("shell.closeMenu") : t("shell.openMenu")}
           aria-expanded={sidebarOpen}
-          icon={sidebarOpen ? <CloseOutlined /> : <MenuOutlined />}
+          icon={toggleIcon}
           onClick={toggle}
         />
         <AppHeaderBrand />
@@ -87,11 +109,15 @@ export default function PortalShell({ navGroups: rawGroups, showSearch = false, 
 
       <div className={`os-layout${isDrawer ? " is-drawer" : ""}${showTabs ? " has-bottom-tabs" : ""}`}>
         {isDrawer && drawerOpen && <div className="os-layout__scrim" onClick={() => setDrawerOpen(false)} aria-hidden="true" />}
-        <aside className={`os-layout__sidebar${sidebarOpen ? "" : " is-collapsed"}`} aria-hidden={!sidebarOpen || undefined} inert={!sidebarOpen || undefined}>
-          <SidebarNav groups={navGroups} activePath={active?.path} aria-label={t("shell.sideNav")} />
+        <aside
+          className={`os-layout__sidebar${rail ? " is-rail" : sidebarOpen ? "" : " is-collapsed"}`}
+          aria-hidden={(!sidebarOpen && !rail) || undefined}
+          inert={(!sidebarOpen && !rail) || undefined}
+        >
+          <SidebarNav groups={navGroups} activePath={active?.path} collapsed={rail} aria-label={t("shell.sideNav")} />
         </aside>
 
-        <main id="main-content" tabIndex={-1} className={`os-layout__content${sidebarOpen && !isDrawer ? "" : " is-expanded"}`}>
+        <main id="main-content" tabIndex={-1} className={`os-layout__content${rail ? " is-rail" : sidebarOpen && !isDrawer ? "" : " is-expanded"}`}>
           <OfflineBanner />
           {nested && active && pageLabel && <Breadcrumbs parent={active} current={pageLabel} />}
           <RouteErrorBoundary>

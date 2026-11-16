@@ -242,6 +242,22 @@ func (h *schoolHandler) getSchool(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, value)
 }
+
+// Branding is the school name and logo only, for every portal's header and
+// dashboard. Students and parents may not read the full school record.
+type Branding struct {
+	Name    string  `json:"name"`
+	LogoURL *string `json:"logo_url"`
+}
+
+func (h *schoolHandler) getBranding(c *gin.Context) {
+	value, err := h.service.store.getSchool(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "school not found"})
+		return
+	}
+	c.JSON(http.StatusOK, Branding{Name: value.Name, LogoURL: value.LogoURL})
+}
 func (h *schoolHandler) updateSchool(c *gin.Context) {
 	id, ok := parseSchoolID(c)
 	if !ok {

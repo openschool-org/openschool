@@ -191,6 +191,16 @@ type JobSetting struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type LeaveSetting struct {
+	ID                   bool               `json:"id"`
+	CasualDaysPerYear    int32              `json:"casual_days_per_year"`
+	SickDaysPerYear      int32              `json:"sick_days_per_year"`
+	ShortLeavesPerMonth  int32              `json:"short_leaves_per_month"`
+	ShortLeaveMaxMinutes int32              `json:"short_leave_max_minutes"`
+	MaternityDays        int32              `json:"maternity_days"`
+	UpdatedAt            pgtype.Timestamptz `json:"updated_at"`
+}
+
 type Level struct {
 	ID            uuid.UUID          `json:"id"`
 	Label         string             `json:"label"`

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { ConfigProvider } from "antd";
+import { ANTD_LOCALES } from "@/shared/i18n/antdLocale";
 import { en, type Messages } from "@/shared/i18n/messages/en";
 import { I18nContext, interpolate, isLang, type Lang, type Translate } from "@/shared/i18n/i18nContext";
 import { saveLanguage } from "@/shared/i18n/languageApi";
@@ -61,5 +63,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const t = useCallback<Translate>((key, vars) => interpolate((catalogues[lang] ?? en)[key] ?? en[key], vars), [catalogues, lang]);
 
   const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
-  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
+  return (
+    <I18nContext.Provider value={value}>
+      <ConfigProvider locale={ANTD_LOCALES[lang]}>{children}</ConfigProvider>
+    </I18nContext.Provider>
+  );
 }
