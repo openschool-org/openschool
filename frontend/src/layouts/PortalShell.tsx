@@ -1,7 +1,8 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router";
 import { Button } from "antd";
-import { CloseOutlined, MenuFoldOutlined, MenuOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
+import { CloseOutlined, MenuOutlined } from "@ant-design/icons";
+import SidebarToggleIcon from "@/layouts/SidebarToggleIcon";
 import SidebarNav from "@/layouts/SidebarNav";
 import { AppHeaderBrand, AppHeaderActions } from "@/layouts/AppHeaderChrome";
 import Breadcrumbs from "@/layouts/Breadcrumbs";
@@ -87,7 +88,7 @@ export default function PortalShell({ navGroups: rawGroups, showSearch = false, 
       // Storage blocked: the choice just resets on reload.
     }
   };
-  const toggleIcon = isDrawer ? (drawerOpen ? <CloseOutlined /> : <MenuOutlined />) : expanded ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />;
+  const toggleIcon = isDrawer ? (drawerOpen ? <CloseOutlined /> : <MenuOutlined />) : <SidebarToggleIcon open={expanded} />;
 
   return (
     <PageTitleContext.Provider value={setTitleOverride}>
