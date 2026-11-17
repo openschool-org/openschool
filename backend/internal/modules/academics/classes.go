@@ -195,12 +195,7 @@ func RegisterClassRoutes(admin, teacherOrAdmin *gin.RouterGroup, pool *pgxpool.P
 	teacherOrAdmin.DELETE("/classes/:id/students/:student_id/unenroll", middleware.RequireClassAccess(access, "id"), h.unenroll)
 }
 func classID(c *gin.Context, name string) (uuid.UUID, bool) {
-	id, err := uuid.Parse(c.Param(name))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
-		return uuid.Nil, false
-	}
-	return id, true
+	return httpx.ParamUUID(c, name, "invalid id")
 }
 func (h *classHandler) create(c *gin.Context) {
 	var r createClassRequest

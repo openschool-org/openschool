@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/openschool-org/openschool/internal/platform/httpx"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/openschool-org/openschool/internal/apierror"
@@ -47,9 +49,8 @@ func newTeacherAvailabilityHandler(store teacherAvailabilityStore) *teacherAvail
 	return &teacherAvailabilityHandler{service: &teacherAvailabilityService{availability: store}}
 }
 func (h *teacherAvailabilityHandler) create(c *gin.Context) {
-	teacherID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid teacher id"})
+	teacherID, ok := httpx.ParamUUID(c, "id", "invalid teacher id")
+	if !ok {
 		return
 	}
 	var command teacherAvailabilityCommand
@@ -65,14 +66,12 @@ func (h *teacherAvailabilityHandler) create(c *gin.Context) {
 	c.JSON(http.StatusCreated, availability)
 }
 func (h *teacherAvailabilityHandler) listByTeacherYear(c *gin.Context) {
-	teacherID, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid teacher id"})
+	teacherID, ok := httpx.ParamUUID(c, "id", "invalid teacher id")
+	if !ok {
 		return
 	}
-	yearID, err := uuid.Parse(c.Query("academic_year_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "a valid academic_year_id is required"})
+	yearID, ok := httpx.QueryUUID(c, "academic_year_id", "a valid academic_year_id is required")
+	if !ok {
 		return
 	}
 	availability, err := h.service.availability.listAvailability(c.Request.Context(), teacherID, yearID)
@@ -83,9 +82,8 @@ func (h *teacherAvailabilityHandler) listByTeacherYear(c *gin.Context) {
 	c.JSON(http.StatusOK, availability)
 }
 func (h *teacherAvailabilityHandler) delete(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("availability_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+	id, ok := httpx.ParamUUID(c, "availability_id", "invalid id")
+	if !ok {
 		return
 	}
 	if err := h.service.availability.deleteAvailability(c.Request.Context(), id); err != nil {

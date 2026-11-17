@@ -57,44 +57,24 @@ func (a *PeopleComplianceAgent) Run(ctx context.Context) (Result, error) {
 // checkEmploymentConsistency flags resigned/transferred teachers still assigned as a form or subject teacher on a current-year class.
 func (a *PeopleComplianceAgent) checkEmploymentConsistency(ctx context.Context) checkOutcome {
 	teachers, err := a.checks.ListInactiveTeachersStillAssigned(ctx)
-	if err != nil {
-		return checkOutcome{err: fmt.Errorf("employment-consistency check: %w", err)}
-	}
-	if len(teachers) == 0 {
-		return checkOutcome{}
-	}
-
-	names := make([]string, len(teachers))
-	for i, t := range teachers {
-		names[i] = fmt.Sprintf("%s (%s)", t.FullName, t.EmploymentStatus)
-	}
-	summary := fmt.Sprintf("%d teacher(s) still assigned despite employment status: %s", len(teachers), strings.Join(names, ", "))
-
-	return reportFinding(ctx, a.checks, a.notifSvc, finding{
-		count: len(teachers), noun: "teacher(s)", label: fmt.Sprintf("%d inactive teacher(s) still assigned", len(teachers)),
-		title: "Inactive teachers still assigned to classes", summary: summary, category: "general", severity: SeverityElevated,
+	return checkList(ctx, a.checks, a.notifSvc, "employment-consistency", teachers, err, func(t teacherAssignment) string { return fmt.Sprintf("%s (%s)", t.FullName, t.EmploymentStatus) }, func(n int, names string) finding {
+		summary := fmt.Sprintf("%d teacher(s) still assigned despite employment status: %s", n, names)
+		return finding{
+			noun: "teacher(s)", label: fmt.Sprintf("%d inactive teacher(s) still assigned", n),
+			title: "Inactive teachers still assigned to classes", summary: summary, category: "general", severity: SeverityElevated,
+		}
 	})
 }
 
 // checkZeroGuardians flags active students with zero guardians on file.
 func (a *PeopleComplianceAgent) checkZeroGuardians(ctx context.Context) checkOutcome {
 	students, err := a.checks.ListActiveStudentsWithoutGuardian(ctx)
-	if err != nil {
-		return checkOutcome{err: fmt.Errorf("zero-guardian check: %w", err)}
-	}
-	if len(students) == 0 {
-		return checkOutcome{}
-	}
-
-	names := make([]string, len(students))
-	for i, s := range students {
-		names[i] = fmt.Sprintf("%s (%s)", s.FullName, s.IndexNumber)
-	}
-	summary := fmt.Sprintf("%d active student(s) with no guardian on file: %s", len(students), strings.Join(names, ", "))
-
-	return reportFinding(ctx, a.checks, a.notifSvc, finding{
-		count: len(students), noun: "student(s)", label: fmt.Sprintf("%d student(s) with no guardian", len(students)),
-		title: "Students with no guardian on file", summary: summary, category: "general", severity: SeverityElevated,
+	return checkList(ctx, a.checks, a.notifSvc, "zero-guardian", students, err, func(s personReference) string { return fmt.Sprintf("%s (%s)", s.FullName, s.IndexNumber) }, func(n int, names string) finding {
+		summary := fmt.Sprintf("%d active student(s) with no guardian on file: %s", n, names)
+		return finding{
+			noun: "student(s)", label: fmt.Sprintf("%d student(s) with no guardian", n),
+			title: "Students with no guardian on file", summary: summary, category: "general", severity: SeverityElevated,
+		}
 	})
 }
 

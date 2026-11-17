@@ -97,3 +97,21 @@ func runChecks(ctx context.Context, checks ...func(ctx context.Context) checkOut
 	}
 	return Result{Summary: summary, Findings: total}, nil
 }
+
+// checkList is the common shape of a "find rows, name them, tell admins" check. describe gets the row
+// count and the joined names and fills in everything but the count.
+func checkList[T any](ctx context.Context, checks *Repository, notifSvc *notifications.NotificationService, name string, rows []T, err error, label func(T) string, describe func(n int, names string) finding) checkOutcome {
+	if err != nil {
+		return checkOutcome{err: fmt.Errorf("%s check: %w", name, err)}
+	}
+	if len(rows) == 0 {
+		return checkOutcome{}
+	}
+	names := make([]string, len(rows))
+	for i, row := range rows {
+		names[i] = label(row)
+	}
+	f := describe(len(rows), strings.Join(names, ", "))
+	f.count = len(rows)
+	return reportFinding(ctx, checks, notifSvc, f)
+}

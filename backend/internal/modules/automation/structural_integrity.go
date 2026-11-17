@@ -79,93 +79,53 @@ func (a *StructuralIntegrityAgent) checkCurrentAcademicYear(ctx context.Context)
 // checkGenderSchoolType flags active students whose gender doesn't match a single-sex school's type.
 func (a *StructuralIntegrityAgent) checkGenderSchoolType(ctx context.Context) checkOutcome {
 	students, err := a.checks.ListGenderSchoolTypeMismatches(ctx)
-	if err != nil {
-		return checkOutcome{err: fmt.Errorf("gender/school-type check: %w", err)}
-	}
-	if len(students) == 0 {
-		return checkOutcome{}
-	}
-
-	names := make([]string, len(students))
-	for i, s := range students {
-		names[i] = fmt.Sprintf("%s (%s)", s.FullName, s.IndexNumber)
-	}
-	summary := fmt.Sprintf("%d student(s) with gender inconsistent with the school's single-sex type: %s", len(students), strings.Join(names, ", "))
-
-	return reportFinding(ctx, a.checks, a.notifSvc, finding{
-		count: len(students), noun: "issue(s)", label: fmt.Sprintf("%d gender/school-type mismatch(es)", len(students)),
-		title: "Student gender / school-type mismatches", summary: summary, category: "general", severity: SeverityElevated,
+	return checkList(ctx, a.checks, a.notifSvc, "gender/school-type", students, err, func(s personReference) string { return fmt.Sprintf("%s (%s)", s.FullName, s.IndexNumber) }, func(n int, names string) finding {
+		summary := fmt.Sprintf("%d student(s) with gender inconsistent with the school's single-sex type: %s", n, names)
+		return finding{
+			noun: "issue(s)", label: fmt.Sprintf("%d gender/school-type mismatch(es)", n),
+			title: "Student gender / school-type mismatches", summary: summary, category: "general", severity: SeverityElevated,
+		}
 	})
 }
 
 // checkEmptyGrades flags grades with zero classes in the current academic year.
 func (a *StructuralIntegrityAgent) checkEmptyGrades(ctx context.Context) checkOutcome {
 	grades, err := a.checks.ListGradesWithNoCurrentClasses(ctx)
-	if err != nil {
-		return checkOutcome{err: fmt.Errorf("empty-grade check: %w", err)}
-	}
-	if len(grades) == 0 {
-		return checkOutcome{}
-	}
-
-	names := make([]string, len(grades))
-	for i, g := range grades {
-		names[i] = g.Name
-	}
-	summary := fmt.Sprintf("%d grade(s) with no classes this year: %s", len(grades), strings.Join(names, ", "))
-
-	return reportFinding(ctx, a.checks, a.notifSvc, finding{
-		count: len(grades), noun: "grade(s)", label: fmt.Sprintf("%d empty grade(s)", len(grades)),
-		title: "Grades with no current-year classes", summary: summary, category: "general", severity: SeverityLow,
+	return checkList(ctx, a.checks, a.notifSvc, "empty-grade", grades, err, func(g namedReference) string { return g.Name }, func(n int, names string) finding {
+		summary := fmt.Sprintf("%d grade(s) with no classes this year: %s", n, names)
+		return finding{
+			noun: "grade(s)", label: fmt.Sprintf("%d empty grade(s)", n),
+			title: "Grades with no current-year classes", summary: summary, category: "general", severity: SeverityLow,
+		}
 	})
 }
 
 // checkEmptyStreams flags A/L streams with zero classes in the current academic year.
 func (a *StructuralIntegrityAgent) checkEmptyStreams(ctx context.Context) checkOutcome {
 	streams, err := a.checks.ListStreamsWithNoCurrentClasses(ctx)
-	if err != nil {
-		return checkOutcome{err: fmt.Errorf("empty-stream check: %w", err)}
-	}
-	if len(streams) == 0 {
-		return checkOutcome{}
-	}
-
-	names := make([]string, len(streams))
-	for i, s := range streams {
-		names[i] = s.Name
-	}
-	summary := fmt.Sprintf("%d stream(s) with no classes this year: %s", len(streams), strings.Join(names, ", "))
-
-	return reportFinding(ctx, a.checks, a.notifSvc, finding{
-		count: len(streams), noun: "stream(s)", label: fmt.Sprintf("%d empty stream(s)", len(streams)),
-		title: "Streams with no current-year classes", summary: summary, category: "general", severity: SeverityLow,
+	return checkList(ctx, a.checks, a.notifSvc, "empty-stream", streams, err, func(s namedReference) string { return s.Name }, func(n int, names string) finding {
+		summary := fmt.Sprintf("%d stream(s) with no classes this year: %s", n, names)
+		return finding{
+			noun: "stream(s)", label: fmt.Sprintf("%d empty stream(s)", n),
+			title: "Streams with no current-year classes", summary: summary, category: "general", severity: SeverityLow,
+		}
 	})
 }
 
 // checkUnclassedStudents flags active students with no class in the current academic year, escalating severity as the count grows.
 func (a *StructuralIntegrityAgent) checkUnclassedStudents(ctx context.Context) checkOutcome {
 	students, err := a.checks.ListActiveStudentsWithoutCurrentClass(ctx)
-	if err != nil {
-		return checkOutcome{err: fmt.Errorf("unclassed-student check: %w", err)}
-	}
-	if len(students) == 0 {
-		return checkOutcome{}
-	}
+	return checkList(ctx, a.checks, a.notifSvc, "unclassed-student", students, err, func(s personReference) string { return fmt.Sprintf("%s (%s)", s.FullName, s.IndexNumber) }, func(n int, names string) finding {
+		summary := fmt.Sprintf("%d active student(s) with no class in the current academic year: %s", n, names)
+		severity := SeverityLow
+		if n >= unclassedElevatedThreshold {
+			severity = SeverityElevated
+		}
 
-	names := make([]string, len(students))
-	for i, s := range students {
-		names[i] = fmt.Sprintf("%s (%s)", s.FullName, s.IndexNumber)
-	}
-	summary := fmt.Sprintf("%d active student(s) with no class in the current academic year: %s", len(students), strings.Join(names, ", "))
-
-	severity := SeverityLow
-	if len(students) >= unclassedElevatedThreshold {
-		severity = SeverityElevated
-	}
-
-	return reportFinding(ctx, a.checks, a.notifSvc, finding{
-		count: len(students), noun: "student(s)", label: fmt.Sprintf("%d unclassed student(s)", len(students)),
-		title: "Students with no current-year class", summary: summary, category: "general", severity: severity,
+		return finding{
+			noun: "student(s)", label: fmt.Sprintf("%d unclassed student(s)", n),
+			title: "Students with no current-year class", summary: summary, category: "general", severity: severity,
+		}
 	})
 }
 

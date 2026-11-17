@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/openschool-org/openschool/internal/platform/httpx"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/openschool-org/openschool/internal/apierror"
@@ -81,14 +83,12 @@ func (h *subjectPeriodRequirementHandler) upsert(c *gin.Context) {
 	c.JSON(http.StatusOK, requirement)
 }
 func (h *subjectPeriodRequirementHandler) listByGrade(c *gin.Context) {
-	yearID, err := uuid.Parse(c.Query("academic_year_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "a valid academic_year_id is required"})
+	yearID, ok := httpx.QueryUUID(c, "academic_year_id", "a valid academic_year_id is required")
+	if !ok {
 		return
 	}
-	gradeID, err := uuid.Parse(c.Query("grade_id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "a valid grade_id is required"})
+	gradeID, ok := httpx.QueryUUID(c, "grade_id", "a valid grade_id is required")
+	if !ok {
 		return
 	}
 	requirements, err := h.service.requirements.listByGrade(c.Request.Context(), yearID, gradeID)
@@ -99,9 +99,8 @@ func (h *subjectPeriodRequirementHandler) listByGrade(c *gin.Context) {
 	c.JSON(http.StatusOK, requirements)
 }
 func (h *subjectPeriodRequirementHandler) delete(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+	id, ok := httpx.ParamUUID(c, "id", "invalid id")
+	if !ok {
 		return
 	}
 	if err := h.service.requirements.deleteRequirement(c.Request.Context(), id); err != nil {

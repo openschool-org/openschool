@@ -79,27 +79,17 @@ func (a *AcademicDeliveryAgent) Run(ctx context.Context) (Result, error) {
 // checkMissingAttendanceToday flags classes with no attendance session taken yet today.
 func (a *AcademicDeliveryAgent) checkMissingAttendanceToday(ctx context.Context) checkOutcome {
 	classes, err := a.checks.ListCurrentYearClassesMissingTodaySession(ctx)
-	if err != nil {
-		return checkOutcome{err: fmt.Errorf("missing-attendance check: %w", err)}
-	}
-	if len(classes) == 0 {
-		return checkOutcome{}
-	}
+	return checkList(ctx, a.checks, a.notifSvc, "missing-attendance", classes, err, func(c classReference) string { return fmt.Sprintf("%s %s", c.GradeName, c.Name) }, func(n int, names string) finding {
+		summary := fmt.Sprintf("%d class(es) with no attendance session today: %s", n, names)
+		severity := SeverityLow
+		if n >= missingAttendanceElevatedThreshold {
+			severity = SeverityElevated
+		}
 
-	names := make([]string, len(classes))
-	for i, c := range classes {
-		names[i] = fmt.Sprintf("%s %s", c.GradeName, c.Name)
-	}
-	summary := fmt.Sprintf("%d class(es) with no attendance session today: %s", len(classes), strings.Join(names, ", "))
-
-	severity := SeverityLow
-	if len(classes) >= missingAttendanceElevatedThreshold {
-		severity = SeverityElevated
-	}
-
-	return reportFinding(ctx, a.checks, a.notifSvc, finding{
-		count: len(classes), noun: "class(es)", label: fmt.Sprintf("%d class(es) missing today's session", len(classes)),
-		title: "Classes missing today's attendance session", summary: summary, category: "attendance", severity: severity,
+		return finding{
+			noun: "class(es)", label: fmt.Sprintf("%d class(es) missing today's session", n),
+			title: "Classes missing today's attendance session", summary: summary, category: "attendance", severity: severity,
+		}
 	})
 }
 
@@ -180,22 +170,14 @@ func (a *AcademicDeliveryAgent) checkStaleAttendance(ctx context.Context) checkO
 // checkTermMarksDeadline flags terms within termDeadlineWindowDays of their lock date with zero marks entered anywhere.
 func (a *AcademicDeliveryAgent) checkTermMarksDeadline(ctx context.Context) checkOutcome {
 	terms, err := a.checks.ListTermsNearDeadlineWithNoMarks(ctx, termDeadlineWindowDays)
-	if err != nil {
-		return checkOutcome{err: fmt.Errorf("term-marks-deadline check: %w", err)}
-	}
-	if len(terms) == 0 {
-		return checkOutcome{}
-	}
-
-	names := make([]string, len(terms))
-	for i, t := range terms {
-		names[i] = fmt.Sprintf("%s (%s, ends %s)", t.Name, t.AcademicYearLabel, t.EndDate.Format("2006-01-02"))
-	}
-	summary := fmt.Sprintf("%d term(s) near their deadline with zero marks entered: %s", len(terms), strings.Join(names, ", "))
-
-	return reportFinding(ctx, a.checks, a.notifSvc, finding{
-		count: len(terms), noun: "term(s)", label: fmt.Sprintf("%d term(s) at zero-marks deadline", len(terms)),
-		title: "Terms nearing deadline with no marks entered", summary: summary, category: "academic", severity: SeverityCritical,
+	return checkList(ctx, a.checks, a.notifSvc, "term-marks-deadline", terms, err, func(t termDeadline) string {
+		return fmt.Sprintf("%s (%s, ends %s)", t.Name, t.AcademicYearLabel, t.EndDate.Format("2006-01-02"))
+	}, func(n int, names string) finding {
+		summary := fmt.Sprintf("%d term(s) near their deadline with zero marks entered: %s", n, names)
+		return finding{
+			noun: "term(s)", label: fmt.Sprintf("%d term(s) at zero-marks deadline", n),
+			title: "Terms nearing deadline with no marks entered", summary: summary, category: "academic", severity: SeverityCritical,
+		}
 	})
 }
 

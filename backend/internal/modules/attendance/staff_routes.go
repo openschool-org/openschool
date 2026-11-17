@@ -105,9 +105,8 @@ func (h *staffHandler) monthlySummary(c *gin.Context) {
 }
 
 func (h *staffHandler) teacherHistory(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+	id, ok := httpx.ParamUUID(c, "id", "invalid id")
+	if !ok {
 		return
 	}
 	from, to, ok := monthRange(c)
@@ -123,9 +122,8 @@ func (h *staffHandler) teacherHistory(c *gin.Context) {
 }
 
 func (h *staffHandler) nonAcademicHistory(c *gin.Context) {
-	id, err := uuid.Parse(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+	id, ok := httpx.ParamUUID(c, "id", "invalid id")
+	if !ok {
 		return
 	}
 	from, to, ok := monthRange(c)
