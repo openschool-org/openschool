@@ -7,9 +7,8 @@ The open-source platform for digitising the day-to-day operations of Sri Lankan 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Status: under development](https://img.shields.io/badge/status-under%20development-yellow.svg)](CHANGELOG.md)
 
-<Callout type="warning" title="Under Active Development">
-OpenSchool is under active development. Features, interfaces and data models may change between releases. See the [changelog](CHANGELOG.md).
-</Callout>
+> [!WARNING]
+> OpenSchool is under active development. Features, interfaces and data models may change between releases. See the [changelog](CHANGELOG.md).
 
 ## Overview
 
