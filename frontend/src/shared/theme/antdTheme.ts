@@ -80,9 +80,10 @@ export function buildAntdTheme(): ThemeConfig {
       },
       Button: { primaryShadow: "none", defaultShadow: "none", dangerShadow: "none", fontWeight: 500, borderRadiusLG: 6, borderRadiusSM: 4 },
       // Large inputs keep the same 6px corners as the default size.
-      Input: { borderRadiusLG: 6 },
-      InputNumber: { borderRadiusLG: 6 },
-      DatePicker: { borderRadiusLG: 6 },
+      // Focused fields show only the blue border ring, no soft glow, and it fades in over 0.2s.
+      Input: { borderRadiusLG: 6, motionDurationMid: "0.2s", motionEaseInOut: "cubic-bezier(0.4, 0, 0.2, 1)", activeShadow: "none", errorActiveShadow: "none", warningActiveShadow: "none" },
+      InputNumber: { borderRadiusLG: 6, motionDurationMid: "0.2s", motionEaseInOut: "cubic-bezier(0.4, 0, 0.2, 1)", activeShadow: "none", errorActiveShadow: "none", warningActiveShadow: "none" },
+      DatePicker: { borderRadiusLG: 6, motionDurationMid: "0.2s", motionEaseInOut: "cubic-bezier(0.4, 0, 0.2, 1)", activeShadow: "none", errorActiveShadow: "none", warningActiveShadow: "none" },
       // Tables sit inside rounded section cards, so the header needs no radius of its own.
       Table: {
         // Header row: a light tint of the theme colour, a step darker than the rows.
@@ -119,6 +120,9 @@ export function buildAntdTheme(): ThemeConfig {
       // darker accent) plus bold text. No open/close animation.
       Select: {
         borderRadiusLG: 6,
+        // Focus shows the blue border only, no outline glow (its 0.2s fade is in _forms.scss,
+        // since the 0s durations below keep the dropdown from animating).
+        activeOutlineColor: "transparent",
         // Chosen values in a multi-select: light theme tint with a thin blue border, not solid.
         multipleItemBg: token("--os-accent-light", "transparent"),
         multipleItemBorderColor: token("--os-accent-border", "transparent"),
