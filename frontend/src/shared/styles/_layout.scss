@@ -32,6 +32,13 @@
 
 // "Signed in as" header row at the top of the user menu.
 .ant-dropdown-menu-item.os-topbar__who { cursor: default; }
+// The header button already shows name and role; repeat them in the menu only
+// on phones, where the button collapses to the avatar.
+@media (min-width: 42.0625rem) {
+  // Scoped under the dropdown and menu to outrank antd's own item display rule.
+  .ant-dropdown .ant-dropdown-menu .ant-dropdown-menu-item.os-topbar__who,
+  .ant-dropdown .ant-dropdown-menu .ant-dropdown-menu-item-divider.os-topbar__who-divider { display: none; }
+}
 .os-topbar__who-body { display: flex; flex-direction: column; gap: 0.125rem; padding: 0.25rem 0; }
 .os-topbar__who-hint { color: $os-text-tertiary; font-size: 0.75rem; }
 .os-topbar__who-name { color: $os-text-primary; font-weight: 500; }
@@ -309,4 +316,12 @@
   .ant-form-item { margin-bottom: 1.5rem; }
   .ant-form-item-label > label { font-size: 1rem; }
   .ant-form-item-explain { margin-top: 0.375rem; font-size: 0.875rem; }
+}
+
+// Manage-profile dialog hosting ThunderID's inline <UserProfile>. Its root
+// carries a hardcoded 600px min-width; two classes outrank its single
+// emotion class.
+.os-profile-modal .os-idp-profile {
+  min-width: 0;
+  padding: 0;
 }

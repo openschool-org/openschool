@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Avatar, Button, Dropdown, Tooltip } from "antd";
 import { LockOutlined, LogoutOutlined, SearchOutlined, UserOutlined } from "@ant-design/icons";
-import { UserDropdown } from "@thunderid/react";
+import { useThunderID } from "@thunderid/react";
 import NotificationsBell from "@/features/notifications/components/NotificationsBell";
 import ChangePasswordModal from "@/features/auth/components/ChangePasswordModal";
+import ProfileModal from "@/features/auth/components/ProfileModal";
 import GlobalSearch from "@/features/system/components/GlobalSearch";
 import LanguageSwitcher from "@/shared/i18n/LanguageSwitcher";
 import { useT } from "@/shared/i18n/useT";
@@ -25,7 +26,9 @@ const ROLE_KEYS = { admin: "shell.role.admin", teacher: "shell.role.teacher", st
 export function AppHeaderActions({ showSearch = false, showLanguage = false }: { showSearch?: boolean; showLanguage?: boolean }) {
   const { t } = useT();
   const { data: me } = useProvisionUser();
+  const { signOut } = useThunderID();
   const [changingPassword, setChangingPassword] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
 
   // The only Ctrl/Cmd+K listener: opens the search box, which focuses itself.
@@ -58,45 +61,42 @@ export function AppHeaderActions({ showSearch = false, showLanguage = false }: {
         ))}
       {showLanguage && <LanguageSwitcher />}
       <NotificationsBell />
-      <UserDropdown>
-        {({ openProfile, signOut }) => (
-          <Dropdown
-            trigger={["click"]}
-            placement="bottomRight"
-            menu={{
-              items: [
-                {
-                  key: "who",
-                  disabled: true,
-                  className: "os-topbar__who",
-                  label: (
-                    <span className="os-topbar__who-body">
-                      <span className="os-topbar__who-hint">{t("shell.signedInAs")}</span>
-                      <span className="os-topbar__who-name">{name}</span>
-                      <span className="os-topbar__who-role">{roleLabel}</span>
-                    </span>
-                  ),
-                },
-                { type: "divider" },
-                { key: "profile", icon: <UserOutlined />, label: t("shell.manageProfile"), onClick: openProfile },
-                { key: "password", icon: <LockOutlined />, label: t("shell.changePassword"), onClick: () => setChangingPassword(true) },
-                { type: "divider" },
-                { key: "signout", icon: <LogoutOutlined />, label: t("shell.signOut"), danger: true, onClick: () => { clearOffline(); signOut(); } },
-              ],
-            }}
-          >
-            <Button type="text" className="os-topbar__user" aria-label={t("shell.profileMenu")}>
-              <Avatar size={32} icon={<UserOutlined />} className="os-topbar__avatar" />
-              {name && (
-                <span className="os-topbar__user-text">
-                  <span className="os-topbar__user-name">{name}</span>
-                  <span className="os-topbar__user-role">{roleLabel}</span>
+      <Dropdown
+        trigger={["click"]}
+        placement="bottomRight"
+        menu={{
+          items: [
+            {
+              key: "who",
+              disabled: true,
+              className: "os-topbar__who",
+              label: (
+                <span className="os-topbar__who-body">
+                  <span className="os-topbar__who-hint">{t("shell.signedInAs")}</span>
+                  <span className="os-topbar__who-name">{name}</span>
+                  <span className="os-topbar__who-role">{roleLabel}</span>
                 </span>
-              )}
-            </Button>
-          </Dropdown>
-        )}
-      </UserDropdown>
+              ),
+            },
+            { type: "divider", className: "os-topbar__who-divider" },
+            { key: "profile", icon: <UserOutlined />, label: t("shell.manageProfile"), onClick: () => setProfileOpen(true) },
+            { key: "password", icon: <LockOutlined />, label: t("shell.changePassword"), onClick: () => setChangingPassword(true) },
+            { type: "divider" },
+            { key: "signout", icon: <LogoutOutlined />, label: t("shell.signOut"), danger: true, onClick: () => { clearOffline(); signOut(); } },
+          ],
+        }}
+      >
+        <Button type="text" className="os-topbar__user" aria-label={t("shell.profileMenu")}>
+          <Avatar size={32} icon={<UserOutlined />} className="os-topbar__avatar" />
+          {name && (
+            <span className="os-topbar__user-text">
+              <span className="os-topbar__user-name">{name}</span>
+              <span className="os-topbar__user-role">{roleLabel}</span>
+            </span>
+          )}
+        </Button>
+      </Dropdown>
+      {profileOpen && <ProfileModal onClose={() => setProfileOpen(false)} />}
       {changingPassword && <ChangePasswordModal onClose={() => setChangingPassword(false)} />}
     </div>
   );
