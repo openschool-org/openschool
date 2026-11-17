@@ -28,7 +28,7 @@ cmd/api -> internal/app -> internal/modules
 - `internal/modules/<name>` owns the HTTP, application, and persistence code for
   one business capability.
 - Module handlers depend on use cases, never repositories or generated sqlc.
-- sqlc types stay inside `repository.go` adapters and are mapped to module types.
+- sqlc types stay inside `repository.go` adapters (or `repository_<area>.go` when a large one is split) and are mapped to module types.
 - Cross-module dependencies use narrow consumer-owned interfaces and are wired
   by `internal/app`.
 - `internal/platform` is reserved for shared technical infrastructure; business
@@ -42,7 +42,7 @@ cmd/api -> internal/app -> internal/modules
 - **`internal/modules/`** - capability-oriented vertical slices such as
   School, People, Academics, Attendance, Identity, and Timetable. HTTP
   handlers depend on module use cases; use cases depend on narrow interfaces.
-- **Module `repository.go` files** - the only module files allowed to import
+- **Module `repository.go` files** (and `repository_<area>.go` splits of them) - the only module files allowed to import
   `db/sqlc`. They map generated rows into module-owned types before returning.
 - **`internal/ports/`** - narrow contracts for capabilities shared across
   modules, preventing one module from reaching into another module's storage.

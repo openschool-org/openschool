@@ -44,7 +44,7 @@ func TestDependencyBoundaries(t *testing.T) {
 		if strings.HasPrefix(rel, "identity/") {
 			t.Errorf("%s adds an ambiguous shared identity package; use internal/idp, internal/authz, or internal/modules/identity", rel)
 		}
-		if imports[modulePath+"db/sqlc"] && (!strings.HasPrefix(rel, "modules/") || filepath.Base(rel) != "repository.go") {
+		if imports[modulePath+"db/sqlc"] && !isRepositoryAdapter(rel) {
 			t.Errorf("%s imports sqlc outside a module repository adapter", rel)
 		}
 
@@ -59,6 +59,31 @@ func TestDependencyBoundaries(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+// isRepositoryAdapter reports whether a file is a module's persistence adapter: repository.go,
+// or repository_<area>.go when one module's repository is split by area.
+func isRepositoryAdapter(rel string) bool {
+	if !strings.HasPrefix(rel, "modules/") {
+		return false
+	}
+	base := filepath.Base(rel)
+	return base == "repository.go" || (strings.HasPrefix(base, "repository_") && strings.HasSuffix(base, ".go"))
+}
+
+func TestIsRepositoryAdapter(t *testing.T) {
+	for rel, want := range map[string]bool{
+		"modules/timetable/repository.go":       true,
+		"modules/timetable/repository_setup.go": true,
+		"modules/timetable/service.go":          false,
+		"modules/timetable/repo_setup.go":       false,
+		"platform/httpx/repository.go":          false,
+		"app/repository_setup.go":               false,
+	} {
+		if got := isRepositoryAdapter(rel); got != want {
+			t.Errorf("isRepositoryAdapter(%q) = %v, want %v", rel, got, want)
+		}
 	}
 }
 
