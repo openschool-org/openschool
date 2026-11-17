@@ -12,6 +12,7 @@ import DataGrid from "@/shared/ui/DataGrid";
 import { capitalize } from "@/shared/lib/text";
 import { displayName } from "@/shared/lib/name";
 import { classLabel } from "@/shared/lib/classLabel";
+import PageHeader from "@/shared/ui/PageHeader";
 
 export default function TeacherClasses() {
   const { teacher, classes: myClasses, isLoading, isError, refetch } = useMyClasses();
@@ -56,12 +57,7 @@ export default function TeacherClasses() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">My classes</h1>
-          <p className="os-page__subtitle">{myClasses.length} class{myClasses.length > 1 ? "es" : ""} this year</p>
-        </div>
-      </div>
+      <PageHeader title="My classes" subtitle={<>{myClasses.length} class{myClasses.length > 1 ? "es" : ""} this year</>} />
 
       <div className="os-flex os-gap-3 os-mb-6 os-wrap">
         {myClasses.map((c) => (

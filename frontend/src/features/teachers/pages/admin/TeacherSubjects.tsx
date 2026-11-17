@@ -14,6 +14,7 @@ import ListState from "@/shared/ui/ListState";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
 import { AssignedSubjectsCell, AssignSubjectCell } from "@/features/teachers/components/TeacherSubjectCells";
 import { displayName } from "@/shared/lib/name";
+import PageHeader from "@/shared/ui/PageHeader";
 
 export default function TeacherSubjects() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -62,12 +63,7 @@ export default function TeacherSubjects() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Teacher subjects</h1>
-          <p className="os-page__subtitle">Subjects each teacher is qualified to teach.</p>
-        </div>
-      </div>
+      <PageHeader title="Teacher subjects" subtitle="Subjects each teacher is qualified to teach." />
 
       {subjectsError ? (
         <Alert

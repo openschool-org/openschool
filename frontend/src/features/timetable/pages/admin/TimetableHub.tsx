@@ -4,6 +4,7 @@ import Timetables from "@/features/timetable/pages/admin/Timetables";
 import GenerateTimetable from "@/features/timetable/pages/admin/GenerateTimetable";
 import SubjectRequirements from "@/features/timetable/pages/admin/SubjectRequirements";
 import TimetableSettings from "@/features/timetable/pages/admin/TimetableSettings";
+import PageHeader from "@/shared/ui/PageHeader";
 
 export type TimetableHubTab = "timetables" | "generate" | "requirements" | "settings";
 
@@ -26,12 +27,7 @@ export default function TimetableHub({ tab }: { tab: TimetableHubTab }) {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Timetable</h1>
-          <p className="os-page__subtitle">Class timetables, automatic generation, subject requirements and the school day.</p>
-        </div>
-      </div>
+      <PageHeader title="Timetable" subtitle="Class timetables, automatic generation, subject requirements and the school day." />
 
       {/* Each tab has its own URL; only the active panel is mounted. */}
       <Tabs

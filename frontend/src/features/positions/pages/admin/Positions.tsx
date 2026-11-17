@@ -12,6 +12,7 @@ import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import RemoveIconButton from "@/shared/ui/RemoveIconButton";
 import SectionCard from "@/shared/ui/SectionCard";
 import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
+import PageHeader from "@/shared/ui/PageHeader";
 
 const Title = ({ text }: { text: string }) => (
   <span className="os-flex os-items-center os-gap-2">
@@ -32,13 +33,9 @@ export default function Positions() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Principal and VPs</h1>
-          <p className="os-page__subtitle">Principal and vice principals. They decide who can send school-wide notices.</p>
-        </div>
+      <PageHeader title="Principal and VPs" subtitle="Principal and vice principals. They decide who can send school-wide notices.">
         <Button icon={<PlusOutlined />} type="primary" onClick={() => setVpOpen(true)}>Add vice principal</Button>
-      </div>
+      </PageHeader>
 
       {isError && <div className="os-mb-6"><ErrorMessage message="Could not load positions." onRetry={refetch} /></div>}
       <MutationErrorNotification isError={removePosition.isError} error={removePosition.error} title="Could not remove position" fallback="Please try again." onClose={() => removePosition.reset()} />

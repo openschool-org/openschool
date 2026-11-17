@@ -8,6 +8,7 @@ import type { StaffAttendanceStatus } from "@/features/attendance/api/staffAtten
 import DataGrid from "@/shared/ui/DataGrid";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
+import PageHeader from "@/shared/ui/PageHeader";
 
 const STATUS_ICONS: Record<StaffAttendanceStatus, ReactNode> = {
   present: <CheckCircleFilled />,
@@ -47,12 +48,7 @@ export default function TeacherMyAttendance() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">My attendance</h1>
-          <p className="os-page__subtitle">Your own attendance record - marked by an administrator</p>
-        </div>
-      </div>
+      <PageHeader title="My attendance" subtitle="Your own attendance record - marked by an administrator" />
 
       <div className="os-section os-mb-6">
         <div className="os-section__header os-flex os-items-center os-gap-3">

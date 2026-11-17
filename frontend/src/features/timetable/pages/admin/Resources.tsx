@@ -14,6 +14,7 @@ import ErrorMessage from "@/shared/ui/ErrorMessage";
 import FilterBar from "@/shared/ui/FilterBar";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import RowActions from "@/shared/ui/RowActions";
+import PageHeader from "@/shared/ui/PageHeader";
 
 // The three zones a resource belongs to; the dot colour reuses the school-section palette.
 const ZONES: { key: ClassroomType; label: string; description: string; band: string; Icon: typeof HomeOutlined }[] = [
@@ -93,16 +94,12 @@ export default function Resources() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">School resources</h1>
-          <p className="os-page__subtitle">Homerooms, labs, libraries, halls and other facilities in one place.</p>
-        </div>
+      <PageHeader title="School resources" subtitle="Homerooms, labs, libraries, halls and other facilities in one place.">
         <div className="os-flex os-gap-3">
           <BackfillHomeroomsButton />
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Add resource</Button>
         </div>
-      </div>
+      </PageHeader>
 
       {isLoading ? <LoadingSpinner label="Loading school resources…" /> : isError ? <ErrorMessage message="Could not load school resources." onRetry={refetch} /> : (
         <>

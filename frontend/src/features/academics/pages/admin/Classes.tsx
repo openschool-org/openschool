@@ -18,6 +18,7 @@ import EmptyState from "@/shared/ui/EmptyState";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import AgentFindingsBanner from "@/features/notifications/components/AgentFindingsBanner";
+import PageHeader from "@/shared/ui/PageHeader";
 export default function Classes() {
   const page = useGradesPage();
   const { orderedGrades, classesByGrade, mutations, form } = page;
@@ -75,16 +76,12 @@ export default function Classes() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Grades &amp; classes</h1>
-          <p className="os-page__subtitle">Grades and their classes for the current academic year.</p>
-        </div>
+      <PageHeader title="Grades &amp; classes" subtitle="Grades and their classes for the current academic year.">
         <div className="os-flex os-gap-3">
           <Button icon={<PlusOutlined />} onClick={page.openCreateGrade}>Add grade</Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setClassModalGradeId("")}>Add class</Button>
         </div>
-      </div>
+      </PageHeader>
 
       <AgentFindingsBanner />
 

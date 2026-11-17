@@ -16,6 +16,7 @@ import LeaveBalanceCards from "@/features/leave/components/LeaveBalanceCards";
 import LeaveStatusTag from "@/features/leave/components/LeaveStatusTag";
 import MyReliefDuties from "@/features/leave/components/MyReliefDuties";
 import { leaveDates, leaveDays } from "@/features/leave/components/leaveText";
+import PageHeader from "@/shared/ui/PageHeader";
 
 // A teacher's leave: balance, applications and the relief periods they cover.
 export default function MyLeave() {
@@ -44,16 +45,12 @@ export default function MyLeave() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">My leave</h1>
-          <p className="os-page__subtitle">Apply for leave, arrange relief for your periods and follow the Principal's decision</p>
-        </div>
+      <PageHeader title="My leave" subtitle="Apply for leave, arrange relief for your periods and follow the Principal's decision">
         <div className="os-flex os-gap-2 os-items-end">
           <SelectField id="leave-year" label="Year" hideLabel className="os-min-w-7" value={String(year)} onChange={(v) => setYear(Number(v))} options={[thisYear + 1, thisYear, thisYear - 1, thisYear - 2].map((y) => ({ value: String(y), label: String(y) }))} />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setApplying(true)}>Apply for leave</Button>
         </div>
-      </div>
+      </PageHeader>
 
       <div className="os-mb-6">
         <LeaveBalanceCards balance={balance.data} isLoading={balance.isLoading} />

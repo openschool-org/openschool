@@ -12,6 +12,7 @@ import EntityCombobox from "@/shared/ui/EntityCombobox";
 import DateField from "@/shared/ui/DateField";
 import Field from "@/shared/ui/Field";
 import SelectField from "@/shared/ui/SelectField";
+import PageHeader from "@/shared/ui/PageHeader";
 
 type Template = "attendance" | "marks";
 
@@ -66,12 +67,7 @@ export default function Reports() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Reports</h1>
-          <p className="os-page__subtitle">Export attendance and marks reports as PDF.</p>
-        </div>
-      </div>
+      <PageHeader title="Reports" subtitle="Export attendance and marks reports as PDF." />
 
       <Row gutter={[24, 24]} className="os-form-columns">
         <Col xs={24} lg={8}>

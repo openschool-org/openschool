@@ -8,6 +8,7 @@ import { useDebounced } from "@/shared/hooks/useDebounced";
 import FilterBar from "@/shared/ui/FilterBar";
 import DateField from "@/shared/ui/DateField";
 import SelectField from "@/shared/ui/SelectField";
+import PageHeader from "@/shared/ui/PageHeader";
 
 const KINDS: { value: StaffKind; label: string }[] = [
   { value: "teacher", label: "Teachers" },
@@ -39,11 +40,7 @@ export default function StaffAttendance() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Staff attendance</h1>
-          <p className="os-page__subtitle">Mark today's attendance or review a month at a glance.</p>
-        </div>
+      <PageHeader title="Staff attendance" subtitle="Mark today's attendance or review a month at a glance.">
         <div className="os-flex os-items-center os-gap-3 os-wrap">
           <Segmented
             aria-label="Attendance view"
@@ -59,7 +56,7 @@ export default function StaffAttendance() {
             )}
           </div>
         </div>
-      </div>
+      </PageHeader>
 
       <div className="os-section">
         <div className="os-att-toolbar">

@@ -14,12 +14,14 @@ import {
 import type { GradeSection } from "@/features/timetable/api/gradeSection";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import EmptyState from "@/shared/ui/EmptyState";
+import NoCurrentYear from "@/shared/ui/NoCurrentYear";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import { EMPTY_GRADE_SECTION_FORM, type GradeSectionForm } from "@/features/timetable/constants";
 import PeriodsEditor from "@/features/timetable/components/PeriodsEditor";
 import SectionRow from "@/features/timetable/components/SectionRow";
 import SectionFormModal from "@/features/timetable/components/SectionFormModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import PageHeader from "@/shared/ui/PageHeader";
 
 export default function GradeSections({ inline = false }: { inline?: boolean }) {
   const { data: currentYear } = useCurrentAcademicYear();
@@ -92,17 +94,10 @@ export default function GradeSections({ inline = false }: { inline?: boolean }) 
     return (
       <div className={inline ? "" : "os-page"}>
         {!inline && (
-          <div className="os-page__header">
-            <div className="os-page__header-left">
-              <h1 className="os-page__title">Grade sections</h1>
-            </div>
-          </div>
+          <PageHeader title="Grade sections" />
         )}
         <div className="os-section">
-          <EmptyState
-            title="No current academic year"
-            description="Set an academic year as current before configuring grade sections."
-          />
+          <NoCurrentYear before="configuring grade sections" />
         </div>
       </div>
     );
@@ -111,15 +106,11 @@ export default function GradeSections({ inline = false }: { inline?: boolean }) 
   return (
     <div className={inline ? "" : "os-page"}>
       {!inline && (
-        <div className="os-page__header">
-          <div className="os-page__header-left">
-            <h1 className="os-page__title">Grade sections</h1>
-            <p className="os-page__subtitle">Grade groups, their period grid and section head for {currentYear.label}.</p>
-          </div>
+        <PageHeader title="Grade sections" subtitle={<>Grade groups, their period grid and section head for {currentYear.label}.</>}>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
             New section
           </Button>
-        </div>
+        </PageHeader>
       )}
 
       <div className="os-section">

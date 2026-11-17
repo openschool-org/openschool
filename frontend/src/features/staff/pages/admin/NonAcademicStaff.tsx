@@ -15,6 +15,7 @@ import StaffDetail from "@/features/staff/components/StaffDetail";
 import { useListFilters } from "@/shared/hooks/useListFilters";
 import { useOpenParam } from "@/shared/hooks/useOpenParam";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
+import PageHeader from "@/shared/ui/PageHeader";
 
 const FILTER_LABELS: Record<string, string> = { query: "Search", designation: "Role" };
 
@@ -56,15 +57,11 @@ export default function NonAcademicStaff() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Non-academic staff</h1>
-          <p className="os-page__subtitle">Lab assistants, librarians, office and other staff without a login.</p>
-        </div>
+      <PageHeader title="Non-academic staff" subtitle="Lab assistants, librarians, office and other staff without a login.">
         <Button icon={<PlusOutlined />} type="primary" onClick={() => setCreating(true)}>
           Add staff
         </Button>
-      </div>
+      </PageHeader>
 
       <div className="os-section">
         <FilterBar

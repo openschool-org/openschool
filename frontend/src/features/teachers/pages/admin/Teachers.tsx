@@ -20,6 +20,7 @@ import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
 import { formatDateOnly } from "@/shared/lib/date";
 import { displayName } from "@/shared/lib/name";
 import RowActions from "@/shared/ui/RowActions";
+import PageHeader from "@/shared/ui/PageHeader";
 
 const STATUS_TAG: Record<string, string> = { active: "success", resigned: "error", transferred: "magenta" };
 const FILTER_LABELS: Record<string, string> = { query: "Search", status: "Status" };
@@ -80,13 +81,9 @@ export default function Teachers() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Teachers</h1>
-          <p className="os-page__subtitle">Manage teacher profiles</p>
-        </div>
+      <PageHeader title="Teachers" subtitle="Manage teacher profiles">
         <LinkButton to="/teachers/new" type="primary" icon={<PlusOutlined />}>Add teacher</LinkButton>
-      </div>
+      </PageHeader>
 
       <AgentFindingsBanner />
 

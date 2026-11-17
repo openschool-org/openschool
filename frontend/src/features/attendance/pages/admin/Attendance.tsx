@@ -18,6 +18,7 @@ import AgentFindingsBanner from "@/features/notifications/components/AgentFindin
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import { useToast } from "@/shared/ui/toast/useToast";
 import DateField from "@/shared/ui/DateField";
+import PageHeader from "@/shared/ui/PageHeader";
 
 const HEADERS = ["Class", "Grade", "Teacher", "Records", "Status", "Actions"];
 
@@ -105,17 +106,13 @@ export default function Attendance() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Attendance</h1>
-          <p className="os-page__subtitle">{formatLongDate(`${date}T00:00:00`)}</p>
-        </div>
+      <PageHeader title="Attendance" subtitle={<>{formatLongDate(`${date}T00:00:00`)}</>}>
         <div className="os-min-w-12">
           <DateField value={date} onChange={(ymd) => {
               if (ymd) setDate(ymd);
             }} id="attendance-date" labelText="Attendance date" hideLabel />
         </div>
-      </div>
+      </PageHeader>
 
       <AgentFindingsBanner />
 

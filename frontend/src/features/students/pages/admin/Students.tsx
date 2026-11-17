@@ -22,6 +22,7 @@ import { useCurrentClasses } from "@/features/academics/queries/useClasses";
 import type { Student } from "@/features/students/api/student";
 import { displayName } from "@/shared/lib/name";
 import RowActions from "@/shared/ui/RowActions";
+import PageHeader from "@/shared/ui/PageHeader";
 
 const FILTER_LABELS: Record<string, string> = {
   query: "Search",
@@ -115,11 +116,7 @@ export default function Students() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Students</h1>
-          <p className="os-page__subtitle">Manage student enrolment and profiles</p>
-        </div>
+      <PageHeader title="Students" subtitle="Manage student enrolment and profiles">
         <div className="os-flex os-gap-2">
           <LinkButton to="/students/import" icon={<UploadOutlined />}>
             Import students
@@ -128,7 +125,7 @@ export default function Students() {
             Add student
           </LinkButton>
         </div>
-      </div>
+      </PageHeader>
 
       <AgentFindingsBanner />
 

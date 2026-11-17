@@ -15,6 +15,7 @@ import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import RemoveIconButton from "@/shared/ui/RemoveIconButton";
 import SectionCard from "@/shared/ui/SectionCard";
 import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
+import PageHeader from "@/shared/ui/PageHeader";
 
 export default function Prefects() {
   const { data: pastYears } = usePrefectYears();
@@ -28,15 +29,7 @@ export default function Prefects() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">School prefects</h1>
-          <p className="os-page__subtitle">
-            {isArchive
-              ? `Read only. Past board for ${viewingLabel ?? "this year"}.`
-              : `Prefects and house captains for ${currentYear?.label ?? "the current year"}.`}
-          </p>
-        </div>
+      <PageHeader title="School prefects" subtitle={<>{isArchive ? `Read only. Past board for ${viewingLabel ?? "this year"}.` : `Prefects and house captains for ${currentYear?.label ?? "the current year"}.`}</>}>
         <div className="os-flex os-items-center os-gap-3">
           <SelectField
             id="prefect-year-selector"
@@ -49,7 +42,7 @@ export default function Prefects() {
           />
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setAssignOpen(true)} disabled={!currentYear || isArchive}>Appoint prefect</Button>
         </div>
-      </div>
+      </PageHeader>
 
       {isArchive && <Alert type="info" showIcon className="os-mb-6" title="Viewing a past board" description="This is a read-only archive. Switch to the current year to make changes." />}
       {!yearLoading && !currentYear && <Alert type="info" showIcon className="os-mb-6" title="No current academic year" description="Set an academic year as current before appointing prefects." />}

@@ -10,6 +10,7 @@ import { LEAVE_STATUS_TAGS, LEAVE_TYPES } from "@/features/leave/constants";
 import LeaveRequestsTable from "@/features/leave/components/LeaveRequestsTable";
 import LeaveBalancesTable from "@/features/leave/components/LeaveBalancesTable";
 import DailyReliefTable from "@/features/leave/components/DailyReliefTable";
+import PageHeader from "@/shared/ui/PageHeader";
 
 const FILTER_LABELS: Record<string, string> = { query: "Search", status: "Status", type: "Leave type" };
 const VIEWS = ["Applications", "Balances", "Relief sheet"];
@@ -32,12 +33,7 @@ export default function LeaveRegister() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Teacher leave</h1>
-          <p className="os-page__subtitle">Approve leave applications, check balances and see who covers each period</p>
-        </div>
-      </div>
+      <PageHeader title="Teacher leave" subtitle="Approve leave applications, check balances and see who covers each period" />
 
       <Tabs
         className="os-detail-tabs"

@@ -11,6 +11,7 @@ import {
   useDeleteSubjectPeriodRequirement,
 } from "@/features/timetable/queries/useSubjectPeriodRequirements";
 import EmptyState from "@/shared/ui/EmptyState";
+import NoCurrentYear from "@/shared/ui/NoCurrentYear";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import RemoveIconButton from "@/shared/ui/RemoveIconButton";
 import type { Grade } from "@/features/academics/api/grade";
@@ -92,7 +93,7 @@ export default function SubjectRequirements({ inline = false }: { inline?: boole
         </div>
 
         {!currentYear ? (
-          <EmptyState title="No current academic year" description="Set an academic year as current first." />
+          <NoCurrentYear />
         ) : !selectedGrade ? (
           <EmptyState title="Select a grade" description="Choose a grade above to configure its subject periods." />
         ) : isLoading ? (

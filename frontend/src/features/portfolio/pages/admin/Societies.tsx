@@ -12,6 +12,7 @@ import SocietyFormModal from "@/features/portfolio/components/SocietyFormModal";
 import SocietyRoster from "@/features/portfolio/components/SocietyRoster";
 import type { Society } from "@/features/portfolio/api/society";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import PageHeader from "@/shared/ui/PageHeader";
 
 export default function Societies() {
   const { data: pastYears } = useSocietyYears();
@@ -35,15 +36,7 @@ export default function Societies() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Societies</h1>
-          <p className="os-page__subtitle">
-            {isArchive
-              ? `Read only. Societies for ${viewingLabel ?? "this year"}.`
-              : `Clubs and societies for ${currentYear?.label ?? "the current year"}.`}
-          </p>
-        </div>
+      <PageHeader title="Societies" subtitle={<>{isArchive ? `Read only. Societies for ${viewingLabel ?? "this year"}.` : `Clubs and societies for ${currentYear?.label ?? "the current year"}.`}</>}>
         <div className="os-flex os-items-center os-gap-3">
           <SelectField
             id="society-year-selector"
@@ -58,7 +51,7 @@ export default function Societies() {
             New society
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       {isArchive && <Alert type="info" showIcon className="os-mb-6" title="Viewing a past year" description="This is a read-only archive. Switch to the current year to make changes." />}
       {!yearLoading && !currentYear && <Alert type="info" showIcon className="os-mb-6" title="No current academic year" description="Set an academic year as current before creating societies." />}

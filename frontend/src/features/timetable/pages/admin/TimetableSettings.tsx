@@ -7,9 +7,10 @@ import TextField from "@/shared/ui/TextField";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useTimetableSettings, useUpsertTimetableSettings } from "@/features/timetable/queries/useTimetableSettings";
 import type { TimetableSettings as TimetableSettingsData } from "@/features/timetable/api/timetableSettings";
-import EmptyState from "@/shared/ui/EmptyState";
+import NoCurrentYear from "@/shared/ui/NoCurrentYear";
 import GradeSections from "@/features/timetable/pages/admin/GradeSections";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import PageHeader from "@/shared/ui/PageHeader";
 
 const DEFAULTS = {
   school_start_time: "08:00",
@@ -104,17 +105,10 @@ export default function TimetableSettings({ inline = false }: { inline?: boolean
     return (
       <div className={inline ? "" : "os-page"}>
         {!inline && (
-          <div className="os-page__header">
-            <div className="os-page__header-left">
-              <h1 className="os-page__title">Timetable settings</h1>
-            </div>
-          </div>
+          <PageHeader title="Timetable settings" />
         )}
         <div className="os-section">
-          <EmptyState
-            title="No current academic year"
-            description="Set an academic year as current before configuring timetable settings."
-          />
+          <NoCurrentYear before="configuring timetable settings" />
         </div>
       </div>
     );
@@ -123,12 +117,7 @@ export default function TimetableSettings({ inline = false }: { inline?: boolean
   return (
     <div className={inline ? "" : "os-page"}>
       {!inline && (
-        <div className="os-page__header">
-          <div className="os-page__header-left">
-            <h1 className="os-page__title">Timetable settings</h1>
-            <p className="os-page__subtitle">Default periods and interval times for {currentYear.label}.</p>
-          </div>
-        </div>
+        <PageHeader title="Timetable settings" subtitle={<>Default periods and interval times for {currentYear.label}.</>} />
       )}
 
       <div className="os-stack os-gap-6">

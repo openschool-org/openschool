@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { TeacherWorkloadRow } from "@/features/teachers/api/teacher";
 import ClassSubjectCard from "@/features/marks/components/ClassSubjectCard";
 import EmptyState from "@/shared/ui/EmptyState";
+import PageHeader from "@/shared/ui/PageHeader";
 
 interface Props {
   workload: TeacherWorkloadRow[] | undefined;
@@ -22,12 +23,7 @@ export default function MarksOverview({ workload, termId, termSelector, onOpen }
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">My subjects &amp; classes</h1>
-          <p className="os-page__subtitle">Every subject and class you teach, with marks status for the selected term</p>
-        </div>
-      </div>
+      <PageHeader title="My subjects &amp; classes" subtitle="Every subject and class you teach, with marks status for the selected term" />
 
       <div className="os-section os-mb-6">
         <div className="os-section__header">{termSelector}</div>

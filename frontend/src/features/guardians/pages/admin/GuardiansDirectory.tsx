@@ -13,6 +13,7 @@ import { useListFilters } from "@/shared/hooks/useListFilters";
 import { useOpenParam } from "@/shared/hooks/useOpenParam";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
 import { displayName } from "@/shared/lib/name";
+import PageHeader from "@/shared/ui/PageHeader";
 
 const FILTER_LABELS: Record<string, string> = { query: "Search", orphans: "Filter" };
 
@@ -55,14 +56,7 @@ export default function GuardiansDirectory() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Guardians</h1>
-          <p className="os-page__subtitle">
-            Directory of parents and guardians linked to student profiles.
-          </p>
-        </div>
-      </div>
+      <PageHeader title="Guardians" subtitle="Directory of parents and guardians linked to student profiles." />
 
       <div className="os-section">
         <FilterBar

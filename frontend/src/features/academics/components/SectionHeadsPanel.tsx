@@ -7,6 +7,7 @@ import type { Teacher } from "@/features/teachers/api/teacher";
 import { useSectionHeads, useAssignSectionHead, useRemoveSectionHead } from "@/features/teachers/queries/useSectionHeads";
 import type { SectionHead } from "@/features/teachers/api/sectionHead";
 import EmptyState from "@/shared/ui/EmptyState";
+import NoCurrentYear from "@/shared/ui/NoCurrentYear";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
@@ -69,7 +70,7 @@ export default function SectionHeadsPanel() {
     >
 
       {!currentYear ? (
-        <EmptyState title="No current academic year" description="Set an academic year as current before assigning section heads." />
+        <NoCurrentYear before="assigning section heads" />
       ) : isLoading ? (
         <div className="os-py-2"><ListRowSkeleton trailingWidth="12rem" /></div>
       ) : isError && !sectionHeads ? (

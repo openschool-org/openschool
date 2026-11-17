@@ -16,6 +16,7 @@ import Field from "@/shared/ui/Field";
 import LinkButton from "@/shared/ui/LinkButton";
 import SelectField from "@/shared/ui/SelectField";
 import TextField from "@/shared/ui/TextField";
+import PageHeader from "@/shared/ui/PageHeader";
 
 type Touched = Partial<
   Record<"fullName" | "email" | "phone" | "nicNumber" | "joinedDate", boolean>
@@ -81,13 +82,9 @@ export default function AddTeacher() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Add new teacher</h1>
-          <p className="os-page__subtitle">Create a teacher account and profile</p>
-        </div>
+      <PageHeader title="Add new teacher" subtitle="Create a teacher account and profile">
         <LinkButton to="/teachers" type="text" icon={<ArrowLeftOutlined />}>Back</LinkButton>
-      </div>
+      </PageHeader>
 
       {errorMessage && <Alert type="error" showIcon className="os-mb-6" title="Error" description={errorMessage} />}
 

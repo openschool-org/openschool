@@ -11,6 +11,7 @@ import FormModal from "@/shared/ui/FormModal";
 import SectionCard from "@/shared/ui/SectionCard";
 import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
 import AgentFindingsBanner from "@/features/notifications/components/AgentFindingsBanner";
+import PageHeader from "@/shared/ui/PageHeader";
 
 export default function Streams() {
   const { data: streams, isLoading, isError, refetch } = useStreams();
@@ -25,13 +26,9 @@ export default function Streams() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Streams & section heads</h1>
-          <p className="os-page__subtitle">A/L streams, their sub-groups and the teacher in charge.</p>
-        </div>
+      <PageHeader title="Streams & section heads" subtitle="A/L streams, their sub-groups and the teacher in charge.">
         <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>New stream</Button>
-      </div>
+      </PageHeader>
 
       <AgentFindingsBanner />
 
