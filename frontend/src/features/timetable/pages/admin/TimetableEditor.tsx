@@ -1,37 +1,30 @@
 import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router";
-import { Button, Tag } from "antd";
-import { ArrowLeftOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { SkeletonText } from "@/shared/ui/Skeleton";
 import { useClass, useClassSubjectTeachers } from "@/features/academics/queries/useClasses";
 import { useGrades } from "@/features/academics/queries/useGrades";
 import { useTeachers } from "@/features/teachers/queries/useTeachers";
-import { formatDateTime } from "@/shared/lib/date";
-import type { Teacher } from "@/features/teachers/api/teacher";
 import { useSubjects } from "@/features/curriculum/queries/useSubjects";
 import { useClassrooms } from "@/features/timetable/queries/useClassrooms";
 import { useGradeSections, useGradeSectionPeriods } from "@/features/timetable/queries/useGradeSections";
 import {
   useTimetable,
   useTimetableEntries,
-  useSaveTimetableEntries,
-  useDeleteTimetableEntry,
   useTimetableValidation,
   useTimetableStatusHistory,
   useSubmitTimetable,
   usePublishTimetable,
 } from "@/features/timetable/queries/useTimetables";
+import { useTimetableCell } from "@/features/timetable/hooks/useTimetableCell";
+import { subjectsForClass, withCellTeacher } from "@/features/timetable/lib/editorLists";
 import TimetableGrid from "@/features/timetable/components/TimetableGrid";
-import TimetableCellModal, { type CellForm } from "@/features/timetable/components/TimetableCellModal";
+import TimetableCellModal from "@/features/timetable/components/TimetableCellModal";
 import TimetableValidationModal from "@/features/timetable/components/TimetableValidationModal";
+import { TimetableEditorHeader, TimetableStatusHistory } from "@/features/timetable/components/TimetableEditorParts";
 import EmptyState from "@/shared/ui/EmptyState";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
-import { TIMETABLE_STATUS_TAG } from "@/shared/lib/constants/tags";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
-
-const EMPTY_FORM: CellForm = { subjectId: "", teacherId: "", classroomId: "" };
-const statusLabel = (s: string) => TIMETABLE_STATUS_TAG[s as keyof typeof TIMETABLE_STATUS_TAG]?.label ?? s;
 
 export default function TimetableEditor() {
   const { id = "" } = useParams();
@@ -44,7 +37,6 @@ export default function TimetableEditor() {
   const { data: grades } = useGrades();
   const [teacherSearch, setTeacherSearch] = useState("");
   const { data: teacherPage } = useTeachers({ limit: 25, search: teacherSearch });
-  const teachers = teacherPage?.items;
   const { data: subjects } = useSubjects();
   const { data: classrooms } = useClassrooms();
   const { data: gradeSections } = useGradeSections(timetable?.academic_year_id ?? "");
@@ -55,61 +47,16 @@ export default function TimetableEditor() {
   const gradeSection = useMemo(() => gradeSections?.find((gs) => cls && gs.grade_ids.includes(cls.grade_id)), [gradeSections, cls]);
   const { data: periods } = useGradeSectionPeriods(gradeSection?.id ?? "");
 
-  const saveEntries = useSaveTimetableEntries(id);
-  const deleteEntry = useDeleteTimetableEntry(id);
   const submit = useSubmitTimetable(id);
   const publish = usePublishTimetable(id);
+  const cell = useTimetableCell(id, entries);
 
   const [validationOpen, setValidationOpen] = useState(false);
   const [confirmingClear, setConfirmingClear] = useState(false);
-  const [cell, setCell] = useState<{ day: number; period: number } | null>(null);
-  const [cellForm, setCellForm] = useState<CellForm>(EMPTY_FORM);
 
   const gradeName = grades?.find((g) => g.id === cls?.grade_id)?.name ?? "";
-  const isDraft = timetable?.status === "draft";
-
-  // A-Level classes only pick from the subjects assigned to the class.
-  const filteredSubjects = useMemo(() => {
-    if (!subjects) return [];
-    if (!/12|13/.test(gradeName)) return subjects;
-    const assigned = new Set(classSubjects?.map((cs) => cs.subject_id) ?? []);
-    return subjects.filter((s) => assigned.has(s.id));
-  }, [subjects, classSubjects, gradeName]);
-
-  const entryAt = (day: number, period: number) => entries?.find((e) => e.day_of_week === day && e.period_number === period);
-
-  // The cell being edited may already have a teacher assigned who isn't
-  // among the current search results (e.g. no search typed yet) - merged
-  // in from the entry's own teacher_name so the field doesn't look empty.
-  // employee_number is unknown here, so it's left blank in the label.
-  const cellTeachers = useMemo(() => {
-    const list = teachers ?? [];
-    const existing = cell ? entryAt(cell.day, cell.period) : undefined;
-    if (existing?.teacher_id && existing.teacher_name && !list.some((t) => t.id === existing.teacher_id)) {
-      return [{ id: existing.teacher_id, full_name: existing.teacher_name, employee_number: "" } as Teacher, ...list];
-    }
-    return list;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- entryAt closes over `entries`, already a dep
-  }, [teachers, cell, entries]);
-
-  const openCell = (day: number, period: number) => {
-    const existing = entryAt(day, period);
-    setCellForm({ subjectId: existing?.subject_id ?? "", teacherId: existing?.teacher_id ?? "", classroomId: existing?.classroom_id ?? "" });
-    setCell({ day, period });
-  };
-
-  const saveCell = () => {
-    if (!cell) return;
-    saveEntries.mutate(
-      [{ day_of_week: cell.day, period_number: cell.period, subject_id: cellForm.subjectId || null, teacher_id: cellForm.teacherId || null, classroom_id: cellForm.classroomId || null }],
-      { onSuccess: () => setCell(null) },
-    );
-  };
-
-  const clearCell = () => {
-    if (!cell) return;
-    deleteEntry.mutate({ day: cell.day, period: cell.period });
-  };
+  const cellSubjects = subjectsForClass(subjects ?? [], classSubjects?.map((cs) => cs.subject_id) ?? [], gradeName);
+  const cellTeachers = withCellTeacher(teacherPage?.items ?? [], cell.current);
 
   if (isLoading || !timetable) {
     return (
@@ -121,34 +68,15 @@ export default function TimetableEditor() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">
-            {gradeName} - {cls?.name}
-          </h1>
-          <div className="os-flex os-items-center os-gap-2 os-wrap os-mt-1">
-            <Tag color={TIMETABLE_STATUS_TAG[timetable.status as keyof typeof TIMETABLE_STATUS_TAG]?.color} variant="filled">{statusLabel(timetable.status)}</Tag>
-            <Tag variant="filled">v{timetable.version}</Tag>
-            {timetable.review_comments && <span className="os-text-sm os-c-secondary">Reviewer: <em>{timetable.review_comments}</em></span>}
-          </div>
-        </div>
-        <div className="os-flex os-gap-2">
-          <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>Back</Button>
-          <Button icon={<CheckCircleOutlined />} onClick={() => { setValidationOpen(true); runValidation(); }} loading={validating}>
-            {validating ? "Validating…" : "Validate"}
-          </Button>
-          {isDraft && (
-            <Button type="primary" onClick={() => submit.mutate()} loading={submit.isPending}>
-              {submit.isPending ? "Submitting…" : "Submit for review"}
-            </Button>
-          )}
-          {timetable.status === "approved" && (
-            <Button type="primary" onClick={() => publish.mutate()} loading={publish.isPending}>
-              {publish.isPending ? "Publishing…" : "Publish"}
-            </Button>
-          )}
-        </div>
-      </div>
+      <TimetableEditorHeader
+        title={`${gradeName} - ${cls?.name ?? ""}`}
+        timetable={timetable}
+        validating={validating}
+        onBack={() => navigate(-1)}
+        onValidate={() => { setValidationOpen(true); runValidation(); }}
+        submit={submit}
+        publish={publish}
+      />
 
       <MutationErrorNotification isError={submit.isError} error={submit.error} title="Could not submit" fallback="Fix the validation issues shown by Validate, then try again." onClose={() => submit.reset()} />
       <MutationErrorNotification isError={publish.isError} error={publish.error} title="Could not publish" onClose={() => publish.reset()} />
@@ -159,36 +87,26 @@ export default function TimetableEditor() {
         ) : !periods?.length ? (
           <EmptyState title="No periods configured" description="Open Grade Sections and generate/configure the period grid for this section." />
         ) : (
-          <TimetableGrid periods={periods} entryAt={entryAt} editable={isDraft} onOpenCell={openCell} />
+          <TimetableGrid periods={periods} entryAt={cell.entryAt} editable={timetable.status === "draft"} onOpenCell={cell.open} />
         )}
       </div>
 
-      {!!history?.length && (
-        <div className="os-section os-py-4 os-px-6">
-          <h2 className="os-section__title os-mb-3">Status history</h2>
-          {history.map((h) => (
-            <div key={h.id} className="os-text-sm os-c-secondary os-mb-1h">
-              <strong>{statusLabel(h.to_status)}</strong> by {h.changed_by_name} on {formatDateTime(h.changed_at)}
-              {h.comment && <> - {h.comment}</>}
-            </div>
-          ))}
-        </div>
-      )}
+      <TimetableStatusHistory history={history} />
 
       <TimetableCellModal
-        cell={cell}
-        form={cellForm}
-        onFormChange={setCellForm}
-        subjects={filteredSubjects}
+        cell={cell.cell}
+        form={cell.form}
+        onFormChange={cell.setForm}
+        subjects={cellSubjects}
         teachers={cellTeachers}
         onTeacherSearch={setTeacherSearch}
         classrooms={classrooms ?? []}
-        canClear={!!cell && !!entryAt(cell.day, cell.period)}
-        save={saveEntries}
-        clear={deleteEntry}
-        onSave={saveCell}
+        canClear={!!cell.current}
+        save={cell.saveEntries}
+        clear={cell.deleteEntry}
+        onSave={cell.save}
         onClear={() => setConfirmingClear(true)}
-        onClose={() => setCell(null)}
+        onClose={cell.close}
       />
 
       <ConfirmDeleteModal
@@ -199,10 +117,10 @@ export default function TimetableEditor() {
         pendingLabel="Clearing…"
         subject="Cell"
         successVerb="cleared"
-        mutation={deleteEntry}
+        mutation={cell.deleteEntry}
         onClose={() => setConfirmingClear(false)}
-        onConfirm={clearCell}
-        onSuccess={() => setCell(null)}
+        onConfirm={cell.clear}
+        onSuccess={cell.close}
       />
 
       <TimetableValidationModal open={validationOpen} validating={validating} validation={validation} onClose={() => setValidationOpen(false)} />
