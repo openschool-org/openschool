@@ -45,16 +45,22 @@ func (YearRollover) Inputs(ctx context.Context, s *Store) ([]InputField, error) 
 		{Key: "copy_form_teachers", Label: "Keep the same form teachers", Type: "boolean", Default: "false", Help: "Off by default; form teachers usually change."},
 		{Key: "copy_timetable_setup", Label: "Copy timetable setup", Type: "boolean", Default: "true", Help: "Grade sections, period grids, subject hours and section heads."},
 	}
-	if cur := currentYear(years); cur != nil {
-		fields[0].Default = cur.ID.String()
-		if label := nextLabel(cur.Label); label != "" {
-			n, _ := strconv.Atoi(label)
-			fields[1].Default = label
-			fields[2].Default = fmt.Sprintf("%04d-01-01", n)
-			fields[3].Default = fmt.Sprintf("%04d-12-31", n)
-		}
-	}
+	fields[0].Default, fields[1].Default, fields[2].Default, fields[3].Default = rolloverDefaults(years)
 	return fields, nil
+}
+
+// rolloverDefaults suggests copying the current year into the next calendar year; blanks when it cannot tell.
+func rolloverDefaults(years []Year) (source, label, start, end string) {
+	cur := currentYear(years)
+	if cur == nil {
+		return "", "", "", ""
+	}
+	label = nextLabel(cur.Label)
+	if label == "" {
+		return cur.ID.String(), "", "", ""
+	}
+	n, _ := strconv.Atoi(label)
+	return cur.ID.String(), label, fmt.Sprintf("%04d-01-01", n), fmt.Sprintf("%04d-12-31", n)
 }
 
 func (w YearRollover) Check(ctx context.Context, s *Store, in Inputs) ([]Check, error) {
