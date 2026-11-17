@@ -57,7 +57,7 @@ Cross-cutting packages:
 
 - **`internal/middleware/`** - `AuthMiddleware` (JWT validation against
   ThunderID's JWKS, RS256, issuer-checked, expiry required; the audience is
-  not checked today, see [decision V1](../development/issue.md)), `RequireRole`, `RequireStudentAccess`
+  not checked today), `RequireRole`, `RequireStudentAccess`
   (a third authorization primitive - used where the caller must additionally
   own or be linked to the specific student record in the URL, not just hold
   a role), `RateLimit` (per-IP token bucket, applied globally) and the

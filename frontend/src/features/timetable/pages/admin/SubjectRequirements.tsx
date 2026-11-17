@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { SkeletonText } from "@/shared/ui/Skeleton";
-import NumberField from "@/shared/ui/NumberField";
 import SelectField from "@/shared/ui/SelectField";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useGrades } from "@/features/academics/queries/useGrades";
@@ -13,7 +12,8 @@ import {
 import EmptyState from "@/shared/ui/EmptyState";
 import NoCurrentYear from "@/shared/ui/NoCurrentYear";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
-import RemoveIconButton from "@/shared/ui/RemoveIconButton";
+import RequirementRow from "@/features/timetable/components/RequirementRow";
+import { clampRequirement, type RequirementValues } from "@/features/timetable/lib/requirements";
 import type { Grade } from "@/features/academics/api/grade";
 import type { SubjectPeriodRequirement } from "@/features/timetable/api/subjectPeriodRequirement";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
@@ -33,28 +33,16 @@ export default function SubjectRequirements({ inline = false }: { inline?: boole
 
   const [toRemove, setToRemove] = useState<SubjectPeriodRequirement | null>(null);
 
-  const requirementFor = (subjectId: string) =>
-    requirements?.find((r) => r.subject_id === subjectId);
-
-  const periodsFor = (subjectId: string) =>
-    requirementFor(subjectId)?.periods_per_week ?? 0;
-
-  const labPeriodsFor = (subjectId: string) =>
-    requirementFor(subjectId)?.lab_periods_per_week ?? 0;
-
-  const doubleBlocksFor = (subjectId: string) =>
-    requirementFor(subjectId)?.double_period_blocks ?? 0;
-
-  const handleChange = (subjectId: string, periodsPerWeek: number, labPeriodsPerWeek: number, doublePeriodBlocks: number) => {
+  const handleChange = (subjectId: string, values: RequirementValues) => {
     if (!yearId || !gradeId) return;
-    const maxBlocks = Math.floor(periodsPerWeek / 2);
+    const v = clampRequirement(values);
     upsert.mutate({
       academic_year_id: yearId,
       grade_id: gradeId,
       subject_id: subjectId,
-      periods_per_week: periodsPerWeek,
-      lab_periods_per_week: Math.min(labPeriodsPerWeek, periodsPerWeek),
-      double_period_blocks: Math.min(doublePeriodBlocks, maxBlocks),
+      periods_per_week: v.periods,
+      lab_periods_per_week: v.labPeriods,
+      double_period_blocks: v.doubleBlocks,
     });
   };
 
@@ -127,64 +115,17 @@ export default function SubjectRequirements({ inline = false }: { inline?: boole
                 </tr>
               </thead>
               <tbody>
-                {subjects.map((s) => {
-                  const requirement = requirementFor(s.id);
-                  const periods = periodsFor(s.id);
-                  const doubleBlocks = doubleBlocksFor(s.id);
-                  const maxBlocks = Math.floor(periods / 2);
-                  return (
-                    <tr key={s.id}>
-                      <td className="os-fw-500">{s.name}</td>
-                      <td>
-                        <NumberField
-                          id={`periods-${s.id}`}
-                          label="Periods per week"
-                          hideLabel
-                          size="small"
-                          min={0}
-                          max={20}
-                          value={periods}
-                          onChange={(v) => handleChange(s.id, v ?? 0, labPeriodsFor(s.id), doubleBlocks)}
-                        />
-                      </td>
-                      <td>
-                        <NumberField
-                          id={`lab-periods-${s.id}`}
-                          label="Lab periods per week"
-                          hideLabel
-                          size="small"
-                          min={0}
-                          max={periods}
-                          value={labPeriodsFor(s.id)}
-                          disabled={periods === 0}
-                          onChange={(v) => handleChange(s.id, periods, v ?? 0, doubleBlocks)}
-                        />
-                      </td>
-                      <td>
-                        <NumberField
-                          id={`double-blocks-${s.id}`}
-                          label="Double blocks per week"
-                          hideLabel
-                          size="small"
-                          min={0}
-                          max={maxBlocks}
-                          value={doubleBlocks}
-                          disabled={maxBlocks === 0}
-                          helperText={maxBlocks > 0 ? `up to ${maxBlocks}` : undefined}
-                          onChange={(v) => handleChange(s.id, periods, labPeriodsFor(s.id), v ?? 0)}
-                        />
-                      </td>
-                      <td>
-                        {/* Clearing removes the row (unset), distinct from setting 0 periods (checked by the validator as zero). */}
-                        <RemoveIconButton
-                          label="Clear requirement"
-                          disabled={!requirement || remove.isPending}
-                          onClick={() => requirement && setToRemove(requirement)}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
+                {subjects.map((s) => (
+                  <RequirementRow
+                    key={s.id}
+                    subjectId={s.id}
+                    subjectName={s.name}
+                    requirement={requirements?.find((r) => r.subject_id === s.id)}
+                    removeDisabled={remove.isPending}
+                    onChange={(v) => handleChange(s.id, v)}
+                    onClear={setToRemove}
+                  />
+                ))}
               </tbody>
             </table>
           </>

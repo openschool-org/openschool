@@ -1,7 +1,8 @@
 import { Alert, Button, Checkbox, Spin, Tag } from "antd";
 import { SaveOutlined } from "@ant-design/icons";
 import SelectField from "@/shared/ui/SelectField";
-import { useEnrollmentPicker, isCompulsory } from "@/features/students/hooks/useEnrollmentPicker";
+import { useEnrollmentPicker } from "@/features/students/hooks/useEnrollmentPicker";
+import { isCompulsory } from "@/features/students/lib/enrollmentPicks";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import SectionCard from "@/shared/ui/SectionCard";
 

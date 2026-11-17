@@ -9,6 +9,7 @@ import Breadcrumbs from "@/layouts/Breadcrumbs";
 import BottomTabBar from "@/layouts/BottomTabBar";
 import { matchNav, leafLabel } from "@/layouts/navMatch";
 import { useSidebarState } from "@/layouts/useSidebarState";
+import { shellClasses } from "@/layouts/shellClasses";
 import RouteErrorBoundary from "@/shared/ui/RouteErrorBoundary";
 import { DelayedContentSkeleton } from "@/shared/ui/SkeletonShell";
 import ToastStack from "@/shared/ui/toast/ToastStack";
@@ -51,6 +52,7 @@ export default function PortalShell({ navGroups: rawGroups, showSearch = false, 
   const pageLabel = nested ? titleOverride ?? leafLabel(pathname, t) : titleOverride ?? active?.label;
   const { open: sidebarOpen, rail, drawerOpen } = sidebar;
   const showTabs = bottomTabs && isPhone;
+  const classes = shellClasses({ isDrawer, showTabs, rail, open: sidebarOpen });
 
   useEffect(() => {
     document.title = pageLabel ? `${pageLabel} · OpenSchool` : "OpenSchool";
@@ -76,17 +78,17 @@ export default function PortalShell({ navGroups: rawGroups, showSearch = false, 
         <AppHeaderActions showSearch={showSearch} showLanguage={showLanguage} />
       </header>
 
-      <div className={`os-layout${isDrawer ? " is-drawer" : ""}${showTabs ? " has-bottom-tabs" : ""}`}>
+      <div className={classes.layout}>
         {isDrawer && drawerOpen && <div className="os-layout__scrim" onClick={sidebar.closeDrawer} aria-hidden="true" />}
         <aside
-          className={`os-layout__sidebar${rail ? " is-rail" : sidebarOpen ? "" : " is-collapsed"}`}
-          aria-hidden={(!sidebarOpen && !rail) || undefined}
-          inert={(!sidebarOpen && !rail) || undefined}
+          className={classes.sidebar}
+          aria-hidden={classes.hidden}
+          inert={classes.hidden}
         >
           <SidebarNav groups={navGroups} activePath={active?.path} collapsed={rail} aria-label={t("shell.sideNav")} />
         </aside>
 
-        <main id="main-content" tabIndex={-1} className={`os-layout__content${rail ? " is-rail" : sidebarOpen && !isDrawer ? "" : " is-expanded"}`}>
+        <main id="main-content" tabIndex={-1} className={classes.content}>
           <OfflineBanner />
           {nested && active && pageLabel && <Breadcrumbs parent={active} current={pageLabel} />}
           <RouteErrorBoundary>
