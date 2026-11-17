@@ -14,6 +14,7 @@ import AgentFindingsBanner from "@/features/notifications/components/AgentFindin
 import YearsList from "@/features/school/components/academic-years/YearsList";
 import CreateYearModal, { type YearForm, type YearFormTouched } from "@/features/school/components/academic-years/CreateYearModal";
 import TermsModal from "@/features/school/components/academic-years/TermsModal";
+import PageHeader from "@/shared/ui/PageHeader";
 
 const EMPTY_FORM: YearForm = {
   label: "",
@@ -67,17 +68,11 @@ export default function AcademicYears() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Academic years</h1>
-          <p className="os-page__subtitle">
-            School years and their terms. Exactly one year is current.
-          </p>
-        </div>
+      <PageHeader title="Academic years" subtitle="School years and their terms. Exactly one year is current.">
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
           New academic year
         </Button>
-      </div>
+      </PageHeader>
 
       <AgentFindingsBanner />
 

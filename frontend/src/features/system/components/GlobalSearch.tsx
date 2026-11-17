@@ -11,12 +11,12 @@ import type { MessageKey } from "@/shared/i18n/messages/en";
 
 type GroupKey = "students" | "teachers" | "guardians" | "non_academic_staff";
 
-// Guardians and staff have no page of their own; their list opens the person's drawer from ?open=.
+// Guardians and staff have no page of their own; their list filters by ?query= and opens the drawer from ?open=.
 const GROUPS: { key: GroupKey; labelKey: MessageKey; route: (id: string, name: string) => string }[] = [
   { key: "students", labelKey: "search.students", route: (id) => `/students/${id}` },
   { key: "teachers", labelKey: "search.teachers", route: (id) => `/teachers/${id}` },
-  { key: "guardians", labelKey: "search.guardians", route: (id, name) => `/guardians?${new URLSearchParams({ q: name, open: id })}` },
-  { key: "non_academic_staff", labelKey: "search.staff", route: (id, name) => `/non-academic-staff?${new URLSearchParams({ q: name, open: id })}` },
+  { key: "guardians", labelKey: "search.guardians", route: (id, name) => `/guardians?${new URLSearchParams({ query: name, open: id })}` },
+  { key: "non_academic_staff", labelKey: "search.staff", route: (id, name) => `/non-academic-staff?${new URLSearchParams({ query: name, open: id })}` },
 ];
 
 const ACTIONS: { id: string; name: string; route: string }[] = [

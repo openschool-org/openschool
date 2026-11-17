@@ -1,42 +1,42 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router";
-import { CloseOutlined, PlusOutlined, SearchOutlined } from "@ant-design/icons";
-import { Button, Drawer, Input, Tag } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import { Button, Drawer } from "antd";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
+import FilterBar from "@/shared/ui/FilterBar";
+import ActiveFilterTags from "@/shared/ui/ActiveFilterTags";
 import ListState from "@/shared/ui/ListState";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
 import SelectField from "@/shared/ui/SelectField";
 import { useNonAcademicStaffList } from "@/features/staff/queries/useNonAcademicStaff";
 import { NON_ACADEMIC_DESIGNATIONS, type NonAcademicDesignation, type NonAcademicStaff as StaffRow } from "@/features/staff/api/nonAcademicStaff";
-import { useDebounced } from "@/shared/hooks/useDebounced";
-import ErrorMessage from "@/shared/ui/ErrorMessage";
 import { designationLabel } from "@/features/staff/constants";
 import StaffFormModal from "@/features/staff/components/StaffFormModal";
 import StaffDetail from "@/features/staff/components/StaffDetail";
+import { useListFilters } from "@/shared/hooks/useListFilters";
+import { useOpenParam } from "@/shared/hooks/useOpenParam";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
+import PageHeader from "@/shared/ui/PageHeader";
+
+const FILTER_LABELS: Record<string, string> = { query: "Search", designation: "Role" };
+
+const columns: GridColumn<StaffRow>[] = [
+  {
+    key: "name",
+    header: "Name",
+    render: (st) => (
+      <div className="os-flex os-items-center os-gap-2">
+        <span className="os-table__link">{st.full_name}</span>
+      </div>
+    ),
+  },
+  { key: "designation", header: "Designation", render: (st) => <span className="os-table__muted">{designationLabel(st.designation)}</span> },
+  { key: "employee", header: "Employee no.", render: (st) => <span className="os-table__mono">{st.employee_number}</span> },
+  { key: "phone", header: "Phone", render: (st) => <span className="os-table__muted">{st.phone ?? "-"}</span> },
+];
 
 export default function NonAcademicStaff() {
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounced(search, 300);
-  const [designation, setDesignation] = useState<NonAcademicDesignation | "">("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Global search links here with ?q=<name>&open=<id>: the name filters the list so the
-  // person is on the page, and their drawer opens straight away.
-  const [params, setParams] = useSearchParams();
-  const openParam = params.get("open");
-  const [seenOpen, setSeenOpen] = useState<string | null>(null);
-  if (openParam !== seenOpen) {
-    setSeenOpen(openParam);
-    if (openParam) {
-      setSelectedId(openParam);
-      setSearch(params.get("q") ?? "");
-    }
-  }
-  // Closing clears the link, so picking the same person from search again reopens them.
-  const closeDetail = () => {
-    setSelectedId(null);
-    if (openParam) setParams({}, { replace: true });
-  };
+  const { filters, set, clear, activeKeys, debouncedSearch } = useListFilters({ query: "", designation: "" });
+  const { selectedId, select, close } = useOpenParam();
   const [creating, setCreating] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = usePersistedPageSize("non-academic-staff");
@@ -45,118 +45,80 @@ export default function NonAcademicStaff() {
     limit: pageSize,
     offset: (page - 1) * pageSize,
     search: debouncedSearch,
-    designation,
+    designation: filters.designation as NonAcademicDesignation | "",
   });
-  const ordered = data?.items ?? [];
-  const totalItems = data?.total ?? 0;
+  const staff = data?.items ?? [];
+  const selected = staff.find((s) => s.id === selectedId) ?? null;
 
-  const selected = ordered.find((s) => s.id === selectedId) ?? null;
-
-  const columns: GridColumn<StaffRow>[] = [
-    {
-      key: "name",
-      header: "Name",
-      render: (st) => (
-        <div className="os-flex os-items-center os-gap-2">
-          <span className="os-table__link">{st.full_name}</span>
-        </div>
-      ),
-    },
-    { key: "designation", header: "Designation", render: (st) => <span className="os-table__muted">{designationLabel(st.designation)}</span> },
-    { key: "employee", header: "Employee no.", render: (st) => <span className="os-table__mono">{st.employee_number}</span> },
-    { key: "phone", header: "Phone", render: (st) => <span className="os-table__muted">{st.phone ?? "-"}</span> },
-  ];
-
-  const onChange = ({ page: p, pageSize: ps }: { page: number; pageSize: number }) => {
-    setPage(p);
-    setPageSize(ps);
+  const setFilter = (key: keyof typeof filters, value: string) => {
+    setPage(1);
+    set(key, value);
   };
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Non-academic staff</h1>
-          <p className="os-page__subtitle">Lab assistants, librarians, office and other staff without a login.</p>
-        </div>
+      <PageHeader title="Non-academic staff" subtitle="Lab assistants, librarians, office and other staff without a login.">
         <Button icon={<PlusOutlined />} type="primary" onClick={() => setCreating(true)}>
           Add staff
         </Button>
-      </div>
+      </PageHeader>
 
-      <div className="os-section os-bg-layer os-mb-6 os-py-4 os-px-6">
-        <div className="os-flex os-items-center os-gap-4 os-wrap">
-          <div className="os-flex-basis-16 os-min-w-12">
-            <Input
-              allowClear
-              type="search"
-              prefix={<SearchOutlined />}
-              aria-label="Search staff"
-              placeholder="Search staff by name or employee number…"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            />
-          </div>
-          <div className="os-min-w-14">
-            <SelectField
-              id="staff-designation-filter"
-              label="Designation"
-              hideLabel
-              value={designation}
-              onChange={(v) => { setDesignation(v as NonAcademicDesignation | ""); setPage(1); }}
-              options={[{ value: "", label: "All designations" }, ...NON_ACADEMIC_DESIGNATIONS.map((d) => ({ value: d.value, label: d.label }))]}
-            />
-          </div>
-        </div>
-
-        {(search || designation) && (
-          <div className="os-flex os-items-center os-gap-2 os-wrap os-mt-3">
-            <span className="os-text-xs os-fw-600 os-c-tertiary">Active filters:</span>
-            {designation && (
-              <Tag color="processing" closable onClose={(e) => { e.preventDefault(); setDesignation(""); setPage(1); }}>
-                Role: {designationLabel(designation)}
-              </Tag>
-            )}
-            {search && <Tag color="processing" closable onClose={(e) => { e.preventDefault(); setSearch(""); setPage(1); }}>Search: "{search}"</Tag>}
-            <Button type="text" icon={<CloseOutlined />} onClick={() => { setSearch(""); setDesignation(""); setPage(1); }}>
-              Clear all
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {isError && <ErrorMessage message="Could not load staff members." onRetry={refetch} />}
-
-      {/* Full-width list; a row opens the staff member's details in a side drawer. */}
       <div className="os-section">
+        <FilterBar
+          search={{ value: filters.query, onChange: (v) => setFilter("query", v), placeholder: "Search staff by name or employee number…" }}
+          controls={[
+            {
+              label: "Designation",
+              node: (
+                <SelectField
+                  id="staff-designation-filter"
+                  label="Designation"
+                  hideLabel
+                  value={filters.designation}
+                  onChange={(v) => setFilter("designation", v)}
+                  options={[{ value: "", label: "All designations" }, ...NON_ACADEMIC_DESIGNATIONS.map((d) => ({ value: d.value, label: d.label }))]}
+                />
+              ),
+            },
+          ]}
+        />
+
+        <ActiveFilterTags
+          filters={activeKeys.map((k) => ({
+            key: k,
+            label: FILTER_LABELS[k],
+            value: k === "designation" ? designationLabel(filters.designation as NonAcademicDesignation) : `"${filters[k]}"`,
+          }))}
+          onClear={(k) => { clear(k as keyof typeof filters); setPage(1); }}
+          onClearAll={() => { clear(); setPage(1); }}
+        />
+
         <ListState
           isLoading={isLoading}
-          isError={false}
-          isEmpty={ordered.length === 0}
+          isError={isError}
+          isEmpty={staff.length === 0}
           errorMessage="Could not load staff members."
           onRetry={refetch}
           skeleton={<TableSkeleton headers={columns.map((c) => c.header)} />}
           empty={{ title: "No staff found", description: "Add lab assistants, librarians, office staff, or adjust your filter." }}
         >
           <DataGrid
-            rows={ordered}
+            rows={staff}
             columns={columns}
             getRowId={(st) => st.id}
-            onRowClick={(st) => setSelectedId(st.id)}
+            onRowClick={(st) => select(st.id)}
             countLabel={(shown, total) => `Showing ${shown} of ${total} staff`}
             pageSizes={[10, 25, 50, 100]}
-            server={{ page, pageSize, totalItems, onChange }}
+            server={{ page, pageSize, totalItems: data?.total ?? 0, onChange: ({ page: p, pageSize: ps }) => { setPage(p); setPageSize(ps); } }}
           />
         </ListState>
       </div>
 
-      <Drawer open={!!selected} onClose={closeDetail} size={640} title="Staff member" className="os-detail-drawer" destroyOnHidden>
-        {selected && <StaffDetail staff={selected} onDeleted={closeDetail} />}
+      <Drawer open={!!selected} onClose={close} size={640} title="Staff member" className="os-detail-drawer" destroyOnHidden>
+        {selected && <StaffDetail staff={selected} onDeleted={close} />}
       </Drawer>
 
       {creating && <StaffFormModal staff={null} onClose={() => setCreating(false)} />}
     </div>
   );
 }
-
-

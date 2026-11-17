@@ -82,14 +82,6 @@ func newStreamHandler(store streamStore) *streamHandler {
 	return &streamHandler{service: &streamService{streams: store}}
 }
 
-func parseID(c *gin.Context, name, message string) (uuid.UUID, bool) {
-	id, err := uuid.Parse(c.Param(name))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": message})
-		return uuid.Nil, false
-	}
-	return id, true
-}
 func bindStream(c *gin.Context) (streamCommand, bool) {
 	var command streamCommand
 	if err := httpx.BindStrict(c, &command); err != nil {
@@ -107,7 +99,7 @@ func (h *streamHandler) create(c *gin.Context) {
 	respondWrite(c, http.StatusCreated, value, err)
 }
 func (h *streamHandler) get(c *gin.Context) {
-	id, ok := parseID(c, "id", "invalid id")
+	id, ok := httpx.ParamUUID(c, "id", "invalid id")
 	if !ok {
 		return
 	}
@@ -127,7 +119,7 @@ func (h *streamHandler) list(c *gin.Context) {
 	c.JSON(http.StatusOK, values)
 }
 func (h *streamHandler) update(c *gin.Context) {
-	id, ok := parseID(c, "id", "invalid id")
+	id, ok := httpx.ParamUUID(c, "id", "invalid id")
 	if !ok {
 		return
 	}
@@ -139,7 +131,7 @@ func (h *streamHandler) update(c *gin.Context) {
 	respondWrite(c, http.StatusOK, value, err)
 }
 func (h *streamHandler) delete(c *gin.Context) {
-	id, ok := parseID(c, "id", "invalid id")
+	id, ok := httpx.ParamUUID(c, "id", "invalid id")
 	if !ok {
 		return
 	}
@@ -147,7 +139,7 @@ func (h *streamHandler) delete(c *gin.Context) {
 	respondDelete(c, err, errStreamNotFound, "stream deleted")
 }
 func (h *streamHandler) createGroup(c *gin.Context) {
-	id, ok := parseID(c, "id", "invalid stream id")
+	id, ok := httpx.ParamUUID(c, "id", "invalid stream id")
 	if !ok {
 		return
 	}
@@ -159,7 +151,7 @@ func (h *streamHandler) createGroup(c *gin.Context) {
 	respondWrite(c, http.StatusCreated, value, err)
 }
 func (h *streamHandler) listGroups(c *gin.Context) {
-	id, ok := parseID(c, "id", "invalid stream id")
+	id, ok := httpx.ParamUUID(c, "id", "invalid stream id")
 	if !ok {
 		return
 	}
@@ -171,7 +163,7 @@ func (h *streamHandler) listGroups(c *gin.Context) {
 	c.JSON(http.StatusOK, values)
 }
 func (h *streamHandler) getGroup(c *gin.Context) {
-	id, ok := parseID(c, "groupId", "invalid group id")
+	id, ok := httpx.ParamUUID(c, "groupId", "invalid group id")
 	if !ok {
 		return
 	}
@@ -183,7 +175,7 @@ func (h *streamHandler) getGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, value)
 }
 func (h *streamHandler) updateGroup(c *gin.Context) {
-	id, ok := parseID(c, "groupId", "invalid group id")
+	id, ok := httpx.ParamUUID(c, "groupId", "invalid group id")
 	if !ok {
 		return
 	}
@@ -195,7 +187,7 @@ func (h *streamHandler) updateGroup(c *gin.Context) {
 	respondWrite(c, http.StatusOK, value, err)
 }
 func (h *streamHandler) deleteGroup(c *gin.Context) {
-	id, ok := parseID(c, "groupId", "invalid group id")
+	id, ok := httpx.ParamUUID(c, "groupId", "invalid group id")
 	if !ok {
 		return
 	}

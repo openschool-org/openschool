@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/openschool-org/openschool/internal/apierror"
 
 	"github.com/gin-gonic/gin"

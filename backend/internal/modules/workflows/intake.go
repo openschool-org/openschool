@@ -78,14 +78,11 @@ func (StudentIntake) Inputs(ctx context.Context, s *Store) ([]InputField, error)
 			Help: "One row per student.\nDownload the template for the columns.\nBrothers and sisters: give them the same guardian_nic so they share one guardian."},
 		{Key: "create_accounts", Label: "Create sign-in accounts for students with an email", Type: "boolean", Default: "false"},
 	}
-	if cur := currentYear(years); cur != nil {
-		fields[0].Default = cur.ID.String()
-		for _, y := range years {
-			if !y.Current && y.Start.After(cur.Start) {
-				fields[0].Default = y.ID.String()
-				break
-			}
-		}
+	// Joining year defaults to next year, or the current year if next is not created yet.
+	if cur, next := yearDefaults(years); next != "" {
+		fields[0].Default = next
+	} else {
+		fields[0].Default = cur
 	}
 	return fields, nil
 }
@@ -216,104 +213,140 @@ func rowProblem(f map[string]string, schoolType string) string {
 	return strings.ToUpper(problems[0][:1]) + strings.Join(problems, "; ")[1:] + "."
 }
 
+// rowMedium resolves the row's medium by name, falling back to the default when the row leaves it blank.
+func rowMedium(value, fallback string, byName map[string]string) (string, string) {
+	if value == "" {
+		return fallback, ""
+	}
+	if id, ok := byName[strings.ToLower(value)]; ok {
+		return id, ""
+	}
+	return fallback, fmt.Sprintf("Medium %q is not set up in School settings.", value)
+}
+
+// indexProblem flags an index number already on record or repeated earlier in the file, unless the row already has a problem.
+func indexProblem(problem, index string, line int, taken map[string]bool, seen map[string]int) string {
+	if problem == "" && taken[index] {
+		problem = "Index number " + index + " already belongs to a student on record."
+	}
+	if first, dup := seen[index]; problem == "" && dup {
+		problem = fmt.Sprintf("Same index number as line %d.", first)
+	}
+	seen[index] = line
+	return problem
+}
+
 func hasGuardian(f map[string]string) bool {
 	return f["guardian_name"] != "" || f["guardian_phone"] != "" || f["guardian_nic"] != "" || f["guardian_relationship"] != ""
+}
+
+// intakeSheet checks each intake CSV row and builds the proposal rows and counts.
+type intakeSheet struct {
+	schoolType    string
+	defaultMedium string
+	mediumByName  map[string]string
+	taken         map[string]bool
+	knownName     map[string]string // guardian NIC on record -> name
+	seenIndex     map[string]int
+	seenNIC       map[string]string
+
+	rows                                   []Row
+	toImport, withErrors, reused, siblings int
+}
+
+// load reads what every row is checked against and returns the medium options for the proposal.
+func (sh *intakeSheet) load(ctx context.Context, s *Store, records []intakeRow) ([]Option, error) {
+	mediums, err := s.mediums(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var options []Option
+	for _, m := range mediums {
+		sh.mediumByName[strings.ToLower(m.Name)] = m.ID.String()
+		options = append(options, Option{Value: m.ID.String(), Label: m.Name})
+	}
+	if sh.schoolType, err = s.schoolType(ctx); err != nil {
+		return nil, err
+	}
+	taken, known, err := existingForRecords(ctx, s, records)
+	if err != nil {
+		return nil, err
+	}
+	sh.taken = taken
+	for nic, g := range known {
+		sh.knownName[nic] = g.FullName
+	}
+	return options, nil
+}
+
+func (sh *intakeSheet) add(r intakeRow) {
+	f := r.fields
+	nic := strings.ToUpper(f["guardian_nic"])
+	problem := rowProblem(f, sh.schoolType)
+	medium, mediumProblem := rowMedium(f["medium"], sh.defaultMedium, sh.mediumByName)
+	if problem == "" {
+		problem = mediumProblem
+	}
+	problem = indexProblem(problem, f["index_number"], r.line, sh.taken, sh.seenIndex)
+	reason := sh.guardianReason(f, nic, problem == "")
+	if nic != "" && sh.seenNIC[nic] == "" {
+		sh.seenNIC[nic] = f["full_name"]
+	}
+	importIt := problem == ""
+	if importIt {
+		sh.toImport++
+	} else {
+		sh.withErrors++
+	}
+	sh.rows = append(sh.rows, Row{ID: "line:" + strconv.Itoa(r.line), Reason: reason, Warning: problem,
+		Cells: map[string]string{
+			"line": strconv.Itoa(r.line), "index": f["index_number"], "name": f["full_name"], "gender": strings.ToLower(f["gender"]),
+			"medium": medium, "guardian": f["guardian_name"], "guardian_nic": nic, "import": strconv.FormatBool(importIt), "error": problem,
+			"address": f["address"], "phone": f["phone"], "email": f["email"], "relationship": strings.ToLower(f["guardian_relationship"]),
+			"guardian_phone": f["guardian_phone"], "guardian_email": f["guardian_email"],
+		}})
+}
+
+// guardianReason explains how the row's guardian is linked; clean rows count towards reused and siblings.
+func (sh *intakeSheet) guardianReason(f map[string]string, nic string, clean bool) string {
+	switch {
+	case !hasGuardian(f):
+		return "New student. No guardian given; add one from the student's page."
+	case sh.knownName[nic] != "":
+		if clean {
+			sh.reused++
+		}
+		return "Guardian " + sh.knownName[nic] + " is already on record, so this student is linked to them."
+	case sh.seenNIC[nic] != "":
+		if clean {
+			sh.siblings++
+		}
+		return "Sibling of " + sh.seenNIC[nic] + ": linked to the same guardian."
+	}
+	return "New student."
 }
 
 func (w StudentIntake) Propose(ctx context.Context, s *Store, in Inputs, trace *Trace) (Proposal, string, error) {
 	year, _ := parseID(in["target_year"])
 	grade, _ := parseID(in["grade"])
-	var rows []Row
-	var toImport, withErrors, reused, siblings int
+	sh := intakeSheet{defaultMedium: in["medium"], mediumByName: map[string]string{}, seenIndex: map[string]int{}, seenNIC: map[string]string{}, knownName: map[string]string{}}
 	var mediumOptions []Option
 	if err := trace.Run(stepByKey(w, "read_csv"), func() (string, error) {
 		records, err := parseIntakeCSV(in["csv"])
 		if err != nil {
 			return "", err
 		}
-		mediums, err := s.mediums(ctx)
-		if err != nil {
+		if mediumOptions, err = sh.load(ctx, s, records); err != nil {
 			return "", err
 		}
-		mediumByName := map[string]string{}
-		for _, m := range mediums {
-			mediumByName[strings.ToLower(m.Name)] = m.ID.String()
-			mediumOptions = append(mediumOptions, Option{Value: m.ID.String(), Label: m.Name})
-		}
-		schoolType, err := s.schoolType(ctx)
-		if err != nil {
-			return "", err
-		}
-		var numbers, nics []string
 		for _, r := range records {
-			numbers = append(numbers, r.fields["index_number"])
-			nics = append(nics, strings.ToUpper(r.fields["guardian_nic"]))
+			sh.add(r)
 		}
-		taken, err := s.existingIndexNumbers(ctx, numbers)
-		if err != nil {
-			return "", err
-		}
-		known, err := s.guardiansByNIC(ctx, nics)
-		if err != nil {
-			return "", err
-		}
-		seenIndex := map[string]int{}
-		seenNIC := map[string]string{}
-		for _, r := range records {
-			f := r.fields
-			nic := strings.ToUpper(f["guardian_nic"])
-			problem := rowProblem(f, schoolType)
-			medium := in["medium"]
-			if f["medium"] != "" {
-				if id, ok := mediumByName[strings.ToLower(f["medium"])]; ok {
-					medium = id
-				} else if problem == "" {
-					problem = fmt.Sprintf("Medium %q is not set up in School settings.", f["medium"])
-				}
-			}
-			if problem == "" && taken[f["index_number"]] {
-				problem = "Index number " + f["index_number"] + " already belongs to a student on record."
-			}
-			if line, dup := seenIndex[f["index_number"]]; problem == "" && dup {
-				problem = fmt.Sprintf("Same index number as line %d.", line)
-			}
-			seenIndex[f["index_number"]] = r.line
-			reason := "New student."
-			switch {
-			case !hasGuardian(f):
-				reason = "New student. No guardian given; add one from the student's page."
-			case known[nic].FullName != "":
-				reason = "Guardian " + known[nic].FullName + " is already on record, so this student is linked to them."
-				if problem == "" {
-					reused++
-				}
-			case seenNIC[nic] != "":
-				reason = "Sibling of " + seenNIC[nic] + ": linked to the same guardian."
-				if problem == "" {
-					siblings++
-				}
-			}
-			if nic != "" && seenNIC[nic] == "" {
-				seenNIC[nic] = f["full_name"]
-			}
-			importIt := problem == ""
-			if importIt {
-				toImport++
-			} else {
-				withErrors++
-			}
-			rows = append(rows, Row{ID: "line:" + strconv.Itoa(r.line), Reason: reason, Warning: problem,
-				Cells: map[string]string{
-					"line": strconv.Itoa(r.line), "index": f["index_number"], "name": f["full_name"], "gender": strings.ToLower(f["gender"]),
-					"medium": medium, "guardian": f["guardian_name"], "guardian_nic": nic, "import": strconv.FormatBool(importIt), "error": problem,
-					"address": f["address"], "phone": f["phone"], "email": f["email"], "relationship": strings.ToLower(f["guardian_relationship"]),
-					"guardian_phone": f["guardian_phone"], "guardian_email": f["guardian_email"],
-				}})
-		}
-		return fmt.Sprintf("%d rows, %d ready, %d with problems", len(records), toImport, withErrors), nil
+		return fmt.Sprintf("%d rows, %d ready, %d with problems", len(records), sh.toImport, sh.withErrors), nil
 	}); err != nil {
 		return Proposal{}, "", err
 	}
+	rows, toImport, withErrors, reused, siblings := sh.rows, sh.toImport, sh.withErrors, sh.reused, sh.siblings
 	p := Proposal{
 		Summary: []Stat{
 			{Label: "Rows read", Value: strconv.Itoa(len(rows))},
@@ -346,7 +379,6 @@ func (w StudentIntake) Apply(ctx context.Context, tx *Store, in Inputs, p Propos
 	var snap intakeSnapshot
 	if err := trace.Run(stepByKey(w, "create_students"), func() (string, error) {
 		var ticked []Row
-		var numbers, nics []string
 		for _, r := range p.Section("students").Rows {
 			if r.Cells["import"] != "true" {
 				continue
@@ -355,22 +387,8 @@ func (w StudentIntake) Apply(ctx context.Context, tx *Store, in Inputs, p Propos
 				return "", fmt.Errorf("%w: line %s: %s", ErrInvalidProposal, r.Cells["line"], r.Cells["error"])
 			}
 			ticked = append(ticked, r)
-			numbers = append(numbers, r.Cells["index"])
-			nics = append(nics, r.Cells["guardian_nic"])
 		}
-		taken, err := tx.existingIndexNumbers(ctx, numbers)
-		if err != nil {
-			return "", err
-		}
-		known, err := tx.guardiansByNIC(ctx, nics)
-		if err != nil {
-			return "", err
-		}
-		guardianByNIC := map[string]uuid.UUID{}
-		for nic, g := range known {
-			guardianByNIC[nic] = g.ID
-		}
-		ids, guardians, err := createStudentRows(ctx, tx, ticked, taken, guardianByNIC)
+		ids, guardians, err := createTickedStudents(ctx, tx, ticked)
 		if err != nil {
 			return "", err
 		}
@@ -468,6 +486,29 @@ func (StudentIntake) Revert(ctx context.Context, tx *Store, snapshot json.RawMes
 
 // createStudentRows creates each row's student, then links an existing guardian by NIC or creates one.
 // The returned student ids follow the row order; siblings in the file share one new guardian.
+// createTickedStudents re-checks the ticked rows against the database, then creates the students and new guardians.
+func createTickedStudents(ctx context.Context, tx *Store, ticked []Row) ([]uuid.UUID, []uuid.UUID, error) {
+	numbers := make([]string, 0, len(ticked))
+	nics := make([]string, 0, len(ticked))
+	for _, r := range ticked {
+		numbers = append(numbers, r.Cells["index"])
+		nics = append(nics, r.Cells["guardian_nic"])
+	}
+	taken, err := tx.existingIndexNumbers(ctx, numbers)
+	if err != nil {
+		return nil, nil, err
+	}
+	known, err := tx.guardiansByNIC(ctx, nics)
+	if err != nil {
+		return nil, nil, err
+	}
+	guardianByNIC := make(map[string]uuid.UUID, len(known))
+	for nic, g := range known {
+		guardianByNIC[nic] = g.ID
+	}
+	return createStudentRows(ctx, tx, ticked, taken, guardianByNIC)
+}
+
 func createStudentRows(ctx context.Context, tx *Store, rows []Row, taken map[string]bool, guardianByNIC map[string]uuid.UUID) ([]uuid.UUID, []uuid.UUID, error) {
 	var students, guardians []uuid.UUID
 	for _, r := range rows {

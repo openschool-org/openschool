@@ -10,6 +10,7 @@ import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYea
 import { useGradeSections } from "@/features/timetable/queries/useGradeSections";
 import { useGenerateTimetables } from "@/features/timetable/queries/useGenerate";
 import EmptyState from "@/shared/ui/EmptyState";
+import NoCurrentYear from "@/shared/ui/NoCurrentYear";
 import type { ClassGenerationResult } from "@/features/timetable/api/generate";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import InfoTip from "@/shared/ui/InfoTip";
@@ -86,7 +87,7 @@ export default function GenerateTimetable({ inline = false }: { inline?: boolean
         </div>
         <div className="os-section__body">
           {!currentYear ? (
-            <EmptyState title="No current academic year" description="Set an academic year as current first." />
+            <NoCurrentYear />
           ) : !gradeSections ? (
             <SkeletonText width="40%" />
           ) : gradeSections.length === 0 ? (

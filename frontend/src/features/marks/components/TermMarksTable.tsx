@@ -1,7 +1,7 @@
 import DataGrid from "@/shared/ui/DataGrid";
 import { useT } from "@/shared/i18n/useT";
 
-interface Row {
+export interface TermMarkRow {
   id: string;
   subject_name: string;
   subject_code: string;
@@ -12,7 +12,7 @@ interface Row {
 }
 
 // Read-only term marks for one student; shared by the student and parent portals.
-export default function TermMarksTable({ rows }: { rows: Row[] }) {
+export default function TermMarksTable({ rows }: { rows: TermMarkRow[] }) {
   const { t } = useT();
   return (
     <DataGrid

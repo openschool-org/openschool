@@ -24,7 +24,8 @@ func TestEveryNoticeTitleIsDeclared(t *testing.T) {
 			}
 		}
 	}
-	literal := regexp.MustCompile(`notifyAdmins\(ctx, a\.checks, a\.notifSvc, "([^"]+)"`)
+	// Titles are passed straight to notifyAdmins or set on a finding for reportFinding.
+	literal := regexp.MustCompile(`(?:notifyAdmins\(ctx, a\.checks, a\.notifSvc, |\btitle: )"([^"]+)"`)
 	files, _ := filepath.Glob("*.go")
 	found := 0
 	for _, f := range files {

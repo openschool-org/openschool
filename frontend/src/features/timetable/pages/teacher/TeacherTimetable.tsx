@@ -5,6 +5,7 @@ import TimetableByDay from "@/features/timetable/components/TimetableByDay";
 import EmptyState from "@/shared/ui/EmptyState";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import { classLabel } from "@/shared/lib/classLabel";
+import PageHeader from "@/shared/ui/PageHeader";
 
 export default function TeacherTimetable() {
   const { data: currentYear } = useCurrentAcademicYear();
@@ -12,12 +13,7 @@ export default function TeacherTimetable() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">My timetable</h1>
-          <p className="os-page__subtitle">{currentYear?.label ?? ""}</p>
-        </div>
-      </div>
+      <PageHeader title="My timetable" subtitle={currentYear?.label ?? ""} />
 
       {isLoading ? (
         <div className="os-section os-p-6"><SkeletonText width="40%" /></div>

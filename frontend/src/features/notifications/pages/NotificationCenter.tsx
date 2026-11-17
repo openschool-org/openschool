@@ -18,6 +18,7 @@ import { usePageTitle } from "@/shared/hooks/usePageTitle";
 import { useDebounced } from "@/shared/hooks/useDebounced";
 import { useT } from "@/shared/i18n/useT";
 import { translateValue } from "@/shared/i18n/translateValue";
+import PageHeader from "@/shared/ui/PageHeader";
 
 type Tab = "unread" | "read" | "archived";
 
@@ -107,12 +108,7 @@ export default function NotificationCenter() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">{t("notif.title")}</h1>
-          <p className="os-page__subtitle">{t("notif.subtitle")}</p>
-        </div>
-      </div>
+      <PageHeader title={t("notif.title")} subtitle={t("notif.subtitle")} />
 
       <div className="os-section">
         <div className="os-pt-4 os-px-6">

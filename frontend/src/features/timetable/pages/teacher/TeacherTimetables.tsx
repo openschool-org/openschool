@@ -8,6 +8,7 @@ import DataGrid from "@/shared/ui/DataGrid";
 import { formatDateTime } from "@/shared/lib/date";
 import EmptyState from "@/shared/ui/EmptyState";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
+import PageHeader from "@/shared/ui/PageHeader";
 
 const statusTag = (s: string) => TIMETABLE_STATUS_TAG[s as keyof typeof TIMETABLE_STATUS_TAG];
 
@@ -19,12 +20,7 @@ export default function TeacherTimetables() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">All timetables</h1>
-          <p className="os-page__subtitle">Every class timetable for {currentYear?.label ?? "the current academic year"}.</p>
-        </div>
-      </div>
+      <PageHeader title="All timetables" subtitle={<>Every class timetable for {currentYear?.label ?? "the current academic year"}.</>} />
 
       <div className="os-section">
         {isLoading ? (

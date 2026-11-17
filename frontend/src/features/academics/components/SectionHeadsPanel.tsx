@@ -1,47 +1,25 @@
 import { useMemo, useState } from "react";
-import { Alert, Button, Tag } from "antd";
+import { Alert, Button } from "antd";
 import { useCurrentClasses, useStreams } from "@/features/academics/queries/useClasses";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
-import { useTeacher, useTeachers } from "@/features/teachers/queries/useTeachers";
-import type { Teacher } from "@/features/teachers/api/teacher";
+import { useTeachers } from "@/features/teachers/queries/useTeachers";
 import { useSectionHeads, useAssignSectionHead, useRemoveSectionHead } from "@/features/teachers/queries/useSectionHeads";
 import type { SectionHead } from "@/features/teachers/api/sectionHead";
 import EmptyState from "@/shared/ui/EmptyState";
-import EntityCombobox from "@/shared/ui/EntityCombobox";
+import NoCurrentYear from "@/shared/ui/NoCurrentYear";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import SectionCard from "@/shared/ui/SectionCard";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import ListRowSkeleton from "@/shared/ui/ListRowSkeleton";
-import { displayName } from "@/shared/lib/name";
-
-interface Row {
-  key: string;
-  gradeId: string;
-  gradeName: string;
-  streamId: string | null;
-  streamName: string | null;
-}
+import { sectionHeadRows, sectionHeadsView, type SectionHeadSlot } from "@/features/academics/lib/sectionHeads";
+import SectionHeadRow from "@/features/academics/components/SectionHeadRow";
 
 // One row per grade, or per stream in a grade that has streamed classes.
 function useSectionHeadRows() {
   const classesQuery = useCurrentClasses();
   const streamsQuery = useStreams();
-  const rows = useMemo(() => {
-    const classes = classesQuery.data;
-    const streams = streamsQuery.data;
-    const byGrade = new Map<string, { gradeName: string; streamIds: Map<string, string> }>();
-    for (const c of classes ?? []) {
-      if (!byGrade.has(c.grade_id)) byGrade.set(c.grade_id, { gradeName: c.grade_name, streamIds: new Map() });
-      if (c.stream_id) byGrade.get(c.grade_id)!.streamIds.set(c.stream_id, streams?.find((s) => s.id === c.stream_id)?.name ?? "Stream");
-    }
-    const rows: Row[] = [];
-    for (const [gradeId, { gradeName, streamIds }] of byGrade) {
-      if (streamIds.size === 0) rows.push({ key: gradeId, gradeId, gradeName, streamId: null, streamName: null });
-      else for (const [streamId, streamName] of streamIds) rows.push({ key: `${gradeId}-${streamId}`, gradeId, gradeName, streamId, streamName });
-    }
-    return rows.sort((a, b) => a.gradeName.localeCompare(b.gradeName) || (a.streamName ?? "").localeCompare(b.streamName ?? ""));
-  }, [classesQuery.data, streamsQuery.data]);
+  const rows = useMemo(() => sectionHeadRows(classesQuery.data ?? [], streamsQuery.data ?? []), [classesQuery.data, streamsQuery.data]);
   return { rows, classesQuery, streamsQuery };
 }
 
@@ -59,7 +37,9 @@ export default function SectionHeadsPanel() {
   const { rows, classesQuery, streamsQuery } = useSectionHeadRows();
   const [toRemove, setToRemove] = useState<SectionHead | null>(null);
 
-  const headFor = (row: Row) => sectionHeads?.find((sh) => sh.grade_id === row.gradeId && sh.stream_id === row.streamId);
+  const state = (q: { isLoading: boolean; isError: boolean; data?: unknown }) => ({ isLoading: q.isLoading, isError: q.isError, hasData: !!q.data });
+  const view = sectionHeadsView(!!currentYear, { isLoading, isError, hasData: !!sectionHeads }, state(classesQuery), state(streamsQuery), rows.length);
+  const headFor = (row: SectionHeadSlot) => sectionHeads?.find((sh) => sh.grade_id === row.gradeId && sh.stream_id === row.streamId);
 
   return (
     <SectionCard
@@ -68,19 +48,14 @@ export default function SectionHeadsPanel() {
       flush
     >
 
-      {!currentYear ? (
-        <EmptyState title="No current academic year" description="Set an academic year as current before assigning section heads." />
-      ) : isLoading ? (
-        <div className="os-py-2"><ListRowSkeleton trailingWidth="12rem" /></div>
-      ) : isError && !sectionHeads ? (
-        <div className="os-p-6"><ErrorMessage message="Could not load section heads." onRetry={refetch} /></div>
-      ) : (classesQuery.isLoading || streamsQuery.isLoading) && rows.length === 0 ? (
-        <div className="os-py-2"><ListRowSkeleton trailingWidth="12rem" /></div>
-      ) : (classesQuery.isError && !classesQuery.data) || (streamsQuery.isError && !streamsQuery.data) ? (
+      {view === "noYear" && <NoCurrentYear before="assigning section heads" />}
+      {view === "loading" && <div className="os-py-2"><ListRowSkeleton trailingWidth="12rem" /></div>}
+      {view === "headsError" && <div className="os-p-6"><ErrorMessage message="Could not load section heads." onRetry={refetch} /></div>}
+      {view === "structureError" && (
         <div className="os-p-6"><ErrorMessage message="Could not load classes and streams." onRetry={() => { void classesQuery.refetch(); void streamsQuery.refetch(); }} /></div>
-      ) : rows.length === 0 ? (
-        <EmptyState title="No classes yet" description="Section heads are derived from the grades and streams your classes actually use." />
-      ) : (
+      )}
+      {view === "empty" && <EmptyState title="No classes yet" description="Section heads are derived from the grades and streams your classes actually use." />}
+      {view === "rows" && currentYear && (
         <>
           {(classesQuery.isError || streamsQuery.isError || isError) && (
             <div className="os-px-6 os-py-3">
@@ -127,54 +102,5 @@ export default function SectionHeadsPanel() {
         onConfirm={() => toRemove && currentYear && remove.mutate({ id: toRemove.id, academicYearId: currentYear.id })}
       />
     </SectionCard>
-  );
-}
-
-interface SectionHeadRowProps {
-  row: Row;
-  head: SectionHead | undefined;
-  teachers: Teacher[];
-  onSearch: (term: string) => void;
-  onAssign: (teacherId: string) => void;
-  onRemoveClick: (head: SectionHead) => void;
-  removeDisabled: boolean;
-}
-
-// One row's own component so it can fetch its own current teacher by id -
-// the shared search-page `teachers` list may not contain it (no search
-// typed yet, or a term that doesn't match), which would otherwise resolve
-// the combobox to no selection and show an empty field for an existing
-// appointment.
-function SectionHeadRow({ row, head, teachers, onSearch, onAssign, onRemoveClick, removeDisabled }: SectionHeadRowProps) {
-  const { data: currentTeacher } = useTeacher(head?.teacher_id ?? "");
-  const items = useMemo(
-    () => (currentTeacher && !teachers.some((t) => t.id === currentTeacher.id) ? [currentTeacher, ...teachers] : teachers),
-    [teachers, currentTeacher],
-  );
-
-  return (
-    <div className="os-list-row os-py-3 os-px-6">
-      <div className="os-flex-1 os-min-w-0">
-        <p className="os-m-0 os-text-md os-fw-500 os-c-primary">{row.gradeName}{row.streamName ? ` - ${row.streamName}` : ""}</p>
-        <div className="os-flex os-items-center os-gap-2 os-mt-1">
-          <Tag color={head ? "success" : undefined} variant="filled">{head ? "Assigned" : "Vacant"}</Tag>
-          {head && <span className="os-text-xs os-c-secondary">{head.teacher_name}</span>}
-        </div>
-      </div>
-      <div className="os-w-16">
-        <EntityCombobox
-          id={`tic-${row.key}`}
-          items={items}
-          selectedId={head?.teacher_id ?? ""}
-          onSelect={(teacher_id) => teacher_id && onAssign(teacher_id)}
-          onSearch={onSearch}
-          getId={(t) => t.id}
-          itemToString={(t) => `${displayName(t)} - ${t.employee_number}`}
-          placeholder="Search teachers…"
-        />
-      </div>
-      {/* Vacating a post is only possible by removing the appointment. */}
-      <Button type="text" danger size="small" onClick={() => head && onRemoveClick(head)} disabled={!head || removeDisabled}>Remove</Button>
-    </div>
   );
 }

@@ -93,35 +93,10 @@ type generationTask struct {
 type generationService struct{ store generationStore }
 
 func (s *generationService) generate(ctx context.Context, request GenerationRequest, actor uuid.UUID) (GenerationResult, error) {
-	classes, err := s.store.classesByGradeSection(ctx, request.GradeSectionID, request.AcademicYearID)
-	if err != nil {
-		return GenerationResult{}, err
-	}
-	result := GenerationResult{Classes: make([]ClassGenerationResult, 0, len(classes))}
-	generating := make([]generationClass, 0, len(classes))
-	indexes := make(map[uuid.UUID]int, len(classes))
-	for _, class := range classes {
-		idx := len(result.Classes)
-		indexes[class.ID] = idx
-		result.Classes = append(result.Classes, ClassGenerationResult{ClassID: class.ID, ClassName: class.Name, Gaps: []GenerationGap{}})
-		latest, err := s.store.latestTimetablesByClass(ctx, class.ID, request.AcademicYearID)
-		if err != nil {
-			return GenerationResult{}, err
-		}
-		if len(latest) > 0 && latest[0].Status != statusDraft {
-			result.Classes[idx].Skipped = true
-			result.Classes[idx].SkipReason = fmt.Sprintf("already has a %s timetable — delete or revise it manually first", latest[0].Status)
-			continue
-		}
-		if len(latest) > 0 {
-			if _, err := s.store.deleteDraft(ctx, latest[0].ID); err != nil {
-				return GenerationResult{}, err
-			}
-		}
-		generating = append(generating, class)
-	}
-	if len(generating) == 0 {
-		return result, nil
+	run := &generationRun{generationService: s, ctx: ctx, request: request, indexes: map[uuid.UUID]int{}}
+	generating, err := run.selectClasses()
+	if err != nil || len(generating) == 0 {
+		return run.result, err
 	}
 	periods, err := s.store.periods(ctx, request.GradeSectionID)
 	if err != nil {
@@ -130,49 +105,12 @@ func (s *generationService) generate(ctx context.Context, request GenerationRequ
 	slots, doubles := generationSlots(periods)
 	if len(slots) == 0 {
 		for _, class := range generating {
-			result.Classes[indexes[class.ID]].Gaps = append(result.Classes[indexes[class.ID]].Gaps, GenerationGap{Reason: "this grade section has no period grid configured yet"})
+			run.gap(class.ID, GenerationGap{Reason: "this grade section has no period grid configured yet"})
 		}
-		return result, nil
+		return run.result, nil
 	}
-	busy, err := s.store.allBookings(ctx, request.AcademicYearID)
-	if err != nil {
+	if err := run.loadGrid(slots, doubles); err != nil {
 		return GenerationResult{}, err
-	}
-	teacherBusy, classroomBusy := map[uuid.UUID]map[generationSlot]bool{}, map[uuid.UUID]map[generationSlot]bool{}
-	teacherUnavailable := map[uuid.UUID]map[generationSlot]bool{}
-	for _, b := range busy {
-		sl := generationSlot{b.Day, b.Period}
-		if b.TeacherID != nil {
-			markGenerationBusy(teacherBusy, *b.TeacherID, sl)
-		}
-		if b.ClassroomID != nil {
-			markGenerationBusy(classroomBusy, *b.ClassroomID, sl)
-		}
-	}
-	classBusy := map[uuid.UUID]map[generationSlot]bool{}
-	usedDays := map[uuid.UUID]map[uuid.UUID]map[int16]bool{}
-	placements := map[uuid.UUID][]struct {
-		task      generationTask
-		slots     []generationSlot
-		classroom *uuid.UUID
-	}{}
-	required := map[uuid.UUID]int{}
-	gap := func(classID uuid.UUID, g GenerationGap) {
-		result.Classes[indexes[classID]].Gaps = append(result.Classes[indexes[classID]].Gaps, g)
-	}
-	loadUnavailable := func(teacherID uuid.UUID) error {
-		if _, loaded := teacherUnavailable[teacherID]; loaded {
-			return nil
-		}
-		blocked, err := s.store.availability(ctx, teacherID, request.AcademicYearID)
-		if err != nil {
-			return fmt.Errorf("failed to load teacher availability: %w", err)
-		}
-		teacherUnavailable[teacherID] = map[generationSlot]bool{}
-		for _, slot := range blocked {
-			teacherUnavailable[teacherID][generationSlot(slot)] = true
-		}
-		return nil
 	}
 	teachersByClass := map[uuid.UUID][]generationTeacherSubject{}
 	for _, class := range generating {
@@ -182,192 +120,307 @@ func (s *generationService) generate(ctx context.Context, request GenerationRequ
 		}
 		teachersByClass[class.ID] = teachers
 	}
-	grid := generationGrid{slots: slots, teacherBusy: teacherBusy, teacherUnavailable: teacherUnavailable, classroomBusy: classroomBusy, classBusy: classBusy}
 	// Option blocks go first: they need the same free period in several classes at once.
 	blockPlacements := map[uuid.UUID][]blockPlacement{}
-	covered, err := s.placeOptionBlocks(ctx, generating, teachersByClass, grid, loadUnavailable, blockPlacements, required, gap)
+	covered, err := s.placeOptionBlocks(ctx, generating, teachersByClass, run.grid, run.loadUnavailable, blockPlacements, run.required, run.gap)
 	if err != nil {
 		return GenerationResult{}, err
 	}
-	var unplaced []generationTask
 	for _, class := range generating {
-		teacherBySubject := map[uuid.UUID]generationTeacherSubject{}
-		for _, teacher := range teachersByClass[class.ID] {
-			teacherBySubject[teacher.SubjectID] = teacher
-		}
-		reqs, err := s.store.requirementsForGrade(ctx, request.AcademicYearID, class.GradeID)
-		if err != nil {
+		if err := run.placeClassLessons(class, teachersByClass[class.ID], covered[class.ID]); err != nil {
 			return GenerationResult{}, err
-		}
-		for _, req := range reqs {
-			if covered[class.ID][req.SubjectID] {
-				continue
-			}
-			teacher, ok := teacherBySubject[req.SubjectID]
-			if !ok && class.FormTeacherID != nil {
-				teacher = generationTeacherSubject{SubjectID: req.SubjectID, TeacherID: *class.FormTeacherID}
-				teacher.TeacherName, _ = s.store.teacherName(ctx, teacher.TeacherID)
-				ok = true
-			}
-			if !ok {
-				gap(class.ID, GenerationGap{SubjectName: req.SubjectName, Reason: "no teacher assigned for this subject"})
-				continue
-			}
-			if err := loadUnavailable(teacher.TeacherID); err != nil {
-				return GenerationResult{}, err
-			}
-			for block := int32(0); block < req.DoubleBlocks; block++ {
-				task := generationTask{ClassID: class.ID, SubjectID: req.SubjectID, SubjectName: req.SubjectName, TeacherID: teacher.TeacherID, TeacherName: teacher.TeacherName, Lab: block*2 < req.LabPeriods, Double: true, HomeClassroomID: class.HomeClassroomID}
-				required[class.ID] += 2
-				placed, err := s.placeTask(ctx, task, slots, doubles, teacherBusy, teacherUnavailable, classroomBusy, classBusy, usedDays, &placements)
-				if err != nil {
-					return GenerationResult{}, err
-				}
-				if !placed {
-					unplaced = append(unplaced, task)
-				}
-			}
-			for n := req.DoubleBlocks * 2; n < req.Periods; n++ {
-				task := generationTask{ClassID: class.ID, SubjectID: req.SubjectID, SubjectName: req.SubjectName, TeacherID: teacher.TeacherID, TeacherName: teacher.TeacherName, Lab: n < req.LabPeriods, HomeClassroomID: class.HomeClassroomID}
-				required[class.ID]++
-				placed, err := s.placeTask(ctx, task, slots, doubles, teacherBusy, teacherUnavailable, classroomBusy, classBusy, usedDays, &placements)
-				if err != nil {
-					return GenerationResult{}, err
-				}
-				if !placed {
-					unplaced = append(unplaced, task)
-				}
-			}
 		}
 	}
 	// Repair pass: a lesson that found no period may still fit by moving one of the teacher's other lessons.
-	for _, task := range unplaced {
-		fixed, err := s.repair(ctx, task, grid, placements)
+	for _, task := range run.unplaced {
+		fixed, err := s.repair(ctx, task, run.grid, run.placements)
 		if err != nil {
 			return GenerationResult{}, err
 		}
 		if !fixed {
-			gap(task.ClassID, unplacedGap(task))
+			run.gap(task.ClassID, unplacedGap(task))
 		}
 	}
 	for _, class := range generating {
-		idx := indexes[class.ID]
-		result.Classes[idx].Required = required[class.ID]
-		for _, placement := range placements[class.ID] {
-			result.Classes[idx].Placed += len(placement.slots)
-		}
-		result.Classes[idx].Placed += len(blockPlacements[class.ID])
-		if result.Classes[idx].Placed == 0 {
-			continue
-		}
-		draft, err := s.store.create(ctx, request.AcademicYearID, class.ID, actor, nil)
-		if err != nil {
+		if err := run.save(class, actor, blockPlacements[class.ID]); err != nil {
 			return GenerationResult{}, err
 		}
-		result.Classes[idx].TimetableID = &draft.ID
-		for _, placement := range placements[class.ID] {
-			for _, slot := range placement.slots {
-				if err := s.store.upsertGeneratedEntry(ctx, draft.ID, slot.Day, slot.Period, placement.task.SubjectID, placement.task.TeacherID, placement.classroom); err != nil {
-					return GenerationResult{}, err
-				}
+	}
+	return run.result, nil
+}
+
+// generationRun is the state of one generate call: the result so far and the shared busy grid.
+type generationRun struct {
+	*generationService
+	ctx     context.Context
+	request GenerationRequest
+	result  GenerationResult
+	indexes map[uuid.UUID]int
+
+	grid       generationGrid
+	doubles    [][2]generationSlot
+	usedDays   map[uuid.UUID]map[uuid.UUID]map[int16]bool // class -> subject -> days used
+	placements map[uuid.UUID][]generationPlacement
+	required   map[uuid.UUID]int
+	unplaced   []generationTask
+}
+
+func (r *generationRun) gap(classID uuid.UUID, g GenerationGap) {
+	idx := r.indexes[classID]
+	r.result.Classes[idx].Gaps = append(r.result.Classes[idx].Gaps, g)
+}
+
+// selectClasses skips classes whose latest timetable is past draft and deletes old drafts of the rest.
+func (r *generationRun) selectClasses() ([]generationClass, error) {
+	classes, err := r.store.classesByGradeSection(r.ctx, r.request.GradeSectionID, r.request.AcademicYearID)
+	if err != nil {
+		return nil, err
+	}
+	r.result = GenerationResult{Classes: make([]ClassGenerationResult, 0, len(classes))}
+	generating := make([]generationClass, 0, len(classes))
+	for _, class := range classes {
+		idx := len(r.result.Classes)
+		r.indexes[class.ID] = idx
+		r.result.Classes = append(r.result.Classes, ClassGenerationResult{ClassID: class.ID, ClassName: class.Name, Gaps: []GenerationGap{}})
+		latest, err := r.store.latestTimetablesByClass(r.ctx, class.ID, r.request.AcademicYearID)
+		if err != nil {
+			return nil, err
+		}
+		if len(latest) > 0 && latest[0].Status != statusDraft {
+			r.result.Classes[idx].Skipped = true
+			r.result.Classes[idx].SkipReason = fmt.Sprintf("already has a %s timetable — delete or revise it manually first", latest[0].Status)
+			continue
+		}
+		if len(latest) > 0 {
+			if _, err := r.store.deleteDraft(r.ctx, latest[0].ID); err != nil {
+				return nil, err
 			}
 		}
-		for _, bp := range blockPlacements[class.ID] {
-			if err := s.store.upsertBlockEntry(ctx, draft.ID, bp.Slot.Day, bp.Slot.Period, bp.BlockID); err != nil {
-				return GenerationResult{}, err
+		generating = append(generating, class)
+	}
+	return generating, nil
+}
+
+// loadGrid marks every period already booked in this year by other timetables.
+func (r *generationRun) loadGrid(slots []generationSlot, doubles [][2]generationSlot) error {
+	busy, err := r.store.allBookings(r.ctx, r.request.AcademicYearID)
+	if err != nil {
+		return err
+	}
+	r.grid = generationGrid{slots: slots, teacherBusy: map[uuid.UUID]map[generationSlot]bool{}, teacherUnavailable: map[uuid.UUID]map[generationSlot]bool{},
+		classroomBusy: map[uuid.UUID]map[generationSlot]bool{}, classBusy: map[uuid.UUID]map[generationSlot]bool{}}
+	for _, b := range busy {
+		sl := generationSlot{b.Day, b.Period}
+		if b.TeacherID != nil {
+			markGenerationBusy(r.grid.teacherBusy, *b.TeacherID, sl)
+		}
+		if b.ClassroomID != nil {
+			markGenerationBusy(r.grid.classroomBusy, *b.ClassroomID, sl)
+		}
+	}
+	r.doubles = doubles
+	r.usedDays = map[uuid.UUID]map[uuid.UUID]map[int16]bool{}
+	r.placements = map[uuid.UUID][]generationPlacement{}
+	r.required = map[uuid.UUID]int{}
+	return nil
+}
+
+func (r *generationRun) loadUnavailable(teacherID uuid.UUID) error {
+	if _, loaded := r.grid.teacherUnavailable[teacherID]; loaded {
+		return nil
+	}
+	blocked, err := r.store.availability(r.ctx, teacherID, r.request.AcademicYearID)
+	if err != nil {
+		return fmt.Errorf("failed to load teacher availability: %w", err)
+	}
+	r.grid.teacherUnavailable[teacherID] = map[generationSlot]bool{}
+	for _, slot := range blocked {
+		r.grid.teacherUnavailable[teacherID][generationSlot(slot)] = true
+	}
+	return nil
+}
+
+// placeClassLessons places every required lesson not covered by an option block; the form teacher fills in for a subject with no teacher.
+func (r *generationRun) placeClassLessons(class generationClass, teachers []generationTeacherSubject, covered map[uuid.UUID]bool) error {
+	teacherBySubject := map[uuid.UUID]generationTeacherSubject{}
+	for _, teacher := range teachers {
+		teacherBySubject[teacher.SubjectID] = teacher
+	}
+	reqs, err := r.store.requirementsForGrade(r.ctx, r.request.AcademicYearID, class.GradeID)
+	if err != nil {
+		return err
+	}
+	for _, req := range reqs {
+		if covered[req.SubjectID] {
+			continue
+		}
+		teacher, ok := teacherBySubject[req.SubjectID]
+		if !ok && class.FormTeacherID != nil {
+			teacher = generationTeacherSubject{SubjectID: req.SubjectID, TeacherID: *class.FormTeacherID}
+			teacher.TeacherName, _ = r.store.teacherName(r.ctx, teacher.TeacherID)
+			ok = true
+		}
+		if !ok {
+			r.gap(class.ID, GenerationGap{SubjectName: req.SubjectName, Reason: "no teacher assigned for this subject"})
+			continue
+		}
+		if err := r.loadUnavailable(teacher.TeacherID); err != nil {
+			return err
+		}
+		if err := r.placeRequirement(class, req, teacher); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// placeRequirement places the subject's doubles first, then its single periods; lab periods are used up first.
+func (r *generationRun) placeRequirement(class generationClass, req generationRequirement, teacher generationTeacherSubject) error {
+	base := generationTask{ClassID: class.ID, SubjectID: req.SubjectID, SubjectName: req.SubjectName, TeacherID: teacher.TeacherID, TeacherName: teacher.TeacherName, HomeClassroomID: class.HomeClassroomID}
+	for block := int32(0); block < req.DoubleBlocks; block++ {
+		task := base
+		task.Lab, task.Double = block*2 < req.LabPeriods, true
+		r.required[class.ID] += 2
+		if err := r.place(task); err != nil {
+			return err
+		}
+	}
+	for n := req.DoubleBlocks * 2; n < req.Periods; n++ {
+		task := base
+		task.Lab = n < req.LabPeriods
+		r.required[class.ID]++
+		if err := r.place(task); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *generationRun) place(task generationTask) error {
+	placed, err := r.placeTask(task)
+	if err != nil {
+		return err
+	}
+	if !placed {
+		r.unplaced = append(r.unplaced, task)
+	}
+	return nil
+}
+
+// save writes a draft timetable for the class when anything was placed.
+func (r *generationRun) save(class generationClass, actor uuid.UUID, blocks []blockPlacement) error {
+	res := &r.result.Classes[r.indexes[class.ID]]
+	res.Required = r.required[class.ID]
+	for _, placement := range r.placements[class.ID] {
+		res.Placed += len(placement.slots)
+	}
+	res.Placed += len(blocks)
+	if res.Placed == 0 {
+		return nil
+	}
+	draft, err := r.store.create(r.ctx, r.request.AcademicYearID, class.ID, actor, nil)
+	if err != nil {
+		return err
+	}
+	res.TimetableID = &draft.ID
+	for _, placement := range r.placements[class.ID] {
+		for _, slot := range placement.slots {
+			if err := r.store.upsertGeneratedEntry(r.ctx, draft.ID, slot.Day, slot.Period, placement.task.SubjectID, placement.task.TeacherID, placement.classroom); err != nil {
+				return err
 			}
 		}
 	}
-	return result, nil
+	for _, bp := range blocks {
+		if err := r.store.upsertBlockEntry(r.ctx, draft.ID, bp.Slot.Day, bp.Slot.Period, bp.BlockID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (s *generationService) placeTask(ctx context.Context, task generationTask, slots []generationSlot, doubles [][2]generationSlot, teacherBusy, teacherUnavailable, classroomBusy, classBusy map[uuid.UUID]map[generationSlot]bool, usedDays map[uuid.UUID]map[uuid.UUID]map[int16]bool, placements *map[uuid.UUID][]struct {
-	task      generationTask
-	slots     []generationSlot
-	classroom *uuid.UUID
-}) (bool, error) {
+// placeTask puts a lesson, or a double, at the first free period in a stable shuffled order,
+// preferring a day the subject is not yet taught.
+func (r *generationRun) placeTask(task generationTask) (bool, error) {
 	var labs []Classroom
-	var err error
 	if task.Lab {
-		labs, err = s.store.labsForSubject(ctx, task.SubjectID)
-		if err != nil {
+		var err error
+		if labs, err = r.store.labsForSubject(r.ctx, task.SubjectID); err != nil {
 			return false, err
 		}
 	}
-	if usedDays[task.ClassID] == nil {
-		usedDays[task.ClassID] = map[uuid.UUID]map[int16]bool{}
+	if r.usedDays[task.ClassID] == nil {
+		r.usedDays[task.ClassID] = map[uuid.UUID]map[int16]bool{}
 	}
-	if usedDays[task.ClassID][task.SubjectID] == nil {
-		usedDays[task.ClassID][task.SubjectID] = map[int16]bool{}
+	if r.usedDays[task.ClassID][task.SubjectID] == nil {
+		r.usedDays[task.ClassID][task.SubjectID] = map[int16]bool{}
 	}
-	okSlot := func(slot generationSlot) (*uuid.UUID, bool) {
-		if classBusy[task.ClassID][slot] || teacherBusy[task.TeacherID][slot] || teacherUnavailable[task.TeacherID][slot] {
-			return nil, false
-		}
-		if task.Lab {
-			for _, lab := range labs {
-				if !classroomBusy[lab.ID][slot] {
-					id := lab.ID
-					return &id, true
-				}
-			}
-			return nil, false
-		}
-		if task.HomeClassroomID != nil && classroomBusy[*task.HomeClassroomID][slot] {
-			return nil, false
-		}
-		return task.HomeClassroomID, true
-	}
-	try := func(pair []generationSlot) bool {
-		classroom, ok := okSlot(pair[0])
-		if !ok {
-			return false
-		}
-		if len(pair) == 2 {
-			next, ok := okSlot(pair[1])
-			if !ok || (classroom != nil && (next == nil || *classroom != *next)) {
-				return false
-			}
-		}
-		for _, slot := range pair {
-			markGenerationBusy(classBusy, task.ClassID, slot)
-			markGenerationBusy(teacherBusy, task.TeacherID, slot)
-			if classroom != nil {
-				markGenerationBusy(classroomBusy, *classroom, slot)
-			}
-		}
-		usedDays[task.ClassID][task.SubjectID][pair[0].Day] = true
-		(*placements)[task.ClassID] = append((*placements)[task.ClassID], struct {
-			task      generationTask
-			slots     []generationSlot
-			classroom *uuid.UUID
-		}{task, pair, classroom})
-		return true
-	}
+	used := r.usedDays[task.ClassID][task.SubjectID]
+	var candidates [][]generationSlot
 	if task.Double {
-		for _, pair := range shuffledGenerationDoubles(doubles, task.ClassID, task.SubjectID) {
-			if !usedDays[task.ClassID][task.SubjectID][pair[0].Day] && try([]generationSlot{pair[0], pair[1]}) {
-				return true, nil
-			}
-		}
-		for _, pair := range shuffledGenerationDoubles(doubles, task.ClassID, task.SubjectID) {
-			if try([]generationSlot{pair[0], pair[1]}) {
-				return true, nil
-			}
+		for _, pair := range shuffledGenerationDoubles(r.doubles, task.ClassID, task.SubjectID) {
+			candidates = append(candidates, []generationSlot{pair[0], pair[1]})
 		}
 	} else {
-		for _, slot := range shuffledGenerationSlots(slots, task.ClassID, task.SubjectID) {
-			if !usedDays[task.ClassID][task.SubjectID][slot.Day] && try([]generationSlot{slot}) {
-				return true, nil
-			}
+		for _, slot := range shuffledGenerationSlots(r.grid.slots, task.ClassID, task.SubjectID) {
+			candidates = append(candidates, []generationSlot{slot})
 		}
-		for _, slot := range shuffledGenerationSlots(slots, task.ClassID, task.SubjectID) {
-			if try([]generationSlot{slot}) {
+	}
+	for _, freshDay := range []bool{true, false} {
+		for _, slots := range candidates {
+			if freshDay && used[slots[0].Day] {
+				continue
+			}
+			if r.tryPlace(task, labs, slots) {
 				return true, nil
 			}
 		}
 	}
 	return false, nil
+}
+
+// freeRoom reports whether the class and teacher are free at the slot, and which room the lesson would use.
+func (r *generationRun) freeRoom(task generationTask, labs []Classroom, slot generationSlot) (*uuid.UUID, bool) {
+	g := r.grid
+	if g.classBusy[task.ClassID][slot] || g.teacherBusy[task.TeacherID][slot] || g.teacherUnavailable[task.TeacherID][slot] {
+		return nil, false
+	}
+	if task.Lab {
+		for _, lab := range labs {
+			if !g.classroomBusy[lab.ID][slot] {
+				id := lab.ID
+				return &id, true
+			}
+		}
+		return nil, false
+	}
+	if task.HomeClassroomID != nil && g.classroomBusy[*task.HomeClassroomID][slot] {
+		return nil, false
+	}
+	return task.HomeClassroomID, true
+}
+
+// tryPlace books the slots when all are free in the same room.
+func (r *generationRun) tryPlace(task generationTask, labs []Classroom, slots []generationSlot) bool {
+	classroom, ok := r.freeRoom(task, labs, slots[0])
+	if !ok {
+		return false
+	}
+	if len(slots) == 2 {
+		next, ok := r.freeRoom(task, labs, slots[1])
+		if !ok || (classroom != nil && (next == nil || *classroom != *next)) {
+			return false
+		}
+	}
+	for _, slot := range slots {
+		markGenerationBusy(r.grid.classBusy, task.ClassID, slot)
+		markGenerationBusy(r.grid.teacherBusy, task.TeacherID, slot)
+		if classroom != nil {
+			markGenerationBusy(r.grid.classroomBusy, *classroom, slot)
+		}
+	}
+	r.usedDays[task.ClassID][task.SubjectID][slots[0].Day] = true
+	r.placements[task.ClassID] = append(r.placements[task.ClassID], generationPlacement{task: task, slots: slots, classroom: classroom})
+	return true
 }
 
 func generationSlots(periods []generationPeriod) ([]generationSlot, [][2]generationSlot) {

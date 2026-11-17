@@ -14,7 +14,7 @@ For anything beyond a quick fix, read further before making changes:
 - [`docs/FEATURES.md`](docs/FEATURES.md) - current feature list by module
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - overview; detail in [`docs/architecture/`](docs/architecture/) (backend, frontend, data model, jobs, interfaces, security)
 - [`docs/setup/`](docs/setup/) - [server setup](docs/setup/server.md) and [school setup](docs/setup/school.md)
-- [`docs/development/`](docs/development/) - open review findings (`issue.md`) and the code health plan
+- [`docs/development/`](docs/development/) - the code health plan
 - [`docs/adr/`](docs/adr/) - *why* behind non-obvious decisions (e.g. why positions aren't ThunderID roles, why the current-academic-year invariant exists) - check here before "fixing" something that looks wrong but is deliberate
 
 ## Backend

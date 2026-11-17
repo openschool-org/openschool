@@ -1,23 +1,22 @@
 import { useMemo, useState } from "react";
-import { Alert, Button, Segmented } from "antd";
+import { Button, Segmented } from "antd";
 import FilterBar from "@/shared/ui/FilterBar";
-import { gradeBand } from "@/shared/lib/gradeBand";
 import { PlusOutlined } from "@ant-design/icons";
 import type { Grade } from "@/features/academics/api/grade";
 import type { ClassWithDetails } from "@/features/academics/api/class";
 import { useGradesPage } from "@/features/academics/hooks/useGradesPage";
-import GradeGroup, { GradeGroupSkeleton } from "@/features/academics/components/GradeGroup";
+import GradesBody from "@/features/academics/components/GradesBody";
+import { filterGrades } from "@/features/academics/lib/gradeFilter";
+import { useEditClass } from "@/features/academics/hooks/useEditClass";
 import GradeFormModal from "@/features/academics/components/GradeFormModal";
 import ClassFormModal from "@/features/academics/components/ClassFormModal";
 import EditClassModal from "@/features/academics/components/EditClassModal";
-import { useUpdateClass } from "@/features/academics/queries/useClasses";
 import { useMediums } from "@/features/curriculum/queries/useCurriculum";
 import { useClassrooms } from "@/features/timetable/queries/useClassrooms";
-import ErrorMessage from "@/shared/ui/ErrorMessage";
-import EmptyState from "@/shared/ui/EmptyState";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import AgentFindingsBanner from "@/features/notifications/components/AgentFindingsBanner";
+import PageHeader from "@/shared/ui/PageHeader";
 export default function Classes() {
   const page = useGradesPage();
   const { orderedGrades, classesByGrade, mutations, form } = page;
@@ -25,70 +24,31 @@ export default function Classes() {
   const [gradeToDelete, setGradeToDelete] = useState<Grade | null>(null);
   const [classToDelete, setClassToDelete] = useState<ClassWithDetails | null>(null);
   const [classModalGradeId, setClassModalGradeId] = useState<string | null>(null);
-  const [classToEdit, setClassToEdit] = useState<ClassWithDetails | null>(null);
-  const [nameEdit, setNameEdit] = useState("");
-  const [mediumEdit, setMediumEdit] = useState("");
-  const [homeClassroomEdit, setHomeClassroomEdit] = useState("");
-  const updateClass = useUpdateClass(classToEdit?.id ?? "");
+  const edit = useEditClass();
   const { data: mediums } = useMediums();
   const { data: classrooms } = useClassrooms();
 
-  // Search matches a class name or its form teacher; the section filter keeps one school section.
   const [query, setQuery] = useState("");
   const [section, setSection] = useState("all");
-  const q = query.trim().toLowerCase();
   const visible = useMemo(
-    () =>
-      orderedGrades
-        .map((g, i) => {
-          const all = classesByGrade.get(g.id) ?? [];
-          const matches = q ? all.filter((c) => c.name.toLowerCase().includes(q) || (page.teacherName(c.form_teacher_id) ?? "").toLowerCase().includes(q)) : all;
-          return { grade: g, index: i, classes: matches, nameMatch: !!q && g.name.toLowerCase().includes(q) };
-        })
-        .filter((row) => (section === "all" || gradeBand(row.grade.name) === section) && (!q || row.nameMatch || row.classes.length > 0))
-        .map((row) => (row.nameMatch && row.classes.length === 0 ? { ...row, classes: classesByGrade.get(row.grade.id) ?? [] } : row)),
-    [orderedGrades, classesByGrade, q, section, page],
+    () => filterGrades(orderedGrades, classesByGrade, query, section, page.teacherName),
+    [orderedGrades, classesByGrade, query, section, page],
   );
-  const filtering = !!q || section !== "all";
-
-  const busy = reorder.isPending;
-  const isLoading = page.grades.isLoading || page.classes.isLoading;
-  const isError = page.grades.isError || page.classes.isError;
-  const isEdit = form.gradeModal === "edit";
-  const saving = isEdit ? updateGrade : createGrade;
-  const openEditClass = (cls: ClassWithDetails) => {
-    updateClass.reset();
-    setClassToEdit(cls);
-    setNameEdit(cls.name);
-    setMediumEdit(cls.medium_id ?? "");
-    setHomeClassroomEdit(cls.home_classroom_id ?? "");
-  };
-  const closeEditClass = () => setClassToEdit(null);
-  const saveClass = () => {
-    const name = nameEdit.trim();
-    if (!name || !classToEdit) return;
-    updateClass.mutate(
-      { name, form_teacher_id: classToEdit.form_teacher_id, medium_id: mediumEdit || null, home_classroom_id: homeClassroomEdit || null },
-      { onSuccess: closeEditClass },
-    );
-  };
+  const ready = !page.grades.isLoading && !page.classes.isLoading && !page.grades.isError && !page.classes.isError;
+  const saving = form.gradeModal === "edit" ? updateGrade : createGrade;
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Grades &amp; classes</h1>
-          <p className="os-page__subtitle">Grades and their classes for the current academic year.</p>
-        </div>
+      <PageHeader title="Grades &amp; classes" subtitle="Grades and their classes for the current academic year.">
         <div className="os-flex os-gap-3">
           <Button icon={<PlusOutlined />} onClick={page.openCreateGrade}>Add grade</Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setClassModalGradeId("")}>Add class</Button>
         </div>
-      </div>
+      </PageHeader>
 
       <AgentFindingsBanner />
 
-      {!isLoading && !isError && orderedGrades.length > 0 && (
+      {ready && orderedGrades.length > 0 && (
         <div className="os-grades-filter">
           <FilterBar
             search={{ value: query, onChange: setQuery, placeholder: "Search classes or form teachers…" }}
@@ -122,72 +82,15 @@ export default function Classes() {
           </div>
         )}
 
-        {isError && (
-          <div>
-            <ErrorMessage message="Could not load grades and classes." onRetry={() => { page.grades.refetch(); page.classes.refetch(); }} />
-          </div>
-        )}
-
-        {!isLoading && !isError && page.needsRenumber && orderedGrades.length > 0 && (
-          <div className="os-stack os-mb-4">
-            <Alert
-              type="warning"
-              showIcon
-              title={page.duplicateCount > 0 ? `${page.duplicateCount} grades share the same position` : "Positions have gaps"}
-              description="Renumber them in the order shown below."
-              action={
-                <Button size="small" loading={busy} onClick={() => reorder.mutate(orderedGrades)}>
-                  {busy ? "Fixing…" : "Fix ordering"}
-                </Button>
-              }
-            />
-          </div>
-        )}
-
-        {isLoading && (
-          <div className="os-flex os-col os-gap-4">
-            {Array.from({ length: 4 }).map((_, i) => <GradeGroupSkeleton key={i} />)}
-          </div>
-        )}
-
-        {!isLoading && !isError && orderedGrades.length === 0 && (
-          <EmptyState
-            title="No grades yet"
-            description="Add the grades this school runs, then create classes under each one."
-            action={<Button type="primary" icon={<PlusOutlined />} onClick={page.openCreateGrade}>Add grade</Button>}
-          />
-        )}
-
-        {!isLoading && orderedGrades.length > 0 && visible.length === 0 && filtering && (
-          <div className="os-section"><EmptyState title="No matching classes" description="Try another name or form teacher, or a different section." /></div>
-        )}
-
-        {!isLoading && visible.length > 0 && (
-          <div className={`os-flex os-col os-gap-4${busy ? " os-opacity-60" : ""}`}>
-              {visible.map(({ grade: g, index: i, classes: shown }) => (
-                <GradeGroup
-                  key={g.id}
-                  grade={g}
-                  index={i}
-                  isLast={i === orderedGrades.length - 1}
-                  from={page.range.from}
-                  to={page.range.to}
-                  busy={busy}
-                  classes={shown}
-                  onMoveUp={() => page.move(i, -1)}
-                  onMoveDown={() => page.move(i, 1)}
-                  onEditGrade={() => page.openEditGrade(g)}
-                  onDeleteGrade={() => setGradeToDelete(g)}
-                  onDeleteClass={setClassToDelete}
-                  onAddClass={setClassModalGradeId}
-                  onEditClass={openEditClass}
-                  streamName={page.streamName}
-                  streamGroupName={page.streamGroupName}
-                  teacherName={page.teacherName}
-                />
-              ))}
-          </div>
-        )}
+        <GradesBody
+          page={page}
+          visible={visible}
+          filtering={!!query.trim() || section !== "all"}
+          onDeleteGrade={setGradeToDelete}
+          onDeleteClass={setClassToDelete}
+          onAddClass={setClassModalGradeId}
+          onEditClass={edit.open}
+        />
 
       {form.gradeModal && (
         <GradeFormModal
@@ -207,18 +110,18 @@ export default function Classes() {
       {classModalGradeId !== null && <ClassFormModal key={classModalGradeId} open gradeId={classModalGradeId} onClose={() => setClassModalGradeId(null)} />}
 
       <EditClassModal
-        open={!!classToEdit}
-        nameEdit={nameEdit}
-        onNameEditChange={setNameEdit}
-        mediumEdit={mediumEdit}
-        onMediumEditChange={setMediumEdit}
+        open={!!edit.editing}
+        nameEdit={edit.name}
+        onNameEditChange={edit.setName}
+        mediumEdit={edit.medium}
+        onMediumEditChange={edit.setMedium}
         mediums={mediums}
-        homeClassroomEdit={homeClassroomEdit}
-        onHomeClassroomEditChange={setHomeClassroomEdit}
+        homeClassroomEdit={edit.homeClassroom}
+        onHomeClassroomEditChange={edit.setHomeClassroom}
         classrooms={classrooms}
-        updateClass={updateClass}
-        onClose={closeEditClass}
-        onSave={saveClass}
+        updateClass={edit.updateClass}
+        onClose={edit.close}
+        onSave={edit.save}
       />
 
       <ConfirmDeleteModal

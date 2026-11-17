@@ -23,6 +23,7 @@ import { ruleKey } from "@/features/notifications/constants";
 import RecipientPicker from "@/features/notifications/components/RecipientPicker";
 import NotificationHistory from "@/features/notifications/components/NotificationHistory";
 import DraftRow from "@/features/notifications/components/DraftRow";
+import PageHeader from "@/shared/ui/PageHeader";
 
 export default function NotificationComposer() {
   const [composeOpen, setComposeOpen] = useState(false);
@@ -86,20 +87,11 @@ export default function NotificationComposer() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Notifications</h1>
-          <p className="os-page__subtitle">
-            Send announcements to grades, classes, subjects or people.
-            {role === "teacher" && myPosition && myPosition.rank_label !== "Teacher" && (
-              <> Sending as <strong>{myPosition.rank_label}</strong>{canBroadcastEveryone ? ", whole school." : "."}</>
-            )}
-          </p>
-        </div>
+      <PageHeader title="Notifications" subtitle={<>Send announcements to grades, classes, subjects or people. {role === "teacher" && myPosition && myPosition.rank_label !== "Teacher" && ( <> Sending as <strong>{myPosition.rank_label}</strong>{canBroadcastEveryone ? ", whole school." : "."}</> )}</>}>
         <Button type="primary" icon={<SendOutlined />} onClick={openComposer}>
           Notify
         </Button>
-      </div>
+      </PageHeader>
 
       {create.isSuccess && (
         <Alert type="success" showIcon closable onClose={() => create.reset()} className="os-mb-6" title="Done" description="Notification saved." />

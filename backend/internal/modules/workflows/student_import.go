@@ -95,10 +95,8 @@ func (w StudentImport) Propose(ctx context.Context, s *Store, in Inputs, trace *
 	if year == nil {
 		return Proposal{}, "", fmt.Errorf("%w: set a current academic year first", ErrInvalidProposal)
 	}
-	var rows []Row
-	var classOptions []Option
+	sheet := importSheet{year: year, byKey: map[string][]YearClass{}, seenIndex: map[string]int{}, seenNIC: map[string]string{}, placed: map[uuid.UUID]int{}, guardians: newGuardianChecker()}
 	var warnings []string
-	var toImport, withErrors, noClass, reused, siblings, notedRows int
 	if err := trace.Run(stepByKey(w, "read_csv"), func() (string, error) {
 		records, err := parseStudentCSV(in["csv"], importColumns)
 		if err != nil {
@@ -108,166 +106,198 @@ func (w StudentImport) Propose(ctx context.Context, s *Store, in Inputs, trace *
 		if err != nil {
 			return "", err
 		}
-		byKey := map[string][]YearClass{}
-		for _, c := range classes {
-			classOptions = append(classOptions, Option{Value: c.ID.String(), Label: classLabel(c)})
-			byKey[classKey(c.Name)] = append(byKey[classKey(c.Name)], c)
-			if k := classKey(c.GradeName + c.Name); k != classKey(c.Name) {
-				byKey[k] = append(byKey[k], c)
-			}
-		}
-		schoolType, err := s.schoolType(ctx)
-		if err != nil {
+		sheet.indexClasses(classes)
+		if sheet.schoolType, err = s.schoolType(ctx); err != nil {
 			return "", err
 		}
-		var numbers, nics []string
-		for _, r := range records {
-			numbers = append(numbers, r.fields["index_number"])
-			nics = append(nics, strings.ToUpper(r.fields["guardian_nic"]))
-		}
-		taken, err := s.existingIndexNumbers(ctx, numbers)
-		if err != nil {
+		if sheet.taken, sheet.known, err = existingForRecords(ctx, s, records); err != nil {
 			return "", err
 		}
-		known, err := s.guardiansByNIC(ctx, nics)
-		if err != nil {
-			return "", err
-		}
-		var phones, emails []string
-		for _, r := range records {
-			if v := r.fields["guardian_phone"]; v != "" {
-				phones = append(phones, v)
-			}
-			if v := strings.ToLower(r.fields["guardian_email"]); v != "" {
-				emails = append(emails, v)
-			}
-		}
+		phones, emails := guardianContacts(records)
 		onRecord, emailOwners, err := s.existingContacts(ctx, phones, emails)
 		if err != nil {
 			return "", err
 		}
-		seenIndex := map[string]int{}
-		seenNIC := map[string]string{}
-		placed := map[uuid.UUID]int{}
-		guardians := newGuardianChecker()
-		guardians.seed(onRecord, emailOwners)
+		sheet.guardians.seed(onRecord, emailOwners)
 		for _, r := range records {
-			f := r.fields
-			nic := strings.ToUpper(f["guardian_nic"])
-			var withInitials, calling string
-			f["full_name"], withInitials, calling = names.Normalize(f["full_name"], f["name_with_initials"], f["calling_name"])
-			problem := rowProblem(f, schoolType)
-			if problem == "" && taken[f["index_number"]] {
-				problem = "Index number " + f["index_number"] + " already belongs to a student on record."
-			}
-			if line, dup := seenIndex[f["index_number"]]; problem == "" && dup {
-				problem = fmt.Sprintf("Same index number as line %d.", line)
-			}
-			seenIndex[f["index_number"]] = r.line
-
-			var guardianNotes []string
-			if problem == "" && nic != "" {
-				var onRecord *guardianSeen
-				if g, ok := known[nic]; ok {
-					onRecord = &guardianSeen{name: g.FullName, email: g.Email}
-				}
-				problem, guardianNotes = guardians.check(guardianSeen{line: r.line, nic: nic, name: f["guardian_name"], email: f["guardian_email"], phone: f["guardian_phone"]}, onRecord)
-				if len(guardianNotes) > 0 {
-					notedRows++
-				}
-			}
-
-			matches := byKey[classKey(f["class"])]
-			classID, reason := "", "New student."
-			switch {
-			case f["class"] == "":
-				reason = "No class given: choose one, then tick Import."
-			case len(matches) == 0:
-				reason = fmt.Sprintf("Class %q is not set up for %s: choose a class, then tick Import.", f["class"], year.Label)
-			case len(matches) > 1:
-				reason = fmt.Sprintf("Class %q matches more than one grade: choose the right one, then tick Import.", f["class"])
-			default:
-				classID = matches[0].ID.String()
-			}
-			switch {
-			case !hasGuardian(f):
-				reason += " No guardian given; add one from the student's page."
-			case known[nic].FullName != "":
-				reason += " Guardian " + known[nic].FullName + " is already on record, so this student is linked to them, not added again."
-				if known[nic].HasLogin {
-					reason += " They have a login, so this child appears in their parent portal."
-				}
-				if problem == "" {
-					reused++
-				}
-			case seenNIC[nic] != "":
-				reason += " Sibling of " + seenNIC[nic] + ": linked to the same guardian."
-				if problem == "" {
-					siblings++
-				}
-			}
-			if nic != "" && seenNIC[nic] == "" {
-				seenNIC[nic] = f["full_name"]
-			}
-			if len(guardianNotes) > 0 {
-				reason += " " + strings.Join(guardianNotes, " ")
-			}
-
-			importIt := problem == "" && classID != ""
-			switch {
-			case problem != "":
-				withErrors++
-			case classID == "":
-				noClass++
-			default:
-				toImport++
-				placed[matches[0].ID]++
-			}
-			rows = append(rows, Row{ID: "line:" + strconv.Itoa(r.line), Reason: strings.TrimSpace(reason), Warning: problem,
-				Cells: map[string]string{
-					"line": strconv.Itoa(r.line), "class": classID, "index": f["index_number"], "name": f["full_name"], "gender": strings.ToLower(f["gender"]),
-					"name_with_initials": withInitials, "calling_name": calling,
-					"guardian": f["guardian_name"], "guardian_nic": nic, "import": strconv.FormatBool(importIt), "error": problem,
-					"address": f["address"], "phone": f["phone"], "relationship": strings.ToLower(f["guardian_relationship"]),
-					"guardian_phone": f["guardian_phone"], "guardian_email": f["guardian_email"],
-				}})
+			sheet.add(r)
 		}
-		for _, c := range classes {
-			if n := placed[c.ID]; n > 0 && c.Capacity > 0 && int(c.Students)+n > int(c.Capacity) {
-				warnings = append(warnings, fmt.Sprintf("%s will have %d students, above its capacity of %d.", classLabel(c), int(c.Students)+n, c.Capacity))
-			}
-		}
-		return fmt.Sprintf("%d rows, %d ready, %d need a class, %d with problems", len(records), toImport, noClass, withErrors), nil
+		warnings = sheet.capacityWarnings(classes)
+		return fmt.Sprintf("%d rows, %d ready, %d need a class, %d with problems", len(records), sheet.toImport, sheet.noClass, sheet.withErrors), nil
 	}); err != nil {
 		return Proposal{}, "", err
 	}
+	return sheet.proposal(warnings), "student_import:" + year.ID.String(), nil
+}
+
+// guardianContacts lists the guardian phones and lower-cased emails given in the file.
+func guardianContacts(records []intakeRow) (phones, emails []string) {
+	for _, r := range records {
+		if v := r.fields["guardian_phone"]; v != "" {
+			phones = append(phones, v)
+		}
+		if v := strings.ToLower(r.fields["guardian_email"]); v != "" {
+			emails = append(emails, v)
+		}
+	}
+	return phones, emails
+}
+
+// importSheet checks each CSV row and builds the import proposal rows and counts.
+type importSheet struct {
+	year         *Year
+	schoolType   string
+	byKey        map[string][]YearClass
+	classOptions []Option
+	taken        map[string]bool
+	known        map[string]knownGuardian
+	seenIndex    map[string]int
+	seenNIC      map[string]string
+	placed       map[uuid.UUID]int
+	guardians    *guardianChecker
+
+	rows                                                       []Row
+	toImport, withErrors, noClass, reused, siblings, notedRows int
+}
+
+// indexClasses lets a CSV class match by name ("A") or grade and name ("6A").
+func (sh *importSheet) indexClasses(classes []YearClass) {
+	for _, c := range classes {
+		sh.classOptions = append(sh.classOptions, Option{Value: c.ID.String(), Label: classLabel(c)})
+		sh.byKey[classKey(c.Name)] = append(sh.byKey[classKey(c.Name)], c)
+		if k := classKey(c.GradeName + c.Name); k != classKey(c.Name) {
+			sh.byKey[k] = append(sh.byKey[k], c)
+		}
+	}
+}
+
+func (sh *importSheet) add(r intakeRow) {
+	f := r.fields
+	nic := strings.ToUpper(f["guardian_nic"])
+	var withInitials, calling string
+	f["full_name"], withInitials, calling = names.Normalize(f["full_name"], f["name_with_initials"], f["calling_name"])
+	problem := indexProblem(rowProblem(f, sh.schoolType), f["index_number"], r.line, sh.taken, sh.seenIndex)
+
+	var guardianNotes []string
+	if problem == "" && nic != "" {
+		var onRecord *guardianSeen
+		if g, ok := sh.known[nic]; ok {
+			onRecord = &guardianSeen{name: g.FullName, email: g.Email}
+		}
+		problem, guardianNotes = sh.guardians.check(guardianSeen{line: r.line, nic: nic, name: f["guardian_name"], email: f["guardian_email"], phone: f["guardian_phone"]}, onRecord)
+		if len(guardianNotes) > 0 {
+			sh.notedRows++
+		}
+	}
+
+	class, reason := sh.classFor(f["class"])
+	reason += sh.guardianReason(f, nic, problem)
+	if len(guardianNotes) > 0 {
+		reason += " " + strings.Join(guardianNotes, " ")
+	}
+	classID := ""
+	if class != nil {
+		classID = class.ID.String()
+	}
+
+	importIt := problem == "" && class != nil
+	switch {
+	case problem != "":
+		sh.withErrors++
+	case class == nil:
+		sh.noClass++
+	default:
+		sh.toImport++
+		sh.placed[class.ID]++
+	}
+	sh.rows = append(sh.rows, Row{ID: "line:" + strconv.Itoa(r.line), Reason: strings.TrimSpace(reason), Warning: problem,
+		Cells: map[string]string{
+			"line": strconv.Itoa(r.line), "class": classID, "index": f["index_number"], "name": f["full_name"], "gender": strings.ToLower(f["gender"]),
+			"name_with_initials": withInitials, "calling_name": calling,
+			"guardian": f["guardian_name"], "guardian_nic": nic, "import": strconv.FormatBool(importIt), "error": problem,
+			"address": f["address"], "phone": f["phone"], "relationship": strings.ToLower(f["guardian_relationship"]),
+			"guardian_phone": f["guardian_phone"], "guardian_email": f["guardian_email"],
+		}})
+}
+
+// classFor returns the one class the CSV value names, or nil and a reason to pick one by hand.
+func (sh *importSheet) classFor(value string) (*YearClass, string) {
+	matches := sh.byKey[classKey(value)]
+	switch {
+	case value == "":
+		return nil, "No class given: choose one, then tick Import."
+	case len(matches) == 0:
+		return nil, fmt.Sprintf("Class %q is not set up for %s: choose a class, then tick Import.", value, sh.year.Label)
+	case len(matches) > 1:
+		return nil, fmt.Sprintf("Class %q matches more than one grade: choose the right one, then tick Import.", value)
+	}
+	return &matches[0], "New student."
+}
+
+// guardianReason explains how the row's guardian is linked and records the NIC for later siblings.
+func (sh *importSheet) guardianReason(f map[string]string, nic, problem string) string {
+	reason := ""
+	switch {
+	case !hasGuardian(f):
+		reason = " No guardian given; add one from the student's page."
+	case sh.known[nic].FullName != "":
+		reason = " Guardian " + sh.known[nic].FullName + " is already on record, so this student is linked to them, not added again."
+		if sh.known[nic].HasLogin {
+			reason += " They have a login, so this child appears in their parent portal."
+		}
+		if problem == "" {
+			sh.reused++
+		}
+	case sh.seenNIC[nic] != "":
+		reason = " Sibling of " + sh.seenNIC[nic] + ": linked to the same guardian."
+		if problem == "" {
+			sh.siblings++
+		}
+	}
+	if nic != "" && sh.seenNIC[nic] == "" {
+		sh.seenNIC[nic] = f["full_name"]
+	}
+	return reason
+}
+
+func (sh *importSheet) capacityWarnings(classes []YearClass) []string {
+	var warnings []string
+	for _, c := range classes {
+		if n := sh.placed[c.ID]; n > 0 && c.Capacity > 0 && int(c.Students)+n > int(c.Capacity) {
+			warnings = append(warnings, fmt.Sprintf("%s will have %d students, above its capacity of %d.", classLabel(c), int(c.Students)+n, c.Capacity))
+		}
+	}
+	return warnings
+}
+
+func (sh *importSheet) proposal(warnings []string) Proposal {
 	p := Proposal{
 		Summary: []Stat{
-			{Label: "Rows read", Value: strconv.Itoa(len(rows))},
-			{Label: "Ready to import", Value: strconv.Itoa(toImport)},
-			{Label: "Need a class", Value: strconv.Itoa(noClass)},
-			{Label: "With problems", Value: strconv.Itoa(withErrors)},
-			{Label: "Guardians already on record", Value: strconv.Itoa(reused)},
-			{Label: "Siblings in this file", Value: strconv.Itoa(siblings)},
+			{Label: "Rows read", Value: strconv.Itoa(len(sh.rows))},
+			{Label: "Ready to import", Value: strconv.Itoa(sh.toImport)},
+			{Label: "Need a class", Value: strconv.Itoa(sh.noClass)},
+			{Label: "With problems", Value: strconv.Itoa(sh.withErrors)},
+			{Label: "Guardians already on record", Value: strconv.Itoa(sh.reused)},
+			{Label: "Siblings in this file", Value: strconv.Itoa(sh.siblings)},
 		},
 		Sections: []Section{{Key: "students", Title: "Students", Description: "Ticked rows are imported into the class shown. Rows with a problem cannot be ticked: fix the CSV and run again.", Columns: []Column{
-			{Key: "line", Label: "Line", Type: "number"}, {Key: "class", Label: "Class", Type: "select", Editable: true, Options: classOptions},
+			{Key: "line", Label: "Line", Type: "number"}, {Key: "class", Label: "Class", Type: "select", Editable: true, Options: sh.classOptions},
 			{Key: "index", Label: "Index no.", Type: "text"}, {Key: "name_with_initials", Label: "Name with initials", Type: "text"}, {Key: "name", Label: "Full name", Type: "text"}, {Key: "gender", Label: "Gender", Type: "text"},
 			{Key: "guardian", Label: "Guardian", Type: "text"}, {Key: "guardian_nic", Label: "Guardian NIC", Type: "text"},
 			{Key: "import", Label: "Import", Type: "boolean", Editable: true},
-		}, Rows: rows}},
+		}, Rows: sh.rows}},
 		Warnings: warnings,
 	}
-	if withErrors > 0 {
-		p.Warnings = append(p.Warnings, fmt.Sprintf("%s have problems and will be skipped. Fix them in the CSV and run the import again.", plural(withErrors, "row", "rows")))
+	if sh.withErrors > 0 {
+		p.Warnings = append(p.Warnings, fmt.Sprintf("%s have problems and will be skipped. Fix them in the CSV and run the import again.", plural(sh.withErrors, "row", "rows")))
 	}
-	if notedRows > 0 {
-		p.Warnings = append(p.Warnings, fmt.Sprintf("%s have guardian details to review, such as one parent under two NICs or a shared email. See each row's note.", plural(notedRows, "row", "rows")))
+	if sh.notedRows > 0 {
+		p.Warnings = append(p.Warnings, fmt.Sprintf("%s have guardian details to review, such as one parent under two NICs or a shared email. See each row's note.", plural(sh.notedRows, "row", "rows")))
 	}
-	if noClass > 0 {
-		p.Warnings = append(p.Warnings, fmt.Sprintf("%s need a class. Choose one in the Class column and tick Import, or fix the CSV.", plural(noClass, "row", "rows")))
+	if sh.noClass > 0 {
+		p.Warnings = append(p.Warnings, fmt.Sprintf("%s need a class. Choose one in the Class column and tick Import, or fix the CSV.", plural(sh.noClass, "row", "rows")))
 	}
-	return p, "student_import:" + year.ID.String(), nil
+	return p
 }
 
 type importSnapshot struct {
@@ -296,7 +326,6 @@ func (w StudentImport) Apply(ctx context.Context, tx *Store, _ Inputs, p Proposa
 			valid[c.ID] = true
 		}
 		var ticked []Row
-		var numbers, nics []string
 		for _, r := range p.Section("students").Rows {
 			if r.Cells["import"] != "true" {
 				continue
@@ -309,22 +338,8 @@ func (w StudentImport) Apply(ctx context.Context, tx *Store, _ Inputs, p Proposa
 				return "", fmt.Errorf("%w: line %s: choose a class for the current year", ErrInvalidProposal, r.Cells["line"])
 			}
 			ticked = append(ticked, r)
-			numbers = append(numbers, r.Cells["index"])
-			nics = append(nics, r.Cells["guardian_nic"])
 		}
-		taken, err := tx.existingIndexNumbers(ctx, numbers)
-		if err != nil {
-			return "", err
-		}
-		known, err := tx.guardiansByNIC(ctx, nics)
-		if err != nil {
-			return "", err
-		}
-		guardianByNIC := map[string]uuid.UUID{}
-		for nic, g := range known {
-			guardianByNIC[nic] = g.ID
-		}
-		ids, guardians, err := createStudentRows(ctx, tx, ticked, taken, guardianByNIC)
+		ids, guardians, err := createTickedStudents(ctx, tx, ticked)
 		if err != nil {
 			return "", err
 		}

@@ -44,13 +44,7 @@ func (s *generationService) placeOptionBlocks(ctx context.Context, generating []
 	}
 	covered := map[uuid.UUID]map[uuid.UUID]bool{}
 	for _, b := range blocks {
-		complete := true
-		for _, c := range b.Classes {
-			if !inRun[c] {
-				complete = false
-			}
-		}
-		if !complete {
+		if !allIn(b.Classes, inRun) {
 			for _, c := range b.Classes {
 				if inRun[c] {
 					gap(c, GenerationGap{SubjectName: b.Name, Reason: "this option block also covers a class whose timetable is not being regenerated, so it was not placed"})
@@ -58,78 +52,112 @@ func (s *generationService) placeOptionBlocks(ctx context.Context, generating []
 			}
 			continue
 		}
-		inBlock := map[uuid.UUID]bool{}
+		markCovered(covered, b)
+		teachers, err := blockTeachers(b, teachersByClass, loadUnavailable)
+		if err != nil {
+			return nil, err
+		}
+		placeBlockPeriods(b, teachers, grid, placed, required, gap)
+	}
+	return covered, nil
+}
+
+func allIn(ids []uuid.UUID, set map[uuid.UUID]bool) bool {
+	for _, id := range ids {
+		if !set[id] {
+			return false
+		}
+	}
+	return true
+}
+
+// markCovered records that the block's subjects are taught in the block for each of its classes.
+func markCovered(covered map[uuid.UUID]map[uuid.UUID]bool, b OptionBlock) {
+	for _, c := range b.Classes {
+		if covered[c] == nil {
+			covered[c] = map[uuid.UUID]bool{}
+		}
 		for _, sid := range b.Subjects {
-			inBlock[sid] = true
+			covered[c][sid] = true
 		}
-		teacherSet := map[uuid.UUID]bool{}
-		for _, c := range b.Classes {
-			if covered[c] == nil {
-				covered[c] = map[uuid.UUID]bool{}
-			}
-			for _, sid := range b.Subjects {
-				covered[c][sid] = true
-			}
-			for _, t := range teachersByClass[c] {
-				if inBlock[t.SubjectID] {
-					teacherSet[t.TeacherID] = true
-				}
-			}
-		}
-		teachers := make([]uuid.UUID, 0, len(teacherSet))
-		for t := range teacherSet {
-			if err := loadUnavailable(t); err != nil {
-				return nil, err
-			}
-			teachers = append(teachers, t)
-		}
-		sort.Slice(teachers, func(i, j int) bool { return teachers[i].String() < teachers[j].String() })
-		free := func(slot generationSlot) bool {
-			for _, c := range b.Classes {
-				if grid.classBusy[c][slot] {
-					return false
-				}
-			}
-			for _, t := range teachers {
-				if grid.teacherBusy[t][slot] || grid.teacherUnavailable[t][slot] {
-					return false
-				}
-			}
-			return true
-		}
-		usedDay := map[int16]bool{}
-		order := shuffledGenerationSlots(grid.slots, b.ID, b.GradeID)
-		for n := int32(0); n < b.Periods; n++ {
-			for _, c := range b.Classes {
-				required[c]++
-			}
-			var chosen *generationSlot
-			for pass := 0; pass < 2 && chosen == nil; pass++ {
-				for i := range order {
-					if (pass == 0 && usedDay[order[i].Day]) || !free(order[i]) {
-						continue
-					}
-					chosen = &order[i]
-					break
-				}
-			}
-			if chosen == nil {
-				for _, c := range b.Classes {
-					gap(c, GenerationGap{SubjectName: b.Name, Reason: "no period where every class and teacher of this option block is free"})
-				}
-				continue
-			}
-			usedDay[chosen.Day] = true
-			for _, c := range b.Classes {
-				markGenerationBusy(grid.classBusy, c, *chosen)
-				placed[c] = append(placed[c], blockPlacement{BlockID: b.ID, Slot: *chosen})
-			}
-			for _, t := range teachers {
-				markGenerationBusy(grid.teacherBusy, t, *chosen)
+	}
+}
+
+// blockTeachers lists, in a stable order, every teacher of the block's subjects in its classes, loading their availability.
+func blockTeachers(b OptionBlock, teachersByClass map[uuid.UUID][]generationTeacherSubject, loadUnavailable func(uuid.UUID) error) ([]uuid.UUID, error) {
+	inBlock := map[uuid.UUID]bool{}
+	for _, sid := range b.Subjects {
+		inBlock[sid] = true
+	}
+	teacherSet := map[uuid.UUID]bool{}
+	for _, c := range b.Classes {
+		for _, t := range teachersByClass[c] {
+			if inBlock[t.SubjectID] {
+				teacherSet[t.TeacherID] = true
 			}
 		}
 	}
-	return covered, nil
+	teachers := make([]uuid.UUID, 0, len(teacherSet))
+	for t := range teacherSet {
+		if err := loadUnavailable(t); err != nil {
+			return nil, err
+		}
+		teachers = append(teachers, t)
+	}
+	sort.Slice(teachers, func(i, j int) bool { return teachers[i].String() < teachers[j].String() })
+	return teachers, nil
+}
+
+// placeBlockPeriods books each block period where every class and teacher is free, on a new day when possible.
+func placeBlockPeriods(b OptionBlock, teachers []uuid.UUID, grid generationGrid, placed map[uuid.UUID][]blockPlacement, required map[uuid.UUID]int, gap func(uuid.UUID, GenerationGap)) {
+	free := func(slot generationSlot) bool {
+		for _, c := range b.Classes {
+			if grid.classBusy[c][slot] {
+				return false
+			}
+		}
+		for _, t := range teachers {
+			if grid.teacherBusy[t][slot] || grid.teacherUnavailable[t][slot] {
+				return false
+			}
+		}
+		return true
+	}
+	usedDay := map[int16]bool{}
+	order := shuffledGenerationSlots(grid.slots, b.ID, b.GradeID)
+	for n := int32(0); n < b.Periods; n++ {
+		for _, c := range b.Classes {
+			required[c]++
+		}
+		chosen, ok := firstFreeSlot(order, usedDay, free)
+		if !ok {
+			for _, c := range b.Classes {
+				gap(c, GenerationGap{SubjectName: b.Name, Reason: "no period where every class and teacher of this option block is free"})
+			}
+			continue
+		}
+		usedDay[chosen.Day] = true
+		for _, c := range b.Classes {
+			markGenerationBusy(grid.classBusy, c, chosen)
+			placed[c] = append(placed[c], blockPlacement{BlockID: b.ID, Slot: chosen})
+		}
+		for _, t := range teachers {
+			markGenerationBusy(grid.teacherBusy, t, chosen)
+		}
+	}
+}
+
+// firstFreeSlot prefers a free slot on an unused day, then any free slot.
+func firstFreeSlot(order []generationSlot, usedDay map[int16]bool, free func(generationSlot) bool) (generationSlot, bool) {
+	for _, freshDay := range []bool{true, false} {
+		for _, slot := range order {
+			if (freshDay && usedDay[slot.Day]) || !free(slot) {
+				continue
+			}
+			return slot, true
+		}
+	}
+	return generationSlot{}, false
 }
 
 // repair tries to fit a single lesson that found no free period by moving one of this run's
@@ -138,9 +166,6 @@ func (s *generationService) placeOptionBlocks(ctx context.Context, generating []
 func (s *generationService) repair(ctx context.Context, task generationTask, grid generationGrid, placements map[uuid.UUID][]generationPlacement) (bool, error) {
 	if task.Double || task.Lab {
 		return false, nil
-	}
-	roomFree := func(room *uuid.UUID, slot generationSlot) bool {
-		return room == nil || !grid.classroomBusy[*room][slot]
 	}
 	classIDs := make([]uuid.UUID, 0, len(placements))
 	for id := range placements {
@@ -157,35 +182,7 @@ func (s *generationService) repair(ctx context.Context, task generationTask, gri
 				if p.task.TeacherID != task.TeacherID || len(p.slots) != 1 || p.slots[0] != slot {
 					continue
 				}
-				for _, to := range grid.slots {
-					if to == slot || grid.classBusy[cid][to] || grid.teacherBusy[task.TeacherID][to] || grid.teacherUnavailable[task.TeacherID][to] || !roomFree(p.classroom, to) {
-						continue
-					}
-					// Move the blocking lesson, then check the freed period suits the new one.
-					delete(grid.classBusy[cid], slot)
-					delete(grid.teacherBusy[task.TeacherID], slot)
-					if p.classroom != nil {
-						delete(grid.classroomBusy[*p.classroom], slot)
-					}
-					if !roomFree(task.HomeClassroomID, slot) {
-						markGenerationBusy(grid.classBusy, cid, slot)
-						markGenerationBusy(grid.teacherBusy, task.TeacherID, slot)
-						if p.classroom != nil {
-							markGenerationBusy(grid.classroomBusy, *p.classroom, slot)
-						}
-						continue
-					}
-					markGenerationBusy(grid.classBusy, cid, to)
-					markGenerationBusy(grid.teacherBusy, task.TeacherID, to)
-					if p.classroom != nil {
-						markGenerationBusy(grid.classroomBusy, *p.classroom, to)
-					}
-					p.slots = []generationSlot{to}
-					markGenerationBusy(grid.classBusy, task.ClassID, slot)
-					markGenerationBusy(grid.teacherBusy, task.TeacherID, slot)
-					if task.HomeClassroomID != nil {
-						markGenerationBusy(grid.classroomBusy, *task.HomeClassroomID, slot)
-					}
+				if grid.moveLesson(p, cid, slot, task) {
 					placements[task.ClassID] = append(placements[task.ClassID], generationPlacement{task: task, slots: []generationSlot{slot}, classroom: task.HomeClassroomID})
 					return true, nil
 				}
@@ -193,6 +190,47 @@ func (s *generationService) repair(ctx context.Context, task generationTask, gri
 		}
 	}
 	return false, ctx.Err()
+}
+
+func (g generationGrid) roomFree(room *uuid.UUID, slot generationSlot) bool {
+	return room == nil || !g.classroomBusy[*room][slot]
+}
+
+// book marks the class, teacher and room (when set) busy at the slot.
+func (g generationGrid) book(class, teacher uuid.UUID, room *uuid.UUID, slot generationSlot) {
+	markGenerationBusy(g.classBusy, class, slot)
+	markGenerationBusy(g.teacherBusy, teacher, slot)
+	if room != nil {
+		markGenerationBusy(g.classroomBusy, *room, slot)
+	}
+}
+
+func (g generationGrid) release(class, teacher uuid.UUID, room *uuid.UUID, slot generationSlot) {
+	delete(g.classBusy[class], slot)
+	delete(g.teacherBusy[teacher], slot)
+	if room != nil {
+		delete(g.classroomBusy[*room], slot)
+	}
+}
+
+// moveLesson moves lesson p of class cid out of slot to another free period, then books task into slot.
+func (g generationGrid) moveLesson(p *generationPlacement, cid uuid.UUID, slot generationSlot, task generationTask) bool {
+	for _, to := range g.slots {
+		if to == slot || g.classBusy[cid][to] || g.teacherBusy[task.TeacherID][to] || g.teacherUnavailable[task.TeacherID][to] || !g.roomFree(p.classroom, to) {
+			continue
+		}
+		// Free the period, then check it suits the new lesson.
+		g.release(cid, task.TeacherID, p.classroom, slot)
+		if !g.roomFree(task.HomeClassroomID, slot) {
+			g.book(cid, task.TeacherID, p.classroom, slot)
+			continue
+		}
+		g.book(cid, task.TeacherID, p.classroom, to)
+		p.slots = []generationSlot{to}
+		g.book(task.ClassID, task.TeacherID, task.HomeClassroomID, slot)
+		return true
+	}
+	return false
 }
 
 func unplacedGap(task generationTask) GenerationGap {

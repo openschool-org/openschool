@@ -1154,3 +1154,24 @@ func (s *Store) deleteDraftTimetables(ctx context.Context, ids []uuid.UUID) erro
 func (s *Store) timetablesPastDraft(ctx context.Context, ids []uuid.UUID) (bool, error) {
 	return s.q.WfTimetablesPastDraft(ctx, ids)
 }
+
+// knownGuardian is a guardian already on record, found by NIC.
+type knownGuardian = db.WfGuardiansByNICRow
+
+// existingForRecords loads the index numbers already taken and the guardians already on record for the CSV rows.
+func existingForRecords(ctx context.Context, s *Store, records []intakeRow) (map[string]bool, map[string]db.WfGuardiansByNICRow, error) {
+	var numbers, nics []string
+	for _, r := range records {
+		numbers = append(numbers, r.fields["index_number"])
+		nics = append(nics, strings.ToUpper(r.fields["guardian_nic"]))
+	}
+	taken, err := s.existingIndexNumbers(ctx, numbers)
+	if err != nil {
+		return nil, nil, err
+	}
+	known, err := s.guardiansByNIC(ctx, nics)
+	if err != nil {
+		return nil, nil, err
+	}
+	return taken, known, nil
+}

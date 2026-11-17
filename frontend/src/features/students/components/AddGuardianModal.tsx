@@ -1,26 +1,12 @@
 import { useState } from "react";
 import { Alert, Button, Input, Modal } from "antd";
-import SelectField from "@/shared/ui/SelectField";
-import TextField from "@/shared/ui/TextField";
 import { SearchOutlined } from "@ant-design/icons";
 import { useAddGuardian, useSearchGuardians, useLinkGuardian } from "@/features/guardians/queries/useGuardians";
-import { GUARDIAN_RELATIONSHIPS } from "@/features/guardians/constants";
-import type { GuardianRelationship } from "@/features/guardians/api/guardian";
+import { useGuardianForm } from "@/features/guardians/hooks/useGuardianForm";
+import GuardianFields from "@/features/guardians/components/GuardianFields";
 import { useDebounced } from "@/shared/hooks/useDebounced";
-import { isValidSriLankanPhone, PHONE_INVALID_TEXT } from "@/shared/lib/phone";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
-import PersonNameFields from "@/shared/ui/PersonNameFields";
 import { displayName } from "@/shared/lib/name";
-
-const EMPTY_GUARDIAN_FORM = {
-  full_name: "",
-  name_with_initials: "",
-  calling_name: "",
-  relationship: "father" as GuardianRelationship,
-  phone: "",
-  email: "",
-  nic_number: "",
-};
 
 export default function AddGuardianModal({
   studentId,
@@ -38,19 +24,8 @@ export default function AddGuardianModal({
   const linkGuardian = useLinkGuardian(studentId);
 
   const addGuardian = useAddGuardian(studentId);
-  const [form, setForm] = useState(EMPTY_GUARDIAN_FORM);
-  const [touched, setTouched] = useState<{
-    full_name?: boolean;
-    phone?: boolean;
-    nic_number?: boolean;
-  }>({});
+  const { form, touched, isValid, patch, touch, touchAll } = useGuardianForm();
   const [created, setCreated] = useState<{ name: string; duplicates: number } | null>(null);
-
-  const isValid =
-    form.full_name.trim().length > 0 &&
-    form.phone.trim().length > 0 &&
-    isValidSriLankanPhone(form.phone) &&
-    form.nic_number.trim().length > 0;
 
   const results = (search.data?.items ?? []).filter((g) => !existingGuardianIds.includes(g.id));
 
@@ -59,7 +34,7 @@ export default function AddGuardianModal({
   };
 
   const handleAdd = () => {
-    setTouched({ full_name: true, phone: true, nic_number: true });
+    touchAll();
     if (!isValid) return;
     addGuardian.mutate(
       {
@@ -182,48 +157,15 @@ export default function AddGuardianModal({
               error={addGuardian.error}
               title="Could not add guardian" fallback="Please try again." className="os-mb-4"
             />
-            <div className="os-grid os-gap-4">
-<PersonNameFields
-          idPrefix="guardian"
-          value={form}
-          onChange={(next) => setForm((f) => ({ ...f, ...next }))}
-          fullNameInvalid={!!touched.full_name && !form.full_name.trim()}
-          onFullNameBlur={() => setTouched((t) => ({ ...t, full_name: true }))}
-        />
-              <SelectField
-                id="guardian-relationship"
-                label="Relationship"
-                value={form.relationship}
-                onChange={(v) => setForm((f) => ({ ...f, relationship: v as GuardianRelationship }))}
-                options={GUARDIAN_RELATIONSHIPS}
-              />
-              <TextField
-                id="guardian-phone"
-                label="Phone"
-                value={form.phone}
-                onChange={(v) => setForm((f) => ({ ...f, phone: v }))}
-                onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
-                invalid={!!touched.phone && (!form.phone.trim() || !isValidSriLankanPhone(form.phone))}
-                invalidText={form.phone.trim() ? PHONE_INVALID_TEXT : "A phone number is required."}
-              />
-              <TextField
-                id="guardian-email"
-                label="Email (optional, needed to provision a portal login later)"
-                type="email"
-                value={form.email}
-                onChange={(v) => setForm((f) => ({ ...f, email: v }))}
-              />
-              <TextField
-                id="guardian-nic"
-                label="NIC number"
-                value={form.nic_number}
-                onChange={(v) => setForm((f) => ({ ...f, nic_number: v }))}
-                onBlur={() => setTouched((t) => ({ ...t, nic_number: true }))}
-                invalid={!!touched.nic_number && !form.nic_number.trim()}
-                invalidText="NIC number is required."
-                helperText="Used as the guardian's initial one-time portal password."
-              />
-            </div>
+            <GuardianFields
+              idPrefix="guardian"
+              form={form}
+              touched={touched}
+              onChange={patch}
+              onTouch={touch}
+              emailLabel="Email (optional, needed to provision a portal login later)"
+              nicHelperText="Used as the guardian's initial one-time portal password."
+            />
           </>
         )}
     </Modal>

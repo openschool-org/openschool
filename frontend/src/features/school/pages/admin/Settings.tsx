@@ -8,6 +8,7 @@ import LeaveSettingsCard from "@/features/leave/components/LeaveSettingsCard";
 import AuditLog from "@/features/system/components/AuditLog";
 import OrphanedAccounts from "@/features/system/components/OrphanedAccounts";
 import Automation from "@/features/system/components/Automation";
+import PageHeader from "@/shared/ui/PageHeader";
 
 const TABS = [
   { key: "general", label: "General", render: () => <GeneralSettingsTab /> },
@@ -29,12 +30,7 @@ export default function SettingsPage() {
   const setTab = (key: string) => setParams({ tab: key }, { replace: true });
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Settings</h1>
-          <p className="os-page__subtitle">School details, houses, leave limits, sign-in, email and system tools.</p>
-        </div>
-      </div>
+      <PageHeader title="Settings" subtitle="School details, houses, leave limits, sign-in, email and system tools." />
       <Tabs className="os-detail-tabs" activeKey={tab} onChange={setTab} items={TABS.map((t) => ({ key: t.key, label: t.label, children: t.key === tab ? t.render() : null }))} />
     </div>
   );

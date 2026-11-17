@@ -4,6 +4,7 @@ import { useReviewQueue } from "@/features/timetable/queries/useTimetables";
 import EmptyState from "@/shared/ui/EmptyState";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import TimetableReviewRow from "@/features/timetable/components/TimetableReviewRow";
+import PageHeader from "@/shared/ui/PageHeader";
 
 export default function TimetableReview() {
   const { data: currentYear } = useCurrentAcademicYear();
@@ -11,12 +12,7 @@ export default function TimetableReview() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Timetable review</h1>
-          <p className="os-page__subtitle">Timetables waiting for your approval for {currentYear?.label ?? "the current year"}.</p>
-        </div>
-      </div>
+      <PageHeader title="Timetable review" subtitle={<>Timetables waiting for your approval for {currentYear?.label ?? "the current year"}.</>} />
 
       <div className="os-section">
         {isLoading ? (

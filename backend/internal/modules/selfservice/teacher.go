@@ -38,23 +38,30 @@ func NewTeacherSelfHandler(
 	}
 }
 
-// leadershipTeacher resolves the caller's teacher profile and 403s unless their rank is Principal or Vice Principal.
-func (h *TeacherSelfHandler) leadershipTeacher(c *gin.Context) (uuid.UUID, bool) {
+// currentTeacher resolves the caller's teacher profile and the current academic year, or writes the error.
+func (h *TeacherSelfHandler) currentTeacher(c *gin.Context) (teacherID, yearID uuid.UUID, ok bool) {
 	callerID, err := middleware.UserIDFromContext(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
-		return uuid.Nil, false
+		return uuid.Nil, uuid.Nil, false
 	}
-
-	teacherID, err := h.teacherSelf.Resolve(c.Request.Context(), callerID)
+	teacherID, err = h.teacherSelf.Resolve(c.Request.Context(), callerID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "no teacher profile linked to this account"})
-		return uuid.Nil, false
+		return uuid.Nil, uuid.Nil, false
 	}
-
-	yearID, err := h.teacherSelf.CurrentAcademicYearID(c.Request.Context())
+	yearID, err = h.teacherSelf.CurrentAcademicYearID(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "no current academic year configured"})
+		return uuid.Nil, uuid.Nil, false
+	}
+	return teacherID, yearID, true
+}
+
+// leadershipTeacher resolves the caller's teacher profile and 403s unless their rank is Principal or Vice Principal.
+func (h *TeacherSelfHandler) leadershipTeacher(c *gin.Context) (uuid.UUID, bool) {
+	teacherID, yearID, ok := h.currentTeacher(c)
+	if !ok {
 		return uuid.Nil, false
 	}
 
@@ -90,21 +97,8 @@ func (h *TeacherSelfHandler) Profile(c *gin.Context) {
 
 // Position returns the signed-in teacher's leadership rank and notification reach.
 func (h *TeacherSelfHandler) Position(c *gin.Context) {
-	callerID, err := middleware.UserIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
-		return
-	}
-
-	teacherID, err := h.teacherSelf.Resolve(c.Request.Context(), callerID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "no teacher profile linked to this account"})
-		return
-	}
-
-	yearID, err := h.teacherSelf.CurrentAcademicYearID(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "no current academic year configured"})
+	teacherID, yearID, ok := h.currentTeacher(c)
+	if !ok {
 		return
 	}
 
@@ -119,21 +113,8 @@ func (h *TeacherSelfHandler) Position(c *gin.Context) {
 
 // Society returns the society the signed-in teacher is Teacher-in-Charge of, for the current academic year.
 func (h *TeacherSelfHandler) Society(c *gin.Context) {
-	callerID, err := middleware.UserIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
-		return
-	}
-
-	teacherID, err := h.teacherSelf.Resolve(c.Request.Context(), callerID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "no teacher profile linked to this account"})
-		return
-	}
-
-	yearID, err := h.teacherSelf.CurrentAcademicYearID(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "no current academic year configured"})
+	teacherID, yearID, ok := h.currentTeacher(c)
+	if !ok {
 		return
 	}
 
@@ -152,21 +133,8 @@ func (h *TeacherSelfHandler) Society(c *gin.Context) {
 
 // LeadershipOverview returns the signed-in teacher's scoped leadership-panel counts (Section Head and above only).
 func (h *TeacherSelfHandler) LeadershipOverview(c *gin.Context) {
-	callerID, err := middleware.UserIDFromContext(c)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
-		return
-	}
-
-	teacherID, err := h.teacherSelf.Resolve(c.Request.Context(), callerID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "no teacher profile linked to this account"})
-		return
-	}
-
-	yearID, err := h.teacherSelf.CurrentAcademicYearID(c.Request.Context())
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "no current academic year configured"})
+	teacherID, yearID, ok := h.currentTeacher(c)
+	if !ok {
 		return
 	}
 

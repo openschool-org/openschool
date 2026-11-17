@@ -188,114 +188,214 @@ func (s *NotificationService) authorizeSender(ctx context.Context, callerRole st
 	}
 
 	for _, rule := range rules {
-		switch rule.Type {
-		case RuleEveryone:
-			return ErrForbiddenRecipients
-
-		case RuleClass:
-			if rule.ClassID == nil {
-				return ErrForbiddenRecipients
-			}
-			ok, err := s.repo.IsTeacherAssignedToClass(ctx, *rule.ClassID, teacherID)
-			if err != nil || !ok {
-				return ErrForbiddenRecipients
-			}
-
-		case RuleGrade, RuleGradeSection:
-			gradeIDs, err := s.gradesForRule(ctx, rule)
-			if err != nil {
-				return err
-			}
-			if len(gradeIDs) == 0 {
-				return ErrForbiddenRecipients
-			}
-			for _, gradeID := range gradeIDs {
-				ok, err := s.isTeacherAuthorizedForGrade(ctx, teacherID, gradeID)
-				if err != nil {
-					return err
-				}
-				if !ok {
-					return ErrForbiddenRecipients
-				}
-			}
-
-		case RuleSubject:
-			if rule.SubjectID == nil || rule.SubjectAudience != AudienceStudents {
-				return ErrForbiddenRecipients
-			}
-			ok, err := s.repo.IsTeacherAssignedToSubject(ctx, teacherID, *rule.SubjectID)
-			if err != nil || !ok {
-				return ErrForbiddenRecipients
-			}
-
-		case RuleStudent:
-			if rule.StudentID == nil {
-				return ErrForbiddenRecipients
-			}
-			classID, err := s.repo.StudentCurrentClass(ctx, *rule.StudentID)
-			if err != nil {
-				return ErrForbiddenRecipients
-			}
-			ok, err := s.repo.IsTeacherAssignedToClass(ctx, classID, teacherID)
-			if err != nil || !ok {
-				return ErrForbiddenRecipients
-			}
-
-		case RuleGuardian:
-			if rule.GuardianID == nil {
-				return ErrForbiddenRecipients
-			}
-			studentIDs, err := s.repo.ListStudentIDsByGuardian(ctx, *rule.GuardianID)
-			if err != nil {
-				return err
-			}
-			authorized, err := s.repo.IsTeacherAssignedToAnyStudentClass(ctx, studentIDs, teacherID)
-			if err != nil || !authorized {
-				return ErrForbiddenRecipients
-			}
-
-		case RuleTeacher:
-			// colleague-to-colleague messaging is low-risk; any teacher may do it
-
-		default:
+		check, ok := senderChecks[rule.Type]
+		if !ok {
 			return fmt.Errorf("unknown recipient rule type %q", rule.Type)
+		}
+		if err := check(s, ctx, teacherID, rule); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
+type senderCheck func(s *NotificationService, ctx context.Context, teacherID uuid.UUID, rule RecipientRule) error
+
+// senderChecks holds one check per rule type for a teacher sender; a lookup error is treated as forbidden unless noted.
+var senderChecks = map[RecipientRuleType]senderCheck{
+	RuleEveryone: func(*NotificationService, context.Context, uuid.UUID, RecipientRule) error {
+		return ErrForbiddenRecipients
+	},
+	RuleClass:        (*NotificationService).checkClassRule,
+	RuleGrade:        (*NotificationService).checkGradeRule,
+	RuleGradeSection: (*NotificationService).checkGradeRule,
+	RuleSubject:      (*NotificationService).checkSubjectRule,
+	RuleStudent:      (*NotificationService).checkStudentRule,
+	RuleGuardian:     (*NotificationService).checkGuardianRule,
+	// Colleague-to-colleague messaging is low-risk; any teacher may do it.
+	RuleTeacher: func(*NotificationService, context.Context, uuid.UUID, RecipientRule) error { return nil },
+}
+
+// allowed turns a yes/no lookup into nil or ErrForbiddenRecipients.
+func allowed(ok bool, err error) error {
+	if err != nil || !ok {
+		return ErrForbiddenRecipients
+	}
+	return nil
+}
+
+func (s *NotificationService) checkClassRule(ctx context.Context, teacherID uuid.UUID, rule RecipientRule) error {
+	if rule.ClassID == nil {
+		return ErrForbiddenRecipients
+	}
+	return allowed(s.repo.IsTeacherAssignedToClass(ctx, *rule.ClassID, teacherID))
+}
+
+// checkGradeRule requires the teacher to head every grade the rule covers; lookup errors are returned as is.
+func (s *NotificationService) checkGradeRule(ctx context.Context, teacherID uuid.UUID, rule RecipientRule) error {
+	gradeIDs, err := s.gradesForRule(ctx, rule)
+	if err != nil {
+		return err
+	}
+	if len(gradeIDs) == 0 {
+		return ErrForbiddenRecipients
+	}
+	for _, gradeID := range gradeIDs {
+		ok, err := s.isTeacherAuthorizedForGrade(ctx, teacherID, gradeID)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return ErrForbiddenRecipients
+		}
+	}
+	return nil
+}
+
+// checkSubjectRule lets a subject teacher reach that subject's students, but not its other teachers.
+func (s *NotificationService) checkSubjectRule(ctx context.Context, teacherID uuid.UUID, rule RecipientRule) error {
+	if rule.SubjectID == nil || rule.SubjectAudience != AudienceStudents {
+		return ErrForbiddenRecipients
+	}
+	return allowed(s.repo.IsTeacherAssignedToSubject(ctx, teacherID, *rule.SubjectID))
+}
+
+func (s *NotificationService) checkStudentRule(ctx context.Context, teacherID uuid.UUID, rule RecipientRule) error {
+	if rule.StudentID == nil {
+		return ErrForbiddenRecipients
+	}
+	classID, err := s.repo.StudentCurrentClass(ctx, *rule.StudentID)
+	if err != nil {
+		return ErrForbiddenRecipients
+	}
+	return allowed(s.repo.IsTeacherAssignedToClass(ctx, classID, teacherID))
+}
+
+func (s *NotificationService) checkGuardianRule(ctx context.Context, teacherID uuid.UUID, rule RecipientRule) error {
+	if rule.GuardianID == nil {
+		return ErrForbiddenRecipients
+	}
+	studentIDs, err := s.repo.ListStudentIDsByGuardian(ctx, *rule.GuardianID)
+	if err != nil {
+		return err
+	}
+	return allowed(s.repo.IsTeacherAssignedToAnyStudentClass(ctx, studentIDs, teacherID))
+}
+
+// recipientSet collects user ids once each, in the order first seen.
+type recipientSet struct {
+	seen map[uuid.UUID]bool
+	ids  []uuid.UUID
+}
+
+func (r *recipientSet) add(ids ...uuid.UUID) {
+	for _, id := range ids {
+		addUUID(r.seen, &r.ids, id)
+	}
+}
+
+func (r *recipientSet) addPg(ids ...pgtype.UUID) {
+	for _, id := range ids {
+		addPgUUID(r.seen, &r.ids, id)
+	}
+}
+
 // resolveRecipientUserIDs expands the rule set into the deduplicated set
 // of users.id that should receive the notification.
 func (s *NotificationService) resolveRecipientUserIDs(ctx context.Context, rules []RecipientRule) ([]uuid.UUID, error) {
-	seen := make(map[uuid.UUID]bool)
-	var result []uuid.UUID
-
-	resolveClass := func(classID uuid.UUID) error {
-		students, err := s.repo.ListStudentUserIDsByClass(ctx, classID)
-		if err != nil {
-			return err
+	set := &recipientSet{seen: map[uuid.UUID]bool{}}
+	for _, rule := range rules {
+		resolve, ok := recipientResolvers[rule.Type]
+		if !ok {
+			continue
 		}
-		for _, u := range students {
-			addPgUUID(seen, &result, u)
+		if err := resolve(s, ctx, rule, set); err != nil {
+			return nil, err
 		}
-		guardians, err := s.repo.ListGuardianUserIDsByClass(ctx, classID)
-		if err != nil {
-			return err
-		}
-		for _, u := range guardians {
-			addPgUUID(seen, &result, u)
-		}
-		teachers, err := s.repo.ListTeacherUserIDsByClass(ctx, classID)
-		if err != nil {
-			return err
-		}
-		for _, u := range teachers {
-			addUUID(seen, &result, u)
-		}
-		return nil
 	}
+	return set.ids, nil
+}
 
-	resolveGrade := func(gradeID uuid.UUID) error {
+type recipientResolver func(s *NotificationService, ctx context.Context, rule RecipientRule, set *recipientSet) error
+
+// recipientResolvers holds one resolver per rule type; a rule missing its id adds no one.
+var recipientResolvers = map[RecipientRuleType]recipientResolver{
+	RuleEveryone: func(s *NotificationService, ctx context.Context, _ RecipientRule, set *recipientSet) error {
+		ids, err := s.repo.ListAllUserIDs(ctx)
+		set.add(ids...)
+		return err
+	},
+	RuleClass: func(s *NotificationService, ctx context.Context, rule RecipientRule, set *recipientSet) error {
+		if rule.ClassID == nil {
+			return nil
+		}
+		return s.addClass(ctx, *rule.ClassID, set)
+	},
+	RuleGrade:        (*NotificationService).addGrades,
+	RuleGradeSection: (*NotificationService).addGrades,
+	RuleSubject:      (*NotificationService).addSubject,
+	RuleStudent: func(s *NotificationService, ctx context.Context, rule RecipientRule, set *recipientSet) error {
+		if rule.StudentID == nil {
+			return nil
+		}
+		id, err := s.repo.StudentUserID(ctx, *rule.StudentID)
+		if err != nil {
+			return err
+		}
+		set.addPg(id)
+		return nil
+	},
+	RuleGuardian: func(s *NotificationService, ctx context.Context, rule RecipientRule, set *recipientSet) error {
+		if rule.GuardianID == nil {
+			return nil
+		}
+		id, err := s.repo.GuardianUserID(ctx, *rule.GuardianID)
+		if err != nil {
+			return err
+		}
+		set.addPg(id)
+		return nil
+	},
+	RuleTeacher: func(s *NotificationService, ctx context.Context, rule RecipientRule, set *recipientSet) error {
+		if rule.TeacherID == nil {
+			return nil
+		}
+		id, err := s.repo.TeacherUserID(ctx, *rule.TeacherID)
+		if err != nil {
+			return err
+		}
+		set.add(id)
+		return nil
+	},
+}
+
+// addClass adds the class's students, their guardians and its teachers.
+func (s *NotificationService) addClass(ctx context.Context, classID uuid.UUID, set *recipientSet) error {
+	students, err := s.repo.ListStudentUserIDsByClass(ctx, classID)
+	if err != nil {
+		return err
+	}
+	set.addPg(students...)
+	guardians, err := s.repo.ListGuardianUserIDsByClass(ctx, classID)
+	if err != nil {
+		return err
+	}
+	set.addPg(guardians...)
+	teachers, err := s.repo.ListTeacherUserIDsByClass(ctx, classID)
+	if err != nil {
+		return err
+	}
+	set.add(teachers...)
+	return nil
+}
+
+// addGrades adds every class of each grade the rule covers in the current year.
+func (s *NotificationService) addGrades(ctx context.Context, rule RecipientRule, set *recipientSet) error {
+	gradeIDs, err := s.gradesForRule(ctx, rule)
+	if err != nil {
+		return err
+	}
+	for _, gradeID := range gradeIDs {
 		yearID, err := s.currentAcademicYearID(ctx)
 		if err != nil {
 			return err
@@ -305,110 +405,37 @@ func (s *NotificationService) resolveRecipientUserIDs(ctx context.Context, rules
 			return err
 		}
 		for _, classID := range classIDs {
-			if err := resolveClass(classID); err != nil {
+			if err := s.addClass(ctx, classID, set); err != nil {
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+// addSubject adds the subject's teachers, or its students in the current year.
+func (s *NotificationService) addSubject(ctx context.Context, rule RecipientRule, set *recipientSet) error {
+	if rule.SubjectID == nil {
 		return nil
 	}
-
-	for _, rule := range rules {
-		switch rule.Type {
-		case RuleEveryone:
-			ids, err := s.repo.ListAllUserIDs(ctx)
-			if err != nil {
-				return nil, err
-			}
-			for _, id := range ids {
-				addUUID(seen, &result, id)
-			}
-
-		case RuleClass:
-			if rule.ClassID == nil {
-				continue
-			}
-			if err := resolveClass(*rule.ClassID); err != nil {
-				return nil, err
-			}
-
-		case RuleGrade:
-			if rule.GradeID == nil {
-				continue
-			}
-			if err := resolveGrade(*rule.GradeID); err != nil {
-				return nil, err
-			}
-
-		case RuleGradeSection:
-			gradeIDs, err := s.gradesForRule(ctx, rule)
-			if err != nil {
-				return nil, err
-			}
-			for _, gradeID := range gradeIDs {
-				if err := resolveGrade(gradeID); err != nil {
-					return nil, err
-				}
-			}
-
-		case RuleSubject:
-			if rule.SubjectID == nil {
-				continue
-			}
-			if rule.SubjectAudience == AudienceTeachers {
-				ids, err := s.repo.ListTeacherUserIDsBySubject(ctx, *rule.SubjectID)
-				if err != nil {
-					return nil, err
-				}
-				for _, id := range ids {
-					addUUID(seen, &result, id)
-				}
-			} else {
-				yearID, err := s.currentAcademicYearID(ctx)
-				if err != nil {
-					return nil, err
-				}
-				ids, err := s.repo.ListStudentUserIDsBySubject(ctx, *rule.SubjectID, yearID)
-				if err != nil {
-					return nil, err
-				}
-				for _, u := range ids {
-					addPgUUID(seen, &result, u)
-				}
-			}
-
-		case RuleStudent:
-			if rule.StudentID == nil {
-				continue
-			}
-			userID, err := s.repo.StudentUserID(ctx, *rule.StudentID)
-			if err != nil {
-				return nil, err
-			}
-			addPgUUID(seen, &result, userID)
-
-		case RuleGuardian:
-			if rule.GuardianID == nil {
-				continue
-			}
-			userID, err := s.repo.GuardianUserID(ctx, *rule.GuardianID)
-			if err != nil {
-				return nil, err
-			}
-			addPgUUID(seen, &result, userID)
-
-		case RuleTeacher:
-			if rule.TeacherID == nil {
-				continue
-			}
-			userID, err := s.repo.TeacherUserID(ctx, *rule.TeacherID)
-			if err != nil {
-				return nil, err
-			}
-			addUUID(seen, &result, userID)
+	if rule.SubjectAudience == AudienceTeachers {
+		ids, err := s.repo.ListTeacherUserIDsBySubject(ctx, *rule.SubjectID)
+		if err != nil {
+			return err
 		}
+		set.add(ids...)
+		return nil
 	}
-
-	return result, nil
+	yearID, err := s.currentAcademicYearID(ctx)
+	if err != nil {
+		return err
+	}
+	ids, err := s.repo.ListStudentUserIDsBySubject(ctx, *rule.SubjectID, yearID)
+	if err != nil {
+		return err
+	}
+	set.addPg(ids...)
+	return nil
 }
 
 func (s *NotificationService) materializeRecipients(ctx context.Context, notificationID uuid.UUID, rules []RecipientRule) error {

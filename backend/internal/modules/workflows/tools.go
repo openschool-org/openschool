@@ -64,6 +64,20 @@ func currentYear(years []Year) *Year {
 	return nil
 }
 
+// yearDefaults returns the current year's id and the first later year's id; either is "" when missing.
+func yearDefaults(years []Year) (current, next string) {
+	cur := currentYear(years)
+	if cur == nil {
+		return "", ""
+	}
+	for _, y := range years {
+		if !y.Current && y.Start.After(cur.Start) {
+			return cur.ID.String(), y.ID.String()
+		}
+	}
+	return cur.ID.String(), ""
+}
+
 func parseID(v string) (uuid.UUID, bool) {
 	id, err := uuid.Parse(v)
 	return id, err == nil

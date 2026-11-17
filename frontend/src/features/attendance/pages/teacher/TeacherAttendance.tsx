@@ -13,6 +13,7 @@ import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import { todayISODate } from "@/shared/lib/date";
 import { classLabel } from "@/shared/lib/classLabel";
+import PageHeader from "@/shared/ui/PageHeader";
 
 export default function TeacherAttendance() {
   const { classes: myClasses, isLoading, isError, refetch } = useMyClasses();
@@ -49,12 +50,7 @@ export default function TeacherAttendance() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Attendance</h1>
-          <p className="os-page__subtitle">Every session you've recorded, across your classes</p>
-        </div>
-      </div>
+      <PageHeader title="Attendance" subtitle="Every session you've recorded, across your classes" />
 
       {pendingToday.length > 0 && (
         <div className="os-bg-status-late os-border-warning os-py-3h os-px-5 os-mb-6 os-flex os-items-center os-gap-4 os-wrap">

@@ -6,8 +6,27 @@ interface State {
   error: Error | null;
 }
 
+interface Props {
+  children: ReactNode;
+  // "app" covers the whole page; "route" covers one page inside the shell.
+  variant?: "app" | "route";
+}
+
+const COPY = {
+  app: {
+    log: "Unhandled render error:",
+    title: "Something went wrong",
+    text: "An unexpected error occurred. Reloading usually fixes this. If it keeps happening, contact your administrator.",
+  },
+  route: {
+    log: "Route render error:",
+    title: "This page hit an error",
+    text: "The rest of the app still works. Reload to try this page again.",
+  },
+};
+
 // Last-resort guard so an unhandled render error never blanks the whole page.
-export default class ErrorBoundary extends Component<{ children: ReactNode }, State> {
+export default class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
 
   static getDerivedStateFromError(error: Error): State {
@@ -15,19 +34,19 @@ export default class ErrorBoundary extends Component<{ children: ReactNode }, St
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    if (import.meta.env.DEV) console.error("Unhandled render error:", error, info.componentStack);
+    if (import.meta.env.DEV) console.error(COPY[this.props.variant ?? "app"].log, error, info.componentStack);
   }
 
   render() {
     if (!this.state.error) return this.props.children;
+    const variant = this.props.variant ?? "app";
+    const copy = COPY[variant];
     return (
-      <div className="os-error-fallback os-error-fallback--full">
+      <div className={`os-error-fallback${variant === "app" ? " os-error-fallback--full" : ""}`}>
         <div className="os-error-fallback__inner">
           <ExclamationCircleFilled className="os-error-fallback__icon" aria-hidden />
-          <h1 className="os-error-fallback__title">Something went wrong</h1>
-          <p className="os-error-fallback__text">
-            An unexpected error occurred. Reloading usually fixes this. If it keeps happening, contact your administrator.
-          </p>
+          <h1 className="os-error-fallback__title">{copy.title}</h1>
+          <p className="os-error-fallback__text">{copy.text}</p>
           <Button type="primary" onClick={() => window.location.reload()}>
             Reload page
           </Button>

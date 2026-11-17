@@ -1,37 +1,24 @@
-/* eslint-disable max-lines */
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useBlocker, useNavigate, useParams } from "react-router";
 import { Alert, Button } from "antd";
 import { ArrowLeftOutlined, PlusOutlined, SaveOutlined } from "@ant-design/icons";
-import {
-  useLevelTree,
-  useMediums,
-  useCreateSelectionGroup,
-  useUpdateSelectionGroup,
-  useDeleteSelectionGroup,
-  useAddGroupSubject,
-  useRemoveGroupSubject,
-} from "@/features/curriculum/queries/useCurriculum";
+import { useLevelTree, useMediums, useDeleteSelectionGroup, useAddGroupSubject, useRemoveGroupSubject } from "@/features/curriculum/queries/useCurriculum";
 import { useSubjects } from "@/features/curriculum/queries/useSubjects";
 import type { CurriculumTreeGroup, GroupSubject } from "@/features/curriculum/api/curriculum";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
-import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
-import ConfirmActionModal from "@/shared/ui/ConfirmActionModal";
 import GroupsList from "@/features/curriculum/components/GroupsList";
-import GroupFormModal, { type GroupForm } from "@/features/curriculum/components/GroupFormModal";
+import GroupFormModal from "@/features/curriculum/components/GroupFormModal";
 import AddSubjectModal, { type SubjectForm } from "@/features/curriculum/components/AddSubjectModal";
+import LevelDetailConfirms from "@/features/curriculum/components/LevelDetailConfirms";
+import { useGroupEditor } from "@/features/curriculum/hooks/useGroupEditor";
+import { useSubjectDraft } from "@/features/curriculum/hooks/useSubjectDraft";
+import { nextSortOrder, stagedSubject } from "@/features/curriculum/lib/subjectDraft";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
 import InfoTip from "@/shared/ui/InfoTip";
 import { useUnsavedChangesGuard } from "@/shared/hooks/useUnsavedChangesGuard";
 
-const EMPTY_GROUP: GroupForm = { label: "", min_select: 1, max_select: 1, sort_order: 0 };
-const EMPTY_SUBJECT: SubjectForm = {
-  subject_id: "",
-  medium_id: "",
-  prerequisite_note: "",
-  sort_order: 0,
-};
+const EMPTY_SUBJECT: SubjectForm = { subject_id: "", medium_id: "", prerequisite_note: "", sort_order: 0 };
 
 export default function LevelDetail() {
   const { id = "" } = useParams();
@@ -42,163 +29,41 @@ export default function LevelDetail() {
   const { data: subjects, isLoading: subjectsLoading, isError: subjectsError, refetch: refetchSubjects } = useSubjects();
   const { data: mediums } = useMediums();
 
-  const createGroup = useCreateSelectionGroup(id);
-  const updateGroup = useUpdateSelectionGroup(id);
   const deleteGroup = useDeleteSelectionGroup(id);
   const addSubject = useAddGroupSubject(id);
   const removeSubject = useRemoveGroupSubject(id);
-
-  const [groupModal, setGroupModal] = useState<"create" | "edit" | null>(null);
-  const [editingGroup, setEditingGroup] = useState<CurriculumTreeGroup | null>(null);
-  const [groupForm, setGroupForm] = useState(EMPTY_GROUP);
+  const groups = useGroupEditor(id);
+  const draft = useSubjectDraft(tree, addSubject, removeSubject);
 
   const [subjectModalGroup, setSubjectModalGroup] = useState<CurriculumTreeGroup | null>(null);
   const [subjectForm, setSubjectForm] = useState(EMPTY_SUBJECT);
-
   const [toDeleteGroup, setToDeleteGroup] = useState<CurriculumTreeGroup | null>(null);
-  const [toRemoveSubject, setToRemoveSubject] = useState<{
-    group: CurriculumTreeGroup;
-    subject: GroupSubject;
-  } | null>(null);
-  const [subjectChanges, setSubjectChanges] = useState<Record<string, GroupSubject[]>>({});
-  const [subjectsDirty, setSubjectsDirty] = useState(false);
-  const [savingSubjects, setSavingSubjects] = useState(false);
-  const [subjectsSaveError, setSubjectsSaveError] = useState(false);
+  const [toRemoveSubject, setToRemoveSubject] = useState<{ group: CurriculumTreeGroup; subject: GroupSubject } | null>(null);
   // Covers refresh/close; useBlocker covers Back, sidebar links and history back/forward.
-  useUnsavedChangesGuard(subjectsDirty);
-  const blocker = useBlocker(subjectsDirty);
-
-  const draftTree = useMemo(
-    () => tree ? { ...tree, groups: tree.groups.map((group) => ({ ...group, subjects: subjectChanges[group.id] ?? group.subjects })) } : null,
-    [tree, subjectChanges],
-  );
+  useUnsavedChangesGuard(draft.dirty);
+  const blocker = useBlocker(draft.dirty);
 
   // subjects not already in the group being edited
-  const available = useMemo(() => {
-    if (!subjects || !subjectModalGroup) return [];
-    const taken = new Set((subjectChanges[subjectModalGroup.id] ?? subjectModalGroup.subjects).map((s) => s.subject_id));
-    return subjects.filter((s) => !taken.has(s.id));
-  }, [subjects, subjectModalGroup, subjectChanges]);
-
-  const openCreateGroup = () => {
-    createGroup.reset();
-    setGroupForm(EMPTY_GROUP);
-    setEditingGroup(null);
-    setGroupModal("create");
-  };
-
-  const openEditGroup = (g: CurriculumTreeGroup) => {
-    updateGroup.reset();
-    setGroupForm({
-      label: g.label,
-      min_select: g.min_select,
-      max_select: g.max_select,
-      sort_order: g.sort_order,
-    });
-    setEditingGroup(g);
-    setGroupModal("edit");
-  };
-
-  const handleSaveGroup = () => {
-    const data = {
-      label: groupForm.label.trim(),
-      min_select: groupForm.min_select,
-      max_select: groupForm.max_select,
-      sort_order: groupForm.sort_order,
-    };
-
-    if (groupModal === "create") {
-      createGroup.mutate(data, { onSuccess: () => setGroupModal(null) });
-    } else if (editingGroup) {
-      updateGroup.mutate({ groupId: editingGroup.id, data }, { onSuccess: () => setGroupModal(null) });
-    }
-  };
+  const taken = new Set(subjectModalGroup ? draft.current(subjectModalGroup).map((s) => s.subject_id) : []);
+  const available = subjects && subjectModalGroup ? subjects.filter((s) => !taken.has(s.id)) : [];
 
   const openAddSubject = (g: CurriculumTreeGroup) => {
     addSubject.reset();
-    // Max existing + 1, not length, so a gap from a deleted subject doesn't hand out a colliding sort_order.
-    const nextSortOrder = g.subjects.reduce((max, s) => Math.max(max, s.sort_order), -1) + 1;
-    setSubjectForm({ ...EMPTY_SUBJECT, sort_order: nextSortOrder });
+    setSubjectForm({ ...EMPTY_SUBJECT, sort_order: nextSortOrder(g.subjects) });
     setSubjectModalGroup(g);
   };
 
   const handleAddSubject = () => {
-    if (!subjectModalGroup) return;
     const subject = subjects?.find((item) => item.id === subjectForm.subject_id);
-    if (!subject) return;
-    const current = subjectChanges[subjectModalGroup.id] ?? subjectModalGroup.subjects;
-    if (current.some((item) => item.subject_id === subject.id)) return;
+    if (!subjectModalGroup || !subject) return;
     const medium = mediums?.find((item) => item.id === subjectForm.medium_id);
-    const staged: GroupSubject = {
-      subject_id: subject.id,
-      subject_name: subject.name,
-      subject_code: subject.code,
-      subject_type: subject.type,
-      medium_id: medium?.id ?? null,
-      medium_name: medium?.name ?? null,
-      prerequisite_note: subjectForm.prerequisite_note.trim() || null,
-      sort_order: subjectForm.sort_order,
-    };
-    setSubjectChanges((draft) => ({ ...draft, [subjectModalGroup.id]: [...current, staged] }));
-    setSubjectsDirty(true);
-    setSubjectsSaveError(false);
-    setSubjectModalGroup(null);
+    if (draft.add(subjectModalGroup, stagedSubject(subject, medium, subjectForm))) setSubjectModalGroup(null);
   };
 
   const handleRemoveSubject = () => {
     if (!toRemoveSubject) return;
-    const { group, subject } = toRemoveSubject;
-    setSubjectChanges((draft) => ({
-      ...draft,
-      [group.id]: (draft[group.id] ?? group.subjects).filter((item) => item.subject_id !== subject.subject_id),
-    }));
-    setSubjectsDirty(true);
-    setSubjectsSaveError(false);
+    draft.remove(toRemoveSubject.group, toRemoveSubject.subject.subject_id);
     setToRemoveSubject(null);
-  };
-
-  const saveSubjects = async () => {
-    if (!tree) return;
-    setSavingSubjects(true);
-    setSubjectsSaveError(false);
-    try {
-      for (const group of tree.groups) {
-        const original = group.subjects;
-        const next = subjectChanges[group.id] ?? original;
-        const nextIds = new Set(next.map((subject) => subject.subject_id));
-        const originalIds = new Set(original.map((subject) => subject.subject_id));
-
-        for (const subject of original) {
-          if (!nextIds.has(subject.subject_id)) {
-            await removeSubject.mutateAsync({ groupId: group.id, subjectId: subject.subject_id });
-          }
-        }
-        for (const subject of next) {
-          if (!originalIds.has(subject.subject_id)) {
-            await addSubject.mutateAsync({
-              groupId: group.id,
-              data: {
-                subject_id: subject.subject_id,
-                medium_id: subject.medium_id ?? undefined,
-                prerequisite_note: subject.prerequisite_note ?? undefined,
-                sort_order: subject.sort_order,
-              },
-            });
-          }
-        }
-      }
-      setSubjectsDirty(false);
-      setSubjectChanges({});
-    } catch {
-      setSubjectsSaveError(true);
-    } finally {
-      setSavingSubjects(false);
-    }
-  };
-
-  const handleDeleteGroup = () => {
-    if (!toDeleteGroup) return;
-    deleteGroup.mutate(toDeleteGroup.id);
   };
 
   if (isLoading) return <LoadingSpinner />;
@@ -224,30 +89,24 @@ export default function LevelDetail() {
           <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate("/curriculum")}>
             Back
           </Button>
-          <Button icon={<PlusOutlined />} onClick={openCreateGroup}>
+          <Button icon={<PlusOutlined />} onClick={groups.openCreate}>
             New group
           </Button>
-          <Button type="primary" icon={<SaveOutlined />} disabled={!subjectsDirty} loading={savingSubjects} onClick={() => void saveSubjects()}>
-            {savingSubjects ? "Saving subjects…" : "Save subjects"}
+          <Button type="primary" icon={<SaveOutlined />} disabled={!draft.dirty} loading={draft.saving} onClick={() => void draft.save()}>
+            {draft.saving ? "Saving subjects…" : "Save subjects"}
           </Button>
         </div>
       </div>
 
-      {subjectsDirty && (
-        <Alert
-          type="info"
-          showIcon
-          className="os-mb-4"
-          title="Unsaved subject changes"
-          description="Add or remove subjects from the groups below, then save them together."
-        />
+      {draft.dirty && (
+        <Alert type="info" showIcon className="os-mb-4" title="Unsaved subject changes" description="Add or remove subjects from the groups below, then save them together." />
       )}
-      {subjectsSaveError && (
+      {draft.saveError && (
         <Alert
           type="error"
           showIcon
           closable
-          onClose={() => setSubjectsSaveError(false)}
+          onClose={draft.clearSaveError}
           className="os-mb-4"
           title="Could not save subjects"
           description="Some changes may not have been saved. Review the groups and try again."
@@ -255,24 +114,24 @@ export default function LevelDetail() {
       )}
 
       <GroupsList
-        tree={draftTree!}
+        tree={draft.draftTree!}
         deleteGroup={deleteGroup}
         removeSubject={removeSubject}
-        onOpenCreateGroup={openCreateGroup}
-        onEditGroup={openEditGroup}
+        onOpenCreateGroup={groups.openCreate}
+        onEditGroup={groups.openEdit}
         onRequestDeleteGroup={setToDeleteGroup}
         onAddSubject={openAddSubject}
         onRequestRemoveSubject={(group, subject) => setToRemoveSubject({ group, subject })}
       />
 
       <GroupFormModal
-        groupModal={groupModal}
-        groupForm={groupForm}
-        setGroupForm={setGroupForm}
-        createGroup={createGroup}
-        updateGroup={updateGroup}
-        onClose={() => setGroupModal(null)}
-        onSave={handleSaveGroup}
+        groupModal={groups.mode}
+        groupForm={groups.form}
+        setGroupForm={groups.setForm}
+        createGroup={groups.createGroup}
+        updateGroup={groups.updateGroup}
+        onClose={groups.close}
+        onSave={groups.save}
       />
 
       <AddSubjectModal
@@ -290,45 +149,14 @@ export default function LevelDetail() {
         onAdd={handleAddSubject}
       />
 
-      <ConfirmActionModal
-        open={!!toRemoveSubject}
-        title="Remove subject from group"
-        description={
-          <>
-            Remove <strong>{toRemoveSubject?.subject.subject_name}</strong> from{" "}
-            <strong>{toRemoveSubject?.group.label}</strong>? The subject stays in
-            the catalogue.
-          </>
-        }
-        confirmLabel="Remove from group"
-        danger
-        onClose={() => setToRemoveSubject(null)}
-        onConfirm={handleRemoveSubject}
-      />
-
-      <ConfirmDeleteModal
-        open={!!toDeleteGroup}
-        title="Delete selection group"
-        description={
-          <>
-            Delete <strong>{toDeleteGroup?.label}</strong>? Its subjects stay in
-            the catalogue.
-          </>
-        }
-        subject="Selection group"
-        mutation={deleteGroup}
-        onClose={() => setToDeleteGroup(null)}
-        onConfirm={handleDeleteGroup}
-      />
-
-      <ConfirmActionModal
-        open={blocker.state === "blocked"}
-        title="Leave with unsaved subject changes?"
-        description="Your staged subject changes will be lost if you leave this page before saving them."
-        confirmLabel="Leave page"
-        danger
-        onClose={() => blocker.reset?.()}
-        onConfirm={() => blocker.proceed?.()}
+      <LevelDetailConfirms
+        toRemoveSubject={toRemoveSubject}
+        onCloseRemoveSubject={() => setToRemoveSubject(null)}
+        onRemoveSubject={handleRemoveSubject}
+        toDeleteGroup={toDeleteGroup}
+        deleteGroup={deleteGroup}
+        onCloseDeleteGroup={() => setToDeleteGroup(null)}
+        blocker={blocker}
       />
     </div>
   );

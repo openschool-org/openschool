@@ -1,6 +1,7 @@
 import { keepPreviousData, queryOptions, useMutation, useQuery } from "@tanstack/react-query";
 import { teacherApi } from "@/features/teachers/api/teacher";
-import type { CreateTeacherRequest, UpdateTeacherRequest, TeacherEmploymentStatus, TeacherListParams } from "@/features/teachers/api/teacher";
+import type { CreateTeacherRequest, UpdateTeacherRequest, TeacherEmploymentStatus, TeacherListParams, TeacherWorkloadRow } from "@/features/teachers/api/teacher";
+import type { ClassWithDetails } from "@/features/academics/api/class";
 import { teacherKeys } from "@/features/teachers/keys";
 import { useCurrentClasses } from "@/features/academics/queries/useClasses";
 import { useInvalidate } from "@/shared/api/useInvalidate";
@@ -47,20 +48,15 @@ export interface MyClass {
 }
 
 // Form-teacher classes plus every class where the teacher takes a subject this year.
-export const useMyClasses = () => {
-  const teacher = useMyTeacherProfile();
-  const teacherId = teacher.data?.id ?? "";
-  const { data: allClasses, isLoading: classesLoading, isError: classesError } = useCurrentClasses();
-  const { data: workload, isLoading: workloadLoading, isError: workloadError } = useTeacherWorkload(teacherId);
-
-  const studentCount = new Map((allClasses ?? []).map((c) => [c.id, c.student_count ?? 0]));
+export function mergeMyClasses(teacherId: string, allClasses: ClassWithDetails[], workload: TeacherWorkloadRow[]): MyClass[] {
+  const studentCount = new Map(allClasses.map((c) => [c.id, c.student_count ?? 0]));
   const classMap = new Map<string, MyClass>();
-  for (const c of allClasses ?? []) {
+  for (const c of allClasses) {
     if (c.form_teacher_id === teacherId) {
       classMap.set(c.id, { class_id: c.id, class_name: c.name, grade_name: c.grade_name, subjects: [], isFormTeacher: true, studentCount: studentCount.get(c.id) ?? 0 });
     }
   }
-  for (const w of workload ?? []) {
+  for (const w of workload) {
     if (!w.academic_year_is_current) continue;
     const existing = classMap.get(w.class_id);
     if (existing) {
@@ -69,10 +65,18 @@ export const useMyClasses = () => {
       classMap.set(w.class_id, { class_id: w.class_id, class_name: w.class_name, grade_name: w.grade_name, subjects: [w.subject_name], isFormTeacher: false, studentCount: studentCount.get(w.class_id) ?? 0 });
     }
   }
+  return [...classMap.values()];
+}
+
+export const useMyClasses = () => {
+  const teacher = useMyTeacherProfile();
+  const teacherId = teacher.data?.id ?? "";
+  const { data: allClasses, isLoading: classesLoading, isError: classesError } = useCurrentClasses();
+  const { data: workload, isLoading: workloadLoading, isError: workloadError } = useTeacherWorkload(teacherId);
 
   return {
     teacher: teacher.data,
-    classes: [...classMap.values()],
+    classes: mergeMyClasses(teacherId, allClasses ?? [], workload ?? []),
     isLoading: teacher.isLoading || classesLoading || workloadLoading,
     isError: teacher.isError || classesError || workloadError,
     refetch: teacher.refetch,

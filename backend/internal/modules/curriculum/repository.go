@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/openschool-org/openschool/internal/platform/listx"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -71,30 +73,14 @@ func (r *presetTxRepository) createSubject(ctx context.Context, v presetSubject)
 	return presetSubjectRow{ID: row.ID, Code: row.Code}, err
 }
 func (r *presetTxRepository) listLevels(ctx context.Context) ([]Level, error) {
-	rows, err := r.queries.ListLevels(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]Level, len(rows))
-	for i, row := range rows {
-		out[i] = mapLevel(row)
-	}
-	return out, nil
+	return listx.Map(func() ([]db.Level, error) { return r.queries.ListLevels(ctx) }, mapLevel)
 }
 func (r *presetTxRepository) createLevel(ctx context.Context, label string, gradeID uuid.UUID, sortOrder int32) (Level, error) {
 	row, err := r.queries.CreateLevel(ctx, db.CreateLevelParams{Label: label, GradeID: pgtype.UUID{Bytes: gradeID, Valid: true}, SortOrder: sortOrder})
 	return mapLevel(row), err
 }
 func (r *presetTxRepository) listGroups(ctx context.Context, levelID uuid.UUID) ([]SelectionGroup, error) {
-	rows, err := r.queries.ListSelectionGroupsByLevel(ctx, levelID)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]SelectionGroup, len(rows))
-	for i, row := range rows {
-		out[i] = mapGroup(row)
-	}
-	return out, nil
+	return listx.Map(func() ([]db.SelectionGroup, error) { return r.queries.ListSelectionGroupsByLevel(ctx, levelID) }, mapGroup)
 }
 func (r *presetTxRepository) createGroup(ctx context.Context, levelID uuid.UUID, v presetGroup, sortOrder int32) (SelectionGroup, error) {
 	row, err := r.queries.CreateSelectionGroup(ctx, db.CreateSelectionGroupParams{LevelID: levelID, Label: v.Label, MinSelect: v.MinSelect, MaxSelect: v.MaxSelect, SortOrder: sortOrder})
@@ -163,26 +149,12 @@ func (r *levelRepository) getLevel(ctx context.Context, id uuid.UUID) (Level, er
 	return mapLevel(row), err
 }
 func (r *levelRepository) listLevels(ctx context.Context) ([]Level, error) {
-	rows, err := r.queries.ListLevels(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]Level, len(rows))
-	for i, row := range rows {
-		result[i] = mapLevel(row)
-	}
-	return result, nil
+	return listx.Map(func() ([]db.Level, error) { return r.queries.ListLevels(ctx) }, mapLevel)
 }
 func (r *levelRepository) listLevelsByGrade(ctx context.Context, id uuid.UUID) ([]Level, error) {
-	rows, err := r.queries.ListLevelsByGrade(ctx, pgtype.UUID{Bytes: id, Valid: true})
-	if err != nil {
-		return nil, err
-	}
-	result := make([]Level, len(rows))
-	for i, row := range rows {
-		result[i] = mapLevel(row)
-	}
-	return result, nil
+	return listx.Map(func() ([]db.Level, error) {
+		return r.queries.ListLevelsByGrade(ctx, pgtype.UUID{Bytes: id, Valid: true})
+	}, mapLevel)
 }
 func (r *levelRepository) updateLevel(ctx context.Context, id uuid.UUID, request levelRequest) (Level, error) {
 	gradeID, err := optionalGradeID(request.GradeID)
@@ -252,15 +224,7 @@ func (r *levelRepository) getGroup(ctx context.Context, id uuid.UUID) (Selection
 	return mapGroup(row), err
 }
 func (r *levelRepository) listGroups(ctx context.Context, id uuid.UUID) ([]SelectionGroup, error) {
-	rows, err := r.queries.ListSelectionGroupsByLevel(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]SelectionGroup, len(rows))
-	for i, row := range rows {
-		result[i] = mapGroup(row)
-	}
-	return result, nil
+	return listx.Map(func() ([]db.SelectionGroup, error) { return r.queries.ListSelectionGroupsByLevel(ctx, id) }, mapGroup)
 }
 func (r *levelRepository) updateGroup(ctx context.Context, id uuid.UUID, request groupRequest) (SelectionGroup, error) {
 	row, err := r.queries.UpdateSelectionGroup(ctx, db.UpdateSelectionGroupParams{ID: id, Label: request.Label, MinSelect: request.MinSelect, MaxSelect: request.MaxSelect, SortOrder: request.SortOrder})
@@ -342,15 +306,7 @@ func (r *mediumRepository) createMedium(ctx context.Context, name string) (Mediu
 }
 
 func (r *mediumRepository) listMediums(ctx context.Context) ([]Medium, error) {
-	rows, err := r.queries.ListMediums(ctx)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]Medium, len(rows))
-	for i, row := range rows {
-		result[i] = mapMedium(row)
-	}
-	return result, nil
+	return listx.Map(func() ([]db.Medium, error) { return r.queries.ListMediums(ctx) }, mapMedium)
 }
 
 func (r *mediumRepository) updateMedium(ctx context.Context, id uuid.UUID, name string) (Medium, error) {

@@ -175,3 +175,42 @@ func TestAssignStreamSectionHeadParsesIdentifiers(t *testing.T) {
 		t.Fatalf("unexpected section-head assignment: result=%#v args=%v", result, store.streamArguments)
 	}
 }
+
+func TestSummaryForTeacherLabelsAndWholeSchoolFlag(t *testing.T) {
+	tests := []struct {
+		name        string
+		store       *leadershipStore
+		label       string
+		wholeSchool bool
+	}{
+		{"principal always notifies the whole school", &leadershipStore{principal: true}, "Principal", true},
+		{"whole-school vice principal", &leadershipStore{position: Position{Position: "vice_principal", NotifyWholeSchool: true}}, "Vice Principal", true},
+		{"grade-scoped vice principal", &leadershipStore{position: Position{Position: "vice_principal"}}, "Vice Principal", false},
+		{"section head", &leadershipStore{headedGrades: []uuid.UUID{uuid.New()}}, "Section Head", false},
+		{"class teacher", &leadershipStore{formTeacher: true}, "Class Teacher", false},
+		{"subject teacher", &leadershipStore{subjectTeacher: true}, "Subject Teacher", false},
+		{"teacher", &leadershipStore{}, "Teacher", false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := NewService(test.store, nil).SummaryForTeacher(context.Background(), uuid.New(), uuid.New())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.RankLabel != test.label || got.NotifyWholeSchool != test.wholeSchool {
+				t.Fatalf("summary=%+v, want label %q wholeSchool %v", got, test.label, test.wholeSchool)
+			}
+			if got.Rank.IsPrincipalOrVicePrincipal() != (test.label == "Principal" || test.label == "Vice Principal") {
+				t.Fatalf("IsPrincipalOrVicePrincipal wrong for %q", test.label)
+			}
+		})
+	}
+}
+
+func TestSummaryForTeacherPassesStoreErrors(t *testing.T) {
+	boom := errors.New("boom")
+	_, err := NewService(&leadershipStore{positionErr: boom}, nil).SummaryForTeacher(context.Background(), uuid.New(), uuid.New())
+	if !errors.Is(err, boom) {
+		t.Fatalf("error=%v, want boom", err)
+	}
+}

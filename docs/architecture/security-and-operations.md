@@ -1,8 +1,6 @@
 # Security, reliability and operations
 
-Part of the [architecture overview](../ARCHITECTURE.md). Open findings
-against these properties are tracked in
-[`development/issue.md`](../development/issue.md).
+Part of the [architecture overview](../ARCHITECTURE.md).
 
 ## Security
 
@@ -30,7 +28,7 @@ against these properties are tracked in
   client could POST an unbounded body regardless of client-side checks.
 - JWT validation happens against ThunderID's live JWKS endpoint (RS256,
   issuer-checked, expiry required). The audience is not checked today
-  (decision V1 in `development/issue.md`). The JWKS HTTP client strips `x5c` certificate chains from the
+  (`THUNDERID_AUDIENCE` is set but unused). The JWKS HTTP client strips `x5c` certificate chains from the
   response before parsing. Only with an explicit `APP_ENV=development`
   does that client skip TLS verification (for a self-signed local
   ThunderID); unset counts as production.

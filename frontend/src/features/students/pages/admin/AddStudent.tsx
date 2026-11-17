@@ -12,6 +12,7 @@ import PersonNameItems from "@/shared/ui/PersonNameItems";
 import UnsavedChangesModal from "@/shared/ui/UnsavedChangesModal";
 import { useUnsavedChangesGuard } from "@/shared/hooks/useUnsavedChangesGuard";
 import { useToast } from "@/shared/ui/toast/useToast";
+import PageHeader from "@/shared/ui/PageHeader";
 
 interface Values {
   full_name: string;
@@ -78,13 +79,9 @@ export default function AddStudent() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Add student</h1>
-          <p className="os-page__subtitle">Create a student account and profile</p>
-        </div>
+      <PageHeader title="Add student" subtitle="Create a student account and profile">
         <LinkButton to="/students" type="text" icon={<ArrowLeftOutlined />}>Back</LinkButton>
-      </div>
+      </PageHeader>
 
       <Typography.Paragraph type="secondary" className="os-note">
         <InfoCircleOutlined />

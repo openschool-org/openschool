@@ -4,6 +4,7 @@ import { useDashboardAnalytics, useLeadershipAnalytics } from "@/features/report
 import StudentsPanel from "@/features/reports/components/analytics/StudentsPanel";
 import { AcademicsPanel, SchoolPanel, StaffPanel } from "@/features/reports/components/analytics/OtherPanels";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
+import PageHeader from "@/shared/ui/PageHeader";
 
 type Tab = "students" | "academics" | "staff" | "school";
 const TABS: { key: Tab; label: string }[] = [
@@ -22,12 +23,7 @@ export default function Analytics({ scope = "admin" }: { scope?: "admin" | "lead
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Analytics</h1>
-          <p className="os-page__subtitle">Enrolment, marks, attendance and growth across the school.</p>
-        </div>
-      </div>
+      <PageHeader title="Analytics" subtitle="Enrolment, marks, attendance and growth across the school." />
 
       {isLoading ? (
         <div className="os-stack os-gap-4">

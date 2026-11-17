@@ -2,6 +2,7 @@ import { useLocation } from "react-router";
 import { Tabs } from "antd";
 import SubjectsPanel from "@/features/curriculum/components/SubjectsPanel";
 import CurriculumPanel from "@/features/curriculum/components/CurriculumPanel";
+import PageHeader from "@/shared/ui/PageHeader";
 
 export default function SubjectsCurriculum() {
   const location = useLocation();
@@ -9,12 +10,7 @@ export default function SubjectsCurriculum() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Subjects &amp; curriculum</h1>
-          <p className="os-page__subtitle">The subject catalogue and the groups students choose from.</p>
-        </div>
-      </div>
+      <PageHeader title="Subjects &amp; curriculum" subtitle="The subject catalogue and the groups students choose from." />
 
       <Tabs
         className="os-detail-tabs"

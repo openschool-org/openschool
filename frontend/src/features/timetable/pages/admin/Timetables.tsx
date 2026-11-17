@@ -17,6 +17,7 @@ import {
   useDeleteTimetable,
 } from "@/features/timetable/queries/useTimetables";
 import EmptyState from "@/shared/ui/EmptyState";
+import NoCurrentYear from "@/shared/ui/NoCurrentYear";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
@@ -162,7 +163,7 @@ export default function Timetables({ inline = false }: { inline?: boolean }) {
         </div>
 
         {!currentYear ? (
-          <EmptyState title="No current academic year" description="Set an academic year as current first." />
+          <NoCurrentYear />
         ) : isLoading ? (
           <div className="os-p-6"><SkeletonText width="40%" /></div>
         ) : isError ? (

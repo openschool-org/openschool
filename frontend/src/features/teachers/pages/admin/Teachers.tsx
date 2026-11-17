@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { Button, Tag, Tooltip } from "antd";
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
+import { Tag } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import LinkButton from "@/shared/ui/LinkButton";
 import SelectField from "@/shared/ui/SelectField";
 import { useTeachers, useDeleteTeacher } from "@/features/teachers/queries/useTeachers";
@@ -19,6 +19,8 @@ import { useListFilters } from "@/shared/hooks/useListFilters";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
 import { formatDateOnly } from "@/shared/lib/date";
 import { displayName } from "@/shared/lib/name";
+import RowActions from "@/shared/ui/RowActions";
+import PageHeader from "@/shared/ui/PageHeader";
 
 const STATUS_TAG: Record<string, string> = { active: "success", resigned: "error", transferred: "magenta" };
 const FILTER_LABELS: Record<string, string> = { query: "Search", status: "Status" };
@@ -67,27 +69,21 @@ export default function Teachers() {
       header: "Actions",
       align: "end",
       render: (t) => (
-        <div className="os-grid__actions">
-          <Tooltip title="Edit profile">
-            <Button type="text" size="small" aria-label="Edit profile" icon={<EditOutlined />} onClick={() => navigate(`/teachers/${t.id}`, { state: { edit: true } })} />
-          </Tooltip>
-          <Tooltip title="Delete teacher">
-            <Button type="text" size="small" danger aria-label="Delete teacher" icon={<DeleteOutlined />} onClick={() => { deleteTeacher.reset(); setToDelete(t); }} />
-          </Tooltip>
-        </div>
+        <RowActions
+          editLabel="Edit profile"
+          deleteLabel="Delete teacher"
+          onEdit={() => navigate(`/teachers/${t.id}`, { state: { edit: true } })}
+          onDelete={() => { deleteTeacher.reset(); setToDelete(t); }}
+        />
       ),
     },
   ];
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Teachers</h1>
-          <p className="os-page__subtitle">Manage teacher profiles</p>
-        </div>
+      <PageHeader title="Teachers" subtitle="Manage teacher profiles">
         <LinkButton to="/teachers/new" type="primary" icon={<PlusOutlined />}>Add teacher</LinkButton>
-      </div>
+      </PageHeader>
 
       <AgentFindingsBanner />
 

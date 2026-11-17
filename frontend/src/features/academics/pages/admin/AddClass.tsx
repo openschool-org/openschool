@@ -14,6 +14,7 @@ import EntityCombobox from "@/shared/ui/EntityCombobox";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
 import InfoTip from "@/shared/ui/InfoTip";
 import { displayName } from "@/shared/lib/name";
+import PageHeader from "@/shared/ui/PageHeader";
 
 // Supports preselecting the grade via `?grade_id=`.
 export default function AddClass() {
@@ -37,13 +38,9 @@ export default function AddClass() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <h1 className="os-page__title">Add new class</h1>
-          <p className="os-page__subtitle">Create a class for an academic year</p>
-        </div>
+      <PageHeader title="Add new class" subtitle="Create a class for an academic year">
         <LinkButton to="/classes" type="text" icon={<ArrowLeftOutlined />}>Back</LinkButton>
-      </div>
+      </PageHeader>
 
       {f.error && <Alert type="error" showIcon closable onClose={f.clearError} className="os-mb-6" title="Could not create class" description={f.error} />}
 

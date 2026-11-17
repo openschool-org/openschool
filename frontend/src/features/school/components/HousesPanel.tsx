@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Alert, Button, Tag, Tooltip } from "antd";
-import { DeleteOutlined, EditOutlined, PlusOutlined, UsergroupAddOutlined } from "@ant-design/icons";
+import { Alert, Button, Tag } from "antd";
+import { PlusOutlined, UsergroupAddOutlined } from "@ant-design/icons";
 import DataGrid from "@/shared/ui/DataGrid";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
 import { useHouses, useCreateHouse, useUpdateHouse, useDeleteHouse, useReassignMissingHouses, useReassignMissingStaffHouses } from "@/features/school/queries/useHouses";
@@ -11,6 +11,7 @@ import ErrorMessage from "@/shared/ui/ErrorMessage";
 import EmptyState from "@/shared/ui/EmptyState";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
+import RowActions from "@/shared/ui/RowActions";
 
 const EMPTY_FORM: HouseForm = { name: "", code: "", color: HOUSE_COLOR_PALETTE[0] };
 
@@ -105,10 +106,7 @@ export default function HousesPanel() {
                 header: "",
                 align: "end",
                 render: (h) => (
-                  <div className="os-grid__actions">
-                    <Tooltip title={`Edit ${h.name}`}><Button type="text" size="small" aria-label={`Edit ${h.name}`} icon={<EditOutlined />} onClick={() => openEdit(h)} /></Tooltip>
-                    <Tooltip title={`Delete ${h.name}`}><Button type="text" size="small" danger aria-label={`Delete ${h.name}`} icon={<DeleteOutlined />} onClick={() => setToDelete(h)} /></Tooltip>
-                  </div>
+                  <RowActions editLabel={`Edit ${h.name}`} deleteLabel={`Delete ${h.name}`} onEdit={() => openEdit(h)} onDelete={() => setToDelete(h)} />
                 ),
               },
             ]}

@@ -57,47 +57,25 @@ func (a *PeopleComplianceAgent) Run(ctx context.Context) (Result, error) {
 // checkEmploymentConsistency flags resigned/transferred teachers still assigned as a form or subject teacher on a current-year class.
 func (a *PeopleComplianceAgent) checkEmploymentConsistency(ctx context.Context) checkOutcome {
 	teachers, err := a.checks.ListInactiveTeachersStillAssigned(ctx)
-	if err != nil {
-		return checkOutcome{err: fmt.Errorf("employment-consistency check: %w", err)}
-	}
-	if len(teachers) == 0 {
-		return checkOutcome{}
-	}
-
-	names := make([]string, len(teachers))
-	for i, t := range teachers {
-		names[i] = fmt.Sprintf("%s (%s)", t.FullName, t.EmploymentStatus)
-	}
-	summary := fmt.Sprintf("%d teacher(s) still assigned despite employment status: %s", len(teachers), strings.Join(names, ", "))
-
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Inactive teachers still assigned to classes",
-		summary, "general", SeverityElevated); err != nil {
-		return checkOutcome{findings: len(teachers), label: fmt.Sprintf("%d inactive teacher(s) still assigned", len(teachers)), err: fmt.Errorf("found %d teacher(s) but failed to notify admins: %w", len(teachers), err)}
-	}
-	return checkOutcome{findings: len(teachers), label: fmt.Sprintf("%d inactive teacher(s) still assigned", len(teachers))}
+	return checkList(ctx, a.checks, a.notifSvc, "employment-consistency", teachers, err, func(t teacherAssignment) string { return fmt.Sprintf("%s (%s)", t.FullName, t.EmploymentStatus) }, func(n int, names string) finding {
+		summary := fmt.Sprintf("%d teacher(s) still assigned despite employment status: %s", n, names)
+		return finding{
+			noun: "teacher(s)", label: fmt.Sprintf("%d inactive teacher(s) still assigned", n),
+			title: "Inactive teachers still assigned to classes", summary: summary, category: "general", severity: SeverityElevated,
+		}
+	})
 }
 
 // checkZeroGuardians flags active students with zero guardians on file.
 func (a *PeopleComplianceAgent) checkZeroGuardians(ctx context.Context) checkOutcome {
 	students, err := a.checks.ListActiveStudentsWithoutGuardian(ctx)
-	if err != nil {
-		return checkOutcome{err: fmt.Errorf("zero-guardian check: %w", err)}
-	}
-	if len(students) == 0 {
-		return checkOutcome{}
-	}
-
-	names := make([]string, len(students))
-	for i, s := range students {
-		names[i] = fmt.Sprintf("%s (%s)", s.FullName, s.IndexNumber)
-	}
-	summary := fmt.Sprintf("%d active student(s) with no guardian on file: %s", len(students), strings.Join(names, ", "))
-
-	if err := notifyAdmins(ctx, a.checks, a.notifSvc, "Students with no guardian on file",
-		summary, "general", SeverityElevated); err != nil {
-		return checkOutcome{findings: len(students), label: fmt.Sprintf("%d student(s) with no guardian", len(students)), err: fmt.Errorf("found %d student(s) but failed to notify admins: %w", len(students), err)}
-	}
-	return checkOutcome{findings: len(students), label: fmt.Sprintf("%d student(s) with no guardian", len(students))}
+	return checkList(ctx, a.checks, a.notifSvc, "zero-guardian", students, err, func(s personReference) string { return fmt.Sprintf("%s (%s)", s.FullName, s.IndexNumber) }, func(n int, names string) finding {
+		summary := fmt.Sprintf("%d active student(s) with no guardian on file: %s", n, names)
+		return finding{
+			noun: "student(s)", label: fmt.Sprintf("%d student(s) with no guardian", n),
+			title: "Students with no guardian on file", summary: summary, category: "general", severity: SeverityElevated,
+		}
+	})
 }
 
 // checkOnboarding flags accounts of the given role stuck on first-login setup, escalating severity as account age grows.

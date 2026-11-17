@@ -42,31 +42,56 @@ func NewPresetService(store presetStore) *PresetService { return &PresetService{
 func (s *PresetService) Preview(ctx context.Context) (PresetSummary, error) { return s.run(ctx, true) }
 func (s *PresetService) Run(ctx context.Context) (PresetSummary, error)     { return s.run(ctx, false) }
 
+var gradeNumberRE = regexp.MustCompile(`\d+`)
+
 func (s *PresetService) run(ctx context.Context, dryRun bool) (summary PresetSummary, err error) {
 	summary = PresetSummary{DryRun: dryRun, Levels: []PresetLevelPreview{}}
 	grades, err := s.store.listPresetGrades(ctx)
 	if err != nil {
 		return summary, fmt.Errorf("failed to list grades: %w", err)
 	}
-	gradeByNumber := map[int]presetGrade{}
-	re := regexp.MustCompile(`\d+`)
+	gradeByNumber := gradesByNumber(grades)
+	activePlans, requiredCodes := plansForGrades(gradeByNumber, &summary)
+
+	existing, err := s.store.listPresetSubjects(ctx)
+	if err != nil {
+		return summary, fmt.Errorf("failed to list subjects: %w", err)
+	}
+	subjectByCode, needsCreate := plannedSubjects(existing, requiredCodes, &summary)
+
+	err = s.store.withPresetTx(ctx, !dryRun, func(tx presetTx) error {
+		r := presetRun{ctx: ctx, tx: tx, dryRun: dryRun, summary: &summary, subjectByCode: subjectByCode}
+		if !dryRun {
+			if err := r.createSubjects(needsCreate); err != nil {
+				return err
+			}
+		}
+		return r.applyLevels(activePlans, gradeByNumber)
+	})
+	return summary, err
+}
+
+// gradesByNumber maps the first number in each grade name to that grade; names without a number are skipped.
+func gradesByNumber(grades []presetGrade) map[int]presetGrade {
+	out := map[int]presetGrade{}
 	for _, grade := range grades {
-		match := re.FindString(grade.Name)
+		match := gradeNumberRE.FindString(grade.Name)
 		if match == "" {
 			continue
 		}
-		n, e := strconv.Atoi(match)
-		if e == nil {
-			gradeByNumber[n] = grade
+		if n, err := strconv.Atoi(match); err == nil {
+			out[n] = grade
 		}
 	}
+	return out
+}
 
-	// The school may offer only part of Grades 1-13. Build the preset plan
-	// from the grades that actually exist instead of creating the complete
-	// national catalogue for grades the school does not have.
+// plansForGrades keeps the preset levels for grades the school has, so a partial school
+// does not get the whole national catalogue. It returns those plans and their subject codes.
+func plansForGrades(gradeByNumber map[int]presetGrade, summary *PresetSummary) ([]presetLevel, map[string]bool) {
 	allPlans := buildPresetLevels()
-	activePlans := make([]presetLevel, 0, len(allPlans))
-	requiredSubjectCodes := map[string]bool{}
+	active := make([]presetLevel, 0, len(allPlans))
+	required := map[string]bool{}
 	covered := map[int]bool{}
 	skipped := map[int]bool{}
 	for _, plan := range allPlans {
@@ -75,144 +100,178 @@ func (s *PresetService) run(ctx context.Context, dryRun bool) (summary PresetSum
 			continue
 		}
 		covered[plan.GradeNumber] = true
-		activePlans = append(activePlans, plan)
+		active = append(active, plan)
 		for _, group := range plan.Groups {
 			for _, code := range group.SubjectCodes {
-				requiredSubjectCodes[code] = true
+				required[code] = true
 			}
 		}
 	}
-	for n := range skipped {
-		summary.GradesSkipped = append(summary.GradesSkipped, n)
-	}
-	for n := range covered {
-		summary.GradesCovered = append(summary.GradesCovered, n)
-	}
-	sort.Ints(summary.GradesSkipped)
-	sort.Ints(summary.GradesCovered)
+	summary.GradesSkipped = sortedKeys(skipped)
+	summary.GradesCovered = sortedKeys(covered)
+	return active, required
+}
 
-	existing, err := s.store.listPresetSubjects(ctx)
-	if err != nil {
-		return summary, fmt.Errorf("failed to list subjects: %w", err)
+func sortedKeys(m map[int]bool) []int {
+	var out []int
+	for n := range m {
+		out = append(out, n)
 	}
-	subjectByCode := map[string]presetSubjectRow{}
+	sort.Ints(out)
+	return out
+}
+
+// plannedSubjects indexes existing subjects by code and adds a placeholder for each required one that is missing.
+func plannedSubjects(existing []presetSubjectRow, required map[string]bool, summary *PresetSummary) (map[string]presetSubjectRow, map[string]bool) {
+	byCode := map[string]presetSubjectRow{}
 	for _, subject := range existing {
-		subjectByCode[subject.Code] = subject
+		byCode[subject.Code] = subject
 	}
 	needsCreate := map[string]bool{}
 	for _, subject := range presetSubjects {
-		if !requiredSubjectCodes[subject.Code] {
+		if !required[subject.Code] {
 			continue
 		}
-		if _, ok := subjectByCode[subject.Code]; ok {
+		if _, ok := byCode[subject.Code]; ok {
 			continue
 		}
-		subjectByCode[subject.Code] = presetSubjectRow{ID: uuid.New(), Code: subject.Code}
+		byCode[subject.Code] = presetSubjectRow{ID: uuid.New(), Code: subject.Code}
 		needsCreate[subject.Code] = true
 		summary.SubjectsCreated++
 	}
-	err = s.store.withPresetTx(ctx, !dryRun, func(tx presetTx) error {
-		if !dryRun {
-			for _, subject := range presetSubjects {
-				if !needsCreate[subject.Code] {
-					continue
-				}
-				created, e := tx.createSubject(ctx, subject)
-				if e != nil {
-					return fmt.Errorf("failed to create subject %s: %w", subject.Code, e)
-				}
-				subjectByCode[subject.Code] = created
-				needsCreate[subject.Code] = false
+	return byCode, needsCreate
+}
+
+// presetRun applies the preset inside one transaction; in a dry run it only counts.
+type presetRun struct {
+	ctx           context.Context
+	tx            presetTx
+	dryRun        bool
+	summary       *PresetSummary
+	subjectByCode map[string]presetSubjectRow
+}
+
+func (r presetRun) createSubjects(needsCreate map[string]bool) error {
+	for _, subject := range presetSubjects {
+		if !needsCreate[subject.Code] {
+			continue
+		}
+		created, err := r.tx.createSubject(r.ctx, subject)
+		if err != nil {
+			return fmt.Errorf("failed to create subject %s: %w", subject.Code, err)
+		}
+		r.subjectByCode[subject.Code] = created
+	}
+	return nil
+}
+
+func (r presetRun) applyLevels(plans []presetLevel, gradeByNumber map[int]presetGrade) error {
+	levels, err := r.tx.listLevels(r.ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list levels: %w", err)
+	}
+	levelByLabel := map[string]Level{}
+	for _, level := range levels {
+		levelByLabel[level.Label] = level
+	}
+	for i, plan := range plans {
+		label := fmt.Sprintf("Grade %d%s", plan.GradeNumber, plan.LabelSuffix)
+		level, existed := levelByLabel[label]
+		if !existed {
+			if level, err = r.ensureLevel(label, gradeByNumber[plan.GradeNumber].ID, int32(i)); err != nil {
+				return err
+			}
+			levelByLabel[label] = level
+		}
+		preview := PresetLevelPreview{Label: label, GradeNumber: plan.GradeNumber, AlreadyExists: existed}
+		if err := r.applyGroups(level, label, plan.Groups, &preview); err != nil {
+			return err
+		}
+		if !existed || preview.GroupsToAdd > 0 || preview.SubjectsToLink > 0 {
+			r.summary.Levels = append(r.summary.Levels, preview)
+		}
+	}
+	return nil
+}
+
+func (r presetRun) ensureLevel(label string, gradeID uuid.UUID, sortOrder int32) (Level, error) {
+	r.summary.LevelsCreated++
+	if r.dryRun {
+		return Level{ID: uuid.New().String(), Label: label}, nil
+	}
+	level, err := r.tx.createLevel(r.ctx, label, gradeID, sortOrder)
+	if err != nil {
+		return Level{}, fmt.Errorf("failed to create level %q: %w", label, err)
+	}
+	return level, nil
+}
+
+func (r presetRun) applyGroups(level Level, label string, plans []presetGroup, preview *PresetLevelPreview) error {
+	levelID, err := presetID(level.ID)
+	if err != nil {
+		return fmt.Errorf("invalid level id for %q: %w", label, err)
+	}
+	groups, err := r.tx.listGroups(r.ctx, levelID)
+	if err != nil {
+		return fmt.Errorf("failed to list groups for %q: %w", label, err)
+	}
+	groupByLabel := map[string]SelectionGroup{}
+	for _, group := range groups {
+		groupByLabel[group.Label] = group
+	}
+	for gi, groupPlan := range plans {
+		group, found := groupByLabel[groupPlan.Label]
+		if !found {
+			if group, err = r.ensureGroup(levelID, label, groupPlan, int32(gi)); err != nil {
+				return err
+			}
+			groupByLabel[groupPlan.Label] = group
+			preview.GroupsToAdd++
+		}
+		if err := r.linkSubjects(group, groupPlan, preview); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r presetRun) ensureGroup(levelID uuid.UUID, label string, plan presetGroup, sortOrder int32) (SelectionGroup, error) {
+	r.summary.GroupsCreated++
+	if r.dryRun {
+		return SelectionGroup{ID: uuid.New().String(), Label: plan.Label}, nil
+	}
+	group, err := r.tx.createGroup(r.ctx, levelID, plan, sortOrder)
+	if err != nil {
+		return SelectionGroup{}, fmt.Errorf("failed to create group %q on %q: %w", plan.Label, label, err)
+	}
+	return group, nil
+}
+
+func (r presetRun) linkSubjects(group SelectionGroup, plan presetGroup, preview *PresetLevelPreview) error {
+	groupID, err := presetID(group.ID)
+	if err != nil {
+		return fmt.Errorf("invalid group id for %q: %w", plan.Label, err)
+	}
+	links, err := r.tx.listSubjects(r.ctx, groupID)
+	if err != nil {
+		return fmt.Errorf("failed to list subjects for group %q: %w", plan.Label, err)
+	}
+	linked := map[string]bool{}
+	for _, link := range links {
+		linked[link.SubjectCode] = true
+	}
+	for si, code := range plan.SubjectCodes {
+		subject, found := r.subjectByCode[code]
+		if linked[code] || !found {
+			continue
+		}
+		if !r.dryRun {
+			if err := r.tx.addPresetSubject(r.ctx, groupID, subject.ID, int32(si)); err != nil {
+				return fmt.Errorf("failed to link %s to group %q: %w", code, plan.Label, err)
 			}
 		}
-		levels, e := tx.listLevels(ctx)
-		if e != nil {
-			return fmt.Errorf("failed to list levels: %w", e)
-		}
-		levelByLabel := map[string]Level{}
-		for _, level := range levels {
-			levelByLabel[level.Label] = level
-		}
-		sortOrder := int32(0)
-		for _, plan := range activePlans {
-			grade := gradeByNumber[plan.GradeNumber]
-			label := fmt.Sprintf("Grade %d%s", plan.GradeNumber, plan.LabelSuffix)
-			level, existed := levelByLabel[label]
-			if !existed {
-				if dryRun {
-					level = Level{ID: uuid.New().String(), Label: label}
-				} else {
-					level, e = tx.createLevel(ctx, label, grade.ID, sortOrder)
-					if e != nil {
-						return fmt.Errorf("failed to create level %q: %w", label, e)
-					}
-				}
-				levelByLabel[label] = level
-				summary.LevelsCreated++
-			}
-			sortOrder++
-			preview := PresetLevelPreview{Label: label, GradeNumber: plan.GradeNumber, AlreadyExists: existed}
-			levelID, e := presetID(level.ID)
-			if e != nil {
-				return fmt.Errorf("invalid level id for %q: %w", label, e)
-			}
-			groups, e := tx.listGroups(ctx, levelID)
-			if e != nil {
-				return fmt.Errorf("failed to list groups for %q: %w", label, e)
-			}
-			groupByLabel := map[string]SelectionGroup{}
-			for _, group := range groups {
-				groupByLabel[group.Label] = group
-			}
-			for gi, groupPlan := range plan.Groups {
-				group, found := groupByLabel[groupPlan.Label]
-				if !found {
-					if dryRun {
-						group = SelectionGroup{ID: uuid.New().String(), Label: groupPlan.Label}
-					} else {
-						group, e = tx.createGroup(ctx, levelID, groupPlan, int32(gi))
-						if e != nil {
-							return fmt.Errorf("failed to create group %q on %q: %w", groupPlan.Label, label, e)
-						}
-					}
-					groupByLabel[groupPlan.Label] = group
-					summary.GroupsCreated++
-					preview.GroupsToAdd++
-				}
-				groupID, e := presetID(group.ID)
-				if e != nil {
-					return fmt.Errorf("invalid group id for %q: %w", groupPlan.Label, e)
-				}
-				links, e := tx.listSubjects(ctx, groupID)
-				if e != nil {
-					return fmt.Errorf("failed to list subjects for group %q: %w", groupPlan.Label, e)
-				}
-				linked := map[string]bool{}
-				for _, link := range links {
-					linked[link.SubjectCode] = true
-				}
-				for si, code := range groupPlan.SubjectCodes {
-					if linked[code] {
-						continue
-					}
-					subject, found := subjectByCode[code]
-					if !found {
-						continue
-					}
-					if !dryRun {
-						if e = tx.addPresetSubject(ctx, groupID, subject.ID, int32(si)); e != nil {
-							return fmt.Errorf("failed to link %s to group %q: %w", code, groupPlan.Label, e)
-						}
-					}
-					summary.LinksCreated++
-					preview.SubjectsToLink++
-				}
-			}
-			if !existed || preview.GroupsToAdd > 0 || preview.SubjectsToLink > 0 {
-				summary.Levels = append(summary.Levels, preview)
-			}
-		}
-		return nil
-	})
-	return summary, err
+		r.summary.LinksCreated++
+		preview.SubjectsToLink++
+	}
+	return nil
 }
