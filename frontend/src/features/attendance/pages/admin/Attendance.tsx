@@ -1,22 +1,21 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router";
 import { Button, Tag } from "antd";
-import { CheckCircleFilled, ExclamationCircleFilled, PlusCircleOutlined } from "@ant-design/icons";
+import { PlusCircleOutlined } from "@ant-design/icons";
 import LinkButton from "@/shared/ui/LinkButton";
-import { useDailySessions, useDeleteSession, useCreateSession } from "@/features/attendance/queries/useAttendance";
-import { useCurrentClasses } from "@/features/academics/queries/useClasses";
+import { useDeleteSession } from "@/features/attendance/queries/useAttendance";
+import { useDailySessionsPage } from "@/features/attendance/hooks/useDailySessionsPage";
+import { sessionColumns } from "@/features/attendance/components/sessionColumns";
 import { useRole } from "@/shared/auth/useRole";
 import type { DailySession } from "@/features/attendance/api/attendance";
-import { todayISODate, isLockedAfter24Hours, formatLongDate } from "@/shared/lib/date";
+import { todayISODate, formatLongDate } from "@/shared/lib/date";
 import TableSkeleton from "@/shared/ui/TableSkeleton";
-import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
+import DataGrid from "@/shared/ui/DataGrid";
 import SectionHeader from "@/shared/ui/SectionHeader";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import EmptyState from "@/shared/ui/EmptyState";
 import ConfirmDeleteModal from "@/shared/ui/ConfirmDeleteModal";
 import AgentFindingsBanner from "@/features/notifications/components/AgentFindingsBanner";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
-import { useToast } from "@/shared/ui/toast/useToast";
 import DateField from "@/shared/ui/DateField";
 import PageHeader from "@/shared/ui/PageHeader";
 
@@ -24,105 +23,29 @@ const HEADERS = ["Class", "Grade", "Teacher", "Records", "Status", "Actions"];
 
 export default function Attendance() {
   const [date, setDate] = useState(todayISODate());
-  const { data: allSessions, isLoading, isError, refetch } = useDailySessions(date);
-  const { data: allClasses } = useCurrentClasses();
-  // ?grade=<name> (from the dashboard's attendance by grade) narrows the page to one grade.
-  const [params, setParams] = useSearchParams();
-  const grade = params.get("grade");
-  const sessions = grade ? allSessions?.filter((s) => s.grade_name === grade) : allSessions;
-  const classes = grade ? allClasses?.filter((c) => c.grade_name === grade) : allClasses;
+  const day = useDailySessionsPage(date);
   const deleteSession = useDeleteSession();
-  const createSession = useCreateSession();
   const { role } = useRole();
-  const isAdmin = role === "admin";
   const [toDelete, setToDelete] = useState<DailySession | null>(null);
-  const [bulkCreating, setBulkCreating] = useState(false);
-  const { showToast } = useToast();
-
-  const existingClassIds = new Set((sessions ?? []).map((s) => s.class_id));
-  const missingClasses = (classes ?? []).filter((c) => !existingClassIds.has(c.id));
-
-  const createAllSessions = async () => {
-    setBulkCreating(true);
-    const results = await Promise.allSettled(
-      missingClasses.map((c) => createSession.mutateAsync({ class_id: c.id, date })),
-    );
-    setBulkCreating(false);
-    const created = results.filter((r) => r.status === "fulfilled").length;
-    const failed = results.length - created;
-    if (failed === 0) {
-      showToast({ kind: "success", title: `Created ${created} session${created === 1 ? "" : "s"}` });
-    } else {
-      showToast({
-        kind: failed === results.length ? "error" : "warning",
-        title: `Created ${created} of ${results.length} sessions`,
-        subtitle: `${failed} failed - a class may already have a session, or has no enrolled students.`,
-      });
-    }
-  };
-
-
-  const columns: GridColumn<DailySession>[] = [
-    { key: "class", header: "Class", render: (s) => <span className="os-fw-600">{s.class_name}</span> },
-    { key: "grade", header: "Grade", render: (s) => <span className="os-table__muted">{s.grade_name}</span> },
-    { key: "teacher", header: "Teacher", render: (s) => <span className="os-table__muted">{s.teacher_name}</span> },
-    { key: "records", header: "Records", render: (s) => <span className="os-table__muted">{s.marked_count} / {s.enrolled_count}</span> },
-    {
-      key: "status",
-      header: "Status",
-      render: (s) => {
-        const isMarked = s.marked_count > 0;
-        return (
-          <div className="os-flex os-gap-1h os-wrap">
-            <Tag color={isMarked ? "success" : "warning"} variant="filled" icon={isMarked ? <CheckCircleFilled /> : <ExclamationCircleFilled />}>
-              {isMarked ? "Marked" : "Pending"}
-            </Tag>
-            {isLockedAfter24Hours(s.created_at) && <Tag color="magenta" variant="filled">Locked</Tag>}
-          </div>
-        );
-      },
-    },
-    {
-      key: "actions",
-      header: "Actions",
-      align: "end",
-      render: (s) => {
-        const readOnly = s.marked_count > 0 || (isLockedAfter24Hours(s.created_at) && !isAdmin);
-        return (
-          <div className="os-grid__actions os-nowrap-flex">
-            <LinkButton to={`/attendance/sessions/${s.id}/mark`} type={readOnly ? "link" : "primary"} size="small">
-              {readOnly ? "View" : "Mark"}
-            </LinkButton>
-            <Button type="text" danger size="small" onClick={() => setToDelete(s)}>Delete</Button>
-          </div>
-        );
-      },
-    },
-  ];
-
-  const marked = (sessions ?? []).filter((s) => s.marked_count > 0).length;
-  const pending = (sessions ?? []).length - marked;
-  const isToday = date === todayISODate();
+  const { sessions } = day;
 
   return (
     <div className="os-page">
       <PageHeader title="Attendance" subtitle={<>{formatLongDate(`${date}T00:00:00`)}</>}>
         <div className="os-min-w-12">
-          <DateField value={date} onChange={(ymd) => {
-              if (ymd) setDate(ymd);
-            }} id="attendance-date" labelText="Attendance date" hideLabel />
+          <DateField value={date} onChange={(ymd) => ymd && setDate(ymd)} id="attendance-date" labelText="Attendance date" hideLabel />
         </div>
       </PageHeader>
 
       <AgentFindingsBanner />
 
-      {grade && (
+      {day.grade && (
         <div className="os-mb-4">
-          <Tag color="processing" closable onClose={(e) => { e.preventDefault(); setParams({}, { replace: true }); }}>Grade: {grade}</Tag>
+          <Tag color="processing" closable onClose={(e) => { e.preventDefault(); day.clearGrade(); }}>Grade: {day.grade}</Tag>
         </div>
       )}
 
-      {!isToday && (
+      {date !== todayISODate() && (
         <div className="os-mb-4">
           <Button type="link" size="small" className="os-p-0" onClick={() => setDate(todayISODate())}>
             Jump to today
@@ -130,66 +53,57 @@ export default function Attendance() {
         </div>
       )}
 
-      {isLoading ? (
-        <>
-          <div className="os-section">
-            <SectionHeader title="Sessions" />
-            <TableSkeleton headers={HEADERS} />
-          </div>
-        </>
-      ) : isError ? (
-        <ErrorMessage message="Could not load sessions for this date." onRetry={refetch} />
+      {day.isLoading ? (
+        <div className="os-section">
+          <SectionHeader title="Sessions" />
+          <TableSkeleton headers={HEADERS} />
+        </div>
+      ) : day.isError ? (
+        <ErrorMessage message="Could not load sessions for this date." onRetry={day.refetch} />
       ) : (
-        <>
-
-          <div className="os-section">
-            <SectionHeader
-              title="Sessions"
-              meta={
-                missingClasses.length > 0 && (
-                  <Button type="primary" icon={<PlusCircleOutlined />} onClick={createAllSessions} loading={bulkCreating}>
-                    {bulkCreating ? "Creating…" : `Create all sessions (${missingClasses.length})`}
-                  </Button>
-                )
-              }
-            />
-            {!!sessions?.length && (
-              <div className="os-att-summary">
-                <div className="os-att-summary__stats">
-                  <span className="os-att-stat"><span className="os-att-stat__dot" aria-hidden="true" />Sessions<strong>{sessions.length}</strong></span>
-                  <span className="os-att-stat"><span className="os-att-stat__dot is-present" aria-hidden="true" />Marked<strong>{marked}</strong></span>
-                  <span className="os-att-stat"><span className="os-att-stat__dot is-late" aria-hidden="true" />Pending<strong>{pending}</strong></span>
-                </div>
+        <div className="os-section">
+          <SectionHeader
+            title="Sessions"
+            meta={
+              day.missingCount > 0 && (
+                <Button type="primary" icon={<PlusCircleOutlined />} onClick={day.createAllSessions} loading={day.bulkCreating}>
+                  {day.bulkCreating ? "Creating…" : `Create all sessions (${day.missingCount})`}
+                </Button>
+              )
+            }
+          />
+          {sessions.length > 0 && (
+            <div className="os-att-summary">
+              <div className="os-att-summary__stats">
+                <span className="os-att-stat"><span className="os-att-stat__dot" aria-hidden="true" />Sessions<strong>{sessions.length}</strong></span>
+                <span className="os-att-stat"><span className="os-att-stat__dot is-present" aria-hidden="true" />Marked<strong>{day.marked}</strong></span>
+                <span className="os-att-stat"><span className="os-att-stat__dot is-late" aria-hidden="true" />Pending<strong>{day.pending}</strong></span>
               </div>
-            )}
+            </div>
+          )}
 
-            <MutationErrorNotification
-              isError={deleteSession.isError}
-              error={deleteSession.error}
-              title="Could not delete session"
-              fallback="Please try again."
-              onClose={() => deleteSession.reset()} className="os-mt-0 os-mx-6 os-mb-4"
+          <MutationErrorNotification
+            isError={deleteSession.isError}
+            error={deleteSession.error}
+            title="Could not delete session"
+            fallback="Please try again."
+            onClose={() => deleteSession.reset()} className="os-mt-0 os-mx-6 os-mb-4"
+          />
+
+          {sessions.length === 0 ? (
+            <EmptyState
+              title="No sessions for this date"
+              description={
+                day.missingCount > 0
+                  ? "Create sessions for every class at once above, or go to a class's Attendance tab to start one."
+                  : "Sessions are created from a class's Attendance tab - go to a class to start one."
+              }
+              action={<LinkButton to="/classes" type="primary">Go to Classes</LinkButton>}
             />
-
-            {!sessions || sessions.length === 0 ? (
-              <EmptyState
-                title="No sessions for this date"
-                description={
-                  missingClasses.length > 0
-                    ? "Create sessions for every class at once above, or go to a class's Attendance tab to start one."
-                    : "Sessions are created from a class's Attendance tab - go to a class to start one."
-                }
-                action={
-                  <LinkButton to="/classes" type="primary">
-                    Go to Classes
-                  </LinkButton>
-                }
-              />
-            ) : (
-              <DataGrid rows={sessions} columns={columns} getRowId={(s) => s.id} noHover pageSize={20} />
-            )}
-          </div>
-        </>
+          ) : (
+            <DataGrid rows={sessions} columns={sessionColumns(role === "admin", setToDelete)} getRowId={(s) => s.id} noHover pageSize={20} />
+          )}
+        </div>
       )}
 
       <ConfirmDeleteModal

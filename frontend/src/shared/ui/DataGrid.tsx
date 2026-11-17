@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { Table } from "antd";
-import type { TableColumnsType, TablePaginationConfig } from "antd";
+import type { TablePaginationConfig } from "antd";
 import { usePagination } from "@/shared/hooks/usePagination";
 import { useT } from "@/shared/i18n/useT";
+import { gridClassName, rowHandlers, rowSelection, toTableColumns } from "@/shared/ui/dataGridParts";
 
 export interface GridColumn<T> {
   key: string;
@@ -51,8 +52,6 @@ interface Props<T> {
   onSelectionChange?: (next: Set<string>) => void;
 }
 
-const SORT_ORDER = { asc: "ascend", desc: "descend" } as const;
-
 // antd Table with pagination, count label and optional toolbar, sorting and selection.
 // Under 42rem each row stacks into a labelled card (see .os-table--stack in _table.scss).
 export default function DataGrid<T>({
@@ -81,23 +80,6 @@ export default function DataGrid<T>({
   const paging = server ?? client;
   const total = server ? server.totalItems : rows.length;
 
-  const selectable = !!selected && !!onSelectionChange;
-
-  const tableColumns: TableColumnsType<T> = columns.map((c) => {
-    const sortable = !!c.sortable && !!onSortChange;
-    return {
-      key: c.key,
-      title: c.header,
-      align: c.align === "end" ? "right" : undefined,
-      render: (_: unknown, row: T) => c.render(row),
-      // data-label lets each cell carry its column name in the phone card layout.
-      onCell: () => ({ "data-label": c.header }) as React.HTMLAttributes<HTMLElement>,
-      sorter: sortable,
-      sortOrder: sortable ? (sort?.key === c.key ? SORT_ORDER[sort.direction] : null) : undefined,
-      sortDirections: sortable ? ["ascend", "descend", "ascend"] : undefined,
-    };
-  });
-
   const pager: TablePaginationConfig | false = pagination && total > 0 && {
     total,
     current: paging.page,
@@ -117,11 +99,11 @@ export default function DataGrid<T>({
         </div>
       )}
       <Table<T>
-        className={`os-grid os-table--stack${noHover ? " os-table--no-hover" : ""}${className ? ` ${className}` : ""}`}
+        className={gridClassName(noHover, className)}
         rowKey={getRowId}
         rowClassName={rowClassName ? (row) => rowClassName(row) : undefined}
         sticky={stickyOffset !== undefined ? { offsetHeader: stickyOffset } : undefined}
-        columns={tableColumns}
+        columns={toTableColumns(columns, sort, onSortChange)}
         dataSource={pageRows}
         pagination={pager}
         // Sorting is server-side; antd only reports which column was clicked.
@@ -129,29 +111,8 @@ export default function DataGrid<T>({
           const key = Array.isArray(sorter) ? sorter[0]?.columnKey : sorter.columnKey;
           if (key && onSortChange) onSortChange(String(key));
         }}
-        rowSelection={
-          selectable
-            ? {
-                selectedRowKeys: pageRows.map(getRowId).filter((id) => selected.has(id)),
-                onChange: (keys) => {
-                  const next = new Set(selected);
-                  for (const row of pageRows) next.delete(getRowId(row));
-                  for (const k of keys) next.add(String(k));
-                  onSelectionChange(next);
-                },
-              }
-            : undefined
-        }
-        onRow={
-          onRowClick
-            ? (row) => ({
-                onClick: () => onRowClick(row),
-                onKeyDown: (e) => { if (e.key === "Enter") onRowClick(row); },
-                tabIndex: 0,
-                className: "os-pointer os-focus-ring",
-              })
-            : undefined
-        }
+        rowSelection={rowSelection(pageRows, getRowId, selected, onSelectionChange)}
+        onRow={rowHandlers(onRowClick)}
         scroll={{ x: "max-content" }}
       />
     </div>
