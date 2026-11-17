@@ -208,6 +208,37 @@ type moving struct {
 	policy string
 }
 
+// readPromotionStudents loads the grades, this year's students and next year's admissions.
+func readPromotionStudents(ctx context.Context, s *Store, source, target uuid.UUID) ([]GradeInfo, []PromotionCandidate, string, error) {
+	grades, err := s.grades(ctx)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	current, err := s.promotionStudents(ctx, source)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	intake, err := s.intakeStudents(ctx, target)
+	if err != nil {
+		return nil, nil, "", err
+	}
+	return grades, append(current, intake...), fmt.Sprintf("%d current students, %d new admissions", len(current), len(intake)), nil
+}
+
+// classLabelNames maps medium and stream ids to their names, for labelling new sections.
+func classLabelNames(classes []YearClass) (mediumName, streamName map[string]string) {
+	mediumName, streamName = map[string]string{}, map[string]string{}
+	for _, c := range classes {
+		if c.MediumID != nil {
+			mediumName[c.MediumID.String()] = c.MediumName
+		}
+		if c.StreamID != nil {
+			streamName[c.StreamID.String()] = c.StreamName
+		}
+	}
+	return mediumName, streamName
+}
+
 func (w Promotion) Propose(ctx context.Context, s *Store, in Inputs, trace *Trace) (Proposal, string, error) {
 	source, _ := parseID(in["source_year"])
 	target, _ := parseID(in["target_year"])
@@ -216,20 +247,10 @@ func (w Promotion) Propose(ctx context.Context, s *Store, in Inputs, trace *Trac
 	var grades []GradeInfo
 	var candidates []PromotionCandidate
 	if err := trace.Run(stepByKey(w, "read_students"), func() (string, error) {
+		var detail string
 		var err error
-		if grades, err = s.grades(ctx); err != nil {
-			return "", err
-		}
-		current, err := s.promotionStudents(ctx, source)
-		if err != nil {
-			return "", err
-		}
-		intake, err := s.intakeStudents(ctx, target)
-		if err != nil {
-			return "", err
-		}
-		candidates = append(current, intake...)
-		return fmt.Sprintf("%d current students, %d new admissions", len(current), len(intake)), nil
+		grades, candidates, detail, err = readPromotionStudents(ctx, s, source, target)
+		return detail, err
 	}); err != nil {
 		return Proposal{}, "", err
 	}
@@ -268,7 +289,7 @@ func (w Promotion) Propose(ctx context.Context, s *Store, in Inputs, trace *Trac
 
 	var targetClasses []YearClass
 	var occupied map[uuid.UUID]int
-	mediumName, streamName := map[string]string{}, map[string]string{}
+	var mediumName, streamName map[string]string
 	if err := trace.Run(stepByKey(w, "read_classes"), func() (string, error) {
 		var err error
 		if targetClasses, err = s.yearClasses(ctx, target); err != nil {
@@ -278,14 +299,7 @@ func (w Promotion) Propose(ctx context.Context, s *Store, in Inputs, trace *Trac
 			return "", err
 		}
 		sourceClasses, err := s.yearClasses(ctx, source)
-		for _, c := range append(targetClasses, sourceClasses...) {
-			if c.MediumID != nil {
-				mediumName[c.MediumID.String()] = c.MediumName
-			}
-			if c.StreamID != nil {
-				streamName[c.StreamID.String()] = c.StreamName
-			}
-		}
+		mediumName, streamName = classLabelNames(append(targetClasses, sourceClasses...))
 		return plural(len(targetClasses), "class", "classes") + " next year", err
 	}); err != nil {
 		return Proposal{}, "", err
@@ -542,23 +556,12 @@ func optionalID(v string) *uuid.UUID {
 func (w Promotion) Apply(ctx context.Context, tx *Store, in Inputs, p Proposal, _ uuid.UUID, trace *Trace) (json.RawMessage, string, error) {
 	target, _ := parseID(in["target_year"])
 	snap := promotionSnapshot{Year: target}
-	realID := map[string]uuid.UUID{}
+	var realID map[string]uuid.UUID
 
 	if err := trace.Run(stepByKey(w, "create_classes"), func() (string, error) {
-		for _, r := range p.Section("new_classes").Rows {
-			if r.Cells["create"] != "true" {
-				continue
-			}
-			grade, _ := parseID(r.Cells["grade_id"])
-			capacity, _ := strconv.Atoi(r.Cells["capacity"])
-			id, err := tx.createClass(ctx, target, YearClass{GradeID: grade, Name: r.Cells["class"], MediumID: optionalID(r.Cells["medium_id"]), StreamID: optionalID(r.Cells["stream_id"]), StreamGroupID: optionalID(r.Cells["stream_group_id"]), Capacity: int32(capacity)})
-			if err != nil {
-				return "", fmt.Errorf("class %s: %w", r.Cells["class"], err)
-			}
-			realID[r.ID] = id
-			snap.Created = append(snap.Created, id)
-		}
-		return plural(len(snap.Created), "section", "sections") + " created", nil
+		var err error
+		realID, err = createProposedClasses(ctx, tx, target, p.Section("new_classes").Rows, &snap)
+		return plural(len(snap.Created), "section", "sections") + " created", err
 	}); err != nil {
 		return nil, "", err
 	}
@@ -570,24 +573,8 @@ func (w Promotion) Apply(ctx context.Context, tx *Store, in Inputs, p Proposal, 
 		for _, a := range assignments {
 			classSet[a.ClassID] = true
 		}
-		var err error
-		if snap.Previous, err = tx.yearAssignments(ctx, target, snap.Cleared); err != nil {
-			return "", err
-		}
-		if err := tx.reassign(ctx, target, snap.Cleared, assignments); err != nil {
-			return "", err
-		}
-		placed := make([]uuid.UUID, len(assignments))
-		for i, a := range assignments {
-			placed[i] = a.StudentID
-		}
-		if snap.Intakes, err = tx.intakesByIDs(ctx, placed); err != nil {
-			return "", err
-		}
-		if err := tx.deleteIntakes(ctx, placed); err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("%d students in %d classes", len(assignments), len(classSet)), nil
+		err := moveStudents(ctx, tx, target, assignments, &snap)
+		return fmt.Sprintf("%d students in %d classes", len(assignments), len(classSet)), err
 	}); err != nil {
 		return nil, "", err
 	}
@@ -596,20 +583,8 @@ func (w Promotion) Apply(ctx context.Context, tx *Store, in Inputs, p Proposal, 
 	}
 
 	if err := trace.Run(stepByKey(w, "save_policies"), func() (string, error) {
-		saved := 0
-		for key, value := range in {
-			if grade, ok := strings.CutPrefix(key, "policy:"); ok {
-				id, ok := parseID(grade)
-				if !ok || policyLabels[value] == "" {
-					continue
-				}
-				if err := tx.savePolicy(ctx, id, PolicySetting{Policy: value, SpreadByMarks: in["spread_by_marks"] == "true"}); err != nil {
-					return "", err
-				}
-				saved++
-			}
-		}
-		return plural(saved, "rule", "rules") + " saved", nil
+		saved, err := savePolicies(ctx, tx, in)
+		return plural(saved, "rule", "rules") + " saved", err
 	}); err != nil {
 		return nil, "", err
 	}
@@ -620,6 +595,64 @@ func (w Promotion) Apply(ctx context.Context, tx *Store, in Inputs, p Proposal, 
 		summary += fmt.Sprintf(", created %s", plural(len(snap.Created), "section", "sections"))
 	}
 	return data, summary, nil
+}
+
+// createProposedClasses creates the ticked new sections and maps each proposal row id to the real class id.
+func createProposedClasses(ctx context.Context, tx *Store, target uuid.UUID, rows []Row, snap *promotionSnapshot) (map[string]uuid.UUID, error) {
+	realID := map[string]uuid.UUID{}
+	for _, r := range rows {
+		if r.Cells["create"] != "true" {
+			continue
+		}
+		grade, _ := parseID(r.Cells["grade_id"])
+		capacity, _ := strconv.Atoi(r.Cells["capacity"])
+		id, err := tx.createClass(ctx, target, YearClass{GradeID: grade, Name: r.Cells["class"], MediumID: optionalID(r.Cells["medium_id"]), StreamID: optionalID(r.Cells["stream_id"]), StreamGroupID: optionalID(r.Cells["stream_group_id"]), Capacity: int32(capacity)})
+		if err != nil {
+			return realID, fmt.Errorf("class %s: %w", r.Cells["class"], err)
+		}
+		realID[r.ID] = id
+		snap.Created = append(snap.Created, id)
+	}
+	return realID, nil
+}
+
+// moveStudents records the old placements and intakes in snap, then writes the new placements and clears the placed intakes.
+func moveStudents(ctx context.Context, tx *Store, target uuid.UUID, assignments []Assignment, snap *promotionSnapshot) error {
+	var err error
+	if snap.Previous, err = tx.yearAssignments(ctx, target, snap.Cleared); err != nil {
+		return err
+	}
+	if err := tx.reassign(ctx, target, snap.Cleared, assignments); err != nil {
+		return err
+	}
+	placed := make([]uuid.UUID, len(assignments))
+	for i, a := range assignments {
+		placed[i] = a.StudentID
+	}
+	if snap.Intakes, err = tx.intakesByIDs(ctx, placed); err != nil {
+		return err
+	}
+	return tx.deleteIntakes(ctx, placed)
+}
+
+// savePolicies stores each grade's chosen placement rule so next year's run starts from it.
+func savePolicies(ctx context.Context, tx *Store, in Inputs) (int, error) {
+	saved := 0
+	for key, value := range in {
+		grade, ok := strings.CutPrefix(key, "policy:")
+		if !ok {
+			continue
+		}
+		id, ok := parseID(grade)
+		if !ok || policyLabels[value] == "" {
+			continue
+		}
+		if err := tx.savePolicy(ctx, id, PolicySetting{Policy: value, SpreadByMarks: in["spread_by_marks"] == "true"}); err != nil {
+			return saved, err
+		}
+		saved++
+	}
+	return saved, nil
 }
 
 // placementAssignments returns every student on the sheet and the class picked for each; "new:" ids map to sections just created.

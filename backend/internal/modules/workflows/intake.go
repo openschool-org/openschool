@@ -240,81 +240,113 @@ func hasGuardian(f map[string]string) bool {
 	return f["guardian_name"] != "" || f["guardian_phone"] != "" || f["guardian_nic"] != "" || f["guardian_relationship"] != ""
 }
 
+// intakeSheet checks each intake CSV row and builds the proposal rows and counts.
+type intakeSheet struct {
+	schoolType    string
+	defaultMedium string
+	mediumByName  map[string]string
+	taken         map[string]bool
+	knownName     map[string]string // guardian NIC on record -> name
+	seenIndex     map[string]int
+	seenNIC       map[string]string
+
+	rows                                   []Row
+	toImport, withErrors, reused, siblings int
+}
+
+// load reads what every row is checked against and returns the medium options for the proposal.
+func (sh *intakeSheet) load(ctx context.Context, s *Store, records []intakeRow) ([]Option, error) {
+	mediums, err := s.mediums(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var options []Option
+	for _, m := range mediums {
+		sh.mediumByName[strings.ToLower(m.Name)] = m.ID.String()
+		options = append(options, Option{Value: m.ID.String(), Label: m.Name})
+	}
+	if sh.schoolType, err = s.schoolType(ctx); err != nil {
+		return nil, err
+	}
+	taken, known, err := existingForRecords(ctx, s, records)
+	if err != nil {
+		return nil, err
+	}
+	sh.taken = taken
+	for nic, g := range known {
+		sh.knownName[nic] = g.FullName
+	}
+	return options, nil
+}
+
+func (sh *intakeSheet) add(r intakeRow) {
+	f := r.fields
+	nic := strings.ToUpper(f["guardian_nic"])
+	problem := rowProblem(f, sh.schoolType)
+	medium, mediumProblem := rowMedium(f["medium"], sh.defaultMedium, sh.mediumByName)
+	if problem == "" {
+		problem = mediumProblem
+	}
+	problem = indexProblem(problem, f["index_number"], r.line, sh.taken, sh.seenIndex)
+	reason := sh.guardianReason(f, nic, problem == "")
+	if nic != "" && sh.seenNIC[nic] == "" {
+		sh.seenNIC[nic] = f["full_name"]
+	}
+	importIt := problem == ""
+	if importIt {
+		sh.toImport++
+	} else {
+		sh.withErrors++
+	}
+	sh.rows = append(sh.rows, Row{ID: "line:" + strconv.Itoa(r.line), Reason: reason, Warning: problem,
+		Cells: map[string]string{
+			"line": strconv.Itoa(r.line), "index": f["index_number"], "name": f["full_name"], "gender": strings.ToLower(f["gender"]),
+			"medium": medium, "guardian": f["guardian_name"], "guardian_nic": nic, "import": strconv.FormatBool(importIt), "error": problem,
+			"address": f["address"], "phone": f["phone"], "email": f["email"], "relationship": strings.ToLower(f["guardian_relationship"]),
+			"guardian_phone": f["guardian_phone"], "guardian_email": f["guardian_email"],
+		}})
+}
+
+// guardianReason explains how the row's guardian is linked; clean rows count towards reused and siblings.
+func (sh *intakeSheet) guardianReason(f map[string]string, nic string, clean bool) string {
+	switch {
+	case !hasGuardian(f):
+		return "New student. No guardian given; add one from the student's page."
+	case sh.knownName[nic] != "":
+		if clean {
+			sh.reused++
+		}
+		return "Guardian " + sh.knownName[nic] + " is already on record, so this student is linked to them."
+	case sh.seenNIC[nic] != "":
+		if clean {
+			sh.siblings++
+		}
+		return "Sibling of " + sh.seenNIC[nic] + ": linked to the same guardian."
+	}
+	return "New student."
+}
+
 func (w StudentIntake) Propose(ctx context.Context, s *Store, in Inputs, trace *Trace) (Proposal, string, error) {
 	year, _ := parseID(in["target_year"])
 	grade, _ := parseID(in["grade"])
-	var rows []Row
-	var toImport, withErrors, reused, siblings int
+	sh := intakeSheet{defaultMedium: in["medium"], mediumByName: map[string]string{}, seenIndex: map[string]int{}, seenNIC: map[string]string{}, knownName: map[string]string{}}
 	var mediumOptions []Option
 	if err := trace.Run(stepByKey(w, "read_csv"), func() (string, error) {
 		records, err := parseIntakeCSV(in["csv"])
 		if err != nil {
 			return "", err
 		}
-		mediums, err := s.mediums(ctx)
-		if err != nil {
+		if mediumOptions, err = sh.load(ctx, s, records); err != nil {
 			return "", err
 		}
-		mediumByName := map[string]string{}
-		for _, m := range mediums {
-			mediumByName[strings.ToLower(m.Name)] = m.ID.String()
-			mediumOptions = append(mediumOptions, Option{Value: m.ID.String(), Label: m.Name})
-		}
-		schoolType, err := s.schoolType(ctx)
-		if err != nil {
-			return "", err
-		}
-		taken, known, err := existingForRecords(ctx, s, records)
-		if err != nil {
-			return "", err
-		}
-		seenIndex := map[string]int{}
-		seenNIC := map[string]string{}
 		for _, r := range records {
-			f := r.fields
-			nic := strings.ToUpper(f["guardian_nic"])
-			problem := rowProblem(f, schoolType)
-			medium, mediumProblem := rowMedium(f["medium"], in["medium"], mediumByName)
-			if problem == "" {
-				problem = mediumProblem
-			}
-			problem = indexProblem(problem, f["index_number"], r.line, taken, seenIndex)
-			reason := "New student."
-			switch {
-			case !hasGuardian(f):
-				reason = "New student. No guardian given; add one from the student's page."
-			case known[nic].FullName != "":
-				reason = "Guardian " + known[nic].FullName + " is already on record, so this student is linked to them."
-				if problem == "" {
-					reused++
-				}
-			case seenNIC[nic] != "":
-				reason = "Sibling of " + seenNIC[nic] + ": linked to the same guardian."
-				if problem == "" {
-					siblings++
-				}
-			}
-			if nic != "" && seenNIC[nic] == "" {
-				seenNIC[nic] = f["full_name"]
-			}
-			importIt := problem == ""
-			if importIt {
-				toImport++
-			} else {
-				withErrors++
-			}
-			rows = append(rows, Row{ID: "line:" + strconv.Itoa(r.line), Reason: reason, Warning: problem,
-				Cells: map[string]string{
-					"line": strconv.Itoa(r.line), "index": f["index_number"], "name": f["full_name"], "gender": strings.ToLower(f["gender"]),
-					"medium": medium, "guardian": f["guardian_name"], "guardian_nic": nic, "import": strconv.FormatBool(importIt), "error": problem,
-					"address": f["address"], "phone": f["phone"], "email": f["email"], "relationship": strings.ToLower(f["guardian_relationship"]),
-					"guardian_phone": f["guardian_phone"], "guardian_email": f["guardian_email"],
-				}})
+			sh.add(r)
 		}
-		return fmt.Sprintf("%d rows, %d ready, %d with problems", len(records), toImport, withErrors), nil
+		return fmt.Sprintf("%d rows, %d ready, %d with problems", len(records), sh.toImport, sh.withErrors), nil
 	}); err != nil {
 		return Proposal{}, "", err
 	}
+	rows, toImport, withErrors, reused, siblings := sh.rows, sh.toImport, sh.withErrors, sh.reused, sh.siblings
 	p := Proposal{
 		Summary: []Stat{
 			{Label: "Rows read", Value: strconv.Itoa(len(rows))},

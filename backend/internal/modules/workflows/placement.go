@@ -163,55 +163,8 @@ func (st *placementState) place(s PlacementStudent, policy string, spreadByMarks
 		candidates = st.classes
 	}
 
-	var chosen *PlacementClass
-	switch policy {
-	case PolicyKeepSection:
-		if s.CurrentClass == "" {
-			// A new admission has no section to keep.
-			if chosen = st.leastLoaded(candidates, s); chosen != nil {
-				p.Reason = "New admission: placed where there is space."
-			}
-			break
-		}
-		section := sectionOf(s.CurrentClass)
-		for _, c := range candidates {
-			if sectionOf(c.Name) == section && st.hasRoom(c) {
-				chosen = c
-				p.Reason = fmt.Sprintf("Same section: %s to %s.", s.CurrentClass, c.Name)
-				break
-			}
-		}
-		if chosen == nil {
-			chosen = st.leastLoaded(candidates, s)
-			if chosen != nil {
-				p.Reason = fmt.Sprintf("No room in section %s next year; placed where there is space.", section)
-			}
-		}
-	case PolicyBySubjectChoice, PolicyByStream:
-		chosen = st.withMostSameChoice(candidates, s)
-		if chosen != nil {
-			label := s.ChoiceLabel
-			if label == "" {
-				label = "no optional subjects recorded"
-			}
-			p.Reason = "Grouped with the same choice: " + label + "."
-			if s.ChoiceKey == "" && policy == PolicyBySubjectChoice {
-				p.Warning = "No subject choice recorded for next year; placed by size only."
-			}
-		}
-	default:
-		if spreadByMarks {
-			chosen = st.snake(candidates, rank)
-			if chosen != nil {
-				p.Reason = fmt.Sprintf("Spread by last term's marks (rank %d).", rank+1)
-			}
-		} else {
-			chosen = st.leastLoaded(candidates, s)
-			if chosen != nil {
-				p.Reason = "Balanced by class size, gender and house."
-			}
-		}
-	}
+	chosen, reason, warning := st.choose(candidates, s, policy, spreadByMarks, rank)
+	p.Reason, p.Warning = reason, warning
 
 	if chosen == nil {
 		chosen = st.addClass(s, policy, defaultCapacity)
@@ -223,6 +176,71 @@ func (st *placementState) place(s PlacementStudent, policy string, spreadByMarks
 	st.assign(chosen, s)
 	p.ClassID = chosen.ID
 	return p
+}
+
+// choose picks a class with room by the policy's rule; nil means every matching class is full.
+func (st *placementState) choose(candidates []*PlacementClass, s PlacementStudent, policy string, spreadByMarks bool, rank int) (*PlacementClass, string, string) {
+	switch policy {
+	case PolicyKeepSection:
+		chosen, reason := st.keepSection(candidates, s)
+		return chosen, reason, ""
+	case PolicyBySubjectChoice, PolicyByStream:
+		return st.sameChoice(candidates, s, policy)
+	default:
+		chosen, reason := st.balanced(candidates, s, spreadByMarks, rank)
+		return chosen, reason, ""
+	}
+}
+
+// keepSection keeps a returning student in the same section letter; new admissions go where there is space.
+func (st *placementState) keepSection(candidates []*PlacementClass, s PlacementStudent) (*PlacementClass, string) {
+	if s.CurrentClass == "" {
+		if chosen := st.leastLoaded(candidates, s); chosen != nil {
+			return chosen, "New admission: placed where there is space."
+		}
+		return nil, ""
+	}
+	section := sectionOf(s.CurrentClass)
+	for _, c := range candidates {
+		if sectionOf(c.Name) == section && st.hasRoom(c) {
+			return c, fmt.Sprintf("Same section: %s to %s.", s.CurrentClass, c.Name)
+		}
+	}
+	if chosen := st.leastLoaded(candidates, s); chosen != nil {
+		return chosen, fmt.Sprintf("No room in section %s next year; placed where there is space.", section)
+	}
+	return nil, ""
+}
+
+// sameChoice groups students who chose the same optional subjects (and stream, for A/L).
+func (st *placementState) sameChoice(candidates []*PlacementClass, s PlacementStudent, policy string) (*PlacementClass, string, string) {
+	chosen := st.withMostSameChoice(candidates, s)
+	if chosen == nil {
+		return nil, "", ""
+	}
+	label := s.ChoiceLabel
+	if label == "" {
+		label = "no optional subjects recorded"
+	}
+	warning := ""
+	if s.ChoiceKey == "" && policy == PolicyBySubjectChoice {
+		warning = "No subject choice recorded for next year; placed by size only."
+	}
+	return chosen, "Grouped with the same choice: " + label + ".", warning
+}
+
+// balanced spreads students by marks rank, or else by class size, gender and house.
+func (st *placementState) balanced(candidates []*PlacementClass, s PlacementStudent, spreadByMarks bool, rank int) (*PlacementClass, string) {
+	if spreadByMarks {
+		if chosen := st.snake(candidates, rank); chosen != nil {
+			return chosen, fmt.Sprintf("Spread by last term's marks (rank %d).", rank+1)
+		}
+		return nil, ""
+	}
+	if chosen := st.leastLoaded(candidates, s); chosen != nil {
+		return chosen, "Balanced by class size, gender and house."
+	}
+	return nil, ""
 }
 
 // compatible returns the classes a student may go to; fallback is true when the medium could not be matched.

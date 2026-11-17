@@ -547,54 +547,14 @@ func (w SubjectChoices) Apply(ctx context.Context, tx *Store, in Inputs, p Propo
 		return nil, "", fmt.Errorf("%w: unknown level", ErrInvalidProposal)
 	}
 	snap := choicesSnapshot{Year: target, Level: level.ID}
-	var rows []Enrollment
 	if err := trace.Run(stepByKey(w, "save_choices"), func() (string, error) {
-		for _, r := range p.Section("choices").Rows {
-			sid, ok := parseID(r.ID)
-			if !ok || r.Cells["include"] != "true" {
-				continue
-			}
-			picks := picksFromCells(groups, r.Cells)
-			if len(picks) == 0 {
-				continue
-			}
-			if problems := choiceProblems(groups, picks); len(problems) > 0 {
-				return "", fmt.Errorf("%w: %s: %s", ErrInvalidProposal, r.Cells["name"], strings.Join(problems, "; "))
-			}
-			medium := optionalID(r.Cells["medium"])
-			for _, g := range groups {
-				subjects := picks[g.ID]
-				if g.Fixed() {
-					subjects = nil
-					for _, o := range g.Subjects {
-						subjects = append(subjects, o.Value)
-					}
-				}
-				for _, v := range subjects {
-					subject, _ := parseID(v)
-					rows = append(rows, Enrollment{StudentID: sid, GroupID: g.ID, SubjectID: subject, MediumID: medium, LevelID: level.ID})
-				}
-			}
-			snap.Students = append(snap.Students, sid)
-		}
-		var err error
-		if snap.Previous, err = tx.yearEnrollments(ctx, target, snap.Students); err != nil {
-			return "", err
-		}
-		locked, err := tx.lockedStudents(ctx, target, level.ID, snap.Students)
+		students, rows, err := choiceEnrollments(p.Section("choices").Rows, groups, level.ID)
 		if err != nil {
 			return "", err
 		}
-		for id := range locked {
-			snap.Locked = append(snap.Locked, id)
-		}
-		if err := tx.replaceLevelEnrollments(ctx, target, level.ID, snap.Students, rows); err != nil {
+		snap.Students = students
+		if err := saveChoices(ctx, tx, &snap, rows, in["lock"] == "true"); err != nil {
 			return "", err
-		}
-		if in["lock"] == "true" {
-			if err := tx.setLocks(ctx, target, level.ID, snap.Students, snap.Students); err != nil {
-				return "", err
-			}
 		}
 		return fmt.Sprintf("%s saved", plural(len(snap.Students), "student's choice", "students' choices")), nil
 	}); err != nil {
@@ -602,6 +562,69 @@ func (w SubjectChoices) Apply(ctx context.Context, tx *Store, in Inputs, p Propo
 	}
 	data, _ := json.Marshal(snap)
 	return data, fmt.Sprintf("Saved %s subjects for %s", level.Label, plural(len(snap.Students), "student", "students")), nil
+}
+
+// choiceEnrollments turns the ticked proposal rows into enrollments; rows with no picks are skipped.
+func choiceEnrollments(rows []Row, groups []ChoiceGroup, levelID uuid.UUID) ([]uuid.UUID, []Enrollment, error) {
+	var students []uuid.UUID
+	var out []Enrollment
+	for _, r := range rows {
+		sid, ok := parseID(r.ID)
+		if !ok || r.Cells["include"] != "true" {
+			continue
+		}
+		picks := picksFromCells(groups, r.Cells)
+		if len(picks) == 0 {
+			continue
+		}
+		if problems := choiceProblems(groups, picks); len(problems) > 0 {
+			return nil, nil, fmt.Errorf("%w: %s: %s", ErrInvalidProposal, r.Cells["name"], strings.Join(problems, "; "))
+		}
+		out = append(out, groupEnrollments(sid, optionalID(r.Cells["medium"]), levelID, groups, picks)...)
+		students = append(students, sid)
+	}
+	return students, out, nil
+}
+
+// groupEnrollments lists one student's subjects; a fixed group enrolls every subject in it.
+func groupEnrollments(sid uuid.UUID, medium *uuid.UUID, levelID uuid.UUID, groups []ChoiceGroup, picks map[uuid.UUID][]string) []Enrollment {
+	var out []Enrollment
+	for _, g := range groups {
+		subjects := picks[g.ID]
+		if g.Fixed() {
+			subjects = nil
+			for _, o := range g.Subjects {
+				subjects = append(subjects, o.Value)
+			}
+		}
+		for _, v := range subjects {
+			subject, _ := parseID(v)
+			out = append(out, Enrollment{StudentID: sid, GroupID: g.ID, SubjectID: subject, MediumID: medium, LevelID: levelID})
+		}
+	}
+	return out
+}
+
+// saveChoices records what is about to change in snap, then replaces the level's enrollments and optionally locks them.
+func saveChoices(ctx context.Context, tx *Store, snap *choicesSnapshot, rows []Enrollment, lock bool) error {
+	var err error
+	if snap.Previous, err = tx.yearEnrollments(ctx, snap.Year, snap.Students); err != nil {
+		return err
+	}
+	locked, err := tx.lockedStudents(ctx, snap.Year, snap.Level, snap.Students)
+	if err != nil {
+		return err
+	}
+	for id := range locked {
+		snap.Locked = append(snap.Locked, id)
+	}
+	if err := tx.replaceLevelEnrollments(ctx, snap.Year, snap.Level, snap.Students, rows); err != nil {
+		return err
+	}
+	if lock {
+		return tx.setLocks(ctx, snap.Year, snap.Level, snap.Students, snap.Students)
+	}
+	return nil
 }
 
 func (SubjectChoices) Revert(ctx context.Context, tx *Store, snapshot json.RawMessage) error {

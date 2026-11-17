@@ -410,78 +410,100 @@ type allocationSnapshot struct {
 
 func (w TeacherAllocation) Apply(ctx context.Context, tx *Store, in Inputs, p Proposal, _ uuid.UUID, trace *Trace) (json.RawMessage, string, error) {
 	target, _ := parseID(in["target_year"])
-	snap := allocationSnapshot{FormPrevious: map[string]*uuid.UUID{}}
-	classSet := map[uuid.UUID]bool{}
-	written := 0
+	aw := allocationWriter{tx: tx, snap: allocationSnapshot{FormPrevious: map[string]*uuid.UUID{}}, classes: map[uuid.UUID]bool{}}
+	written, formSet := 0, 0
 	if err := trace.Run(stepByKey(w, "save_teachers"), func() (string, error) {
-		before, err := tx.yearSubjectTeachers(ctx, target)
-		if err != nil {
-			return "", err
-		}
-		type pair struct{ class, subject uuid.UUID }
-		had := map[pair]uuid.UUID{}
-		for _, a := range before {
-			had[pair{a.ClassID, a.SubjectID}] = a.TeacherID
-		}
-		for _, r := range p.Section("allocations").Rows {
-			class, okC := parseID(r.Cells["class_id"])
-			subject, okS := parseID(r.Cells["subject_id"])
-			if !okC || !okS {
-				continue
-			}
-			teacher := optionalID(r.Cells["teacher"])
-			old, existed := had[pair{class, subject}]
-			if (teacher == nil && !existed) || (teacher != nil && existed && *teacher == old) {
-				continue
-			}
-			if existed {
-				snap.Previous = append(snap.Previous, SubjectTeacher{ClassID: class, SubjectID: subject, TeacherID: old})
-			}
-			snap.Touched = append(snap.Touched, SubjectTeacher{ClassID: class, SubjectID: subject})
-			if err := tx.setSubjectTeacher(ctx, class, subject, teacher); err != nil {
-				return "", fmt.Errorf("%s %s: %w", r.Cells["class"], r.Cells["subject"], err)
-			}
-			classSet[class] = true
-			written++
-		}
-		return plural(written, "assignment", "assignments") + " written", nil
+		var err error
+		written, err = aw.subjectTeachers(ctx, target, p.Section("allocations").Rows)
+		return plural(written, "assignment", "assignments") + " written", err
 	}); err != nil {
 		return nil, "", err
 	}
-	formSet := 0
 	if err := trace.Run(stepByKey(w, "set_form_teachers"), func() (string, error) {
-		classes, err := tx.yearClasses(ctx, target)
-		if err != nil {
-			return "", err
-		}
-		current := map[uuid.UUID]*uuid.UUID{}
-		for _, c := range classes {
-			current[c.ID] = c.FormTeacherID
-		}
-		if section := p.Section("form_teachers"); section != nil {
-			for _, r := range section.Rows {
-				class, ok := parseID(r.ID)
-				teacher := optionalID(r.Cells["teacher"])
-				if !ok || r.Cells["set"] != "true" || teacher == nil {
-					continue
-				}
-				snap.FormPrevious[class.String()] = current[class]
-				if err := tx.setFormTeacher(ctx, class, teacher); err != nil {
-					return "", err
-				}
-				classSet[class] = true
-				formSet++
-			}
-		}
-		return plural(formSet, "form teacher", "form teachers") + " set", nil
+		var err error
+		formSet, err = aw.formTeachers(ctx, target, p.Section("form_teachers"))
+		return plural(formSet, "form teacher", "form teachers") + " set", err
 	}); err != nil {
 		return nil, "", err
 	}
-	for id := range classSet {
-		snap.Classes = append(snap.Classes, id)
+	for id := range aw.classes {
+		aw.snap.Classes = append(aw.snap.Classes, id)
 	}
-	data, _ := json.Marshal(snap)
+	data, _ := json.Marshal(aw.snap)
 	return data, fmt.Sprintf("Saved %s and %s", plural(written, "subject teacher", "subject teachers"), plural(formSet, "form teacher", "form teachers")), nil
+}
+
+// allocationWriter applies an allocation proposal and records what it changed for Revert.
+type allocationWriter struct {
+	tx      *Store
+	snap    allocationSnapshot
+	classes map[uuid.UUID]bool
+}
+
+// subjectTeachers writes every changed class-subject teacher and returns how many it wrote.
+func (aw *allocationWriter) subjectTeachers(ctx context.Context, target uuid.UUID, rows []Row) (int, error) {
+	before, err := aw.tx.yearSubjectTeachers(ctx, target)
+	if err != nil {
+		return 0, err
+	}
+	type pair struct{ class, subject uuid.UUID }
+	had := map[pair]uuid.UUID{}
+	for _, a := range before {
+		had[pair{a.ClassID, a.SubjectID}] = a.TeacherID
+	}
+	written := 0
+	for _, r := range rows {
+		class, okC := parseID(r.Cells["class_id"])
+		subject, okS := parseID(r.Cells["subject_id"])
+		if !okC || !okS {
+			continue
+		}
+		teacher := optionalID(r.Cells["teacher"])
+		old, existed := had[pair{class, subject}]
+		if (teacher == nil && !existed) || (teacher != nil && existed && *teacher == old) {
+			continue
+		}
+		if existed {
+			aw.snap.Previous = append(aw.snap.Previous, SubjectTeacher{ClassID: class, SubjectID: subject, TeacherID: old})
+		}
+		aw.snap.Touched = append(aw.snap.Touched, SubjectTeacher{ClassID: class, SubjectID: subject})
+		if err := aw.tx.setSubjectTeacher(ctx, class, subject, teacher); err != nil {
+			return written, fmt.Errorf("%s %s: %w", r.Cells["class"], r.Cells["subject"], err)
+		}
+		aw.classes[class] = true
+		written++
+	}
+	return written, nil
+}
+
+// formTeachers sets the ticked form teachers and returns how many it set.
+func (aw *allocationWriter) formTeachers(ctx context.Context, target uuid.UUID, section *Section) (int, error) {
+	classes, err := aw.tx.yearClasses(ctx, target)
+	if err != nil {
+		return 0, err
+	}
+	current := map[uuid.UUID]*uuid.UUID{}
+	for _, c := range classes {
+		current[c.ID] = c.FormTeacherID
+	}
+	if section == nil {
+		return 0, nil
+	}
+	set := 0
+	for _, r := range section.Rows {
+		class, ok := parseID(r.ID)
+		teacher := optionalID(r.Cells["teacher"])
+		if !ok || r.Cells["set"] != "true" || teacher == nil {
+			continue
+		}
+		aw.snap.FormPrevious[class.String()] = current[class]
+		if err := aw.tx.setFormTeacher(ctx, class, teacher); err != nil {
+			return set, err
+		}
+		aw.classes[class] = true
+		set++
+	}
+	return set, nil
 }
 
 func (TeacherAllocation) Revert(ctx context.Context, tx *Store, snapshot json.RawMessage) error {
