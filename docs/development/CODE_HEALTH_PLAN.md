@@ -162,9 +162,9 @@ One PR per phase. `go build`, `go vet`, `go test`, `staticcheck`, `pnpm lint`, `
 | HTTP clients without timeout | 1 of 3, now 0 | 0 |
 | Unused exports | 7 flagged, 3 real, now 0 | 2 candidates |
 
-## 9. Progress (16 Nov 2026)
+## 9. Progress (16-17 Nov 2026)
 
-All checks green: `go build`, `go vet`, `staticcheck`, `go test` (with `-tags integration` against Postgres), `pnpm lint`, `pnpm test` (101 tests), `pnpm build`.
+All checks green: `go build`, `go vet`, `staticcheck`, `go test` (with `-tags integration` against Postgres), `pnpm lint`, `pnpm test` (106 tests), `pnpm build`.
 
 ### Done
 
@@ -180,6 +180,14 @@ All checks green: `go build`, `go vet`, `staticcheck`, `go test` (with `-tags in
 | F3 | One `ErrorBoundary` with a `variant` prop, with a test |
 | F11 | `RowActions` in `shared/ui`, used by 5 grids |
 | F12 | `useArchiveYear` hook in `features/portfolio`, with a test |
+| F1 (17 Nov) | `GuardianFields` component and `useGuardianForm` hook in `features/guardians`, used by both guardian modals. Validation has a test |
+| F5 (17 Nov) | `GuardiansDirectory` and `NonAcademicStaff` now use `FilterBar`, `ActiveFilterTags`, `useListFilters` and `ListState`. New `useOpenParam` hook (with a test) replaces the copied `?open=` drawer logic. Global search now links with `?query=` so the list filter reads it straight from the URL |
+| F6 (17 Nov) | `PageHeader` in `shared/ui`, used by 36 pages. 11 pages with a `div` subtitle or extra header markup are left as they are |
+| F7 (17 Nov) | `NoCurrentYear` in `shared/ui`, used by 6 screens. The `Alert` versions in `Prefects`, `Societies` and `SubjectEnrollment` look different on purpose and stay |
+| F8 (17 Nov) | `LevelFormFields` shared by the create and edit level modals; `compact` keeps the edit layout |
+| F9 (17 Nov) | `TermMarksPanel` in `features/marks`, used by the student marks page and the parent's child marks tab. The parent picker now uses a placeholder instead of an empty "Choose a term" option, like the student one |
+| F4, F10 (17 Nov) | Already resolved: `AuthCard` exists and every auth page uses it; the `Classrooms` page is gone, so only `Resources` holds a room form |
+| F2 (17 Nov) | Re-checked, left as is. Names are already shared (`PersonNameItems` / `PersonNameFields`). `AddStudent` uses an antd `Form` and `AddTeacher` uses controlled state, so sharing the last two inputs means rewriting `AddTeacher`, which changes its behaviour (Save is disabled until valid). Revisit only if `AddTeacher` moves to antd `Form` for another reason |
 | Priority 1 | `useSchoolSetupSubmit` split into `lib/setupRequest.ts` (rate limit and 429 retry), `lib/setupSteps.ts` and `lib/setupClasses.ts` (one function per step). Hook is now about 65 lines |
 | Priority 2 | `TeacherAllocation.Propose` 97 -> under 25 (`allocationPlan`). Already had an integration test |
 | Priority 3 | `SubjectChoices.Propose` 112 -> under 25 (`choiceRows`) |
@@ -201,7 +209,6 @@ Backend result: no function over 50 except route registration (see "Skip" in sec
 | B7 | Small local helpers, low priority |
 | Priority 10 | `placementState.place` (42), `SubjectChoices.Apply` (44), `TeacherAllocation.Apply` (43) and the other 34-43 functions. All under 50, so optional |
 | Priority 12 | Splitting `timetable/repository.go` (858 lines) is blocked by `internal/architecture` test: only a file named exactly `repository.go` may import sqlc. Needs a decision: allow `repository_*.go`, or leave the file as is |
-| F1, F2, F4-F10 | Frontend duplicates, not started |
 | Priority 9 | Frontend `Promotion`, `LevelDetail`, `ClassMarks`, `RecipientPicker`, `Attendance`, `DataGrid` |
 | Priority 11 | Rest of the frontend 35-47 list (`validateNewPassword` done) |
 | 4a 3-4 | Tests for `useTeachers`, `PortalShell`, `leadership/service.go`, `timetable_workflow.go`, `rollover.go` |

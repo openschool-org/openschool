@@ -1,15 +1,13 @@
 import { useState } from "react";
-import SelectField from "@/shared/ui/SelectField";
 import { useChildAttendance, useChildMarks } from "@/features/parent/queries/useParent";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
-import { useTerms } from "@/features/school/queries/useTerms";
 import { useChildTimetable } from "@/features/timetable/queries/useTimetables";
 import { useStudentEnrollments } from "@/features/students/queries/useEnrollments";
 import { useProgressReports } from "@/features/portfolio/queries/useStudentPortfolio";
 import { useGuardiansByStudent } from "@/features/guardians/queries/useGuardians";
 import TimetableByDay from "@/features/timetable/components/TimetableByDay";
 import AttendanceHistoryTable from "@/features/attendance/components/AttendanceHistoryTable";
-import TermMarksTable from "@/features/marks/components/TermMarksTable";
+import TermMarksPanel from "@/features/marks/components/TermMarksPanel";
 import EnrollmentsTable from "@/features/students/components/EnrollmentsTable";
 import ProgressReportsTable from "@/features/portfolio/components/ProgressReportsTable";
 import GuardiansTable from "@/features/guardians/components/GuardiansTable";
@@ -42,31 +40,11 @@ export function ChildAttendanceTab({ studentId }: Props) {
 }
 
 export function ChildMarksTab({ studentId }: Props) {
-  const { t } = useT();
-  const { data: currentYear } = useCurrentAcademicYear();
-  const { data: terms } = useTerms(currentYear?.id);
   const [termId, setTermId] = useState("");
   const { data: marks, isLoading } = useChildMarks(studentId, termId);
-
   return (
     <div>
-      <SelectField
-        id="child-marks-term"
-        label={t("marks.term")}
-        value={termId}
-        onChange={(v) => setTermId(v)}
-        className="os-max-w-20 os-mb-5"
-        options={[{ value: "", label: t("marks.chooseTerm") }, ...(terms ?? []).map((term) => ({ value: term.id, label: term.name }))]}
-      />
-      {!termId ? (
-        <EmptyState title={t("marks.pickTitle")} description={t("marks.pickDesc")} />
-      ) : isLoading ? (
-        <LoadingSpinner />
-      ) : marks?.length ? (
-        <TermMarksTable rows={marks} />
-      ) : (
-        <EmptyState title={t("marks.emptyTitle")} description={t("marks.emptyDesc")} />
-      )}
+      <TermMarksPanel id="child-marks-term" termId={termId} onTermChange={setTermId} marks={marks} isLoading={isLoading} />
     </div>
   );
 }
