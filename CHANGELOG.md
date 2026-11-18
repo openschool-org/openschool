@@ -15,8 +15,8 @@ and follows [Semantic Versioning](https://semver.org/).
   hidden from teachers, atomic activation lockout, first-admin race, raw
   error text, request deadlines, fail-closed `APP_ENV`, retried account
   rollbacks, background intake logins, per-job locks, `SCHOOL_TIMEZONE`,
-  a restore script and required `TRUSTED_PROXIES`. Open items are in
-  `docs/development/issue.md`.
+  a restore script and required `TRUSTED_PROXIES`. Open items are
+  tracked in git history.
 
 ### Changed
 
@@ -247,7 +247,7 @@ and follows [Semantic Versioning](https://semver.org/).
 - Added [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and
   [`docs/adr/`](docs/adr/) (Architecture Decision Records) for
   significant, easy-to-relitigate design decisions.
-- Added [`audit.md`](audit.md), a standing code-quality and security audit
+- Added `audit.md` (since removed), a standing code-quality and security audit
   with tracked severity/status.
 - Added `SECURITY.md`, `CODE_OF_CONDUCT.md`, and this changelog.
 - Corrected stale claims in `docs/SETUP.md` (teacher dashboard mock-data

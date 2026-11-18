@@ -3,7 +3,8 @@
 This is the current, as-built feature list - what exists in the codebase today,
 organized by module. For the reasoning behind key decisions, see the
 [ADRs](./adr/), and for release history the [changelog](../CHANGELOG.md). For how to stand up an
-instance and walk through these features hands-on, see [`SETUP.md`](./SETUP.md).
+instance and walk through these features hands-on, see the [server](./setup/server.md) and
+[school](./setup/school.md) setup guides.
 
 Every feature below is scoped by **academic year**: almost all academic data
 (classes, enrollments, attendance, marks, timetables, section heads, prefects)
@@ -60,7 +61,8 @@ A parent or student can only ever see their own (or their own child's) data
   config in `deploy/` sets the full CSP.
 - **CORS** - explicit allow-list via `CORS_ORIGINS`, credentials enabled.
 - **Swagger/OpenAPI** - dev-only docs at `http://localhost:8080/swagger/index.html#/`
-  (`APP_ENV=development`), not exposed in production.
+  (`APP_ENV=development`), not exposed in production. It is a frozen snapshot
+  that misses newer endpoints ([ADR 0007](./adr/0007-plain-comments-over-swaggo.md)).
 - **Migrations** - versioned, numbered SQL migrations (`golang-migrate`),
   applied automatically on backend startup; schema is the single source of
   truth for the generated `sqlc` query layer.
