@@ -50,175 +50,203 @@ type StudentReader interface {
 	ListByClass(context.Context, uuid.UUID) (any, error)
 }
 
+type studentHandler struct {
+	runner       StudentRunner
+	reader       StudentReader
+	statusWriter StudentStatusWriter
+	audit        ports.AuditRecorder
+}
+
 func RegisterStudentRoutes(admin, teacherOrAdmin *gin.RouterGroup, runner StudentRunner, reader StudentReader, statusWriter StudentStatusWriter, audit ports.AuditRecorder, access ports.ClassAccess) {
-	admin.POST("/students", func(c *gin.Context) {
-		var r CreateStudentRequest
-		if e := httpx.BindStrict(c, &r); e != nil {
-			c.JSON(400, gin.H{"error": e.Error()})
-			return
-		}
-		a, ok := studentActor(c)
-		if !ok {
-			return
-		}
-		v, e := runner.Create(c, r, a)
-		if e != nil {
-			apierror.Respond(c, e)
-			return
-		}
-		c.JSON(201, v)
-	})
-	teacherOrAdmin.GET("/students", func(c *gin.Context) {
-		params := StudentListParams{
-			PageParams: httpx.ParsePage(c),
-			Sort:       httpx.ParseSort(c, "name", "index", "grade", "class", "house"),
-			Grade:      c.Query("grade"), Class: c.Query("class"), Gender: c.Query("gender"), House: c.Query("house"),
-		}
-		v, e := reader.ListPage(c, params)
-		if e == nil && !middleware.HasRole(c, authz.RoleAdmin) {
-			v, e = redactStudentContacts(v)
-		}
-		if e != nil {
-			apierror.RespondInternal(c, e)
-			return
-		}
-		c.JSON(200, v)
-	})
+	h := &studentHandler{runner: runner, reader: reader, statusWriter: statusWriter, audit: audit}
+	admin.POST("/students", h.createStudent)
+	teacherOrAdmin.GET("/students", h.listStudents)
 	// A teacher may open only a student in a class they teach or lead (S3).
-	teacherOrAdmin.GET("/students/:id", middleware.RequireStudentWorkAccess(access, "id"), func(c *gin.Context) {
-		id, ok := studentID(c)
-		if !ok {
+	teacherOrAdmin.GET("/students/:id", middleware.RequireStudentWorkAccess(access, "id"), h.getStudent)
+	teacherOrAdmin.GET("/students/:id/class", middleware.RequireStudentWorkAccess(access, "id"), h.getStudentClass)
+	admin.PUT("/students/:id", h.updateStudent)
+	admin.PUT("/students/:id/house", h.updateStudentHouse)
+	admin.PUT("/students/:id/enrollment-status", h.updateEnrollmentStatus)
+	admin.DELETE("/students/:id", h.deleteStudent)
+	admin.POST("/students/:id/erase", h.eraseStudent)
+	teacherOrAdmin.GET("/classes/:id/students", middleware.RequireClassAccess(access, "id"), h.listClassStudents)
+}
+
+func (h *studentHandler) createStudent(c *gin.Context) {
+	var r CreateStudentRequest
+	if e := httpx.BindStrict(c, &r); e != nil {
+		c.JSON(400, gin.H{"error": e.Error()})
+		return
+	}
+	a, ok := studentActor(c)
+	if !ok {
+		return
+	}
+	v, e := h.runner.Create(c, r, a)
+	if e != nil {
+		apierror.Respond(c, e)
+		return
+	}
+	c.JSON(201, v)
+}
+
+func (h *studentHandler) listStudents(c *gin.Context) {
+	params := StudentListParams{
+		PageParams: httpx.ParsePage(c),
+		Sort:       httpx.ParseSort(c, "name", "index", "grade", "class", "house"),
+		Grade:      c.Query("grade"), Class: c.Query("class"), Gender: c.Query("gender"), House: c.Query("house"),
+	}
+	v, e := h.reader.ListPage(c, params)
+	if e == nil && !middleware.HasRole(c, authz.RoleAdmin) {
+		v, e = redactStudentContacts(v)
+	}
+	if e != nil {
+		apierror.RespondInternal(c, e)
+		return
+	}
+	c.JSON(200, v)
+}
+
+func (h *studentHandler) getStudent(c *gin.Context) {
+	id, ok := studentID(c)
+	if !ok {
+		return
+	}
+	v, e := h.reader.Get(c, id)
+	if e != nil {
+		c.JSON(404, gin.H{"error": "student not found"})
+		return
+	}
+	auditStudentProfileRead(c, h.audit, id)
+	c.JSON(200, v)
+}
+
+func (h *studentHandler) getStudentClass(c *gin.Context) {
+	id, ok := studentID(c)
+	if !ok {
+		return
+	}
+	v, e := h.reader.GetWithClass(c, id)
+	if e != nil {
+		c.JSON(404, gin.H{"error": "student not found"})
+		return
+	}
+	auditStudentProfileRead(c, h.audit, id)
+	c.JSON(200, v)
+}
+
+func (h *studentHandler) updateStudent(c *gin.Context) {
+	id, ok := studentID(c)
+	if !ok {
+		return
+	}
+	var r UpdateStudentRequest
+	if e := httpx.BindStrict(c, &r); e != nil {
+		c.JSON(400, gin.H{"error": e.Error()})
+		return
+	}
+	v, e := h.runner.Update(c, id, r)
+	if e != nil {
+		apierror.Respond(c, e)
+		return
+	}
+	c.JSON(200, v)
+}
+
+func (h *studentHandler) updateStudentHouse(c *gin.Context) {
+	id, ok := studentID(c)
+	if !ok {
+		return
+	}
+	var r UpdateStudentHouseRequest
+	if e := httpx.BindStrict(c, &r); e != nil {
+		c.JSON(400, gin.H{"error": e.Error()})
+		return
+	}
+	a, ok := studentActor(c)
+	if !ok {
+		return
+	}
+	v, e := h.runner.UpdateHouse(c, id, r, a)
+	if e != nil {
+		apierror.Respond(c, e)
+		return
+	}
+	c.JSON(200, v)
+}
+
+func (h *studentHandler) updateEnrollmentStatus(c *gin.Context) {
+	id, ok := studentID(c)
+	if !ok {
+		return
+	}
+	var r UpdateStudentEnrollmentStatusRequest
+	if e := httpx.BindStrict(c, &r); e != nil {
+		c.JSON(400, gin.H{"error": e.Error()})
+		return
+	}
+	v, e := h.statusWriter.UpdateStatus(c, id, r.Status)
+	if e != nil {
+		apierror.Respond(c, e)
+		return
+	}
+	c.JSON(200, v)
+}
+
+func (h *studentHandler) deleteStudent(c *gin.Context) {
+	id, ok := studentID(c)
+	if !ok {
+		return
+	}
+	a, ok := studentActor(c)
+	if !ok {
+		return
+	}
+	if e := h.runner.Delete(c, id, a); e != nil {
+		apierror.Respond(c, e)
+		return
+	}
+	c.JSON(200, gin.H{"message": "student deleted"})
+}
+
+func (h *studentHandler) eraseStudent(c *gin.Context) {
+	id, ok := studentID(c)
+	if !ok {
+		return
+	}
+	var r EraseStudentRequest
+	if e := httpx.BindStrict(c, &r); e != nil {
+		c.JSON(400, gin.H{"error": e.Error()})
+		return
+	}
+	a, ok := studentActor(c)
+	if !ok {
+		return
+	}
+	if e := h.runner.Erase(c, id, a, r.Reason); e != nil {
+		if errors.Is(e, ErrStudentNotFound) {
+			c.JSON(404, gin.H{"error": e.Error()})
 			return
 		}
-		v, e := reader.Get(c, id)
-		if e != nil {
-			c.JSON(404, gin.H{"error": "student not found"})
-			return
-		}
-		auditStudentProfileRead(c, audit, id)
-		c.JSON(200, v)
-	})
-	teacherOrAdmin.GET("/students/:id/class", middleware.RequireStudentWorkAccess(access, "id"), func(c *gin.Context) {
-		id, ok := studentID(c)
-		if !ok {
-			return
-		}
-		v, e := reader.GetWithClass(c, id)
-		if e != nil {
-			c.JSON(404, gin.H{"error": "student not found"})
-			return
-		}
-		auditStudentProfileRead(c, audit, id)
-		c.JSON(200, v)
-	})
-	admin.PUT("/students/:id", func(c *gin.Context) {
-		id, ok := studentID(c)
-		if !ok {
-			return
-		}
-		var r UpdateStudentRequest
-		if e := httpx.BindStrict(c, &r); e != nil {
-			c.JSON(400, gin.H{"error": e.Error()})
-			return
-		}
-		v, e := runner.Update(c, id, r)
-		if e != nil {
-			apierror.Respond(c, e)
-			return
-		}
-		c.JSON(200, v)
-	})
-	admin.PUT("/students/:id/house", func(c *gin.Context) {
-		id, ok := studentID(c)
-		if !ok {
-			return
-		}
-		var r UpdateStudentHouseRequest
-		if e := httpx.BindStrict(c, &r); e != nil {
-			c.JSON(400, gin.H{"error": e.Error()})
-			return
-		}
-		a, ok := studentActor(c)
-		if !ok {
-			return
-		}
-		v, e := runner.UpdateHouse(c, id, r, a)
-		if e != nil {
-			apierror.Respond(c, e)
-			return
-		}
-		c.JSON(200, v)
-	})
-	admin.PUT("/students/:id/enrollment-status", func(c *gin.Context) {
-		id, ok := studentID(c)
-		if !ok {
-			return
-		}
-		var r UpdateStudentEnrollmentStatusRequest
-		if e := httpx.BindStrict(c, &r); e != nil {
-			c.JSON(400, gin.H{"error": e.Error()})
-			return
-		}
-		v, e := statusWriter.UpdateStatus(c, id, r.Status)
-		if e != nil {
-			apierror.Respond(c, e)
-			return
-		}
-		c.JSON(200, v)
-	})
-	admin.DELETE("/students/:id", func(c *gin.Context) {
-		id, ok := studentID(c)
-		if !ok {
-			return
-		}
-		a, ok := studentActor(c)
-		if !ok {
-			return
-		}
-		if e := runner.Delete(c, id, a); e != nil {
-			apierror.Respond(c, e)
-			return
-		}
-		c.JSON(200, gin.H{"message": "student deleted"})
-	})
-	admin.POST("/students/:id/erase", func(c *gin.Context) {
-		id, ok := studentID(c)
-		if !ok {
-			return
-		}
-		var r EraseStudentRequest
-		if e := httpx.BindStrict(c, &r); e != nil {
-			c.JSON(400, gin.H{"error": e.Error()})
-			return
-		}
-		a, ok := studentActor(c)
-		if !ok {
-			return
-		}
-		if e := runner.Erase(c, id, a, r.Reason); e != nil {
-			if errors.Is(e, ErrStudentNotFound) {
-				c.JSON(404, gin.H{"error": e.Error()})
-				return
-			}
-			// Anything else is a wrapped database error (e.g. from
-			// AnonymizeProfile) and must not be echoed to the client (S4).
-			apierror.RespondInternal(c, e)
-			return
-		}
-		c.JSON(200, gin.H{"message": "student profile erased"})
-	})
-	teacherOrAdmin.GET("/classes/:id/students", middleware.RequireClassAccess(access, "id"), func(c *gin.Context) {
-		id, ok := studentID(c)
-		if !ok {
-			return
-		}
-		v, e := reader.ListByClass(c, id)
-		if e != nil {
-			apierror.RespondInternal(c, e)
-			return
-		}
-		c.JSON(200, v)
-	})
+		// Anything else is a wrapped database error (e.g. from
+		// AnonymizeProfile) and must not be echoed to the client (S4).
+		apierror.RespondInternal(c, e)
+		return
+	}
+	c.JSON(200, gin.H{"message": "student profile erased"})
+}
+
+func (h *studentHandler) listClassStudents(c *gin.Context) {
+	id, ok := studentID(c)
+	if !ok {
+		return
+	}
+	v, e := h.reader.ListByClass(c, id)
+	if e != nil {
+		apierror.RespondInternal(c, e)
+		return
+	}
+	c.JSON(200, v)
 }
 
 // auditStudentProfileRead logs a read of a student's profile, best-effort:

@@ -17,7 +17,14 @@ What is still to do. Finished work is in git history (branch `release/v0.4.0`, N
 | ESLint `complexity` rule | Add as a warning at 20 (built-in rule, cyclomatic). Raise to an error once the list in section 2 is cleared |
 | `gocognit` in backend CI | Informational first, threshold 25, route registration excluded |
 | Coverage output | `go test -cover` and `vitest --coverage` in CI, numbers in the job summary |
-| Re-run AURA | Record the new score, duplication and test reach here |
+| Re-run AURA | Confirm the route-handler split below lifted the readability cap |
+
+## AURA run, 18 Nov 2026
+
+Maintainability 70 / 100.
+
+- **Readable functions: 70.** 146 of 3118 functions over cognitive 15. The score is capped at 70 while any function is over 50; only the inline-closure `Register*Routes` functions were. They now register named handler methods (the pattern in `attendance/routes.go`), so the cap should lift on the next run. The remaining list overlaps sections 2 and 3.
+- **Test reach: 23%.** 152 test files reach 23% of code files. This is a static link, not coverage: a Go file counts only when a test in the same package names it, so files exercised by package-level integration tests still show as unlinked. Tests now cover the five top-ranked key files (`useInvalidate`, `Field`, `apierror`, `useT`, `i18nContext`). Next: `lib/` helpers and `hooks/` with logic (for example `school/lib/*`, `timetable/lib/*`, `usePromotionPlan`, `useMarksDraft`), then backend `service.go` files with no unit test (`leave`, `leadership`, `studentleadership`). Do not write tests for `models.go`, `keys.ts`, `constants.ts` or route tables just to raise the number.
 
 ## 2. Frontend functions over 20 (ESLint cyclomatic, 17 Nov 2026)
 

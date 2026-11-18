@@ -52,121 +52,138 @@ func RegisterGuardianNotificationRoute(admin *gin.RouterGroup, reader GuardianNo
 	})
 }
 
+type guardianWriteHandler struct{ writer GuardianWriter }
+
 func RegisterGuardianWriteRoutes(admin *gin.RouterGroup, writer GuardianWriter) {
-	admin.POST("/guardians", func(c *gin.Context) {
-		var req CreateGuardianRequest
-		if err := httpx.BindStrict(c, &req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		guardian, duplicates, err := writer.Create(c, req)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusCreated, gin.H{"guardian": guardian, "possible_duplicates": duplicates})
-	})
-	admin.PUT("/guardians/:id", func(c *gin.Context) {
-		id, ok := guardianID(c)
-		if !ok {
-			return
-		}
-		var req UpdateGuardianRequest
-		if err := httpx.BindStrict(c, &req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		value, err := writer.Update(c, id, req)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, value)
-	})
-	admin.DELETE("/guardians/:id", func(c *gin.Context) {
-		id, ok := guardianID(c)
-		if !ok {
-			return
-		}
-		actor, ok := guardianActor(c)
-		if !ok {
-			return
-		}
-		if err := writer.Delete(c, id, actor); err != nil {
-			guardianWriteError(c, err)
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"message": "guardian deleted"})
-	})
-	admin.POST("/students/:id/guardians", func(c *gin.Context) {
-		student, ok := guardianID(c)
-		if !ok {
-			return
-		}
-		var req LinkGuardianRequest
-		if err := httpx.BindStrict(c, &req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		if err := writer.Link(c, student, req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"message": "guardian linked to student"})
-	})
-	admin.DELETE("/students/:id/guardians/:guardian_id", func(c *gin.Context) {
-		student, ok := guardianID(c)
-		if !ok {
-			return
-		}
-		guardian, err := uuid.Parse(c.Param("guardian_id"))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid guardian id"})
-			return
-		}
-		if err := writer.Unlink(c, student, guardian); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"message": "guardian unlinked from student"})
-	})
-	admin.PUT("/students/:id/guardians/:guardian_id/set-primary", func(c *gin.Context) {
-		student, ok := guardianID(c)
-		if !ok {
-			return
-		}
-		guardian, err := uuid.Parse(c.Param("guardian_id"))
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid guardian id"})
-			return
-		}
-		if err := writer.SetPrimary(c, student, guardian); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"message": "primary contact updated"})
-	})
-	admin.POST("/guardians/:id/provision-login", func(c *gin.Context) {
-		id, ok := guardianID(c)
-		if !ok {
-			return
-		}
-		var req ProvisionGuardianLoginRequest
-		if err := httpx.BindStrict(c, &req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		actor, ok := guardianActor(c)
-		if !ok {
-			return
-		}
-		value, err := writer.Provision(c, id, req, actor)
-		if err != nil {
-			guardianWriteError(c, err)
-			return
-		}
-		c.JSON(http.StatusOK, value)
-	})
+	h := &guardianWriteHandler{writer: writer}
+	admin.POST("/guardians", h.createGuardian)
+	admin.PUT("/guardians/:id", h.updateGuardian)
+	admin.DELETE("/guardians/:id", h.deleteGuardian)
+	admin.POST("/students/:id/guardians", h.linkGuardian)
+	admin.DELETE("/students/:id/guardians/:guardian_id", h.unlinkGuardian)
+	admin.PUT("/students/:id/guardians/:guardian_id/set-primary", h.setPrimaryGuardian)
+	admin.POST("/guardians/:id/provision-login", h.provisionGuardianLogin)
+}
+
+func (h *guardianWriteHandler) createGuardian(c *gin.Context) {
+	var req CreateGuardianRequest
+	if err := httpx.BindStrict(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	guardian, duplicates, err := h.writer.Create(c, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"guardian": guardian, "possible_duplicates": duplicates})
+}
+
+func (h *guardianWriteHandler) updateGuardian(c *gin.Context) {
+	id, ok := guardianID(c)
+	if !ok {
+		return
+	}
+	var req UpdateGuardianRequest
+	if err := httpx.BindStrict(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	value, err := h.writer.Update(c, id, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, value)
+}
+
+func (h *guardianWriteHandler) deleteGuardian(c *gin.Context) {
+	id, ok := guardianID(c)
+	if !ok {
+		return
+	}
+	actor, ok := guardianActor(c)
+	if !ok {
+		return
+	}
+	if err := h.writer.Delete(c, id, actor); err != nil {
+		guardianWriteError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "guardian deleted"})
+}
+
+func (h *guardianWriteHandler) linkGuardian(c *gin.Context) {
+	student, ok := guardianID(c)
+	if !ok {
+		return
+	}
+	var req LinkGuardianRequest
+	if err := httpx.BindStrict(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.writer.Link(c, student, req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "guardian linked to student"})
+}
+
+func (h *guardianWriteHandler) unlinkGuardian(c *gin.Context) {
+	student, ok := guardianID(c)
+	if !ok {
+		return
+	}
+	guardian, err := uuid.Parse(c.Param("guardian_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid guardian id"})
+		return
+	}
+	if err := h.writer.Unlink(c, student, guardian); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "guardian unlinked from student"})
+}
+
+func (h *guardianWriteHandler) setPrimaryGuardian(c *gin.Context) {
+	student, ok := guardianID(c)
+	if !ok {
+		return
+	}
+	guardian, err := uuid.Parse(c.Param("guardian_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid guardian id"})
+		return
+	}
+	if err := h.writer.SetPrimary(c, student, guardian); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "primary contact updated"})
+}
+
+func (h *guardianWriteHandler) provisionGuardianLogin(c *gin.Context) {
+	id, ok := guardianID(c)
+	if !ok {
+		return
+	}
+	var req ProvisionGuardianLoginRequest
+	if err := httpx.BindStrict(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	actor, ok := guardianActor(c)
+	if !ok {
+		return
+	}
+	value, err := h.writer.Provision(c, id, req, actor)
+	if err != nil {
+		guardianWriteError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, value)
 }
 
 func guardianWriteError(c *gin.Context, err error) {
