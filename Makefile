@@ -11,6 +11,7 @@ THUNDERID_COMPOSE=docker compose -f quickstart-compose.yml -f compose.override.y
         lint lint-backend lint-frontend test-integration-backend \
         migrate migrate-down sqlc \
         thunderid-up thunderid-down thunderid-logs thunderid-reset \
+        version release release-tag \
         down clean
 
 help:
@@ -31,6 +32,9 @@ help:
 	@echo "  thunderid-down  - Stop ThunderID"
 	@echo "  thunderid-logs  - Tail ThunderID server logs"
 	@echo "  thunderid-reset - Stop ThunderID and wipe its volumes (fresh tenant)"
+	@echo "  version         - Print the current app version"
+	@echo "  release         - Prepare a release branch (BUMP=patch|minor|major|X.Y.Z, default minor)"
+	@echo "  release-tag     - Tag main with the current version after the release PR merges"
 	@echo "  down            - Stop Postgres and ThunderID"
 	@echo "  clean           - Remove build artifacts"
 
@@ -99,6 +103,15 @@ thunderid-logs:
 
 thunderid-reset:
 	cd $(THUNDERID_DIR) && $(THUNDERID_COMPOSE) down -v
+
+version:
+	@./scripts/release.sh current
+
+release:
+	@./scripts/release.sh prepare $(or $(BUMP),minor)
+
+release-tag:
+	@./scripts/release.sh tag
 
 down:
 	cd $(BACKEND_DIR) && docker compose down

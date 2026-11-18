@@ -77,6 +77,31 @@ pnpm build
 - Link the related issue when there is one.
 - Respond to review comments and keep the pull request up to date.
 
+## Releasing (maintainers)
+
+Versions follow [Semantic Versioning](https://semver.org/). Add notes under
+`[Unreleased]` in `CHANGELOG.md` as you work, then:
+
+```bash
+make release BUMP=minor   # or patch, major, or an exact X.Y.Z
+```
+
+This checks the tree is clean, bumps the version in `frontend/package.json`,
+`backend/cmd/api/main.go` and the generated Swagger files, moves the
+`[Unreleased]` notes under the new version and commits on a
+`release/vX.Y.Z` branch. Push it and open a PR to `main`. Use
+`scripts/release.sh prepare minor --dry-run` to preview.
+
+After the PR is merged:
+
+```bash
+git switch main && git pull
+make release-tag            # creates the annotated vX.Y.Z tag
+git push origin vX.Y.Z
+```
+
+`make version` prints the current version.
+
 ## Need help?
 
 - [Open an issue](https://github.com/openschool-org/openschool/issues)
