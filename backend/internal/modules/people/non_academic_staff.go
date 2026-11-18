@@ -140,92 +140,109 @@ func optionalUUID(raw, label string) (*uuid.UUID, error) {
 	return &id, nil
 }
 
+type staffHandler struct{ service *NonAcademicStaffService }
+
 func RegisterNonAcademicStaffRoutes(admin, teacherOrAdmin *gin.RouterGroup, service *NonAcademicStaffService) {
-	teacherOrAdmin.GET("/non-academic-staff", func(c *gin.Context) {
-		params := StaffListParams{PageParams: httpx.ParsePage(c), Sort: httpx.ParseSort(c, "name", "employee", "designation", "joined"), Designation: c.Query("designation")}
-		value, err := service.ListPage(c, params)
-		if err != nil {
-			apierror.RespondInternal(c, err)
-			return
-		}
-		c.JSON(http.StatusOK, value)
-	})
-	teacherOrAdmin.GET("/non-academic-staff/:id", func(c *gin.Context) {
-		id, ok := staffID(c)
-		if !ok {
-			return
-		}
-		value, err := service.Get(c, id)
+	h := &staffHandler{service: service}
+	teacherOrAdmin.GET("/non-academic-staff", h.listStaff)
+	teacherOrAdmin.GET("/non-academic-staff/:id", h.getStaff)
+	admin.POST("/non-academic-staff", h.createStaff)
+	admin.PUT("/non-academic-staff/:id", h.updateStaff)
+	admin.PUT("/non-academic-staff/:id/employment-status", h.updateStaffEmploymentStatus)
+	admin.PUT("/non-academic-staff/:id/house", h.updateStaffHouse)
+	admin.DELETE("/non-academic-staff/:id", h.deleteStaff)
+}
+
+func (h *staffHandler) listStaff(c *gin.Context) {
+	params := StaffListParams{PageParams: httpx.ParsePage(c), Sort: httpx.ParseSort(c, "name", "employee", "designation", "joined"), Designation: c.Query("designation")}
+	value, err := h.service.ListPage(c, params)
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, value)
+}
+
+func (h *staffHandler) getStaff(c *gin.Context) {
+	id, ok := staffID(c)
+	if !ok {
+		return
+	}
+	value, err := h.service.Get(c, id)
+	if errors.Is(err, ErrNonAcademicStaffNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	staffResponse(c, http.StatusOK, value, err)
+}
+
+func (h *staffHandler) createStaff(c *gin.Context) {
+	var req CreateNonAcademicStaffRequest
+	if !staffBind(c, &req) {
+		return
+	}
+	value, err := h.service.Create(c, req)
+	staffResponse(c, http.StatusCreated, value, err)
+}
+
+func (h *staffHandler) updateStaff(c *gin.Context) {
+	id, ok := staffID(c)
+	if !ok {
+		return
+	}
+	var req UpdateNonAcademicStaffRequest
+	if !staffBind(c, &req) {
+		return
+	}
+	value, err := h.service.Update(c, id, req)
+	staffResponse(c, http.StatusOK, value, err)
+}
+
+func (h *staffHandler) updateStaffEmploymentStatus(c *gin.Context) {
+	id, ok := staffID(c)
+	if !ok {
+		return
+	}
+	var req UpdateNonAcademicStaffEmploymentStatusRequest
+	if !staffBind(c, &req) {
+		return
+	}
+	value, err := h.service.SetEmploymentStatus(c, id, req.Status)
+	staffResponse(c, http.StatusOK, value, err)
+}
+
+func (h *staffHandler) updateStaffHouse(c *gin.Context) {
+	id, ok := staffID(c)
+	if !ok {
+		return
+	}
+	var req UpdateNonAcademicStaffHouseRequest
+	if !staffBind(c, &req) {
+		return
+	}
+	actor, err := middleware.UserIDFromContext(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
+		return
+	}
+	value, err := h.service.UpdateHouse(c, id, req.HouseID, actor)
+	staffResponse(c, http.StatusOK, value, err)
+}
+
+func (h *staffHandler) deleteStaff(c *gin.Context) {
+	id, ok := staffID(c)
+	if !ok {
+		return
+	}
+	if err := h.service.Delete(c, id); err != nil {
+		status := http.StatusBadRequest
 		if errors.Is(err, ErrNonAcademicStaffNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-			return
+			status = http.StatusNotFound
 		}
-		staffResponse(c, http.StatusOK, value, err)
-	})
-	admin.POST("/non-academic-staff", func(c *gin.Context) {
-		var req CreateNonAcademicStaffRequest
-		if !staffBind(c, &req) {
-			return
-		}
-		value, err := service.Create(c, req)
-		staffResponse(c, http.StatusCreated, value, err)
-	})
-	admin.PUT("/non-academic-staff/:id", func(c *gin.Context) {
-		id, ok := staffID(c)
-		if !ok {
-			return
-		}
-		var req UpdateNonAcademicStaffRequest
-		if !staffBind(c, &req) {
-			return
-		}
-		value, err := service.Update(c, id, req)
-		staffResponse(c, http.StatusOK, value, err)
-	})
-	admin.PUT("/non-academic-staff/:id/employment-status", func(c *gin.Context) {
-		id, ok := staffID(c)
-		if !ok {
-			return
-		}
-		var req UpdateNonAcademicStaffEmploymentStatusRequest
-		if !staffBind(c, &req) {
-			return
-		}
-		value, err := service.SetEmploymentStatus(c, id, req.Status)
-		staffResponse(c, http.StatusOK, value, err)
-	})
-	admin.PUT("/non-academic-staff/:id/house", func(c *gin.Context) {
-		id, ok := staffID(c)
-		if !ok {
-			return
-		}
-		var req UpdateNonAcademicStaffHouseRequest
-		if !staffBind(c, &req) {
-			return
-		}
-		actor, err := middleware.UserIDFromContext(c)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
-			return
-		}
-		value, err := service.UpdateHouse(c, id, req.HouseID, actor)
-		staffResponse(c, http.StatusOK, value, err)
-	})
-	admin.DELETE("/non-academic-staff/:id", func(c *gin.Context) {
-		id, ok := staffID(c)
-		if !ok {
-			return
-		}
-		if err := service.Delete(c, id); err != nil {
-			status := http.StatusBadRequest
-			if errors.Is(err, ErrNonAcademicStaffNotFound) {
-				status = http.StatusNotFound
-			}
-			c.JSON(status, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"message": "staff member deleted"})
-	})
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "staff member deleted"})
 }
 func staffID(c *gin.Context) (uuid.UUID, bool) {
 	id, err := uuid.Parse(c.Param("id"))

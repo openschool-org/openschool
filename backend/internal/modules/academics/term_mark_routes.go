@@ -29,87 +29,98 @@ type TermMarkRunner interface {
 	DeleteMark(context.Context, TermMarkActor, uuid.UUID) error
 }
 
+type termMarkHandler struct{ runner TermMarkRunner }
+
 func RegisterTermMarkRoutes(teacherOrAdmin *gin.RouterGroup, runner TermMarkRunner) {
-	teacherOrAdmin.PUT("/classes/:id/marks", func(c *gin.Context) {
-		classID, ok := termMarkID(c, "id", "invalid id")
-		if !ok {
-			return
-		}
-		var request BulkUpsertMarksRequest
-		if err := httpx.BindStrict(c, &request); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
-		actor, ok := termMarkActor(c)
-		if !ok {
-			return
-		}
-		marks, err := runner.BulkUpsertMarks(c.Request.Context(), classID, actor, request)
-		if err != nil {
-			respondTermMarkError(c, err)
-			return
-		}
-		c.JSON(http.StatusOK, marks)
-	})
-	teacherOrAdmin.GET("/classes/:id/marks", func(c *gin.Context) {
-		classID, ok := termMarkID(c, "id", "invalid id")
-		if !ok {
-			return
-		}
-		term, ok := termMarkQueryID(c, "term_id")
-		if !ok {
-			return
-		}
-		subject, ok := termMarkQueryID(c, "subject_id")
-		if !ok {
-			return
-		}
-		actor, ok := termMarkActor(c)
-		if !ok {
-			return
-		}
-		rows, err := runner.ListClassMarks(c, actor, classID, term, subject)
-		if err != nil {
-			apierror.RespondInternal(c, err)
-			return
-		}
-		c.JSON(http.StatusOK, rows)
-	})
-	teacherOrAdmin.GET("/students/:id/marks", func(c *gin.Context) {
-		student, ok := termMarkID(c, "id", "invalid id")
-		if !ok {
-			return
-		}
-		term, ok := termMarkQueryID(c, "term_id")
-		if !ok {
-			return
-		}
-		actor, ok := termMarkActor(c)
-		if !ok {
-			return
-		}
-		rows, err := runner.ListStudentMarksForTeacher(c, actor, student, term)
-		if err != nil {
-			apierror.RespondInternal(c, err)
-			return
-		}
-		c.JSON(http.StatusOK, rows)
-	})
-	teacherOrAdmin.DELETE("/marks/:id", func(c *gin.Context) {
-		id, ok := termMarkID(c, "id", "invalid id")
-		if !ok {
-			return
-		}
-		actor, ok := termMarkActor(c)
-		if !ok {
-			return
-		}
-		if err := runner.DeleteMark(c, actor, id); err != nil {
-			respondTermMarkError(c, err)
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"message": "mark deleted"})
-	})
+	h := &termMarkHandler{runner: runner}
+	teacherOrAdmin.PUT("/classes/:id/marks", h.upsertClassMarks)
+	teacherOrAdmin.GET("/classes/:id/marks", h.listClassMarks)
+	teacherOrAdmin.GET("/students/:id/marks", h.listStudentMarks)
+	teacherOrAdmin.DELETE("/marks/:id", h.deleteMark)
+}
+
+func (h *termMarkHandler) upsertClassMarks(c *gin.Context) {
+	classID, ok := termMarkID(c, "id", "invalid id")
+	if !ok {
+		return
+	}
+	var request BulkUpsertMarksRequest
+	if err := httpx.BindStrict(c, &request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	actor, ok := termMarkActor(c)
+	if !ok {
+		return
+	}
+	marks, err := h.runner.BulkUpsertMarks(c.Request.Context(), classID, actor, request)
+	if err != nil {
+		respondTermMarkError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, marks)
+}
+
+func (h *termMarkHandler) listClassMarks(c *gin.Context) {
+	classID, ok := termMarkID(c, "id", "invalid id")
+	if !ok {
+		return
+	}
+	term, ok := termMarkQueryID(c, "term_id")
+	if !ok {
+		return
+	}
+	subject, ok := termMarkQueryID(c, "subject_id")
+	if !ok {
+		return
+	}
+	actor, ok := termMarkActor(c)
+	if !ok {
+		return
+	}
+	rows, err := h.runner.ListClassMarks(c, actor, classID, term, subject)
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, rows)
+}
+
+func (h *termMarkHandler) listStudentMarks(c *gin.Context) {
+	student, ok := termMarkID(c, "id", "invalid id")
+	if !ok {
+		return
+	}
+	term, ok := termMarkQueryID(c, "term_id")
+	if !ok {
+		return
+	}
+	actor, ok := termMarkActor(c)
+	if !ok {
+		return
+	}
+	rows, err := h.runner.ListStudentMarksForTeacher(c, actor, student, term)
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, rows)
+}
+
+func (h *termMarkHandler) deleteMark(c *gin.Context) {
+	id, ok := termMarkID(c, "id", "invalid id")
+	if !ok {
+		return
+	}
+	actor, ok := termMarkActor(c)
+	if !ok {
+		return
+	}
+	if err := h.runner.DeleteMark(c, actor, id); err != nil {
+		respondTermMarkError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "mark deleted"})
 }
 
 // respondTermMarkError keeps permission and term errors as 4xx and hides database detail.

@@ -60,7 +60,7 @@ Open `http://localhost:5173`.
 | --- | --- |
 | Frontend | http://localhost:5173 |
 | Backend | http://localhost:8080 |
-| Swagger UI (dev only) | http://localhost:8080/swagger/index.html#/ |
+| Swagger UI (dev only, frozen snapshot, see [ADR 0007](../adr/0007-plain-comments-over-swaggo.md)) | http://localhost:8080/swagger/index.html#/ |
 | ThunderID console | https://localhost:8090/console |
 | PostgreSQL | localhost:5432 |
 
