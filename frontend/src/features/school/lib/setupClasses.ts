@@ -1,5 +1,5 @@
 import type { Grade } from "@/features/academics/api/grade";
-import { AL_GRADE_NUMBERS, AL_STREAM_DEFS } from "@/features/school/setupConstants";
+import { AL_GRADE_NUMBERS, AL_STREAM_DEFS, alClassName, regularClassName } from "@/features/school/setupConstants";
 import type { ClassData, SetupContext, SetupInput } from "@/features/school/lib/setupSteps";
 
 // Grades here are always named "Grade N" (see createGradesStep), so this recovers N.
@@ -62,11 +62,12 @@ async function createRegularClasses(createOnce: CreateOnce, input: SetupInput, g
   const gradeNumber = gradeNumberOf(grade);
   const count = input.sectionsPerGrade[gradeNumber] ?? 1;
   for (let i = 0; i < count; i++) {
-    const mediumName = input.sectionMediums[`${gradeNumber}-${i}`] || input.selectedMediumNames[0];
+    // An empty string means the admin chose "No medium"; only a section with no choice gets the first medium.
+    const mediumName = input.sectionMediums[`${gradeNumber}-${i}`] ?? input.selectedMediumNames[0];
     await createOnce({
       grade_id: grade.id,
       academic_year_id: yearId,
-      name: `${gradeNumber}-${String.fromCharCode(65 + i)}`,
+      name: regularClassName(gradeNumber, i),
       medium_id: (mediumName && mediumIdByName.get(mediumName)) || null,
       capacity: input.classCapacity,
     });
@@ -101,7 +102,7 @@ async function createAlClasses(ctx: SetupContext, createOnce: CreateOnce, input:
         academic_year_id: yearId,
         stream_id: ctx.progress.streams.get(def.streamName)!,
         stream_group_id: def.groupName ? ctx.progress.groups.get(def.key) ?? null : null,
-        name: `${gradeNumber}-${code}${i + 1}`,
+        name: alClassName(gradeNumber, code, i),
         medium_id: (firstMedium && mediumIdByName.get(firstMedium)) || null,
         capacity: input.classCapacity,
       });

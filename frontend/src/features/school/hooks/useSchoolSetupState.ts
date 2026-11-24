@@ -77,3 +77,5 @@ export function useSchoolSetupState() {
     facilityRooms, setFacilityRooms, roomsSkipped, setRoomsSkipped,
   };
 }
+
+export type SchoolSetupState = ReturnType<typeof useSchoolSetupState>;

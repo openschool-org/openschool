@@ -1,10 +1,9 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useState } from "react";
-import { Button } from "antd";
-import { HomeOutlined, PlusOutlined } from "@ant-design/icons";
+import { Button, ColorPicker } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import TextField from "@/shared/ui/TextField";
-import StepShell from "@/features/school/components/setup/StepShell";
-import RepeatableRow from "@/features/school/components/setup/RepeatableRow";
+import RemoveIconButton from "@/shared/ui/RemoveIconButton";
 import { HOUSE_COLOR_PALETTE } from "@/features/school/setupConstants";
 
 export interface HouseRow {
@@ -32,65 +31,71 @@ interface Props {
 
 export default function HousesStep({ houses, setHouses, validationAttempted }: Props) {
   const [touched, setTouched] = useState<Record<number, boolean>>({});
+  const update = (index: number, patch: Partial<HouseRow>) =>
+    setHouses((rows) => rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  const rename = (index: number, name: string) =>
+    setHouses((rows) => rows.map((row, i) => {
+      if (i !== index) return row;
+      // Keep the code in step with the name until the admin edits the code themselves.
+      const followsName = !row.code.trim() || row.code === generateHouseCode(row.name);
+      return { ...row, name, code: followsName ? generateHouseCode(name) : row.code };
+    }));
+  const add = () =>
+    setHouses((rows) => [...rows, { name: "", code: "", color: HOUSE_COLOR_PALETTE[rows.length % HOUSE_COLOR_PALETTE.length] }]);
+
   return (
-    <StepShell icon={HomeOutlined} title="Houses" subtitle="Optional - students and staff are auto-assigned to whichever house has the fewest members.">
-      {houses.map((h, i) => (
-        <RepeatableRow key={i} onRemove={() => setHouses((hs) => hs.filter((_, idx) => idx !== i))}>
-          <TextField
-            id={`house-name-${i}`}
-            label="Name"
-            placeholder="e.g. Vijaya"
-            value={h.name}
-            onChange={(value) =>
-              setHouses((hs) => hs.map((row, idx) => {
-                if (idx !== i) return row;
-                const generatedCode = generateHouseCode(row.name);
-                const shouldGenerateCode = !row.code.trim() || row.code === generatedCode;
-                return {
-                  ...row,
-                  name: value,
-                  code: shouldGenerateCode ? generateHouseCode(value) : row.code,
-                };
-              }))
-            }
-          />
-          <TextField
-            id={`house-code-${i}`}
-            label="Code"
-            placeholder="e.g. VJ"
-            helperText={h.name.trim() ? "Generated from the name; you can edit it." : "Enter a name to generate a code."}
-            value={h.code}
-            invalid={(validationAttempted || !!touched[i]) && !!h.name.trim() && !h.code.trim()}
-            invalidText="A code is required for this house."
-            onChange={(value) =>
-              setHouses((hs) => hs.map((row, idx) => (idx === i ? { ...row, code: value } : row)))
-            }
-            onBlur={() => setTouched((fields) => ({ ...fields, [i]: true }))}
-          />
-          <div>
-            <label htmlFor={`house-color-${i}`} className="os-field__label">
-              Colour
-            </label>
-            <input
-              id={`house-color-${i}`}
-              type="color"
-              value={h.color}
-              onChange={(e) =>
-                setHouses((hs) => hs.map((row, idx) => (idx === i ? { ...row, color: e.target.value } : row)))
-              } className="os-w-2h os-h-2h os-p-0 os-border-tertiary os-pointer"
-            />
-          </div>
-        </RepeatableRow>
-      ))}
-      <Button
-        type="text"
-        icon={<PlusOutlined />}
-        onClick={() =>
-          setHouses((hs) => [...hs, { name: "", code: "", color: HOUSE_COLOR_PALETTE[hs.length % HOUSE_COLOR_PALETTE.length] }])
-        }
-      >
-        Add another house
-      </Button>
-    </StepShell>
+    <div>
+      {houses.length === 0 ? (
+        <p className="os-setup-empty">No houses yet. Add one, or skip this step and add houses later in Settings.</p>
+      ) : (
+        <table className="os-table os-table--no-hover os-setup-table">
+          <thead>
+            <tr>
+              <th>House name</th>
+              <th className="os-setup-table__code">Code</th>
+              <th className="os-setup-table__narrow">Colour</th>
+              <th className="os-setup-table__action"><span className="os-sr-only">Remove</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {houses.map((house, i) => (
+              <tr key={i}>
+                <td>
+                  <TextField id={`house-name-${i}`} label={`House ${i + 1} name`} hideLabel placeholder="e.g. Vijaya" value={house.name} onChange={(value) => rename(i, value)} />
+                </td>
+                <td>
+                  <TextField
+                    id={`house-code-${i}`}
+                    label={`House ${i + 1} code`}
+                    hideLabel
+                    placeholder="e.g. VJ"
+                    maxLength={5}
+                    value={house.code}
+                    invalid={(validationAttempted || !!touched[i]) && !!house.name.trim() && !house.code.trim()}
+                    invalidText="Code is required."
+                    onChange={(value) => update(i, { code: value })}
+                    onBlur={() => setTouched((fields) => ({ ...fields, [i]: true }))}
+                  />
+                </td>
+                <td>
+                  <ColorPicker
+                    value={house.color}
+                    disabledAlpha
+                    presets={[{ label: "Suggested", colors: HOUSE_COLOR_PALETTE }]}
+                    onChange={(color) => update(i, { color: color.toHexString() })}
+                    aria-label={`House ${i + 1} colour`}
+                  />
+                </td>
+                <td>
+                  <RemoveIconButton label={`Remove house ${i + 1}`} onClick={() => setHouses((rows) => rows.filter((_, idx) => idx !== i))} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <Button className="os-mt-3" icon={<PlusOutlined />} onClick={add}>Add house</Button>
+      <p className="os-setup-note">The code is filled in from the name and can be changed.</p>
+    </div>
   );
 }
