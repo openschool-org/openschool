@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router";
-import { Alert, Button, Empty, Input } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
+import { Alert, Button, Empty } from "antd";
 import { useAttendanceMarkPage } from "@/features/attendance/hooks/useAttendanceMarkPage";
 import AttendanceSummaryCards from "@/features/attendance/components/AttendanceSummaryCards";
-import { AttendanceMarkFooter, AttendanceMarkHeader } from "@/features/attendance/components/AttendanceMarkParts";
+import { AttendanceMarkFooter } from "@/features/attendance/components/AttendanceMarkParts";
+import PageHeader from "@/shared/ui/PageHeader";
+import FilterBar from "@/shared/ui/FilterBar";
+import { formatLongDate } from "@/shared/lib/date";
 import { markColumns } from "@/features/attendance/components/markColumns";
 import DataGrid from "@/shared/ui/DataGrid";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
@@ -27,19 +29,24 @@ export default function AttendanceMark() {
   if (page.session.isLoading) return <LoadingSpinner />;
   if (page.session.isError || !page.session.data) {
     return (
-      <div className="os-p-8">
+      <div className="os-page">
         <ErrorMessage message="Failed to load attendance session" />
       </div>
     );
   }
 
   return (
-    <div className="os-bg-layer-hover os-min-h-content">
-      <AttendanceMarkHeader page={page} />
-
-      <div className="os-py-6 os-px-8">
-        {readOnly && (
-          <Alert type="warning" showIcon className="os-mb-6" title="This session is locked" description="More than 24 hours have passed since it was taken. Ask an administrator to edit it." />
+    <div className="os-page">
+      <PageHeader
+        back={{ label: "Back", onClick: page.leave }}
+        title={`${page.cls?.name ?? "Class"} attendance`}
+        subtitle={[page.gradeName, formatLongDate(page.session.data?.date), page.session.data?.taken_by_name].filter(Boolean).join(" · ")}
+      />
+      <div>
+        {page.notClassTeacher ? (
+          <Alert type="info" showIcon className="os-mb-6" title="View only" description="Only the class teacher takes attendance for this class. You can see it because you teach this class." />
+        ) : (
+          readOnly && <Alert type="warning" showIcon className="os-mb-6" title="This session is locked" description="More than 24 hours have passed since it was taken. Ask an administrator to edit it." />
         )}
         {page.isOverride && (
           <Alert type="info" showIcon className="os-mb-6" title="Editing a locked session" description="This session is more than 24 hours old. As an administrator you can still edit it. Note a reason below; the change is recorded in the audit log." />
@@ -49,16 +56,9 @@ export default function AttendanceMark() {
 
         <div className="os-section">
           <div className="os-flex os-items-center os-gap-3 os-py-3h os-px-6 os-border-b os-wrap">
-            <Input
-              className="os-max-w-px-280"
-              allowClear
-              prefix={<SearchOutlined />}
-              aria-label="Search students"
-              placeholder="Search student by name or index…"
-              value={page.search}
-              onChange={(e) => page.setSearch(e.target.value)}
-            />
-            <div className="os-flex-1" />
+            <div className="os-flex-1">
+              <FilterBar search={{ value: page.search, onChange: page.setSearch, placeholder: "Search by name or index number" }} />
+            </div>
             {!readOnly && (
               <>
                 <Button danger size="small" disabled={unmarked === 0} onClick={() => setConfirmAbsent(true)}>

@@ -252,15 +252,6 @@
 }
 
 // Attendance marking (pages/admin/AttendanceMark.tsx): summary cards and a light row tint per status.
-.os-attendance-summary {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.75rem;
-
-  @media (max-width: 900px) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  @media (max-width: 560px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
 @each $s in present, absent, late, excused {
   .os-grid .os-attendance-row--#{$s} > td { background: color-mix(in srgb, var(--os-status-#{$s}-bg) 45%, var(--os-layer)); }
 }
@@ -294,3 +285,34 @@
 .os-att-badge.is-leave-pending { background: var(--os-status-late-solid); }
 .os-att-badge.is-leave-rejected { background: var(--os-status-absent-solid); }
 .os-att-badge.is-leave-cancelled { background: var(--os-text-tertiary); }
+
+// General solid pill (shared/ui/Pill): same shape as the attendance badges, coloured by meaning.
+.os-pill-solid {
+  display: inline-flex; align-items: center; gap: 0.375rem;
+  padding: 0.125rem 0.625rem; border-radius: 9999px;
+  color: var(--os-text-on-color); font-size: 0.75rem; font-weight: 600; line-height: 1.375rem; white-space: nowrap;
+  background: var(--os-text-tertiary);
+  &.is-success { background: var(--os-status-present-solid); }
+  &.is-warning { background: var(--os-status-late-solid); }
+  &.is-danger { background: var(--os-status-absent-solid); }
+  &.is-info { background: var(--os-accent); }
+  // Light blue for highlights that are not a status.
+  &.is-accent { background: var(--os-accent-light); color: var(--os-accent-dark); }
+  &.is-purple { background: var(--os-status-excused-solid); }
+  &.is-gold { background: var(--os-subject-7); }
+  &.is-neutral { background: var(--os-text-tertiary); }
+  // Soft pills: the tone becomes a pale tint with dark text of the same hue (AA contrast), for non-status labels.
+  &.is-soft {
+    --pill-tone: var(--os-text-tertiary);
+    background: color-mix(in srgb, var(--pill-tone) 10%, var(--os-layer));
+    border: 1px solid color-mix(in srgb, var(--pill-tone) 30%, var(--os-layer));
+    color: color-mix(in srgb, var(--pill-tone) 75%, var(--os-text-primary));
+    &.is-success { --pill-tone: var(--os-status-present-solid); }
+    &.is-warning { --pill-tone: var(--os-status-late-solid); }
+    &.is-danger { --pill-tone: var(--os-status-absent-solid); }
+    &.is-info, &.is-accent { --pill-tone: var(--os-accent); }
+    &.is-purple { --pill-tone: var(--os-status-excused-solid); }
+    &.is-gold { --pill-tone: var(--os-status-late-solid); }
+    &.is-neutral { --pill-tone: var(--os-text-tertiary); }
+  }
+}

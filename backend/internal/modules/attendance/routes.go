@@ -28,7 +28,7 @@ func RegisterRoutes(group *gin.RouterGroup, service *Service) {
 }
 
 func statusForError(err error, fallback int) int {
-	if errors.Is(err, ErrNotAssignedToClass) || errors.Is(err, ErrInsufficientRank) {
+	if errors.Is(err, ErrNotAssignedToClass) || errors.Is(err, ErrNotClassTeacher) || errors.Is(err, ErrInsufficientRank) {
 		return http.StatusForbidden
 	}
 	if errors.Is(err, ErrSessionLocked) {

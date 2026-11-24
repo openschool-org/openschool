@@ -1,4 +1,5 @@
-import { Tag } from "antd";
+import { RightOutlined } from "@ant-design/icons";
+import Pill from "@/shared/ui/Pill";
 import type { MarkHistoryTerm } from "@/features/marks/api/termMark";
 import GradeBadge from "@/features/marks/components/GradeBadge";
 import { averagePercent, markPercent } from "@/features/marks/lib/grade";
@@ -14,21 +15,23 @@ export default function ResultsTermBlock({ term }: { term: MarkHistoryTerm }) {
   const notStarted = term.start_date > todayISODate();
 
   return (
-    <section className="os-results-term">
-      <div className="os-results-term__head">
+    // Each term is a dropdown; only the current term starts open.
+    <details className="os-results-term" open={term.is_current}>
+      <summary className="os-results-term__head">
         <div className="os-flex os-items-center os-gap-3 os-wrap">
+          <RightOutlined className="os-results-chevron" aria-hidden />
           <h3 className="os-results-term__name">{term.name}</h3>
           <span className="os-results-term__dates">
             {formatDayMonthYear(term.start_date)} - {formatDayMonthYear(term.end_date)}
           </span>
-          {term.is_current && <Tag color="blue">{t("marks.currentTerm")}</Tag>}
+          {term.is_current && <Pill tone="info">{t("marks.currentTerm")}</Pill>}
         </div>
         {average !== null && (
           <span className="os-results-term__avg">
             {t("marks.termAverage", { value: formatPercent(average, 1) })} · {t("marks.subjectsCount", { count: term.marks.length })}
           </span>
         )}
-      </div>
+      </summary>
       {term.marks.length === 0 ? (
         <p className="os-results-term__empty">{notStarted ? t("marks.termNotStarted") : t("marks.termNoMarks")}</p>
       ) : (
@@ -51,6 +54,6 @@ export default function ResultsTermBlock({ term }: { term: MarkHistoryTerm }) {
           ]}
         />
       )}
-    </section>
+    </details>
   );
 }

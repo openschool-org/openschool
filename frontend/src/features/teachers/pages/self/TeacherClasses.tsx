@@ -1,7 +1,13 @@
 import { useState } from "react";
-import { Input } from "antd";
-import { ScheduleOutlined, SearchOutlined } from "@ant-design/icons";
+import { Segmented } from "antd";
+import { useQuery } from "@tanstack/react-query";
+import { ScheduleOutlined } from "@ant-design/icons";
 import LinkButton from "@/shared/ui/LinkButton";
+import FilterBar from "@/shared/ui/FilterBar";
+import SectionCard from "@/shared/ui/SectionCard";
+import StartSessionButton from "@/features/attendance/components/StartSessionButton";
+import { classSessionsOptions } from "@/features/attendance/queries/useAttendance";
+import { todayISODate } from "@/shared/lib/date";
 import { useMyClasses, useTeacherSubjects } from "@/features/teachers/queries/useTeachers";
 import { useStudentsByClass } from "@/features/students/queries/useStudents";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
@@ -22,11 +28,14 @@ export default function TeacherClasses() {
 
   const activeClass = myClasses.find((c) => c.class_id === activeClassId) ?? myClasses[0];
   const { data: roster, isLoading: rosterLoading } = useStudentsByClass(activeClass?.class_id ?? "");
+  const { data: sessions } = useQuery({ ...classSessionsOptions(activeClass?.class_id ?? ""), enabled: !!activeClass });
+  const todaySession = (sessions ?? []).find((s) => s.date === todayISODate());
 
   if (isLoading) return <LoadingSpinner />;
   if (isError) {
     return (
-      <div className="os-p-8">
+      <div className="os-page">
+        <PageHeader title="My classes" />
         <ErrorMessage message="Failed to load your classes" onRetry={refetch} />
       </div>
     );
@@ -34,6 +43,7 @@ export default function TeacherClasses() {
   if (myClasses.length === 0 || !activeClass) {
     return (
       <div className="os-page">
+        <PageHeader title="My classes" />
         <EmptyState
           title="No classes assigned yet"
           description="Classes you teach will appear here once an admin assigns you to a subject in a class."
@@ -59,37 +69,34 @@ export default function TeacherClasses() {
     <div className="os-page">
       <PageHeader title="My classes" subtitle={<>{myClasses.length} class{myClasses.length > 1 ? "es" : ""} this year</>} />
 
-      <div className="os-flex os-gap-3 os-mb-6 os-wrap">
-        {myClasses.map((c) => (
-          <button
-            key={c.class_id}
-            onClick={() => { setActiveClassId(c.class_id); setQuery(""); }} className={`os-pill os-pill--solid os-py-2h os-px-5 os-text-md os-fw-500 os-c-primary${activeClass.class_id === c.class_id ? " is-active" : ""}`}
-          >
-            {classLabel(c.grade_name, c.class_name)}
-          </button>
-        ))}
-      </div>
-
+      {myClasses.length > 1 && (
+        <Segmented
+          className="os-mb-6"
+          value={activeClass.class_id}
+          onChange={(v) => { setActiveClassId(String(v)); setQuery(""); }}
+          options={myClasses.map((c) => ({ value: c.class_id, label: classLabel(c.grade_name, c.class_name) }))}
+        />
+      )}
       <div className="os-grid os-grid-cols-2-1 os-gap-6 os-items-grid-start">
         <div>
-          <div className="os-section">
-            <div className="os-section__header">
-              <h2 className="os-section__title">Student roster - {activeClass.class_name}</h2>
-              <span className="os-text-xs os-c-tertiary">{roster?.length ?? 0} students</span>
-            </div>
-            <div className="os-toolbar">
-              <Input
-                className="os-max-w-22"
-                allowClear
-                prefix={<SearchOutlined />}
-                aria-label="Search students"
-                placeholder="Search students…"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <LinkButton to="/t/attendance" type="primary" icon={<ScheduleOutlined />} className="os-ml-auto">
-                Take attendance
-              </LinkButton>
+          <SectionCard
+            title={`Student roster · ${activeClass.class_name}`}
+            meta={<span className="os-text-sm os-c-tertiary">{roster?.length ?? 0} students</span>}
+            flush
+          >
+            <div className="os-section__body os-flex os-items-center os-gap-3 os-wrap">
+              <div className="os-flex-1">
+                <FilterBar search={{ value: query, onChange: setQuery, placeholder: "Search by name or index number" }} />
+              </div>
+              {todaySession ? (
+                <LinkButton to={`/attendance/sessions/${todaySession.id}/mark`} icon={<ScheduleOutlined />}>
+                  {activeClass.isFormTeacher ? "Open today's attendance" : "View today's attendance"}
+                </LinkButton>
+              ) : activeClass.isFormTeacher ? (
+                <StartSessionButton classId={activeClass.class_id}>Take attendance</StartSessionButton>
+              ) : (
+                <span className="os-text-sm os-c-tertiary">The class teacher takes attendance</span>
+              )}
             </div>
             {rosterLoading ? (
               <LoadingSpinner />
@@ -111,7 +118,7 @@ export default function TeacherClasses() {
                 />
               )
             )}
-          </div>
+          </SectionCard>
         </div>
 
         <div>

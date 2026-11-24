@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Button, Select, Skeleton, Tag } from "antd";
+import { Button, Select, Skeleton } from "antd";
+import Pill from "@/shared/ui/Pill";
 import { PlusOutlined, UserDeleteOutlined } from "@ant-design/icons";
 import { Link } from "react-router";
 import { useSocietyMembers } from "@/features/portfolio/queries/useSocieties";
@@ -12,7 +13,7 @@ import DataGrid from "@/shared/ui/DataGrid";
 import FilterBar from "@/shared/ui/FilterBar";
 import EmptyState from "@/shared/ui/EmptyState";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
-import { formatISODate } from "@/shared/lib/date";
+import { formatDayMonthYear } from "@/shared/lib/date";
 
 interface Props {
   societyId: string;
@@ -98,8 +99,8 @@ export default function SocietyRoster({ societyId, readOnly, linkStudents = true
               ),
             },
             { key: "grade", header: "Grade", render: (m) => m.grade_name ?? "-" },
-            { key: "role", header: "Role", render: (m) => <Tag color={roleInfo(m.role).color}>{roleInfo(m.role).label}</Tag> },
-            { key: "joined", header: "Joined", render: (m) => <span className="os-table__mono">{formatISODate(m.created_at)}</span> },
+            { key: "role", header: "Role", render: (m) => <Pill tone={roleInfo(m.role).tone}>{roleInfo(m.role).label}</Pill> },
+            { key: "joined", header: "Joined", render: (m) => formatDayMonthYear(m.created_at) },
             ...(readOnly
               ? []
               : [{

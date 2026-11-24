@@ -1,29 +1,24 @@
-import { Card } from "antd";
+import { CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, MinusCircleOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import StatCard from "@/features/reports/components/dashboard/StatCard";
 
 interface Props {
   summary: { present: number; absent: number; late: number; excused: number; unmarked: number };
 }
 
-// Dot colours are the attendance status tokens; they are runtime values, so they stay inline.
+// Totals for the marking grid, in the same stat cards as every other page.
 const CARDS = [
-  { key: "present", label: "Present", color: "var(--os-status-present-border)" },
-  { key: "absent", label: "Absent", color: "var(--os-status-absent-border)" },
-  { key: "late", label: "Late", color: "var(--os-status-late-border)" },
-  { key: "excused", label: "Excused", color: "var(--os-status-excused-border)" },
-  { key: "unmarked", label: "Unmarked", color: "var(--os-border-strong)" },
+  { key: "present", label: "Present", Icon: CheckCircleOutlined },
+  { key: "absent", label: "Absent", Icon: CloseCircleOutlined },
+  { key: "late", label: "Late", Icon: ClockCircleOutlined },
+  { key: "excused", label: "Excused", Icon: SafetyCertificateOutlined },
+  { key: "unmarked", label: "Not marked", Icon: MinusCircleOutlined },
 ] as const;
 
 export default function AttendanceSummaryCards({ summary }: Props) {
   return (
-    <div className="os-attendance-summary os-mb-6">
-      {CARDS.map(({ key, label, color }) => (
-        <Card key={key} className="os-dash-stat">
-          <p className="os-dash-stat__label">
-            <span className="os-dot os-w-0h os-h-0h" style={{ backgroundColor: color }} aria-hidden="true" />
-            {label}
-          </p>
-          <p className="os-dash-stat__value">{summary[key]}</p>
-        </Card>
+    <div className="os-stat-grid os-stat-grid--five">
+      {CARDS.map(({ key, label, Icon }) => (
+        <StatCard key={key} label={label} value={summary[key]} loading={false} Icon={Icon} />
       ))}
     </div>
   );

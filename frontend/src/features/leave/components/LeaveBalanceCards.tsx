@@ -1,20 +1,34 @@
-import { Card, Skeleton } from "antd";
-import type { BalanceItem, LeaveBalance } from "@/features/leave/api/leave";
+import { Skeleton } from "antd";
+import { CalendarOutlined, ClockCircleOutlined, CoffeeOutlined, MedicineBoxOutlined, SolutionOutlined, HeartOutlined, StopOutlined } from "@ant-design/icons";
+import type { BalanceItem, LeaveBalance, LeaveType } from "@/features/leave/api/leave";
+import StatCard from "@/features/reports/components/dashboard/StatCard";
 import { LEAVE_TYPE_LABELS } from "@/features/leave/constants";
 
-// One card per leave type: what is left, and what is used or waiting.
+const ICONS: Record<LeaveType, typeof CalendarOutlined> = {
+  casual: CoffeeOutlined,
+  sick: MedicineBoxOutlined,
+  duty: SolutionOutlined,
+  maternity: HeartOutlined,
+  no_pay: StopOutlined,
+  short: ClockCircleOutlined,
+};
+
+// One stat card per leave type: what is left, and what is used or waiting.
 export default function LeaveBalanceCards({ balance, isLoading }: { balance?: LeaveBalance; isLoading: boolean }) {
   if (isLoading || !balance) return <Skeleton active title={false} paragraph={{ rows: 2 }} />;
   const cards = [...balance.items.filter((i) => i.leave_type === "casual" || i.leave_type === "sick"), balance.short_leave_month];
   const others = balance.items.filter((i) => i.entitlement === 0 && (i.used > 0 || i.pending > 0));
   return (
-    <div className="os-grid os-grid-auto-200 os-gap-4">
+    <div className="os-stat-grid os-mb-0">
       {[...cards, ...others].map((item) => (
-        <Card key={item.leave_type} className="os-dash-stat">
-          <p className="os-dash-stat__label">{LEAVE_TYPE_LABELS[item.leave_type]}{item.leave_type === "short" ? " this month" : ""}</p>
-          <p className="os-dash-stat__value">{headline(item)}</p>
-          <p className="os-dash-stat__meta">{meta(item)}</p>
-        </Card>
+        <StatCard
+          key={item.leave_type}
+          label={`${LEAVE_TYPE_LABELS[item.leave_type]}${item.leave_type === "short" ? " this month" : ""}`}
+          value={headline(item)}
+          meta={meta(item)}
+          loading={false}
+          Icon={ICONS[item.leave_type] ?? CalendarOutlined}
+        />
       ))}
     </div>
   );

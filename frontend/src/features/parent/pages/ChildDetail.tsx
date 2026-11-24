@@ -1,6 +1,6 @@
-import { Link, useParams } from "react-router";
+import type { ReactNode } from "react";
+import { useParams } from "react-router";
 import { Tabs } from "antd";
-import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useMyChildren } from "@/features/parent/queries/useParent";
 import {
   ChildAttendanceTab,
@@ -14,7 +14,7 @@ import {
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
 import TabSection from "@/shared/ui/TabSection";
-import { getInitials } from "@/shared/lib/name";
+import PageHeader from "@/shared/ui/PageHeader";
 import { usePageTitle } from "@/shared/hooks/usePageTitle";
 import { useT } from "@/shared/i18n/useT";
 
@@ -26,53 +26,38 @@ export default function ChildDetail() {
   usePageTitle(child?.full_name);
 
   if (isLoading) return <LoadingSpinner />;
+  const back = { label: t("child.backToChildren"), to: "/" };
   if (!child) {
     return (
-      <div className="os-p-8">
-        <EmptyState
-          title={t("child.notFound")}
-          description={t("child.notLinked")}
-          action={<Link to="/" className="os-table__link">{t("child.backToChildren")}</Link>}
-        />
+      <div className="os-page">
+        <PageHeader title={t("child.notFound")} back={back} />
+        <EmptyState title={t("child.notFound")} description={t("child.notLinked")} />
       </div>
     );
   }
 
+  // Tabs whose content already has its own cards render without a wrapping card.
+  const bare = (node: ReactNode) => <div className="os-mt-4">{node}</div>;
   return (
-    <div className="os-bg-layer-hover os-min-h-content">
-      <div className="os-profile__banner">
-        <div className="os-profile__avatar">{getInitials(child.full_name)}</div>
-        <div className="os-flex-1">
-          <p className="os-profile__name">{child.full_name}</p>
-          <p className="os-profile__meta">
-            {child.index_number}
-            {child.class_name ? ` · ${child.class_name}` : ""}
-            {child.grade_name ? ` · ${child.grade_name}` : ""}
-          </p>
-        </div>
-        <div className="os-profile__actions">
-          <Link to="/" className="os-table__link os-flex os-items-center os-gap-1h">
-            <ArrowLeftOutlined aria-hidden />
-            {t("common.back")}
-          </Link>
-        </div>
-      </div>
-
-      <div className="os-py-6 os-px-8">
-        <Tabs
-          className="os-detail-tabs"
-          aria-label={t("child.sections")}
-          items={[
-            { key: "attendance", label: t("nav.attendance"), children: <TabSection title={t("nav.attendance")} padded={false}><ChildAttendanceTab studentId={child.id} /></TabSection> },
-            { key: "marks", label: t("nav.marks"), children: <TabSection title={t("marks.termMarks")}><ChildMarksTab studentId={child.id} /></TabSection> },
-            { key: "timetable", label: t("nav.timetable"), children: <TabSection title={t("nav.timetable")}><ChildTimetableTab studentId={child.id} /></TabSection> },
-            { key: "enrolments", label: t("child.tab.enrolments"), children: <TabSection title={t("enrol.title")}><ChildEnrollmentsTab studentId={child.id} /></TabSection> },
-            { key: "progress", label: t("child.tab.progress"), children: <TabSection title={t("progress.title")}><ChildProgressReportsTab studentId={child.id} /></TabSection> },
-            { key: "portfolio", label: t("child.tab.portfolio"), children: <TabSection title={t("child.section.portfolio")}><ChildPortfolioTab studentId={child.id} /></TabSection> },
-            { key: "guardians", label: t("child.tab.guardians"), children: <TabSection title={t("child.section.guardians")}><ChildGuardiansTab studentId={child.id} /></TabSection> },
-          ]}
-        />
-      </div>
+    <div className="os-page">
+      <PageHeader
+        back={back}
+        title={child.full_name}
+        subtitle={[child.index_number, child.grade_name, child.class_name].filter(Boolean).join(" · ")}
+      />
+      <Tabs
+        className="os-detail-tabs"
+        aria-label={t("child.sections")}
+        items={[
+          { key: "attendance", label: t("nav.attendance"), children: bare(<ChildAttendanceTab studentId={child.id} />) },
+          { key: "marks", label: t("nav.marks"), children: bare(<ChildMarksTab studentId={child.id} />) },
+          { key: "timetable", label: t("nav.timetable"), children: <TabSection title={t("timetable.weekly")}><ChildTimetableTab studentId={child.id} /></TabSection> },
+          { key: "enrolments", label: t("child.tab.enrolments"), children: <TabSection title={t("enrol.title")} padded={false}><ChildEnrollmentsTab studentId={child.id} /></TabSection> },
+          { key: "progress", label: t("child.tab.progress"), children: <TabSection title={t("progress.title")} padded={false}><ChildProgressReportsTab studentId={child.id} /></TabSection> },
+          { key: "portfolio", label: t("child.tab.portfolio"), children: bare(<ChildPortfolioTab studentId={child.id} />) },
+          { key: "guardians", label: t("child.tab.guardians"), children: <TabSection title={t("child.section.guardians")} padded={false}><ChildGuardiansTab studentId={child.id} /></TabSection> },
+        ]}
+      />
     </div>
   );
 }

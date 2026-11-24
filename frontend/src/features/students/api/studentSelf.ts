@@ -2,10 +2,15 @@ import api from "@/shared/api/client";
 import type { ChildAttendanceRecord } from "@/features/parent/api/parent";
 import type { MarkHistoryYear } from "@/features/marks/api/termMark";
 
-// Matches db.GetStudentWithClassRow
+// Matches selfservice.StudentProfile
 export interface MyStudentProfile {
   id: string;
   full_name: string;
+  name_with_initials: string;
+  calling_name: string;
+  email: string | null;
+  address: string | null;
+  whatsapp: string | null;
   index_number: string;
   gender: string | null;
   class_name: string | null;

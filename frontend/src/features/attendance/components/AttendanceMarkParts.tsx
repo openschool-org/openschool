@@ -1,28 +1,8 @@
-import { Button, Tag } from "antd";
-import { ArrowLeftOutlined, SaveOutlined, WarningOutlined } from "@ant-design/icons";
+import { Button } from "antd";
+import { SaveOutlined, WarningOutlined } from "@ant-design/icons";
 import { getErrorMessage } from "@/shared/api/errors";
 import TextField from "@/shared/ui/TextField";
 import type { AttendanceMarkPage } from "@/features/attendance/hooks/useAttendanceMarkPage";
-
-// Class, grade, teacher and date above the marking roster.
-export function AttendanceMarkHeader({ page }: { page: AttendanceMarkPage }) {
-  const teacherName = page.session.data?.taken_by_name;
-  return (
-    <div className="os-py-5 os-px-8 os-flex os-items-center os-gap-6 os-wrap os-border-b">
-      <div className="os-flex-1">
-        <div className="os-flex os-items-center os-gap-2 os-mb-1">
-          <span className="os-text-lg os-fw-600 os-c-primary">Class {page.cls?.name ?? "…"}</span>
-          {page.gradeName && <Tag color="blue" variant="filled">{page.gradeName}</Tag>}
-        </div>
-        <div className="os-flex os-gap-6 os-wrap">
-          {teacherName && <span className="os-text-sm os-c-secondary">{teacherName}</span>}
-          <span className="os-text-sm os-c-secondary">{page.session.data?.date}</span>
-        </div>
-      </div>
-      <Button type="text" icon={<ArrowLeftOutlined />} onClick={page.leave}>Back</Button>
-    </div>
-  );
-}
 
 // Override reason, unmarked warning, save error and the save and cancel buttons.
 export function AttendanceMarkFooter({ page }: { page: AttendanceMarkPage }) {

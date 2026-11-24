@@ -1,6 +1,6 @@
 import DataGrid from "@/shared/ui/DataGrid";
 import AttendanceStatusBadge from "@/features/attendance/components/AttendanceStatusBadge";
-import { formatISODate, formatLongDate } from "@/shared/lib/date";
+import { formatDayMonthYear, formatWeekday } from "@/shared/lib/date";
 import { useT } from "@/shared/i18n/useT";
 
 interface Row {
@@ -26,8 +26,8 @@ export default function AttendanceHistoryTable({ rows }: { rows: Row[] }) {
           header: t("table.date"),
           render: (r) => (
             <>
-              <span className="os-table__mono">{formatISODate(r.session_date)}</span>
-              <span className="os-table__muted os-text-sm os-block">{formatLongDate(r.session_date)}</span>
+              <span>{formatDayMonthYear(r.session_date)}</span>
+              <span className="os-table__muted os-text-sm os-block">{formatWeekday(r.session_date)}</span>
             </>
           ),
         },

@@ -30,6 +30,8 @@ interface Words {
   prefectRank: (rank: string) => string;
   societyRole: (role: string) => string;
   category: (category: string) => string;
+  former: (role: string) => string;
+  left: (date: string) => string;
 }
 
 const KIND_ORDER: PortfolioKind[] = ["prefect", "leadership", "society", "award", "activity"];
@@ -49,8 +51,8 @@ export function groupPortfolio(src: PortfolioSources, yearLabels: Record<string,
     ...src.societies.map((s) => ({
       id: s.id, yearId: s.academic_year_id, kind: "society" as const, title: s.society_name, date: s.created_at,
       // A deactivated member keeps the entry, shown as former.
-      badge: s.left_at ? `Former ${words.societyRole(s.role).toLowerCase()}` : words.societyRole(s.role),
-      detail: s.left_at ? `Left ${s.left_at.slice(0, 10)}` : undefined,
+      badge: s.left_at ? words.former(words.societyRole(s.role).toLowerCase()) : words.societyRole(s.role),
+      detail: s.left_at ? words.left(s.left_at) : undefined,
     })),
     ...src.awards.map((a) => ({
       id: a.id, yearId: a.academic_year_id, kind: "award" as const, title: a.title,

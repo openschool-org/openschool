@@ -141,3 +141,18 @@ SELECT student_id
 FROM class_students
 WHERE class_id = sqlc.arg(class_id)
   AND student_id = ANY(sqlc.arg(student_ids)::uuid[]);
+
+-- name: CanTeacherTakeClassAttendance :one
+-- Only the class teacher takes a class's attendance, or the acting teacher named
+-- on the class teacher's approved leave for that date. Subject teachers only view.
+SELECT EXISTS (
+    SELECT 1 FROM classes c
+    WHERE c.id = sqlc.arg(class_id) AND c.form_teacher_id = sqlc.arg(teacher_id)::uuid
+    UNION ALL
+    SELECT 1 FROM classes c
+    INNER JOIN teacher_leave_requests l ON l.teacher_id = c.form_teacher_id
+    WHERE c.id = sqlc.arg(class_id)
+      AND l.acting_teacher_id = sqlc.arg(teacher_id)::uuid
+      AND l.status = 'approved'
+      AND sqlc.arg(on_date)::date BETWEEN l.start_date AND l.end_date
+) AS allowed;

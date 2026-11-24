@@ -16,8 +16,10 @@ import (
 
 var (
 	ErrNotAssignedToClass = errors.New("you are not assigned to teach this class")
-	ErrSessionLocked      = errors.New("this attendance session is locked — more than 24 hours have passed since it was taken; ask an administrator to edit it")
-	ErrInsufficientRank   = errors.New("this action requires a leadership position (Principal, Vice Principal, or Section Head)")
+	// ErrNotClassTeacher stops a subject teacher taking attendance; they can only view it.
+	ErrNotClassTeacher  = errors.New("only the class teacher can take attendance for this class")
+	ErrSessionLocked    = errors.New("this attendance session is locked — more than 24 hours have passed since it was taken; ask an administrator to edit it")
+	ErrInsufficientRank = errors.New("this action requires a leadership position (Principal, Vice Principal, or Section Head)")
 )
 
 const lockWindow = 24 * time.Hour
@@ -41,6 +43,8 @@ type Session struct {
 	PresentCount *int64 `json:"present_count,omitempty"`
 	AbsentCount  *int64 `json:"absent_count,omitempty"`
 	LateCount    *int64 `json:"late_count,omitempty"`
+	// CanMark is filled when one session is fetched: false means the caller may only view it.
+	CanMark *bool `json:"can_mark,omitempty"`
 }
 
 type Record struct {
@@ -107,6 +111,7 @@ type store interface {
 	createUser(context.Context, Actor) (uuid.UUID, error)
 	teacherByUser(context.Context, uuid.UUID) (uuid.UUID, error)
 	teacherAssigned(context.Context, uuid.UUID, uuid.UUID) (bool, error)
+	canTakeAttendance(ctx context.Context, classID, teacherID uuid.UUID, date time.Time) (bool, error)
 	studentClass(context.Context, uuid.UUID) (uuid.UUID, error)
 	guardianUsers(context.Context, uuid.UUID) ([]uuid.UUID, error)
 	studentName(context.Context, uuid.UUID) (string, error)
@@ -167,6 +172,26 @@ func (s *Service) authorizeClass(ctx context.Context, actor Actor, classID uuid.
 	return nil
 }
 
+// authorizeTakeAttendance is the write check: admins, the class teacher, or the acting
+// teacher covering the class teacher's approved leave on that date.
+func (s *Service) authorizeTakeAttendance(ctx context.Context, actor Actor, classID uuid.UUID, date time.Time) error {
+	if actor.Role == authz.RoleAdmin {
+		return nil
+	}
+	teacherID, err := s.store.teacherByUser(ctx, actor.ID)
+	if err != nil {
+		return ErrNotClassTeacher
+	}
+	allowed, err := s.store.canTakeAttendance(ctx, classID, teacherID, date)
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		return ErrNotClassTeacher
+	}
+	return nil
+}
+
 // ErrStudentNotInClass rejects a record for a student outside the session's
 // class, which would otherwise write their history and notify their guardians (S2).
 var ErrStudentNotInClass = errors.New("one or more students are not enrolled in this class")
@@ -209,7 +234,7 @@ func (s *Service) CreateSession(ctx context.Context, actor Actor, req CreateAtte
 	if err != nil {
 		return Session{}, fmt.Errorf("invalid date format, use YYYY-MM-DD")
 	}
-	if err := s.authorizeClass(ctx, actor, classID); err != nil {
+	if err := s.authorizeTakeAttendance(ctx, actor, classID, date); err != nil {
 		return Session{}, err
 	}
 	takenBy, err := s.resolveActor(ctx, actor)
@@ -250,6 +275,8 @@ func (s *Service) GetSession(ctx context.Context, actor Actor, id uuid.UUID) (Se
 	if err := s.authorizeClass(ctx, actor, session.ClassID); err != nil {
 		return Session{}, err
 	}
+	canMark := s.authorizeTakeAttendance(ctx, actor, session.ClassID, session.Date.Time) == nil
+	session.CanMark = &canMark
 	return session, nil
 }
 
@@ -258,7 +285,7 @@ func (s *Service) DeleteSession(ctx context.Context, actor Actor, id uuid.UUID) 
 	if err != nil {
 		return fmt.Errorf("attendance session not found")
 	}
-	if err := s.authorizeClass(ctx, actor, session.ClassID); err != nil {
+	if err := s.authorizeTakeAttendance(ctx, actor, session.ClassID, session.Date.Time); err != nil {
 		return err
 	}
 	locked := s.locked(session)
@@ -318,7 +345,7 @@ func (s *Service) MarkAttendance(ctx context.Context, actor Actor, sessionID uui
 	if err != nil {
 		return fmt.Errorf("attendance session not found")
 	}
-	if err := s.authorizeClass(ctx, actor, session.ClassID); err != nil {
+	if err := s.authorizeTakeAttendance(ctx, actor, session.ClassID, session.Date.Time); err != nil {
 		return err
 	}
 	locked := s.locked(session)

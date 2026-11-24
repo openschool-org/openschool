@@ -1,4 +1,4 @@
-import { Tag } from "antd";
+import Pill from "@/shared/ui/Pill";
 import { BellOutlined, CrownOutlined, FileDoneOutlined, ScheduleOutlined, TableOutlined } from "@ant-design/icons";
 import { useMemo } from "react";
 import { useMyStudentProfile, useMyAttendance, useMyMarkHistory } from "@/features/students/queries/useStudentSelf";
@@ -39,14 +39,13 @@ export default function StudentDashboard() {
     return { days: rows.length, attended, rate: rows.length ? Math.round((attended / rows.length) * 100) : null };
   }, [attendance.data]);
 
-  const { currentTerm, latestTerm } = useMemo(() => {
-    const years = history.data ?? [];
-    const current = years.find((y) => y.is_current)?.terms.find((term) => term.is_current) ?? null;
-    // Newest year first from the API; within a year the last term with marks is the latest.
-    const latest = years.flatMap((y) => [...y.terms].reverse()).find((term) => term.marks.length > 0) ?? null;
-    return { currentTerm: current, latestTerm: latest };
-  }, [history.data]);
-  const termAverage = currentTerm ? averagePercent(currentTerm.marks) : null;
+  // Newest year first from the API; within a year the last term with marks is the latest.
+  const latestTerm = useMemo(
+    () => (history.data ?? []).flatMap((y) => [...y.terms].reverse()).find((term) => term.marks.length > 0) ?? null,
+    [history.data],
+  );
+  // Same figure the parent sees: the latest term that has marks.
+  const termAverage = latestTerm ? averagePercent(latestTerm.marks) : null;
 
   // Timetable days run 1 (Mon) to 5 (Fri), the same as Date.getDay().
   const todayClasses = useMemo(
@@ -57,7 +56,7 @@ export default function StudentDashboard() {
   if (isLoading) return <LoadingSpinner />;
   if (isError || !profile) {
     return (
-      <div className="os-p-8">
+      <div className="os-page">
         <ErrorMessage message={t("student.loadProfileFailed")} onRetry={refetch} />
       </div>
     );
@@ -74,11 +73,11 @@ export default function StudentDashboard() {
         aside={
           <>
             {prefect && (
-              <Tag color="gold" variant="solid" icon={<CrownOutlined />}>
+              <Pill tone="gold" variant="soft" icon={<CrownOutlined />}>
                 {t("student.prefectYear", { rank: translateValue(t, "prefect", prefect.rank), year: prefect.academic_year_label })}
-              </Tag>
+              </Pill>
             )}
-            {profile.house_name && <Tag color="blue" variant="filled">{t("student.houseTag", { house: profile.house_name })}</Tag>}
+            {profile.house_name && <Pill tone="info" variant="soft">{t("student.houseTag", { house: profile.house_name })}</Pill>}
             <SchoolLogo />
           </>
         }
@@ -99,7 +98,7 @@ export default function StudentDashboard() {
         <StatCard
           label={t("student.latestMarks")}
           value={formatPercent(termAverage)}
-          meta={currentTerm ? t("student.subjectsMarked", { term: currentTerm.name, count: currentTerm.marks.length }) : t("student.noTerm")}
+          meta={latestTerm ? t("student.subjectsMarked", { term: latestTerm.name, count: latestTerm.marks.length }) : t("marks.historyEmptyTitle")}
           loading={history.isLoading}
           error={history.isError}
           Icon={FileDoneOutlined}

@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
-import TimetableGrid from "@/features/timetable/components/TimetableGrid";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import WeeklyTimetable from "@/features/timetable/components/WeeklyTimetable";
 import type { TimetableEntry } from "@/features/timetable/api/timetable";
 import type { TimetablePeriod } from "@/features/timetable/api/gradeSection";
@@ -14,8 +13,8 @@ const period = { id: "p1", period_number: 1, slot_type: "period", start_time: "0
 afterEach(cleanup);
 
 describe("option block periods", () => {
-  it("show the block name in the editor grid", () => {
-    render(<TimetableGrid periods={[period]} entryAt={(d, p) => (d === 1 && p === 1 ? block : undefined)} editable={false} onOpenCell={() => {}} />);
+  it("show the block name and say it is an option block", () => {
+    render(<WeeklyTimetable entries={[block]} periods={[period]} />);
     expect(screen.getByText("Basket 1")).toBeTruthy();
     expect(screen.getByText("Option block")).toBeTruthy();
   });
@@ -66,5 +65,16 @@ describe("practicals and library periods", () => {
     expect(screen.getByText("Chemistry Practical")).toBeTruthy();
     expect(screen.getByText("Chemistry Lab")).toBeTruthy();
     expect(screen.getByText("Main Library")).toBeTruthy();
+  });
+});
+
+describe("editor mode", () => {
+  it("offers + Add in empty cells and reports the clicked cell", () => {
+    const clicks: [number, number][] = [];
+    render(<WeeklyTimetable entries={[]} periods={[period]} showToday={false} onCellClick={(d, p) => clicks.push([d, p])} />);
+    const adds = screen.getAllByText("+ Add");
+    expect(adds).toHaveLength(5);
+    fireEvent.click(adds[2]);
+    expect(clicks).toEqual([[3, 1]]);
   });
 });

@@ -16,7 +16,7 @@ export default function StudentPortfolio() {
   if (isLoading) return <LoadingSpinner />;
   if (isError || !profile) {
     return (
-      <div className="os-p-8">
+      <div className="os-page">
         <ErrorMessage message={t("student.loadProfileFailed")} onRetry={refetch} />
       </div>
     );

@@ -1,105 +1,74 @@
 import { useQueries } from "@tanstack/react-query";
-import { Tag } from "antd";
 import { BookOutlined } from "@ant-design/icons";
 import { useMyTeacherProfile, useTeacherSubjects, useMyClasses } from "@/features/teachers/queries/useTeachers";
 import { classSessionsOptions } from "@/features/attendance/queries/useAttendance";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
-import InfoRow from "@/shared/ui/InfoRow";
-import ProfileBanner from "@/shared/ui/ProfileBanner";
+import PageHeader from "@/shared/ui/PageHeader";
+import KeyValueCard from "@/shared/ui/KeyValueCard";
+import SectionCard from "@/shared/ui/SectionCard";
+import Pill from "@/shared/ui/Pill";
+import { capitalize } from "@/shared/lib/text";
+import { classLabel } from "@/shared/lib/classLabel";
+import { formatDayMonthYear } from "@/shared/lib/date";
 import { displayName } from "@/shared/lib/name";
 
+// Same layout as the student profile: personal details beside school details.
 export default function TeacherProfile() {
   const { data: profile, isLoading, isError, refetch } = useMyTeacherProfile();
   const { data: subjects } = useTeacherSubjects(profile?.id ?? "");
   const { classes: myClasses } = useMyClasses();
 
-  const classIds = myClasses.map((c) => c.class_id);
-  const sessionQueries = useQueries({ queries: classIds.map(classSessionsOptions) });
+  const sessionQueries = useQueries({ queries: myClasses.map((c) => classSessionsOptions(c.class_id)) });
   // A student is in one class per year, so the class counts add up to distinct students.
   const studentsTaught = myClasses.reduce((n, c) => n + c.studentCount, 0);
   const sessionsTaken = sessionQueries.reduce((sum, q) => sum + (q.data?.length ?? 0), 0);
-
-  if (isLoading) return <LoadingSpinner />;
-  if (isError || !profile) {
-    return (
-      <div className="os-p-8">
-        <ErrorMessage message="Failed to load your profile" onRetry={refetch} />
-      </div>
-    );
-  }
+  const formClass = myClasses.find((c) => c.isFormTeacher);
 
   return (
-    <div className="os-bg-layer-hover os-min-h-content">
-      <ProfileBanner
-        name={`${profile.title ? `${profile.title} ` : ""}${displayName(profile)}`}
-        meta={profile.employee_number}
-        actions={<Tag color={profile.is_active ? "success" : undefined} variant="filled">{profile.is_active ? "Active" : "Inactive"}</Tag>}
-      />
-
-      <div className="os-py-6 os-px-8">
+    <div className="os-page">
+      <PageHeader title="My profile" subtitle="Your personal and school details." />
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : isError || !profile ? (
+        <ErrorMessage message="Failed to load your profile" onRetry={refetch} />
+      ) : (
         <div className="os-grid os-grid-cols-2-1 os-gap-6 os-items-grid-start">
-          {/* Main */}
-          <div>
-            <div className="os-section">
-              <div className="os-section__header"><h2 className="os-section__title">Personal details</h2></div>
-              <div className="os-kv-grid">
-                {[
-                  ["Full name", profile.full_name],
-                  ["Title", profile.title ?? "-"],
-                  ["Gender", profile.gender ? profile.gender[0].toUpperCase() + profile.gender.slice(1) : "-"],
-                  ["Phone", profile.phone ?? "-"],
-                  ["Employee number", profile.employee_number],
-                  ["Joined date", profile.joined_date ?? "-"],
-                ].map(([label, value]) => (
-                  <div key={label} className="os-kv-item">
-                    <p className="os-kv-item__label">{label}</p>
-                    <p className="os-kv-item__value">{value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="os-section">
-              <div className="os-section__header"><h2 className="os-section__title">Subjects</h2></div>
-              <div className="os-section__body os-flex os-gap-2 os-wrap">
-                {!subjects || subjects.length === 0 ? (
-                  <p className="os-c-tertiary os-text-sm">No subjects assigned yet.</p>
-                ) : (
-                  subjects.map((s) => (
-                    <div key={s.id} className="os-flex os-items-center os-gap-2 os-py-2 os-px-3h os-border os-bg-layer-hover">
-                      <BookOutlined className="os-c-accent" />
-                      <span className="os-text-md os-fw-500">{s.name}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+          <div className="os-grid os-gap-6">
+            <KeyValueCard
+              title="Personal details"
+              rows={[
+                ["Full name", `${profile.title ? `${profile.title} ` : ""}${profile.full_name}`],
+                ["Name with initials", displayName(profile)],
+                ["Gender", profile.gender ? capitalize(profile.gender) : null],
+                ["Phone", profile.phone],
+              ]}
+            />
+            <SectionCard title="Subjects I teach">
+              {!subjects?.length ? (
+                <p className="os-m-0 os-c-tertiary os-text-sm">No subjects assigned yet.</p>
+              ) : (
+                <div className="os-flex os-gap-2 os-wrap">
+                  {subjects.map((s) => (
+                    <Pill key={s.id} tone="info" icon={<BookOutlined />}>{s.name}</Pill>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
           </div>
-
-          {/* Sidebar */}
-          <div>
-            <div className="os-section">
-              <div className="os-section__header"><h2 className="os-section__title">Quick info</h2></div>
-              <div className="os-section__body os-py-3 os-px-6">
-                <InfoRow label="Employee ID" value={profile.employee_number} />
-                <InfoRow label="Status" value={profile.is_active ? "Active" : "Inactive"} />
-                <InfoRow label="Subjects" value={subjects?.length ?? 0} />
-                <InfoRow label="Classes" value={myClasses.length} />
-                <InfoRow label="Joined" value={profile.joined_date ?? "-"} divider={false} />
-              </div>
-            </div>
-
-            <div className="os-section">
-              <div className="os-section__header"><h2 className="os-section__title">This year</h2></div>
-              <div className="os-section__body os-py-3 os-px-6">
-                <InfoRow label="Sessions taken" value={sessionsTaken} bold accent />
-                <InfoRow label="Students taught" value={studentsTaught} bold accent divider={false} />
-              </div>
-            </div>
-          </div>
+          <KeyValueCard
+            title="School details"
+            rows={[
+              ["Employee number", profile.employee_number],
+              ["Joined", formatDayMonthYear(profile.joined_date)],
+              ["Class teacher of", formClass ? classLabel(formClass.grade_name, formClass.class_name) : null],
+              ["Classes this year", myClasses.length],
+              ["Students taught", studentsTaught],
+              ["Attendance sessions taken", sessionsTaken],
+            ]}
+          />
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,6 @@
-import { Card, Progress, Skeleton, Tag } from "antd";
+import Pill from "@/shared/ui/Pill";
+import SessionStateBadge from "@/features/attendance/components/SessionStateBadge";
+import { Card, Progress, Skeleton } from "antd";
 import { ArrowRightOutlined } from "@ant-design/icons";
 import type { MyClass } from "@/features/teachers/queries/useTeachers";
 import type { AttendanceSession } from "@/features/attendance/api/attendance";
@@ -40,17 +42,20 @@ export default function TodaysClasses({ myClasses, todaySessionByClass, loading,
                 <div className="os-dash-item__body">
                   <p className="os-dash-item__title">
                     {classLabel(cls.grade_name, cls.class_name)}
-                    {cls.isFormTeacher && <Tag variant="filled">Class teacher</Tag>}
+                    {cls.isFormTeacher && <Pill tone="accent">Class teacher</Pill>}
                   </p>
                   <p className="os-dash-item__sub">
                     {cls.subjects.length > 0 ? `${cls.subjects.join(", ")} · ` : ""}{cls.studentCount} students
                   </p>
                 </div>
-                {session ? <Tag color="success" variant="filled">Marked</Tag> : <Tag color="warning" variant="filled">Not marked</Tag>}
+                <SessionStateBadge state={session ? "marked" : "unmarked"} />
                 {session ? (
                   <LinkButton to={`/attendance/sessions/${session.id}/mark`} icon={<ArrowRightOutlined />} iconPlacement="end">View</LinkButton>
-                ) : (
+                ) : cls.isFormTeacher ? (
                   <StartSessionButton classId={cls.class_id}>Mark now</StartSessionButton>
+                ) : (
+                  // Only the class teacher takes attendance; subject teachers view it once taken.
+                  <span className="os-text-sm os-c-tertiary">Class teacher marks</span>
                 )}
               </div>
             );

@@ -1,4 +1,4 @@
-import { SkeletonText } from "@/shared/ui/Skeleton";
+import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useMyTeacherSchedule } from "@/features/timetable/queries/useTimetables";
 import { useTeacherBells } from "@/features/timetable/hooks/useTeacherBells";
@@ -25,7 +25,7 @@ export default function TeacherTimetable() {
         meta={schedule?.length ? <span className="os-text-sm os-c-tertiary">{schedule.length} periods a week · {classes} {classes === 1 ? "class" : "classes"}</span> : undefined}
       >
         {isLoading ? (
-          <SkeletonText width="40%" />
+          <LoadingSpinner />
         ) : isError ? (
           <ErrorMessage message="Could not load your timetable." onRetry={refetch} />
         ) : !schedule?.length ? (

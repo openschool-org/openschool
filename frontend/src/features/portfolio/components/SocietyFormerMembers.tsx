@@ -1,11 +1,12 @@
-import { Button, Tag } from "antd";
+import { Button } from "antd";
+import Pill from "@/shared/ui/Pill";
 import { UndoOutlined } from "@ant-design/icons";
 import { useAssignSocietyMember } from "@/features/portfolio/queries/useSocieties";
 import { roleInfo } from "@/features/portfolio/components/societyRoles";
 import type { SocietyMember } from "@/features/portfolio/api/society";
 import DataGrid from "@/shared/ui/DataGrid";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
-import { formatISODate } from "@/shared/lib/date";
+import { formatDayMonthYear } from "@/shared/lib/date";
 
 interface Props {
   societyId: string;
@@ -37,9 +38,9 @@ export default function SocietyFormerMembers({ societyId, members, readOnly }: P
               </>
             ),
           },
-          { key: "role", header: "Role held", render: (m) => <Tag>{roleInfo(m.role).label}</Tag> },
-          { key: "joined", header: "Joined", render: (m) => <span className="os-table__mono">{formatISODate(m.created_at)}</span> },
-          { key: "left", header: "Left", render: (m) => <span className="os-table__mono">{formatISODate(m.left_at)}</span> },
+          { key: "role", header: "Role held", render: (m) => <Pill>{roleInfo(m.role).label}</Pill> },
+          { key: "joined", header: "Joined", render: (m) => formatDayMonthYear(m.created_at) },
+          { key: "left", header: "Left", render: (m) => formatDayMonthYear(m.left_at) },
           { key: "reason", header: "Reason", render: (m) => <span className="os-table__muted">{m.left_reason || "-"}</span> },
           ...(readOnly
             ? []

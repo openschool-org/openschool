@@ -1,7 +1,8 @@
-import { NOTIFICATION_PRIORITY_COLOR } from "@/shared/lib/constants/tags";
 import { useState } from "react";
-import { Button, Input, Pagination, Segmented, Tag } from "antd";
-import { ExportOutlined, InboxOutlined, SearchOutlined } from "@ant-design/icons";
+import { Button, Pagination, Segmented } from "antd";
+import FilterBar from "@/shared/ui/FilterBar";
+import Pill from "@/shared/ui/Pill";
+import { ExportOutlined, InboxOutlined } from "@ant-design/icons";
 import SelectField from "@/shared/ui/SelectField";
 import { formatDateTime } from "@/shared/lib/date";
 import {
@@ -37,13 +38,13 @@ function NotificationRow({ n }: { n: MyNotification }) {
         <div className="os-flex os-items-center os-gap-2 os-mb-1">
           <span className="os-fw-500 os-text-md os-c-primary">{n.title}</span>
           {n.priority !== "normal" && (
-            <Tag color={NOTIFICATION_PRIORITY_COLOR[n.priority]} variant="filled">
+            <Pill tone={n.priority === "urgent" ? "danger" : "warning"}>
               {translateValue(t, "priority", n.priority)}
-            </Tag>
+            </Pill>
           )}
-          <Tag variant="filled">
+          <Pill>
             {translateValue(t, "category", n.category)}
-          </Tag>
+          </Pill>
           {!n.is_read && !n.is_archived && (
             <span className="os-w-px-8 os-h-px-8 os-rounded-full os-bg-accent os-inline-block" aria-hidden="true" />
           )}
@@ -124,26 +125,26 @@ export default function NotificationCenter() {
           />
         </div>
 
-        <div className="os-toolbar">
-          <Input
-            className="os-max-w-22"
-            allowClear
-            prefix={<SearchOutlined />}
-            placeholder={t("notif.search")}
-            aria-label={t("notif.search")}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+        <div className="os-section__body">
+          <FilterBar
+            search={{ value: query, onChange: setQuery, placeholder: t("notif.search") }}
+            controls={[
+              {
+                label: t("notif.category"),
+                node: (
+                  <SelectField
+                    id="notification-category-filter"
+                    label={t("notif.category")}
+                    hideLabel
+                    className="os-min-w-12"
+                    value={category}
+                    onChange={(v) => setCategory(v as NotificationCategory | "")}
+                    options={[{ value: "", label: t("notif.allCategories") }, ...CATEGORIES.map((c) => ({ value: c.value, label: translateValue(t, "category", c.value) }))]}
+                  />
+                ),
+              },
+            ]}
           />
-          <div className="os-w-16">
-            <SelectField
-              id="notification-category-filter"
-              label={t("notif.category")}
-              hideLabel
-              value={category}
-              onChange={(v) => setCategory(v as NotificationCategory | "")}
-              options={[{ value: "", label: t("notif.allCategories") }, ...CATEGORIES.map((c) => ({ value: c.value, label: translateValue(t, "category", c.value) }))]}
-            />
-          </div>
         </div>
 
         {isLoading ? (

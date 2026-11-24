@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Alert, Button } from "antd";
-import { ArrowLeftOutlined, SaveOutlined } from "@ant-design/icons";
+import { SaveOutlined } from "@ant-design/icons";
 import SelectField from "@/shared/ui/SelectField";
 import { useMyTeacherProfile, useTeacherWorkload } from "@/features/teachers/queries/useTeachers";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
@@ -14,6 +14,7 @@ import MarksEntryTable from "@/features/marks/components/MarksEntryTable";
 import MutationErrorNotification from "@/shared/ui/MutationErrorNotification";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
+import PageHeader from "@/shared/ui/PageHeader";
 import UnsavedChangesModal from "@/shared/ui/UnsavedChangesModal";
 import { useUnsavedChangesGuard } from "@/shared/hooks/useUnsavedChangesGuard";
 
@@ -89,15 +90,11 @@ export default function TeacherMarks() {
 
   return (
     <div className="os-page">
-      <div className="os-page__header">
-        <div className="os-page__header-left">
-          <Button type="link" icon={<ArrowLeftOutlined />} onClick={() => unsavedGuard.guard(() => { setMode("overview"); setClassId(""); setSubjectId(""); })} className="os-mb-2 os-p-0">
-            Back to overview
-          </Button>
-          <h1 className="os-page__title">Record marks</h1>
-          <p className="os-page__subtitle">Record term marks for classes and subjects you teach</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Record marks"
+        subtitle="Term marks for a class and subject you teach."
+        back={{ label: "Back to marks", onClick: () => unsavedGuard.guard(() => { setMode("overview"); setClassId(""); setSubjectId(""); }) }}
+      />
 
       <div className="os-section os-mb-6">
         <div className="os-section__header os-wrap os-row-gap-3">
@@ -124,7 +121,7 @@ export default function TeacherMarks() {
             {termSelector}
             {ready && (
               <div className="os-flex os-items-center os-gap-4 os-ml-auto os-self-end">
-                <span className="os-text-sm os-c-secondary">Max Marks: <strong>{maxMarks}</strong></span>
+                <span className="os-text-sm os-c-secondary">Max marks: <strong>{maxMarks}</strong></span>
                 <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} disabled={!students?.length || !draft.hasUnsaved} loading={saveMarks.isPending}>
                   {saveMarks.isPending ? "Saving…" : "Save marks"}
                 </Button>
@@ -134,7 +131,7 @@ export default function TeacherMarks() {
         </div>
 
         {!ready ? (
-          <EmptyState title="Pick class, subject, and term" description="Select options above to load student mark roster." />
+          <EmptyState title="Choose a class, subject and term" description="Pick all three above to load the class list." />
         ) : studentsLoading || marksLoading ? (
           <LoadingSpinner />
         ) : students?.length ? (

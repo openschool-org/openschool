@@ -12,6 +12,35 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const canTeacherTakeClassAttendance = `-- name: CanTeacherTakeClassAttendance :one
+SELECT EXISTS (
+    SELECT 1 FROM classes c
+    WHERE c.id = $1 AND c.form_teacher_id = $2::uuid
+    UNION ALL
+    SELECT 1 FROM classes c
+    INNER JOIN teacher_leave_requests l ON l.teacher_id = c.form_teacher_id
+    WHERE c.id = $1
+      AND l.acting_teacher_id = $2::uuid
+      AND l.status = 'approved'
+      AND $3::date BETWEEN l.start_date AND l.end_date
+) AS allowed
+`
+
+type CanTeacherTakeClassAttendanceParams struct {
+	ClassID   uuid.UUID   `json:"class_id"`
+	TeacherID uuid.UUID   `json:"teacher_id"`
+	OnDate    pgtype.Date `json:"on_date"`
+}
+
+// Only the class teacher takes a class's attendance, or the acting teacher named
+// on the class teacher's approved leave for that date. Subject teachers only view.
+func (q *Queries) CanTeacherTakeClassAttendance(ctx context.Context, arg CanTeacherTakeClassAttendanceParams) (bool, error) {
+	row := q.db.QueryRow(ctx, canTeacherTakeClassAttendance, arg.ClassID, arg.TeacherID, arg.OnDate)
+	var allowed bool
+	err := row.Scan(&allowed)
+	return allowed, err
+}
+
 const clearAttendanceRecords = `-- name: ClearAttendanceRecords :exec
 DELETE FROM attendance_records
 WHERE session_id = $1 AND student_id = ANY($2::uuid[])

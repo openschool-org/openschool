@@ -92,7 +92,7 @@ export default function NotificationComposer() {
 
   return (
     <div className="os-page">
-      <PageHeader title="Notifications" subtitle={<>Send announcements to grades, classes, subjects or people. {role === "teacher" && myPosition && myPosition.rank_label !== "Teacher" && ( <> Sending as <strong>{myPosition.rank_label}</strong>{canBroadcastEveryone ? ", whole school." : "."}</> )}</>}>
+      <PageHeader title="Send notifications" subtitle={<>Send announcements to the classes, groups and people you look after. {role === "teacher" && myPosition && myPosition.rank_label !== "Teacher" && ( <> Sending as <strong>{myPosition.rank_label}</strong>{canBroadcastEveryone ? ", whole school." : "."}</> )}</>}>
         <Button type="primary" icon={<SendOutlined />} onClick={openComposer}>
           Notify
         </Button>

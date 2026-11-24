@@ -1,7 +1,6 @@
-import { Button } from "antd";
 import { CrownOutlined, NotificationOutlined, TeamOutlined, ApartmentOutlined, CalendarOutlined } from "@ant-design/icons";
-import { Link } from "react-router";
-import { SkeletonText } from "@/shared/ui/Skeleton";
+import LoadingSpinner from "@/shared/ui/LoadingSpinner";
+import LinkButton from "@/shared/ui/LinkButton";
 import { useMySociety, useSocietyMembers } from "@/features/portfolio/queries/useSocieties";
 import { roleInfo, roleRank } from "@/features/portfolio/components/societyRoles";
 import SocietyRoster from "@/features/portfolio/components/SocietyRoster";
@@ -26,15 +25,9 @@ export default function MySociety() {
 
   return (
     <div className="os-page">
-      <PageHeader title={society?.name ?? "My society"} subtitle="Your society's roster, office bearers and member roles.">
-        {society && (
-          <Link to={`/t/notifications?society=${society.id}`}>
-            <Button icon={<NotificationOutlined />}>Notify members</Button>
-          </Link>
-        )}
-      </PageHeader>
+      <PageHeader title="My society" subtitle={society ? `${society.name}: roster, office bearers and member roles.` : "Your society's roster, office bearers and member roles."} />
 
-      {isLoading && <SkeletonText width="40%" />}
+      {isLoading && <LoadingSpinner />}
       {isError && !notTic && <ErrorMessage message="Could not load your society." onRetry={refetch} />}
       {notTic && <EmptyState title="Not a teacher in charge" description="You aren't the Teacher-in-Charge of any society this academic year." />}
 
@@ -64,7 +57,10 @@ export default function MySociety() {
             </SectionCard>
           )}
 
-          <SectionCard title="Members">
+          <SectionCard
+            title="Members"
+            meta={<LinkButton to={`/t/notifications?society=${society.id}`} icon={<NotificationOutlined />}>Notify members</LinkButton>}
+          >
             <SocietyRoster societyId={society.id} linkStudents={false} />
           </SectionCard>
         </>

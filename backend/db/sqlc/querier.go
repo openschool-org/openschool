@@ -51,6 +51,9 @@ type Querier interface {
 	// Paired via WITH ORDINALITY rather than the two-array UNNEST(a, b) form,
 	// since sqlc's static analyzer doesn't resolve that overload.
 	BulkInsertClassStudents(ctx context.Context, arg BulkInsertClassStudentsParams) error
+	// Only the class teacher takes a class's attendance, or the acting teacher named
+	// on the class teacher's approved leave for that date. Subject teachers only view.
+	CanTeacherTakeClassAttendance(ctx context.Context, arg CanTeacherTakeClassAttendanceParams) (bool, error)
 	CancelLeaveRequest(ctx context.Context, arg CancelLeaveRequestParams) (int64, error)
 	// Counts an attempt before the identifier is compared, in one statement, so
 	// parallel guesses cannot all pass the lock check first (S6). Returns no row

@@ -1,4 +1,4 @@
-import { Tag } from "antd";
+import Pill from "@/shared/ui/Pill";
 import { CrownOutlined, StarOutlined, TeamOutlined, TrophyOutlined, FireOutlined, SafetyCertificateOutlined, WarningOutlined } from "@ant-design/icons";
 import {
   usePrefectAppointmentsByStudent,
@@ -41,7 +41,13 @@ export default function PortfolioByYear({ studentId, yearLabels }: { studentId: 
   const years = groupPortfolio(
     { prefects: prefects.data ?? [], societies: societies.data ?? [], leadership: leadership.data ?? [], activities: activities.data ?? [], awards: awards.data ?? [] },
     yearLabels,
-    { prefectRank: (r) => translateValue(t, "prefect", r), societyRole: (r) => capitalize(r.replace("_", " ")), category: (c) => capitalize(c) },
+    {
+      prefectRank: (r) => translateValue(t, "prefect", r),
+      societyRole: (r) => capitalize(r.replace("_", " ")),
+      category: (c) => capitalize(c),
+      former: (role) => t("portfolio.former", { role }),
+      left: (date) => t("portfolio.left", { date: formatDayMonthYear(date) }),
+    },
   );
   const records = discipline.data ?? [];
 
@@ -62,25 +68,27 @@ export default function PortfolioByYear({ studentId, yearLabels }: { studentId: 
             <header className="os-results-year__head">
               <h2 className="os-results-year__title">{year.label || t("portfolio.earlierYear")}</h2>
             </header>
-            <ul className="os-folio">
+            <div className="os-folio-grid">
               {year.items.map((item) => {
                 const Icon = KIND_ICON[item.kind];
                 return (
-                  <li key={item.id} className={`os-folio__item is-${item.kind}`}>
-                    <span className="os-folio__icon" aria-hidden="true"><Icon /></span>
-                    <div className="os-min-w-0 os-flex-1">
-                      <p className="os-folio__kind">{t(`portfolio.kind.${item.kind}`)}</p>
-                      <p className="os-folio__title">{item.title}</p>
-                      {item.detail && <p className="os-folio__detail">{item.detail}</p>}
+                  <article key={item.id} className={`os-folio-card is-${item.kind}`}>
+                    <div className="os-folio-card__top">
+                      <span className="os-folio-card__icon" aria-hidden="true"><Icon /></span>
+                      <p className="os-folio-card__kind">{t(`portfolio.kind.${item.kind}`)}</p>
                     </div>
-                    <div className="os-folio__side">
-                      {item.badge && <Tag>{item.badge}</Tag>}
-                      {item.date && <span className="os-folio__date">{formatDayMonthYear(item.date)}</span>}
-                    </div>
-                  </li>
+                    <p className="os-folio-card__title">{item.title}</p>
+                    {item.detail && <p className="os-folio-card__detail">{item.detail}</p>}
+                    {(item.badge || item.date) && (
+                      <div className="os-folio-card__foot">
+                        {item.badge ? <Pill>{item.badge}</Pill> : <span />}
+                        {item.date && <span className="os-folio-card__date">{formatDayMonthYear(item.date)}</span>}
+                      </div>
+                    )}
+                  </article>
                 );
               })}
-            </ul>
+            </div>
           </article>
         ))
       )}
@@ -89,21 +97,22 @@ export default function PortfolioByYear({ studentId, yearLabels }: { studentId: 
         {records.length === 0 ? (
           <p className="os-folio__clear"><SafetyCertificateOutlined /> {t("portfolio.conductClear")}</p>
         ) : (
-          <ul className="os-folio">
+          <div className="os-folio-grid">
             {records.map((r) => (
-              <li key={r.id} className="os-folio__item is-discipline">
-                <span className="os-folio__icon" aria-hidden="true"><WarningOutlined /></span>
-                <div className="os-min-w-0 os-flex-1">
-                  <p className="os-folio__title">{r.description}</p>
-                  {r.action_taken && <p className="os-folio__detail">{r.action_taken}</p>}
+              <article key={r.id} className="os-folio-card is-discipline">
+                <div className="os-folio-card__top">
+                  <span className="os-folio-card__icon" aria-hidden="true"><WarningOutlined /></span>
+                  <p className="os-folio-card__kind">{t("portfolio.conduct")}</p>
                 </div>
-                <div className="os-folio__side">
-                  <Tag>{capitalize(r.severity)}</Tag>
-                  <span className="os-folio__date">{formatDayMonthYear(r.incident_date)}</span>
+                <p className="os-folio-card__title">{r.description}</p>
+                {r.action_taken && <p className="os-folio-card__detail">{r.action_taken}</p>}
+                <div className="os-folio-card__foot">
+                  <Pill tone={r.severity === "minor" ? "warning" : "danger"}>{capitalize(r.severity)}</Pill>
+                  <span className="os-folio-card__date">{formatDayMonthYear(r.incident_date)}</span>
                 </div>
-              </li>
+              </article>
             ))}
-          </ul>
+          </div>
         )}
       </SectionCard>
     </div>

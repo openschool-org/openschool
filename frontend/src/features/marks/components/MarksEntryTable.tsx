@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Checkbox, Input, InputNumber, Tag } from "antd";
+import { Checkbox, Input, InputNumber } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import type { Student } from "@/features/students/api/student";
 import type { useMarksDraft } from "@/features/marks/hooks/useMarksDraft";
 import DataGrid, { type GridColumn } from "@/shared/ui/DataGrid";
 import { displayName } from "@/shared/lib/name";
+import Pill from "@/shared/ui/Pill";
+import GradeBadge from "@/features/marks/components/GradeBadge";
 
 interface Props {
   students: Student[];
@@ -74,6 +76,16 @@ export default function MarksEntryTable({ students: roster, subjectName, maxMark
       },
     },
     {
+      // Same grade letters students and parents see.
+      key: "grade",
+      header: "Grade",
+      render: (st) => {
+        const row = draft.get(st.id);
+        const percent = row.isAbsent || row.marks === null || row.marks === undefined || maxMarks <= 0 ? null : (row.marks / maxMarks) * 100;
+        return percent === null ? <span className="os-table__muted">-</span> : <span className="os-flex os-items-center os-gap-2"><span className="os-table__muted">{Math.round(percent)}%</span><GradeBadge percent={percent} /></span>;
+      },
+    },
+    {
       key: "absent",
       header: "Absent",
       render: (st) => (
@@ -87,8 +99,8 @@ export default function MarksEntryTable({ students: roster, subjectName, maxMark
       header: "Status",
       render: (st) => (
         <span className="os-flex os-gap-1">
-          {draft.get(st.id).isAbsent && <Tag color="error" variant="filled">AB</Tag>}
-          {draft.isUnsaved(st.id) && <Tag color="processing" variant="filled">Unsaved</Tag>}
+          {draft.get(st.id).isAbsent && <Pill tone="danger">Absent</Pill>}
+          {draft.isUnsaved(st.id) && <Pill tone="info">Unsaved</Pill>}
         </span>
       ),
     },
@@ -106,7 +118,7 @@ export default function MarksEntryTable({ students: roster, subjectName, maxMark
           size="small"
           prefix={<SearchOutlined />}
           aria-label="Search students"
-          placeholder="Search student by name or index…"
+          placeholder="Search by name or index number"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />

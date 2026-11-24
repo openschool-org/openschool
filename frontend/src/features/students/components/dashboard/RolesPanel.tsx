@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { Tag } from "antd";
+import Pill, { type PillTone } from "@/shared/ui/Pill";
 import { CrownOutlined, TeamOutlined, TrophyOutlined, StarOutlined } from "@ant-design/icons";
 import { usePrefectAppointmentsByStudent, useLeadershipRoles, useStudentAwards } from "@/features/portfolio/queries/useStudentPortfolio";
 import { useStudentSocietyMemberships } from "@/features/portfolio/queries/useSocieties";
@@ -21,17 +21,17 @@ export default function RolesPanel({ studentId, yearId }: { studentId: string; y
   const loading = [prefects, societies, leadership, awards].some((q) => q.isLoading);
   const items = [
     ...thisYear(prefects.data).map((p) => ({
-      key: p.id, Icon: CrownOutlined, color: "gold",
+      key: p.id, Icon: CrownOutlined, tone: "gold" as PillTone,
       label: t("student.prefectYear", { rank: translateValue(t, "prefect", p.rank), year: p.academic_year_label }),
     })),
     ...thisYear(leadership.data)
       .filter((l) => !(prefects.data ?? []).some((p) => translateValue(t, "prefect", p.rank) === l.title))
-      .map((l) => ({ key: l.id, Icon: StarOutlined, color: "blue", label: l.scope ? `${l.title} (${l.scope})` : l.title })),
+      .map((l) => ({ key: l.id, Icon: StarOutlined, tone: "info" as PillTone, label: l.scope ? `${l.title} (${l.scope})` : l.title })),
     ...thisYear(societies.data).filter((s) => !s.left_at).map((s) => ({
-      key: s.id, Icon: TeamOutlined, color: "cyan",
+      key: s.id, Icon: TeamOutlined, tone: "accent" as PillTone,
       label: t("student.societyRole", { role: capitalize(s.role, t("table.member")), society: s.society_name }),
     })),
-    ...thisYear(awards.data).map((a) => ({ key: a.id, Icon: TrophyOutlined, color: "purple", label: a.title })),
+    ...thisYear(awards.data).map((a) => ({ key: a.id, Icon: TrophyOutlined, tone: "purple" as PillTone, label: a.title })),
   ];
 
   return (
@@ -42,10 +42,10 @@ export default function RolesPanel({ studentId, yearId }: { studentId: string; y
         <p className="os-dash-list__sub os-p-6">{t("student.noRoles")}</p>
       ) : (
         <div className="os-dash-badges">
-          {items.map(({ key, Icon, color, label }) => (
-            <Tag key={key} color={color} icon={<Icon />} variant="solid">
+          {items.map(({ key, Icon, tone, label }) => (
+            <Pill key={key} tone={tone} variant="soft" icon={<Icon />}>
               {label}
-            </Tag>
+            </Pill>
           ))}
         </div>
       )}

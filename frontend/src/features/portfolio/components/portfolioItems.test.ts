@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { groupPortfolio } from "@/features/portfolio/components/portfolioItems";
 
-const words = { prefectRank: (r: string) => (r === "head" ? "Head Prefect" : r), societyRole: (r: string) => r, category: (c: string) => c };
+const words = { prefectRank: (r: string) => (r === "head" ? "Head Prefect" : r), societyRole: (r: string) => r, category: (c: string) => c, former: (r: string) => `Former ${r}`, left: (d: string) => `Left ${d}` };
 
 describe("groupPortfolio", () => {
   it("groups by year newest first, puts prefect first and drops a duplicate Head Prefect role", () => {

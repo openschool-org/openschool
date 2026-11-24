@@ -12,7 +12,7 @@ import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
 import PageHeader from "@/shared/ui/PageHeader";
 import SectionCard from "@/shared/ui/SectionCard";
-import { formatLongDate, formatMonthLong } from "@/shared/lib/date";
+import { formatDayMonthYear, formatMonthLong, formatWeekday } from "@/shared/lib/date";
 import { formatPercent } from "@/shared/lib/number";
 
 const STATUS_ICONS: Record<StaffAttendanceStatus, ComponentType<{ className?: string }>> = {
@@ -80,8 +80,8 @@ export default function TeacherMyAttendance() {
                 header: "Date",
                 render: (r) => (
                   <>
-                    <span className="os-table__mono">{r.date}</span>
-                    <span className="os-table__muted os-text-sm os-block">{formatLongDate(r.date)}</span>
+                    <span>{formatDayMonthYear(r.date)}</span>
+                    <span className="os-table__muted os-text-sm os-block">{formatWeekday(r.date)}</span>
                   </>
                 ),
               },
