@@ -37,8 +37,33 @@ export const createDefaultAlStreams = (): AlStreamsState =>
 
 export const GRADE_MIN = 1;
 export const GRADE_MAX = 13;
-// Mediums come before Classes so generated sections can be tagged with a medium; Rooms is independent and goes last.
-export const STEPS = ["School", "Houses", "Grades", "Mediums", "Classes", "Rooms", "Done"] as const;
+// Mediums come before Classes so generated sections can be tagged with a medium; Rooms is independent,
+// Review shows everything before it is saved, and Done is the result screen.
+export const STEPS = ["School", "Houses", "Grades", "Mediums", "Classes", "Rooms", "Review", "Done"] as const;
+export type StepName = (typeof STEPS)[number];
+
+// Title, one-line description and whether the step can be skipped, for the step list and each step card.
+export const STEP_INFO: Record<Exclude<StepName, "Done">, { title: string; description: string; optional: boolean }> = {
+  School: { title: "School details", description: "Name, contact details and the grades you teach.", optional: false },
+  Houses: { title: "Houses", description: "Students and staff are placed in the house with the fewest members.", optional: true },
+  Grades: { title: "Grades", description: "Untick any grade in your range that the school does not run.", optional: false },
+  Mediums: { title: "Mediums", description: "Languages of instruction. Classes can be tagged with one in the next step.", optional: true },
+  Classes: { title: "Classes", description: "Sections for each grade and the A/L streams. Class names are generated for you.", optional: true },
+  Rooms: { title: "Rooms and facilities", description: "Libraries, labs, halls and other shared rooms. You can add more later.", optional: true },
+  Review: { title: "Review", description: "Check everything before the school is created.", optional: false },
+};
+
+// Class names exactly as the setup creates them (see lib/setupClasses).
+export const regularClassName = (grade: number, index: number) => `${grade}-${String.fromCharCode(65 + index)}`;
+export const alClassName = (grade: number, code: string, index: number) => `${grade}-${code}${index + 1}`;
+
+// Sri Lankan school sections, used to group grades on the Grades step.
+export const GRADE_BANDS = [
+  { key: "primary", label: "Primary", from: 1, to: 5 },
+  { key: "junior", label: "Junior secondary", from: 6, to: 9 },
+  { key: "ol", label: "Ordinary Level", from: 10, to: 11 },
+  { key: "al", label: "Advanced Level", from: 12, to: 13 },
+] as const;
 export const HOUSE_COLOR_PALETTE = ["#0f62fe", "#da1e28", "#24a148", "#f1c21b", "#8a3ffc", "#ff832b"];
 export const SUGGESTED_MEDIUMS = ["Sinhala", "Tamil", "English"];
 export const DEFAULT_CLASS_CAPACITY = 45;
@@ -84,3 +109,10 @@ export const FACILITY_GROUPS: ReadonlyArray<{ key: FacilityGroupKey; label: stri
   { key: "counselingRoom", label: "Counseling rooms", addLabel: "Add counseling room", placeholder: "e.g. Student Counseling Room", help: "For student counseling and welfare services." },
   { key: "staffRoom", label: "Staff rooms", addLabel: "Add staff room", placeholder: "e.g. Teachers’ Staff Room", help: "Add separate staff rooms when departments use different spaces." },
 ];
+
+// Singular name of a room type, from its add label ("Add science lab" -> "Science lab").
+export function facilityTypeLabel(key: FacilityGroupKey): string {
+  const addLabel = FACILITY_GROUPS.find((g) => g.key === key)?.addLabel ?? key;
+  const name = addLabel.replace(/^Add\s+/i, "");
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}

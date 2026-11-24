@@ -1,32 +1,11 @@
 import { Link } from "react-router";
-import { Alert, Button, Spin } from "antd";
-import { AppstoreOutlined, ArrowRightOutlined, BookOutlined, CheckCircleFilled, RightOutlined, ScheduleOutlined, TeamOutlined } from "@ant-design/icons";
+import { Button, Card, Result, Spin } from "antd";
 
 const NEXT_STEPS = [
-  {
-    title: "Curriculum",
-    body: "Define levels (a grade, a stream, an exam class) and selection groups to control which subjects students can pick.",
-    path: "/curriculum",
-    icon: AppstoreOutlined,
-  },
-  {
-    title: "Subjects",
-    body: "Build your subject catalogue, then offer subjects to students through curriculum selection groups.",
-    path: "/subjects",
-    icon: BookOutlined,
-  },
-  {
-    title: "Students & teachers",
-    body: "Add students and teachers - each gets their own sign-in and profile automatically.",
-    path: "/students",
-    icon: TeamOutlined,
-  },
-  {
-    title: "Attendance",
-    body: "Once classes have students, teachers can create sessions and mark attendance from the class page.",
-    path: "/attendance",
-    icon: ScheduleOutlined,
-  },
+  { title: "Subjects and curriculum", body: "Build the subject catalogue and the choices students can make at each level.", path: "/subjects" },
+  { title: "Teachers", body: "Add teachers. Each one gets a sign-in; the first password is their NIC number.", path: "/teachers" },
+  { title: "Students", body: "Add students one by one or import a CSV, then enrol them into classes.", path: "/students" },
+  { title: "Streams and section heads", body: "Assign a teacher in charge for each grade or A/L stream.", path: "/streams" },
 ];
 
 interface Props {
@@ -34,74 +13,56 @@ interface Props {
   submitError: string | null;
   submitted: boolean;
   onRetry: () => void;
+  onBack: () => void;
   onGoToDashboard: () => void;
 }
 
-export default function DoneStep({ submitting, submitError, submitted, onRetry, onGoToDashboard }: Props) {
+export default function DoneStep({ submitting, submitError, submitted, onRetry, onBack, onGoToDashboard }: Props) {
+  if (submitting) {
+    return (
+      <Card className="os-setup-wizard__result">
+        <div className="os-setup-saving" role="status">
+          <Spin />
+          <p>Creating your school. This takes a few seconds.</p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (submitError) {
+    return (
+      <Card className="os-setup-wizard__result">
+        <Result
+          status="error"
+          title="The school could not be created"
+          subTitle={`${submitError} Anything already saved is kept, so trying again continues where it stopped.`}
+          extra={[
+            <Button key="back" size="large" onClick={onBack}>Back to review</Button>,
+            <Button key="retry" size="large" type="primary" onClick={onRetry}>Try again</Button>,
+          ]}
+        />
+      </Card>
+    );
+  }
+
+  if (!submitted) return null;
+
   return (
-    <div>
-      {submitting && (
-        <div className="os-flex os-justify-center os-py-14 os-px-0">
-          <p className="os-m-0 os-flex os-items-center os-gap-2" role="status"><Spin size="small" /> Saving your school setup…</p>
-        </div>
-      )}
-
-      {!submitting && submitError && (
-        <div className="os-text-center">
-          <Alert
-            type="error"
-            showIcon
-            title="Could not finish setup"
-            description={submitError}
-            className="os-mb-5 os-max-w-full os-text-left"
-          />
-          <Button size="large" onClick={onRetry} className="os-w-full os-max-w-full">
-            Retry
-          </Button>
-        </div>
-      )}
-
-      {!submitting && !submitError && submitted && (
-        <>
-          <div className="os-text-center os-mb-7">
-            <div className="os-w-3h os-h-3h os-mx-auto os-mt-0 os-mb-4 os-rounded-full os-bg-status-present os-flex os-items-center os-justify-center"
-            >
-              <CheckCircleFilled className="os-c-success os-text-2xl" />
-            </div>
-            <h2 className="os-mt-0 os-mx-0 os-mb-1h os-text-xl os-fw-600 os-c-primary">
-              Your school is ready
-            </h2>
-            <p className="os-m-0 os-text-md os-c-secondary">
-              Here's what OpenSchool helps you run day to day, and where to go next.
-            </p>
-          </div>
-
-          <div className="os-grid os-gap-3 os-mb-6">
-            {NEXT_STEPS.map((item) => (
-              <Link
-                key={item.title}
-                to={item.path} className="os-flex os-items-center os-gap-3h os-py-3h os-px-4 os-border os-bg-layer-hover os-no-underline os-transition"
-              >
-                <div className="os-w-2q os-h-2q os-rounded-full os-bg-accent-light os-flex os-items-center os-justify-center os-shrink-0"
-                >
-                  <item.icon className="os-c-accent" />
-                </div>
-                <div className="os-flex-1 os-min-w-0">
-                  <p className="os-mt-0 os-mx-0 os-mb-1 os-text-md os-fw-600 os-c-primary">
-                    {item.title}
-                  </p>
-                  <p className="os-m-0 os-text-sm os-c-secondary">{item.body}</p>
-                </div>
-                <RightOutlined className="os-c-tertiary os-shrink-0" />
-              </Link>
-            ))}
-          </div>
-
-          <Button type="primary" size="large" icon={<ArrowRightOutlined />} iconPlacement="end" onClick={onGoToDashboard} className="os-w-full os-max-w-full">
-            Go to Dashboard
-          </Button>
-        </>
-      )}
-    </div>
+    <Card className="os-setup-wizard__result">
+      <Result
+        status="success"
+        title="Your school is ready"
+        subTitle="The school, grades and classes are created. These are the usual next steps."
+        extra={<Button type="primary" size="large" onClick={onGoToDashboard}>Go to the dashboard</Button>}
+      />
+      <ol className="os-setup-next">
+        {NEXT_STEPS.map((item) => (
+          <li key={item.path}>
+            <Link to={item.path} className="os-setup-next__title">{item.title}</Link>
+            <p>{item.body}</p>
+          </li>
+        ))}
+      </ol>
+    </Card>
   );
 }

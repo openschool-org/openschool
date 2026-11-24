@@ -12,247 +12,291 @@
     var(--os-canvas);
 }
 
-// School Setup Wizard
-.os-school-setup-page {
+// School Setup Wizard: top bar, step list on the left, one card per step.
+.os-setup-wizard {
   min-height: 100vh;
-  box-sizing: border-box;
-  display: flex;
-  position: relative;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 5rem 1rem 2rem;
-  background:
-    radial-gradient(circle at 8% 12%, rgba(28, 179, 214, 0.12), transparent 28rem),
-    var(--os-canvas);
-}
+  background: var(--os-canvas);
 
-.os-school-setup-card {
-  width: min(100%, 54rem);
-  box-sizing: border-box;
-  padding: 0;
-}
-
-.os-school-setup-brand {
-  position: absolute;
-  top: 1rem;
-  right: 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.625rem;
-
-  img { display: block; width: 2.25rem; height: 2.25rem; filter: grayscale(1) brightness(0); }
-
-  &__name {
-    margin: 0;
-    color: $os-text-primary;
-    font-size: 1.125rem;
-    font-weight: 600;
-
-    span { color: $os-text-primary; }
+  &__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: $os-header-h;
+    padding: 0 1.5rem;
+    background: var(--os-layer);
+    border-bottom: 1px solid var(--os-border-strong);
   }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+
+    img { display: block; filter: grayscale(1) brightness(0); }
+  }
+
+  &__product { font-size: 0.9375rem; font-weight: 500; color: var(--os-text-primary); }
 
   &__context {
-    margin: 0.125rem 0 0;
-    color: $os-text-tertiary;
-    font-size: 0.75rem;
-  }
-}
-
-.os-school-setup-heading {
-  margin-bottom: 1.5rem;
-
-  h1 {
-    margin: 0 0 0.5rem;
-    color: $os-text-primary;
-    font-size: 2rem;
-    font-weight: 500;
-    line-height: 1.2;
-  }
-
-  > p:last-child {
-    max-width: 42rem;
-    margin: 0;
-    color: $os-text-secondary;
+    padding-left: 0.625rem;
+    border-left: 1px solid var(--os-border-strong);
     font-size: 0.875rem;
-    line-height: 1.45;
-  }
-}
-
-.os-school-setup-eyebrow {
-  margin: 0 0 0.5rem !important;
-  color: $os-accent-dark !important;
-  font-size: 0.75rem !important;
-  font-weight: 600;
-  letter-spacing: 0.08rem;
-  text-transform: uppercase;
-}
-
-.os-school-setup-corner-logo {
-  position: fixed;
-  top: 1rem;
-  right: 1.25rem;
-  z-index: 10;
-  display: block;
-  filter: grayscale(1) brightness(0);
-}
-
-.os-school-setup-header {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  margin-bottom: 1rem;
-
-  img { display: block; flex: 0 0 auto; }
-  &__title { margin: 0; color: $os-text-primary; font-size: 1.125rem; font-weight: 600; }
-  &__subtitle { margin: 0.125rem 0 0; color: $os-text-tertiary; font-size: 0.75rem; }
-}
-
-.os-school-setup-error { max-width: 100%; margin-bottom: 0.75rem; }
-
-.os-wizard-step-header {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  margin-bottom: 0.75rem;
-
-  > div:first-child {
-    width: 2.25rem !important;
-    height: 2.25rem !important;
+    color: var(--os-text-tertiary);
   }
 
-  h2 { font-size: 1rem !important; }
-  p { font-size: 0.75rem !important; line-height: 1.35; }
-}
+  &__count { font-size: 0.8125rem; color: var(--os-text-tertiary); }
 
-.os-school-details-form {
-  display: grid;
-  gap: 0.75rem;
-
-  &__two-column {
+  &__body {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
-  }
-}
-
-.os-facility-groups {
-  display: grid;
-  gap: 1.25rem;
-}
-
-.os-facility-group {
-  padding-top: 1rem;
-  border-top: 1px solid $os-border-subtle;
-
-  &__header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 0.75rem;
+    grid-template-columns: 17.5rem minmax(0, 1fr);
+    gap: 2.5rem;
+    align-items: start;
+    max-width: 96rem;
+    margin: 0 auto;
+    padding: 1.5rem 2.5rem 2rem;
   }
 
-  h3 {
-    margin: 0 0 0.25rem;
-    color: $os-text-primary;
-    font-size: 0.9375rem;
-    font-weight: 600;
+  &__rail {
+    position: sticky;
+    top: 2rem;
+
+    h1 { margin: 0 0 0.25rem; font-size: 1.25rem; font-weight: 500; color: var(--os-text-primary); }
+    .ant-steps-item-title { font-size: 0.9375rem; white-space: nowrap; }
+    > p { margin: 0 0 1.25rem; font-size: 0.875rem; line-height: 1.5; color: var(--os-text-tertiary); }
   }
 
-  p {
+  &__card,
+  &__result {
+    min-width: 0;
+    border-color: var(--os-border-strong);
+
+    > .ant-card-head { border-bottom-color: var(--os-border-strong); }
+  }
+
+  &__step { display: inline-flex; align-items: center; gap: 0.5rem; }
+
+  &__optional {
     margin: 0;
-    color: $os-text-tertiary;
-    font-size: 0.75rem;
-    line-height: 1.4;
+    padding: 0 0.375rem;
+    font-size: 0.6875rem;
+    line-height: 1.125rem;
+    color: var(--os-accent-dark);
+    background: var(--os-accent-light);
+    border-color: var(--os-accent-border);
+  }
+
+  &__description { margin: 0 0 1rem; font-size: 0.875rem; color: var(--os-text-tertiary); }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--os-border-strong);
+  }
+
+  &__actions-right { display: flex; gap: 0.5rem; }
+
+  &__done { max-width: 44rem; margin: 0 auto; padding: 2.5rem 1.5rem 3rem; }
+}
+
+// School details: two columns whose rows line up, so fields on the left and right sit level.
+.os-setup-rows {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 2.5rem;
+  align-items: start;
+}
+
+// Two side-by-side groups of fields inside a step.
+.os-setup-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem 2.5rem;
+}
+
+.os-setup-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+
+  &__title { margin: 0; font-size: 0.875rem; font-weight: 500; color: var(--os-text-primary); }
+}
+
+.os-setup-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+
+  &--narrow { max-width: 36rem; }
+}
+
+.os-setup-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+// Grade 12 and 13 stream tables side by side on wide screens.
+.os-setup-al-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 1.5rem;
+
+  @media (max-width: 1280px) { grid-template-columns: 1fr; }
+
+  // Compact columns so two tables fit side by side.
+  .os-setup-table {
+    th, td { padding: 0.4375rem 0.5rem; }
+    th:first-child, td:first-child { padding-left: 0.75rem; }
+    .ant-checkbox-wrapper { white-space: nowrap; }
+  }
+  .os-setup-table__narrow { width: auto; }
+  .os-setup-table__number { width: 4.5rem; }
+  .os-setup-table__code-input { width: 3.25rem; }
+}
+
+.os-setup-note { margin: 0.75rem 0 0; font-size: 0.8125rem; color: var(--os-text-tertiary); }
+.os-setup-empty { margin: 0 0 0.25rem; font-size: 0.875rem; color: var(--os-text-tertiary); }
+.os-setup-muted { color: var(--os-text-tertiary); }
+
+// Tables holding form controls on the Houses, Classes and Rooms steps.
+.os-setup-table {
+  border: 1px solid var(--os-border-strong);
+  border-radius: $os-radius;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+
+  th, td { padding: 0.4375rem 0.75rem; }
+  th:first-child { border-top-left-radius: $os-radius; }
+  th:last-child { border-top-right-radius: $os-radius; }
+  tbody tr:last-child td { border-bottom: none; }
+  tr.is-off td { color: var(--os-text-disabled); }
+
+  &__narrow { width: 7.5rem; white-space: nowrap; }
+  &__code { width: 8rem; }
+  &__type { width: 13rem; }
+  &__action { width: 3rem; }
+  &__strong { font-weight: 500; white-space: nowrap; }
+  &__number { width: 5.5rem; }
+  &__code-input { width: 4.5rem; }
+}
+
+// Class name chips (with an optional medium picker) in the Classes and Review steps.
+.os-setup-classes { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+
+.os-setup-class {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.75rem;
+  padding: 0 0.5rem;
+  border: 1px solid var(--os-border-strong);
+  border-radius: 0.375rem;
+  background: var(--os-layer);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+
+  &__name { font-weight: 500; color: var(--os-text-primary); }
+  .ant-select { min-width: 6.5rem; }
+}
+
+.os-setup-swatch { width: 0.625rem; height: 0.625rem; border-radius: 50%; }
+
+// Grades step: one box per school section.
+.os-setup-bands {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.os-setup-band {
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--os-border-strong);
+  border-radius: $os-radius;
+  min-width: 0;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.625rem 0.875rem;
+    background: var(--os-layer-hover);
+    border-bottom: 1px solid var(--os-border-strong);
+    border-radius: $os-radius $os-radius 0 0;
+  }
+
+  &__label { font-weight: 500; }
+  &__count { font-size: 0.8125rem; color: var(--os-text-tertiary); }
+
+  &__grades {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+    gap: 0.625rem 1rem;
+    padding: 0.875rem;
   }
 }
 
-.os-class-year-field {
-  max-width: 24rem;
-  margin-bottom: 2rem;
-}
+// Mediums step.
+.os-setup-options { display: flex; flex-direction: column; gap: 0.625rem; }
+.os-setup-inline-row { display: flex; align-items: center; gap: 0.5rem; > .os-field { flex: 1; } }
 
-.os-class-empty-state {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.625rem;
+// Review step.
+.os-setup-review-list { display: flex; flex-direction: column; }
+
+.os-setup-review {
   padding: 1rem 0;
-  border-top: 1px solid $os-border-subtle;
-  color: $os-text-tertiary;
+  border-bottom: 1px solid var(--os-border-subtle);
 
-  svg { flex: 0 0 auto; fill: $os-accent-dark; }
-  p { margin: 0; font-size: 0.875rem; line-height: 1.45; }
+  &:first-child { padding-top: 0; }
+  &:last-child { border-bottom: none; padding-bottom: 0; }
+
+  &__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.625rem; }
+  &__summary { margin: 0 0 0.75rem; font-size: 0.875rem; color: var(--os-text-secondary); }
 }
 
-.os-class-section {
-  padding-top: 1.25rem;
-  border-top: 1px solid $os-border-subtle;
-
-  &__heading { margin-bottom: 1rem; }
-  &__heading h3 { margin: 0 0 0.25rem; color: $os-text-primary; font-size: 1rem; font-weight: 600; }
-  &__heading p,
-  &__hint { margin: 0; color: $os-text-tertiary; font-size: 0.75rem; line-height: 1.4; }
-  &__hint { margin-bottom: 0.875rem; }
-  &__hint--example { margin-top: 0.875rem; margin-bottom: 0; }
-}
-
-.os-class-grade-list,
-.os-al-stream-list { display: grid; gap: 0.75rem; }
-
-.os-class-grade-row {
-  padding: 1rem;
-  border: 1px solid $os-border-subtle;
-  background: rgba(255, 255, 255, 0.42);
-
-  &__topline { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-  h4 { margin: 0 0 0.25rem; color: $os-text-primary; font-size: 0.9375rem; font-weight: 600; }
-  p { margin: 0; color: $os-text-tertiary; font-size: 0.75rem; }
-  .ant-input-number { min-width: 4.5rem; }
-}
-
-.os-class-medium-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-  gap: 0.75rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid $os-border-subtle;
-}
-
-.os-al-stream-row {
-  display: grid;
-  grid-template-columns: minmax(12rem, 1fr) 7rem 7rem;
-  align-items: end;
-  gap: 0.75rem;
-  padding: 0.875rem 1rem;
-  border: 1px solid $os-border-subtle;
-  background: rgba(255, 255, 255, 0.42);
-
-  &__name { align-self: center; }
-  &.is-disabled { opacity: 0.55; }
-}
-
-.os-school-setup-actions {
+// Saving and finished screens.
+.os-setup-saving {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
   gap: 1rem;
-  margin-top: 1.25rem;
+  padding: 3rem 0;
 
-  &__right { display: flex; gap: 0.5rem; }
+  p { margin: 0; color: var(--os-text-tertiary); }
+}
+
+.os-setup-next {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--os-border-subtle);
+
+  li { padding: 0.875rem 0.25rem; border-bottom: 1px solid var(--os-border-subtle); }
+  li:last-child { border-bottom: none; }
+  p { margin: 0.125rem 0 0; font-size: 0.875rem; color: var(--os-text-tertiary); }
+
+  &__title { font-weight: 500; color: var(--os-accent-dark); text-decoration: none; &:hover { text-decoration: underline; } }
+}
+
+@media (max-width: 960px) {
+  .os-setup-wizard__body { grid-template-columns: 1fr; gap: 1.25rem; padding-top: 1.25rem; }
+  .os-setup-wizard__rail { position: static; }
+  .os-setup-wizard__rail .ant-steps { display: none; }
+  .os-setup-columns, .os-setup-bands, .os-setup-rows { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
-  .os-school-setup-page { padding: 6.5rem 1rem 1rem; }
-  .os-school-setup-brand { right: 1rem; }
-  .os-school-details-form__two-column { grid-template-columns: 1fr; }
-  .os-facility-group__header { align-items: stretch; flex-direction: column; }
-  .os-class-grade-row__topline { align-items: stretch; flex-direction: column; }
-  .os-al-stream-row { grid-template-columns: 1fr 1fr; }
-  .os-al-stream-row__name { grid-column: 1 / -1; }
-  .os-school-setup-actions { align-items: stretch; flex-direction: column-reverse; }
-  .os-school-setup-actions__right { justify-content: flex-end; }
+  .os-setup-wizard__context { display: none; }
+  .os-setup-pair { grid-template-columns: 1fr; }
+  .os-setup-wizard__actions { flex-wrap: wrap; }
+  .os-setup-table { display: block; overflow-x: auto; }
 }
 
 .os-setup-shell {

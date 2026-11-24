@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router";
-import { Alert, Button } from "antd";
+import { Alert, Button, Card, Steps, Tag } from "antd";
 import { useSchool } from "@/features/school/queries/useSchool";
 import SchoolStep from "@/features/school/components/setup/SchoolStep";
 import HousesStep from "@/features/school/components/setup/HousesStep";
@@ -8,18 +8,17 @@ import GradesStep from "@/features/school/components/setup/GradesStep";
 import MediumsStep from "@/features/school/components/setup/MediumsStep";
 import ClassesStep from "@/features/school/components/setup/ClassesStep";
 import RoomsStep from "@/features/school/components/setup/RoomsStep";
+import ReviewStep from "@/features/school/components/setup/ReviewStep";
 import DoneStep from "@/features/school/components/setup/DoneStep";
-import CustomStepper from "@/features/school/components/setup/CustomStepper";
 import { useSchoolSetupSubmit } from "@/features/school/hooks/useSchoolSetupSubmit";
 import { useSchoolSetupState } from "@/features/school/hooks/useSchoolSetupState";
-import { STEPS } from "@/features/school/setupConstants";
+import { STEPS, STEP_INFO, type StepName } from "@/features/school/setupConstants";
 import ErrorSummary from "@/shared/ui/ErrorSummary";
 import { useErrorSummary } from "@/shared/hooks/useErrorSummary";
 
-const DONE_STEP = STEPS.length - 1;
-const CLASSES_STEP = STEPS.indexOf("Classes");
-const ROOMS_STEP = DONE_STEP - 1;
-const SKIPPABLE = new Set([1, 3, CLASSES_STEP, ROOMS_STEP]);
+type FormStep = Exclude<StepName, "Done">;
+const FORM_STEPS = STEPS.filter((name): name is FormStep => name !== "Done");
+const DONE_STEP = STEPS.indexOf("Done");
 
 export default function SchoolSetup() {
   const navigate = useNavigate();
@@ -31,111 +30,123 @@ export default function SchoolSetup() {
   const { submitting, submitError, submitted, submitAll } = useSchoolSetupSubmit(s);
   const { ref: summaryRef, errors: summaryErrors, reveal, recheck, reset: resetSummary } = useErrorSummary();
 
-  const goNext = () => {
+  const goTo = (index: number) => {
     resetSummary();
-    setStep((n) => Math.min(n + 1, DONE_STEP));
-  };
-  const goBack = () => {
-    resetSummary();
-    setStep((n) => Math.max(n - 1, 0));
+    setError(null);
+    setStep(Math.max(0, Math.min(index, DONE_STEP)));
   };
 
   // Each step validates itself before moving on; skip bypasses that step's input.
   const advance = (skip: boolean) => {
     setError(null);
-    switch (step) {
-      case 0:
+    switch (STEPS[step]) {
+      case "School":
         if (!reveal(() => s.setSchoolTouched(true)) || !s.schoolValid) return;
         break;
-      case 1:
+      case "Houses":
         if (!skip) setHousesValidationAttempted(true);
         if (!skip && s.houses.some((house) => house.name.trim() && !house.code.trim())) {
-          return setError("Every house with a name must have a code.");
+          return setError("Every house with a name needs a code.");
         }
         s.setHousesSkipped(skip);
         break;
-      case 2:
+      case "Grades":
         if (s.selectedGrades.size === 0) return setError("Select at least one grade.");
         break;
-      case 3:
+      case "Mediums":
         s.setMediumsSkipped(skip);
         break;
-      case CLASSES_STEP:
-        if (!skip && !s.yearLabel.trim()) return setError("An academic year label is required.");
+      case "Classes":
+        if (!skip && !s.yearLabel.trim()) return setError("Enter the academic year.");
         if (!skip && (!Number.isFinite(s.classCapacity) || s.classCapacity < 1 || s.classCapacity > 200)) {
-          return setError("Class capacity must be a number between 1 and 200.");
+          return setError("Class capacity must be between 1 and 200.");
         }
         s.setClassesSkipped(skip);
         break;
-      default:
+      case "Rooms":
         s.setRoomsSkipped(skip);
-        goNext();
-        submitAll(skip);
+        break;
+      case "Review":
+        goTo(DONE_STEP);
+        submitAll();
         return;
     }
-    goNext();
+    goTo(step + 1);
   };
 
   if (!schoolCheckLoading && existingSchool && !submitted && !submitting) return <Navigate to="/" replace />;
 
+  const current = STEPS[step];
+  const info = current === "Done" ? null : STEP_INFO[current];
+
   return (
-    <div className="os-school-setup-page">
-      <header className="os-school-setup-brand">
-        <img src="/favicon.webp" alt="" width={36} height={36} />
-        <div>
-          <p className="os-school-setup-brand__name">Open<span>School</span></p>
-          <p className="os-school-setup-brand__context">School onboarding</p>
+    <div className="os-setup-wizard">
+      <header className="os-setup-wizard__bar">
+        <div className="os-setup-wizard__brand">
+          <img src="/favicon.webp" alt="" width={28} height={28} />
+          <span className="os-setup-wizard__product">OpenSchool</span>
+          <span className="os-setup-wizard__context">School setup</span>
         </div>
+        {info && <span className="os-setup-wizard__count">Step {step + 1} of {FORM_STEPS.length}</span>}
       </header>
-      <div className="os-school-setup-card">
-        <div className="os-school-setup-heading">
-          <p className="os-school-setup-eyebrow">Let’s get your school ready</p>
-          <h1>Set up your school</h1>
-          <p>Complete these steps to create the structure OpenSchool will use for your school day to day.</p>
-        </div>
-        <CustomStepper currentIndex={step} steps={STEPS} />
 
-        {error && <Alert type="error" showIcon title="Could not continue" description={error} className="os-school-setup-error" />}
+      {!info ? (
+        <main className="os-setup-wizard__done">
+          <DoneStep submitting={submitting} submitError={submitError} submitted={submitted} onRetry={() => submitAll()} onBack={() => goTo(DONE_STEP - 1)} onGoToDashboard={() => navigate("/")} />
+        </main>
+      ) : (
+        <main className="os-setup-wizard__body">
+          <aside className="os-setup-wizard__rail">
+            <h1>Set up your school</h1>
+            <p>Seven short steps. Nothing is saved until you confirm on the last one.</p>
+            <Steps
+              orientation="vertical"
+              size="small"
+              current={step}
+              onChange={(index) => index < step && goTo(index)}
+              items={FORM_STEPS.map((name, index) => ({
+                title: (
+                  <span className="os-setup-wizard__step">
+                    {STEP_INFO[name].title}
+                    {STEP_INFO[name].optional && <Tag className="os-setup-wizard__optional">Optional</Tag>}
+                  </span>
+                ),
+                disabled: index > step,
+              }))}
+            />
+          </aside>
 
-        <ErrorSummary errors={summaryErrors} />
+          <Card
+            className="os-setup-wizard__card"
+            title={info.title}
+            extra={info.optional ? <Tag className="os-setup-wizard__optional">Optional</Tag> : null}
+          >
+            <p className="os-setup-wizard__description">{info.description}</p>
+            {error && <Alert type="error" showIcon title={error} className="os-mb-4" />}
+            <ErrorSummary errors={summaryErrors} />
 
-        <div ref={summaryRef} onChange={recheck}>
-        {step === 0 && <SchoolStep school={s.school} setSchool={s.setSchool} schoolTouched={s.schoolTouched} gradeRangeInvalid={s.gradeRangeInvalid} />}
-        {step === 1 && <HousesStep houses={s.houses} setHouses={s.setHouses} validationAttempted={housesValidationAttempted} />}
-        {step === 2 && <GradesStep gradeRangeStart={s.gradeRangeStart} gradeRangeEnd={s.gradeRangeEnd} selectedGrades={s.selectedGrades} setSelectedGrades={s.setSelectedGrades} />}
-        {step === 3 && <MediumsStep mediumChecks={s.mediumChecks} setMediumChecks={s.setMediumChecks} customMediums={s.customMediums} setCustomMediums={s.setCustomMediums} />}
-        {step === CLASSES_STEP && (
-          <ClassesStep
-            yearLabel={s.yearLabel}
-            setYearLabel={s.setYearLabel}
-            classCapacity={s.classCapacity}
-            setClassCapacity={s.setClassCapacity}
-            orderedSelectedGrades={s.orderedSelectedGrades}
-            regularGradeNumbers={s.regularGradeNumbers}
-            alGradeNumbers={s.alGradeNumbers}
-            sectionsPerGrade={s.sectionsPerGrade}
-            setSectionsPerGrade={s.setSectionsPerGrade}
-            selectedMediumNames={s.selectedMediumNames}
-            sectionMediums={s.sectionMediums}
-            setSectionMediums={s.setSectionMediums}
-            alStreams={s.alStreams}
-            setAlStreams={s.setAlStreams}
-          />
-        )}
-        {step === ROOMS_STEP && <RoomsStep facilityRooms={s.facilityRooms} setFacilityRooms={s.setFacilityRooms} />}
-        </div>
-        {step === DONE_STEP && <DoneStep submitting={submitting} submitError={submitError} submitted={submitted} onRetry={() => submitAll()} onGoToDashboard={() => navigate("/")} />}
-
-        {step < DONE_STEP && (
-          <div className="os-school-setup-actions">
-            <Button type="text" size="large" onClick={goBack} disabled={step === 0}>Back</Button>
-            <div className="os-school-setup-actions__right">
-              {SKIPPABLE.has(step) && <Button size="large" onClick={() => advance(true)}>Skip</Button>}
-              <Button type="primary" size="large" onClick={() => advance(false)}>{step === ROOMS_STEP ? "Finish setup" : "Continue"}</Button>
+            <div ref={summaryRef} onChange={recheck}>
+              {current === "School" && <SchoolStep school={s.school} setSchool={s.setSchool} schoolTouched={s.schoolTouched} gradeRangeInvalid={s.gradeRangeInvalid} />}
+              {current === "Houses" && <HousesStep houses={s.houses} setHouses={s.setHouses} validationAttempted={housesValidationAttempted} />}
+              {current === "Grades" && <GradesStep gradeRangeStart={s.gradeRangeStart} gradeRangeEnd={s.gradeRangeEnd} selectedGrades={s.selectedGrades} setSelectedGrades={s.setSelectedGrades} />}
+              {current === "Mediums" && <MediumsStep mediumChecks={s.mediumChecks} setMediumChecks={s.setMediumChecks} customMediums={s.customMediums} setCustomMediums={s.setCustomMediums} />}
+              {current === "Classes" && <ClassesStep state={s} />}
+              {current === "Rooms" && <RoomsStep facilityRooms={s.facilityRooms} setFacilityRooms={s.setFacilityRooms} />}
+              {current === "Review" && <ReviewStep state={s} onEdit={(name) => goTo(STEPS.indexOf(name))} />}
             </div>
-          </div>
-        )}
-      </div>
+
+            <div className="os-setup-wizard__actions">
+              <Button size="large" onClick={() => goTo(step - 1)} disabled={step === 0}>Back</Button>
+              <div className="os-setup-wizard__actions-right">
+                {info.optional && <Button size="large" type="text" onClick={() => advance(true)}>Skip this step</Button>}
+                <Button type="primary" size="large" onClick={() => advance(false)}>
+                  {current === "Review" ? "Create school" : "Continue"}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </main>
+      )}
     </div>
   );
 }
