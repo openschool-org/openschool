@@ -1,27 +1,29 @@
-import { AuditOutlined, BankOutlined, BellOutlined, BulbOutlined, CalendarOutlined, ReadOutlined, CarryOutOutlined, FileDoneOutlined, HomeOutlined, LineChartOutlined, ReloadOutlined, ScheduleOutlined, SettingOutlined, TableOutlined } from "@ant-design/icons";
+import { AuditOutlined, BankOutlined, BellOutlined, BulbOutlined, CalendarOutlined, ReadOutlined, CarryOutOutlined, FileDoneOutlined, HomeOutlined, LineChartOutlined, ReloadOutlined, ScheduleOutlined, SendOutlined, SettingOutlined, TableOutlined, UserOutlined } from "@ant-design/icons";
 import type { NavGroup } from "@/layouts/nav/types";
 
 // Only a Section Head can act on the review queue, so others do not get the item.
-function teachingGroups(isSectionHead: boolean): NavGroup[] {
+function teachingGroups(isSectionHead: boolean, isClassTeacher: boolean): NavGroup[] {
   return [
     {
       label: "Academics",
       Icon: ReadOutlined,
       items: [
-        { path: "/t/classes", label: "My Classes", Icon: BankOutlined },
-        { path: "/t/timetable", label: "My Timetable", Icon: TableOutlined, exact: true },
-        { path: "/t/marks", label: "Record Marks", Icon: FileDoneOutlined },
-        ...(isSectionHead ? [{ path: "/t/timetable/review", label: "Review Timetables", Icon: ReloadOutlined, exact: true }] : []),
-        { path: "/t/my-society", label: "My Society", Icon: BulbOutlined, exact: true },
+        // Only a class teacher has a class of their own.
+        ...(isClassTeacher ? [{ path: "/t/classes", label: "My classes", Icon: BankOutlined }] : []),
+        { path: "/t/timetable", label: "My timetable", Icon: TableOutlined, exact: true },
+        { path: "/t/marks", label: "Marks", Icon: FileDoneOutlined },
+        ...(isSectionHead ? [{ path: "/t/timetable/review", label: "Review timetables", Icon: ReloadOutlined, exact: true }] : []),
+        { path: "/t/my-society", label: "My society", Icon: BulbOutlined, exact: true },
       ],
     },
     {
       label: "Attendance & leave",
       Icon: ScheduleOutlined,
       items: [
-        { path: "/t/attendance", label: "Class Attendance", Icon: ScheduleOutlined },
-        { path: "/t/my-attendance", label: "My Attendance", Icon: CalendarOutlined, exact: true },
-        { path: "/t/leave", label: "My Leave", Icon: CarryOutOutlined, exact: true },
+        { path: "/t/attendance", label: "Class attendance", Icon: ScheduleOutlined },
+        ...(isSectionHead ? [{ path: "/t/section-attendance", label: "Section attendance", Icon: AuditOutlined, exact: true }] : []),
+        { path: "/t/my-attendance", label: "My attendance", Icon: CalendarOutlined, exact: true },
+        { path: "/t/leave", label: "My leave", Icon: CarryOutOutlined, exact: true },
       ],
     },
   ];
@@ -34,26 +36,34 @@ const LEADERSHIP_GROUPS: NavGroup[] = [
     Icon: BankOutlined,
     items: [
       { path: "/t/analytics", label: "Analytics", Icon: LineChartOutlined, exact: true },
-      { path: "/t/all-timetables", label: "All Timetables", Icon: TableOutlined, exact: true },
-      { path: "/t/leave-approvals", label: "Teacher Leave", Icon: AuditOutlined, exact: true },
-      { path: "/t/leave", label: "My Leave", Icon: CarryOutOutlined, exact: true },
+      { path: "/t/all-timetables", label: "All timetables", Icon: TableOutlined, exact: true },
+      { path: "/t/leave-approvals", label: "Teacher leave", Icon: AuditOutlined, exact: true },
+      { path: "/t/leave", label: "My leave", Icon: CarryOutOutlined, exact: true },
     ],
   },
 ];
 
-const SYSTEM_GROUP: NavGroup = {
-  label: "Account",
-  Icon: SettingOutlined,
+// Sending notices is everyday teaching work, so it sits with the inbox, not under Account.
+const COMMUNICATION_GROUP: NavGroup = {
+  label: "Communication",
+  Icon: BellOutlined,
   items: [
-    { path: "/t/notifications", label: "Notifications", Icon: BellOutlined, exact: true },
-    { path: "/t/profile", label: "My Profile", Icon: SettingOutlined },
+    { path: "/notification-center", label: "Notifications", Icon: BellOutlined, exact: true },
+    { path: "/t/notifications", label: "Send notifications", Icon: SendOutlined, exact: true },
   ],
 };
 
-export function teacherNav(opts: { isLeadership: boolean; isSectionHead: boolean }): NavGroup[] {
+const SYSTEM_GROUP: NavGroup = {
+  label: "Account",
+  Icon: SettingOutlined,
+  items: [{ path: "/t/profile", label: "My profile", Icon: UserOutlined }],
+};
+
+export function teacherNav(opts: { isLeadership: boolean; isSectionHead: boolean; isClassTeacher: boolean }): NavGroup[] {
   return [
-    { label: "Overview", items: [{ path: "/", label: "Overview", Icon: HomeOutlined }] },
-    ...(opts.isLeadership ? LEADERSHIP_GROUPS : teachingGroups(opts.isSectionHead)),
+    { label: "Overview", items: [{ path: "/", label: "Dashboard", Icon: HomeOutlined }] },
+    ...(opts.isLeadership ? LEADERSHIP_GROUPS : teachingGroups(opts.isSectionHead, opts.isClassTeacher)),
+    COMMUNICATION_GROUP,
     SYSTEM_GROUP,
   ];
 }

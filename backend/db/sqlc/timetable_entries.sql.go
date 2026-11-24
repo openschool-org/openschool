@@ -234,7 +234,7 @@ const listTeacherScheduleForYear = `-- name: ListTeacherScheduleForYear :many
 SELECT
     te.day_of_week, te.period_number,
     te.subject_id, s.name AS subject_name,
-    te.classroom_id, cr.name AS classroom_name,
+    te.classroom_id, cr.name AS classroom_name, cr.room_type AS classroom_type,
     t.class_id, c.name AS class_name, g.name AS grade_name
 FROM timetable_entries te
 INNER JOIN timetables t ON t.id = te.timetable_id
@@ -244,7 +244,7 @@ LEFT JOIN subjects s    ON s.id = te.subject_id
 LEFT JOIN classrooms cr ON cr.id = te.classroom_id
 WHERE te.teacher_id = $1 AND t.academic_year_id = $2 AND t.status = 'published'
 UNION ALL
-SELECT te.day_of_week, te.period_number, bs.subject_id, s.name, NULL::uuid, NULL::text, t.class_id, c.name, g.name
+SELECT te.day_of_week, te.period_number, bs.subject_id, s.name, NULL::uuid, NULL::text, NULL::text, t.class_id, c.name, g.name
 FROM timetable_entries te
 INNER JOIN timetables t ON t.id = te.timetable_id
 INNER JOIN classes c    ON c.id = t.class_id
@@ -268,6 +268,7 @@ type ListTeacherScheduleForYearRow struct {
 	SubjectName   pgtype.Text `json:"subject_name"`
 	ClassroomID   pgtype.UUID `json:"classroom_id"`
 	ClassroomName pgtype.Text `json:"classroom_name"`
+	ClassroomType pgtype.Text `json:"classroom_type"`
 	ClassID       uuid.UUID   `json:"class_id"`
 	ClassName     string      `json:"class_name"`
 	GradeName     string      `json:"grade_name"`
@@ -292,6 +293,7 @@ func (q *Queries) ListTeacherScheduleForYear(ctx context.Context, arg ListTeache
 			&i.SubjectName,
 			&i.ClassroomID,
 			&i.ClassroomName,
+			&i.ClassroomType,
 			&i.ClassID,
 			&i.ClassName,
 			&i.GradeName,
@@ -312,6 +314,7 @@ SELECT
     s.name       AS subject_name,
     COALESCE(display_name(tp.full_name, tp.name_with_initials), '')::text AS teacher_name,
     cr.name      AS classroom_name,
+    cr.room_type AS classroom_type,
     ob.name      AS option_block_name
 FROM timetable_entries te
 LEFT JOIN subjects                s  ON s.id  = te.subject_id
@@ -336,6 +339,7 @@ type ListTimetableEntriesByTimetableRow struct {
 	SubjectName     pgtype.Text        `json:"subject_name"`
 	TeacherName     string             `json:"teacher_name"`
 	ClassroomName   pgtype.Text        `json:"classroom_name"`
+	ClassroomType   pgtype.Text        `json:"classroom_type"`
 	OptionBlockName pgtype.Text        `json:"option_block_name"`
 }
 
@@ -362,6 +366,7 @@ func (q *Queries) ListTimetableEntriesByTimetable(ctx context.Context, timetable
 			&i.SubjectName,
 			&i.TeacherName,
 			&i.ClassroomName,
+			&i.ClassroomType,
 			&i.OptionBlockName,
 		); err != nil {
 			return nil, err

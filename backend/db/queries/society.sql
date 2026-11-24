@@ -29,7 +29,7 @@ SELECT
     s.academic_year_id,
     s.created_at,
     COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS teacher_name,
-    (SELECT COUNT(*) FROM society_members sm WHERE sm.society_id = s.id) AS member_count
+    (SELECT COUNT(*) FROM society_members sm WHERE sm.society_id = s.id AND sm.left_at IS NULL) AS member_count
 FROM societies s
 INNER JOIN teacher_profiles tp ON tp.id = s.teacher_in_charge_id
 WHERE s.academic_year_id = $1
@@ -38,8 +38,9 @@ ORDER BY s.name ASC;
 -- name: UpsertSocietyMember :one
 INSERT INTO society_members (society_id, student_id, role, academic_year_id)
 VALUES ($1, $2, $3, $4)
+-- Adding a former member again makes them active again with the new role.
 ON CONFLICT (society_id, student_id, academic_year_id)
-DO UPDATE SET role = EXCLUDED.role
+DO UPDATE SET role = EXCLUDED.role, left_at = NULL, left_reason = NULL
 RETURNING *;
 
 -- name: ListSocietyMembersBySociety :many
@@ -50,6 +51,8 @@ SELECT
     sm.role,
     sm.academic_year_id,
     sm.created_at,
+    sm.left_at,
+    sm.left_reason,
     display_name(sp.full_name, sp.name_with_initials)::text AS student_name,
     sp.index_number AS student_index,
     g.name          AS grade_name
@@ -64,7 +67,9 @@ LEFT JOIN  class_students cs   ON cs.student_id = sp.id AND cs.academic_year_id 
 LEFT JOIN  classes c           ON c.id = cs.class_id
 LEFT JOIN  grades g            ON g.id = c.grade_id
 WHERE sm.society_id = $1
+-- Active members first, then former members.
 ORDER BY
+    (sm.left_at IS NOT NULL),
     CASE sm.role
         WHEN 'leader' THEN 1
         WHEN 'deputy_leader' THEN 2
@@ -74,11 +79,13 @@ ORDER BY
     END,
     sp.full_name ASC;
 
--- name: RemoveSocietyMember :execrows
--- scoped by society_id as well as id: the caller is only authorized for one
--- society (SocietyService.authorizeTeacherInCharge), so the delete itself
--- must not be able to reach a membership row belonging to a different one.
-DELETE FROM society_members WHERE id = $1 AND society_id = $2;
+-- name: DeactivateSocietyMember :execrows
+-- Marks an active member as left instead of deleting them, so the history stays.
+-- Scoped by society_id as well as id: the caller is only authorized for one
+-- society (authorizeTeacherInCharge), so this must not reach another society's row.
+UPDATE society_members
+SET left_at = NOW(), left_reason = sqlc.narg(reason)
+WHERE id = sqlc.arg(id) AND society_id = sqlc.arg(society_id) AND left_at IS NULL;
 
 -- name: ListSocietyYears :many
 -- every academic year that has at least one society — powers the
@@ -97,6 +104,7 @@ SELECT
     sm.role,
     sm.academic_year_id,
     sm.created_at,
+    sm.left_at,
     s.name   AS society_name,
     ay.label AS academic_year_label
 FROM society_members sm

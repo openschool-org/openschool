@@ -17,7 +17,7 @@ import {
 } from "@/features/timetable/queries/useTimetables";
 import { useTimetableCell } from "@/features/timetable/hooks/useTimetableCell";
 import { subjectsForClass, withCellTeacher } from "@/features/timetable/lib/editorLists";
-import TimetableGrid from "@/features/timetable/components/TimetableGrid";
+import WeeklyTimetable from "@/features/timetable/components/WeeklyTimetable";
 import TimetableCellModal from "@/features/timetable/components/TimetableCellModal";
 import TimetableValidationModal from "@/features/timetable/components/TimetableValidationModal";
 import { TimetableEditorHeader, TimetableStatusHistory } from "@/features/timetable/components/TimetableEditorParts";
@@ -81,13 +81,19 @@ export default function TimetableEditor() {
       <MutationErrorNotification isError={submit.isError} error={submit.error} title="Could not submit" fallback="Fix the validation issues shown by Validate, then try again." onClose={() => submit.reset()} />
       <MutationErrorNotification isError={publish.isError} error={publish.error} title="Could not publish" onClose={() => publish.reset()} />
 
-      <div className="os-section os-overflow-x-auto">
+      <div className="os-section os-p-4">
         {!gradeSection ? (
           <EmptyState title="No grade section configured" description="Assign this class's grade to a Grade Section (with a period grid) before building the timetable." />
         ) : !periods?.length ? (
           <EmptyState title="No periods configured" description="Open Grade Sections and generate/configure the period grid for this section." />
         ) : (
-          <TimetableGrid periods={periods} entryAt={cell.entryAt} editable={timetable.status === "draft"} onOpenCell={cell.open} />
+          <WeeklyTimetable
+            entries={entries ?? []}
+            periods={periods}
+            showToday={false}
+            detail={(e) => e.teacher_name ?? ""}
+            onCellClick={timetable.status === "draft" ? cell.open : undefined}
+          />
         )}
       </div>
 

@@ -28,3 +28,6 @@ export const useRemovePosition = () => {
   const invalidate = useInvalidate();
   return useMutation({ mutationFn: (id: string) => positionApi.remove(id), onSuccess: () => invalidate(positionKeys.all) });
 };
+
+export const useMyLedClasses = (enabled: boolean) =>
+  useQuery({ queryKey: positionKeys.myLedClasses(), queryFn: positionApi.myLedClasses, enabled });

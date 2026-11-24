@@ -28,6 +28,7 @@ type StudentProfile struct {
 	GradeName        *string    `json:"grade_name"`
 	HouseName        *string    `json:"house_name"`
 	AcademicYear     *string    `json:"academic_year"`
+	FormTeacherName  *string    `json:"form_teacher_name"`
 }
 
 // TeacherProfile is the signed-in teacher's self-service profile payload.

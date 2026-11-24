@@ -55,7 +55,7 @@ type timetableValidationStore interface {
 	teacherAssignedSubject(context.Context, uuid.UUID, uuid.UUID) (bool, error)
 	requirements(context.Context, uuid.UUID, uuid.UUID) ([]requirementValue, error)
 	entrySubjectCounts(context.Context, uuid.UUID) (map[uuid.UUID]int32, error)
-	authorizedReviewers(context.Context, uuid.UUID, uuid.UUID) ([]uuid.UUID, error)
+	classLeaders(context.Context, uuid.UUID) ([]uuid.UUID, error)
 	blockTeachers(context.Context, uuid.UUID, uuid.UUID) ([]blockTeacher, error)
 }
 
@@ -98,12 +98,12 @@ func (s *validationService) validate(ctx context.Context, timetableID uuid.UUID)
 		}
 	}
 	issues = append(issues, s.requirementIssues(ctx, metadata, timetableID)...)
-	reviewers, err := s.store.authorizedReviewers(ctx, metadata.AcademicYearID, metadata.GradeID)
+	reviewers, err := s.store.classLeaders(ctx, metadata.ClassID)
 	if err != nil {
 		return ValidationResult{}, err
 	}
 	if len(reviewers) == 0 {
-		issues = append(issues, ValidationIssue{Severity: "error", Message: "No section head assigned for this grade — cannot submit for review"})
+		issues = append(issues, ValidationIssue{Severity: "error", Message: "No section head assigned for this class (grade, stream or grade section), so it cannot be submitted for review"})
 	}
 	result := ValidationResult{Valid: true, Issues: issues}
 	for _, issue := range issues {

@@ -93,6 +93,20 @@ func (h *StudentSelfHandler) Marks(c *gin.Context) {
 	c.JSON(http.StatusOK, marks)
 }
 
+// MarkHistory returns the signed-in student's marks for every year and term.
+func (h *StudentSelfHandler) MarkHistory(c *gin.Context) {
+	studentID, ok := h.resolveStudentID(c)
+	if !ok {
+		return
+	}
+	years, err := h.marks.StudentMarkHistory(c.Request.Context(), studentID)
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, years)
+}
+
 // ListEnrollments returns the signed-in student's own subject picks for a level.
 func (h *StudentSelfHandler) ListEnrollments(c *gin.Context) {
 	studentID, ok := h.resolveStudentID(c)

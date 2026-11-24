@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	db "github.com/openschool-org/openschool/db/sqlc"
 )
@@ -118,7 +119,7 @@ func (r *Repository) listSocietyYears(ctx context.Context) ([]AcademicYearOption
 }
 
 func mapSocietyMember(value db.SocietyMember) SocietyMember {
-	return SocietyMember{ID: value.ID, SocietyID: value.SocietyID, StudentID: value.StudentID, Role: value.Role, AcademicYearID: value.AcademicYearID, CreatedAt: value.CreatedAt}
+	return SocietyMember{ID: value.ID, SocietyID: value.SocietyID, StudentID: value.StudentID, Role: value.Role, AcademicYearID: value.AcademicYearID, CreatedAt: value.CreatedAt, LeftAt: value.LeftAt, LeftReason: value.LeftReason}
 }
 
 func (r *Repository) upsertSocietyMember(ctx context.Context, societyID, studentID uuid.UUID, role string, yearID uuid.UUID) (SocietyMember, error) {
@@ -133,13 +134,13 @@ func (r *Repository) listSocietyMembers(ctx context.Context, societyID uuid.UUID
 	}
 	result := make([]SocietyMemberListItem, len(rows))
 	for i, value := range rows {
-		result[i] = SocietyMemberListItem{SocietyMember: SocietyMember{ID: value.ID, SocietyID: value.SocietyID, StudentID: value.StudentID, Role: value.Role, AcademicYearID: value.AcademicYearID, CreatedAt: value.CreatedAt}, StudentName: value.StudentName, StudentIndex: value.StudentIndex, GradeName: value.GradeName}
+		result[i] = SocietyMemberListItem{SocietyMember: SocietyMember{ID: value.ID, SocietyID: value.SocietyID, StudentID: value.StudentID, Role: value.Role, AcademicYearID: value.AcademicYearID, CreatedAt: value.CreatedAt, LeftAt: value.LeftAt, LeftReason: value.LeftReason}, StudentName: value.StudentName, StudentIndex: value.StudentIndex, GradeName: value.GradeName}
 	}
 	return result, nil
 }
 
-func (r *Repository) removeSocietyMember(ctx context.Context, societyID, memberID uuid.UUID) (int64, error) {
-	return r.queries.RemoveSocietyMember(ctx, db.RemoveSocietyMemberParams{ID: memberID, SocietyID: societyID})
+func (r *Repository) deactivateSocietyMember(ctx context.Context, societyID, memberID uuid.UUID, reason string) (int64, error) {
+	return r.queries.DeactivateSocietyMember(ctx, db.DeactivateSocietyMemberParams{ID: memberID, SocietyID: societyID, Reason: pgtype.Text{String: reason, Valid: reason != ""}})
 }
 
 func (r *Repository) listSocietyMembershipsByStudent(ctx context.Context, studentID uuid.UUID) ([]SocietyMembership, error) {
@@ -149,7 +150,7 @@ func (r *Repository) listSocietyMembershipsByStudent(ctx context.Context, studen
 	}
 	result := make([]SocietyMembership, len(rows))
 	for i, value := range rows {
-		result[i] = SocietyMembership{ID: value.ID, SocietyID: value.SocietyID, Role: value.Role, AcademicYearID: value.AcademicYearID, CreatedAt: value.CreatedAt, SocietyName: value.SocietyName, AcademicYearLabel: value.AcademicYearLabel}
+		result[i] = SocietyMembership{ID: value.ID, SocietyID: value.SocietyID, Role: value.Role, AcademicYearID: value.AcademicYearID, CreatedAt: value.CreatedAt, LeftAt: value.LeftAt, SocietyName: value.SocietyName, AcademicYearLabel: value.AcademicYearLabel}
 	}
 	return result, nil
 }

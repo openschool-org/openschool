@@ -26,6 +26,7 @@ type termMarkStore interface {
 	studentClass(context.Context, uuid.UUID) (uuid.UUID, error)
 	authorizeClass(context.Context, TermMarkActor, uuid.UUID) error
 	delete(context.Context, uuid.UUID) error
+	history(context.Context, uuid.UUID) ([]markHistoryRow, error)
 }
 type termMarkService struct{ store termMarkStore }
 

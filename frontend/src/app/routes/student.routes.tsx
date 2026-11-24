@@ -12,6 +12,7 @@ const StudentTimetable = page(() => import("@/features/timetable/pages/student/S
 const StudentGuardians = page(() => import("@/features/guardians/pages/student/StudentGuardians"));
 const StudentProgress = page(() => import("@/features/portfolio/pages/student/StudentProgress"));
 const StudentPortfolio = page(() => import("@/features/portfolio/pages/student/StudentPortfolio"));
+const StudentProfile = page(() => import("@/features/students/pages/self/StudentProfile"));
 const NotificationCenter = page(() => import("@/features/notifications/pages/NotificationCenter"));
 
 export function studentRoutes() {
@@ -25,6 +26,7 @@ export function studentRoutes() {
       <Route path="/s/progress" element={<StudentProgress />} />
       <Route path="/s/portfolio" element={<StudentPortfolio />} />
       <Route path="/s/enrollment" element={<StudentEnrollment />} />
+      <Route path="/s/profile" element={<StudentProfile />} />
       <Route path="/notification-center" element={<NotificationCenter />} />
       <Route path="*" element={<NotFound />} />
     </Route>

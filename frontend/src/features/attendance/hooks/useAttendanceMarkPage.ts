@@ -38,7 +38,9 @@ export function useAttendanceMarkPage(id: string) {
 
   // A session locks 24 hours after it is taken; only an admin can still edit it, with a reason.
   const locked = isLockedAfter24Hours(session.data?.created_at);
-  const readOnly = locked && role !== "admin";
+  // Only the class teacher (or an admin) marks; a subject teacher sees the session read-only.
+  const notClassTeacher = session.data?.can_mark === false;
+  const readOnly = (locked && role !== "admin") || notClassTeacher;
   const isOverride = locked && role === "admin";
   const backPath = role === "teacher" ? "/t/attendance" : "/attendance";
 
@@ -67,6 +69,7 @@ export function useAttendanceMarkPage(id: string) {
     marking,
     markAttendance,
     readOnly,
+    notClassTeacher,
     isOverride,
     search,
     setSearch,

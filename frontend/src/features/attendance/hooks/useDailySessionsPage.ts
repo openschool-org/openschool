@@ -4,10 +4,12 @@ import { useDailySessions, useCreateSession } from "@/features/attendance/querie
 import { useCurrentClasses } from "@/features/academics/queries/useClasses";
 import { useToast } from "@/shared/ui/toast/useToast";
 
-// The admin attendance day: sessions (optionally one grade), classes still without a session, and creating them all.
-export function useDailySessionsPage(date: string) {
+// The attendance day: sessions (optionally one grade), classes still without a session, and creating them all.
+// scopedClasses limits it to a section head's classes; the admin passes nothing and gets every class.
+export function useDailySessionsPage(date: string, scopedClasses?: { id: string; name: string; grade_name: string }[]) {
   const { data: allSessions, isLoading, isError, refetch } = useDailySessions(date);
-  const { data: allClasses } = useCurrentClasses();
+  const { data: schoolClasses } = useCurrentClasses({ enabled: !scopedClasses });
+  const allClasses = scopedClasses ?? schoolClasses;
   // ?grade=<name> (from the dashboard's attendance by grade) narrows the page to one grade.
   const [params, setParams] = useSearchParams();
   const grade = params.get("grade");

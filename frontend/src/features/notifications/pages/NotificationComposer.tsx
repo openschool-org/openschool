@@ -21,6 +21,7 @@ import { useRole } from "@/shared/auth/useRole";
 import { useMyPosition } from "@/features/positions/queries/usePositions";
 import { ruleKey } from "@/features/notifications/constants";
 import RecipientPicker from "@/features/notifications/components/RecipientPicker";
+import { useSocietyPrefill } from "@/features/notifications/hooks/useSocietyPrefill";
 import NotificationHistory from "@/features/notifications/components/NotificationHistory";
 import DraftRow from "@/features/notifications/components/DraftRow";
 import PageHeader from "@/shared/ui/PageHeader";
@@ -77,6 +78,10 @@ export default function NotificationComposer() {
     create.reset();
     setComposeOpen(true);
   };
+  useSocietyPrefill((prefilled) => {
+    openComposer();
+    setRules(prefilled);
+  });
   const closeComposer = () => {
     if (create.isPending) return;
     composeSession.current += 1;
@@ -87,7 +92,7 @@ export default function NotificationComposer() {
 
   return (
     <div className="os-page">
-      <PageHeader title="Notifications" subtitle={<>Send announcements to grades, classes, subjects or people. {role === "teacher" && myPosition && myPosition.rank_label !== "Teacher" && ( <> Sending as <strong>{myPosition.rank_label}</strong>{canBroadcastEveryone ? ", whole school." : "."}</> )}</>}>
+      <PageHeader title="Send notifications" subtitle={<>Send announcements to the classes, groups and people you look after. {role === "teacher" && myPosition && myPosition.rank_label !== "Teacher" && ( <> Sending as <strong>{myPosition.rank_label}</strong>{canBroadcastEveryone ? ", whole school." : "."}</> )}</>}>
         <Button type="primary" icon={<SendOutlined />} onClick={openComposer}>
           Notify
         </Button>

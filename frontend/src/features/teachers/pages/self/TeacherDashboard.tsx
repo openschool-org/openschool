@@ -1,10 +1,11 @@
 import { useQueries } from "@tanstack/react-query";
-import { ArrowRightOutlined, BankOutlined, BellOutlined, CalendarOutlined, CheckCircleOutlined, ClockCircleOutlined, FileDoneOutlined, ScheduleOutlined, TeamOutlined } from "@ant-design/icons";
+import { BankOutlined, BellOutlined, CheckCircleOutlined, ClockCircleOutlined, FileDoneOutlined, ScheduleOutlined, TableOutlined, TeamOutlined } from "@ant-design/icons";
 import { POSITION_RANK } from "@/shared/lib/constants/people";
 import { useMyClasses, useTeacherSubjects } from "@/features/teachers/queries/useTeachers";
 import { classSessionsOptions } from "@/features/attendance/queries/useAttendance";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
-import { useTerms } from "@/features/school/queries/useTerms";
+import { useYearTermItems } from "@/features/school/hooks/useYearTermItems";
+import ContextStrip from "@/shared/ui/ContextStrip";
 import { useMyPosition } from "@/features/positions/queries/usePositions";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
@@ -15,12 +16,10 @@ import LinkButton from "@/shared/ui/LinkButton";
 import StatCard from "@/features/reports/components/dashboard/StatCard";
 import RoleBadge from "@/features/teachers/components/dashboard/RoleBadge";
 import TodaysClasses from "@/features/teachers/components/dashboard/TodaysClasses";
-import RecentSessions from "@/features/teachers/components/dashboard/RecentSessions";
 import LeadershipPanel from "@/features/teachers/components/dashboard/LeadershipPanel";
 import LeadershipOverviewPanel from "@/features/teachers/components/dashboard/LeadershipOverviewPanel";
 import TimetableReviewPanel from "@/features/teachers/components/dashboard/TimetableReviewPanel";
 import { todayISODate } from "@/shared/lib/date";
-import { classLabel } from "@/shared/lib/classLabel";
 import { displayName } from "@/shared/lib/name";
 
 function greeting(): string {
@@ -32,7 +31,7 @@ export default function TeacherDashboard() {
   const { teacher: profile, classes: myClasses, isLoading: profileLoading, isError: profileError, refetch } = useMyClasses();
   const { data: qualified } = useTeacherSubjects(profile?.id ?? "");
   const { data: currentYear } = useCurrentAcademicYear();
-  const { data: terms } = useTerms(currentYear?.id);
+  const yearTerm = useYearTermItems();
   const { data: position } = useMyPosition();
   const isLeader = !!position && position.rank <= POSITION_RANK.sectionHead;
   const isSectionHead = position?.rank === POSITION_RANK.sectionHead;
@@ -47,19 +46,16 @@ export default function TeacherDashboard() {
   const todaySessionByClass = new Map(
     myClasses.flatMap((c, i) => (sessionQueries[i]?.data ?? []).filter((s) => s.date === today).map((s) => [c.class_id, s] as const)),
   );
-  const markedCount = todaySessionByClass.size;
-  const pendingCount = Math.max(myClasses.length - markedCount, 0);
+  // Attendance is the class teacher's job, so today's counts cover only the classes this teacher leads.
+  const formClasses = myClasses.filter((c) => c.isFormTeacher);
+  const markedCount = formClasses.filter((c) => todaySessionByClass.has(c.class_id)).length;
+  const pendingCount = formClasses.length - markedCount;
   const totalStudents = myClasses.reduce((sum, c) => sum + c.studentCount, 0);
-
-  const recentSessions = myClasses
-    .flatMap((c, i) => (sessionQueries[i]?.data ?? []).map((s) => ({ session: s, className: classLabel(c.grade_name, c.class_name) })))
-    .sort((a, b) => b.session.date.localeCompare(a.session.date))
-    .slice(0, 6);
 
   if (profileLoading) return <LoadingSpinner />;
   if (profileError || !profile) {
     return (
-      <div className="os-p-8">
+      <div className="os-page">
         <ErrorMessage message="Failed to load your teacher profile" onRetry={refetch} />
       </div>
     );
@@ -68,7 +64,7 @@ export default function TeacherDashboard() {
   // Subjects assigned in classes, else the teacher's qualifications until an admin assigns classes.
   const classSubjects = [...new Set(myClasses.flatMap((c) => c.subjects))];
   const subjectSummary = (classSubjects.length > 0 ? classSubjects : (qualified ?? []).map((q) => q.name)).join(", ") || "No subjects yet";
-  const currentTerm = terms?.find((t) => t.is_current);
+  const formClass = myClasses.find((c) => c.isFormTeacher)?.class_name;
   const hasClasses = myClasses.length > 0;
   const sessionCard = { loading: sessionsLoading, error: sessionsError };
 
@@ -82,7 +78,6 @@ export default function TeacherDashboard() {
   const classesColumn = hasClasses ? (
     <div>
       <TodaysClasses myClasses={myClasses} todaySessionByClass={todaySessionByClass} loading={sessionsLoading} error={sessionsError} onRetry={retrySessions} />
-      <RecentSessions sessions={recentSessions} />
     </div>
   ) : !isLeader ? (
     <EmptyState title="No classes assigned yet" description="Ask the office to add you as a class or subject teacher." />
@@ -96,21 +91,23 @@ export default function TeacherDashboard() {
         aside={
           <>
             <RoleBadge rankLabel={position?.rank_label ?? "Teacher"} />
-            {currentYear && (
-              <span className="os-dash-year">
-                <CalendarOutlined />Academic year <strong>{currentYear.label}</strong>{currentTerm ? ` · ${currentTerm.name}` : ""}
-              </span>
-            )}
             <SchoolLogo />
           </>
         }
       />
-
-      <div className="os-dash-actions" aria-label="Quick actions">
-        <LinkButton to="/t/attendance" size="large" type="primary" icon={<ScheduleOutlined />}>Take attendance</LinkButton>
-        <LinkButton to="/t/marks" size="large" icon={<FileDoneOutlined />}>Enter marks</LinkButton>
-        <LinkButton to="/t/notifications" size="large" icon={<BellOutlined />}>Send notification</LinkButton>
-        <LinkButton to="/t/timetable" size="large" type="link" icon={<ArrowRightOutlined />} iconPlacement="end" className="os-dash-actions__end">My timetable</LinkButton>
+      <ContextStrip
+        label="School year"
+        items={[
+          ...yearTerm,
+          { key: "classes", label: "My classes", value: myClasses.length, meta: formClass ? `Class teacher of ${formClass}` : "Subject teacher" },
+          { key: "role", label: "Role", value: position?.rank_label ?? "Teacher", meta: profile.employee_number },
+        ]}
+      />
+      <div className="os-page__actions os-mb-6" aria-label="Quick actions">
+        <LinkButton to="/t/attendance" type="primary" icon={<ScheduleOutlined />}>{formClasses.length ? "Take attendance" : "Class attendance"}</LinkButton>
+        <LinkButton to="/t/marks" icon={<FileDoneOutlined />}>Enter marks</LinkButton>
+        <LinkButton to="/t/notifications" icon={<BellOutlined />}>Send notification</LinkButton>
+        <LinkButton to="/t/timetable" icon={<TableOutlined />}>My timetable</LinkButton>
       </div>
 
       {isLeader && <LeadershipOverviewPanel />}
@@ -119,8 +116,8 @@ export default function TeacherDashboard() {
         <>
           {isLeader && <p className="os-dash-section-label">Your classes</p>}
           <div className="os-stat-grid">
-            <StatCard label="My classes" value={myClasses.length} loading={false} Icon={BankOutlined} path="/t/classes" />
-            <StatCard label="Students" value={totalStudents} loading={false} Icon={TeamOutlined} path="/t/classes" />
+            <StatCard label="My classes" value={myClasses.length} loading={false} Icon={BankOutlined} path={formClasses.length ? "/t/classes" : "/t/attendance"} />
+            <StatCard label="Students" value={totalStudents} loading={false} Icon={TeamOutlined} path={formClasses.length ? "/t/classes" : "/t/attendance"} />
             <StatCard {...sessionCard} label="Marked today" value={markedCount} Icon={CheckCircleOutlined} path="/t/attendance" />
             <StatCard {...sessionCard} label="Not marked yet" value={pendingCount} Icon={ClockCircleOutlined} path="/t/attendance" />
           </div>

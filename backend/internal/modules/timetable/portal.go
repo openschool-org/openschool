@@ -17,6 +17,7 @@ type TeacherScheduleItem struct {
 	SubjectName   *string    `json:"subject_name"`
 	ClassroomID   *uuid.UUID `json:"classroom_id"`
 	ClassroomName *string    `json:"classroom_name"`
+	ClassroomType *string    `json:"classroom_type"`
 	ClassID       uuid.UUID  `json:"class_id"`
 	ClassName     string     `json:"class_name"`
 	GradeName     string     `json:"grade_name"`
@@ -29,6 +30,30 @@ type portalStore interface {
 	studentCurrentClass(context.Context, uuid.UUID) (uuid.UUID, uuid.UUID, error)
 	publishedForClass(context.Context, uuid.UUID, uuid.UUID) (Timetable, []TimetableEntry, error)
 	listByAcademicYear(context.Context, uuid.UUID) ([]TimetableListItem, error)
+	periodsForClass(context.Context, uuid.UUID) ([]TimetablePeriod, error)
+}
+
+// PublishedSchedule is a class's published timetable with its bell schedule, so the week can be drawn as a grid.
+type PublishedSchedule struct {
+	Timetable Timetable         `json:"timetable"`
+	Entries   []TimetableEntry  `json:"entries"`
+	Periods   []TimetablePeriod `json:"periods"`
+}
+
+// published loads a class's timetable and its periods; a class with no bell schedule gets an empty list.
+func (s *portalService) published(ctx context.Context, classID, yearID uuid.UUID) (PublishedSchedule, error) {
+	timetable, entries, err := s.store.publishedForClass(ctx, classID, yearID)
+	if err != nil {
+		return PublishedSchedule{}, err
+	}
+	periods, err := s.store.periodsForClass(ctx, classID)
+	if err != nil {
+		return PublishedSchedule{}, err
+	}
+	if periods == nil {
+		periods = []TimetablePeriod{}
+	}
+	return PublishedSchedule{Timetable: timetable, Entries: entries, Periods: periods}, nil
 }
 
 type portalService struct{ store portalStore }
@@ -41,12 +66,12 @@ func NewReader(pool *pgxpool.Pool) *Reader {
 	return &Reader{service: &portalService{store: newTimetableRepository(pool)}}
 }
 
-func (r *Reader) GetPublishedForStudent(ctx context.Context, studentID uuid.UUID) (Timetable, []TimetableEntry, error) {
+func (r *Reader) GetPublishedForStudent(ctx context.Context, studentID uuid.UUID) (PublishedSchedule, error) {
 	classID, yearID, err := r.service.store.studentCurrentClass(ctx, studentID)
 	if err != nil {
-		return Timetable{}, nil, err
+		return PublishedSchedule{}, err
 	}
-	return r.service.store.publishedForClass(ctx, classID, yearID)
+	return r.service.published(ctx, classID, yearID)
 }
 
 func (r *Reader) ListByAcademicYear(ctx context.Context, yearID uuid.UUID) ([]TimetableListItem, error) {
@@ -61,20 +86,20 @@ func (s *portalService) teacherSchedule(ctx context.Context, userID, yearID uuid
 	return s.store.teacherSchedule(ctx, teacher.ID, yearID)
 }
 
-func (s *portalService) studentSchedule(ctx context.Context, userID uuid.UUID) (Timetable, []TimetableEntry, error) {
+func (s *portalService) studentSchedule(ctx context.Context, userID uuid.UUID) (PublishedSchedule, error) {
 	studentID, err := s.store.studentByUser(ctx, userID)
 	if err != nil {
-		return Timetable{}, nil, err
+		return PublishedSchedule{}, err
 	}
 	classID, yearID, err := s.store.studentCurrentClass(ctx, studentID)
 	if err != nil {
-		return Timetable{}, nil, err
+		return PublishedSchedule{}, err
 	}
-	return s.store.publishedForClass(ctx, classID, yearID)
+	return s.published(ctx, classID, yearID)
 }
 
-func (s *portalService) classSchedule(ctx context.Context, classID, yearID uuid.UUID) (Timetable, []TimetableEntry, error) {
-	return s.store.publishedForClass(ctx, classID, yearID)
+func (s *portalService) classSchedule(ctx context.Context, classID, yearID uuid.UUID) (PublishedSchedule, error) {
+	return s.published(ctx, classID, yearID)
 }
 
 type portalHandler struct{ service *portalService }
@@ -118,12 +143,12 @@ func (h *portalHandler) studentSchedule(c *gin.Context) {
 	if !ok {
 		return
 	}
-	timetable, entries, err := h.service.studentSchedule(c.Request.Context(), userID)
+	schedule, err := h.service.studentSchedule(c.Request.Context(), userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "no published timetable found for your class"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"timetable": timetable, "entries": entries})
+	c.JSON(http.StatusOK, schedule)
 }
 
 func (h *portalHandler) classSchedule(c *gin.Context) {
@@ -137,10 +162,10 @@ func (h *portalHandler) classSchedule(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "a valid academic_year_id is required"})
 		return
 	}
-	timetable, entries, err := h.service.classSchedule(c.Request.Context(), classID, yearID)
+	schedule, err := h.service.classSchedule(c.Request.Context(), classID, yearID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "no published timetable for this class"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"timetable": timetable, "entries": entries})
+	c.JSON(http.StatusOK, schedule)
 }

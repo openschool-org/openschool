@@ -1,4 +1,5 @@
 import type { Messages } from "@/shared/i18n/messages/en";
+import { taPortal } from "@/shared/i18n/messages/ta.portal";
 
 // Tamil (Sri Lankan usage). Draft translation; have a Tamil-speaking teacher review before release.
 export const ta: Messages = {
@@ -49,11 +50,11 @@ export const ta: Messages = {
   "nav.group.system": "அமைப்பு",
   "nav.dashboard": "முகப்பு",
   "nav.attendance": "வரவு",
-  "nav.marks": "புள்ளிகள்",
+  "nav.marks": "பெறுபேறுகள்",
   "nav.timetable": "நேர அட்டவணை",
   "nav.subjectEnrolment": "பாடப் பதிவு",
   "nav.progressReports": "முன்னேற்ற அறிக்கைகள்",
-  "nav.activities": "செயற்பாடுகள்",
+  "nav.activities": "சாதனைக் கோப்பு",
   "nav.myGuardians": "என் பாதுகாவலர்கள்",
   "nav.notifications": "அறிவிப்புகள்",
   "nav.myChildren": "என் பிள்ளைகள்",
@@ -148,7 +149,7 @@ export const ta: Messages = {
   "severity.severe": "கடுமையானது",
 
   "student.attendanceThisMonth": "இந்த மாத வரவு",
-  "student.latestMarks": "பருவ சராசரி",
+  "student.latestMarks": "அண்மைய பருவ சராசரி",
   "student.todaysClasses": "இன்றைய வகுப்புகள்",
   "student.unreadNotices": "படிக்காத அறிவிப்புகள்",
   "student.details": "மாணவர் விவரங்கள்",
@@ -245,7 +246,7 @@ export const ta: Messages = {
   "parent.loadFailed": "உங்கள் பிள்ளைகளை ஏற்ற முடியவில்லை.",
   "parent.emptyTitle": "இன்னும் பிள்ளைகள் இணைக்கப்படவில்லை",
   "parent.emptyDesc": "பாடசாலை உங்கள் கணக்குடன் எந்த மாணவரையும் இணைக்கவில்லை. இது தவறு எனில் பாடசாலையைத் தொடர்புகொள்ளவும்.",
-  "parent.latestAverage": "சமீபத்திய சராசரி",
+  "parent.latestAverage": "அண்மைய பருவ சராசரி",
   "parent.noData": "இன்னும் தரவு இல்லை",
   "parent.daysAttended": "{total} நாட்களில் {attended}",
   "parent.statChildren": "பிள்ளைகள்",
@@ -264,4 +265,5 @@ export const ta: Messages = {
   "child.tab.guardians": "பாதுகாவலர்கள்",
   "child.section.portfolio": "இணைப்பாடவிதான மற்றும் சாதனைக் கோப்பு விவரங்கள்",
   "child.section.guardians": "இணைக்கப்பட்ட பாதுகாவலர்கள்",
+  ...taPortal,
 };

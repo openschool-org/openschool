@@ -111,6 +111,101 @@ func (q *Queries) ListClassMarksForTermSubject(ctx context.Context, arg ListClas
 	return items, nil
 }
 
+const listStudentMarkHistory = `-- name: ListStudentMarkHistory :many
+SELECT
+    ay.id         AS academic_year_id,
+    ay.label      AS academic_year,
+    ay.is_current AS year_is_current,
+    c.name        AS class_name,
+    g.name        AS grade_name,
+    t.id          AS term_id,
+    t.name        AS term_name,
+    t.start_date  AS term_start,
+    t.end_date    AS term_end,
+    t.is_current  AS term_is_current,
+    tm.id         AS mark_id,
+    tm.marks,
+    tm.max_marks,
+    tm.is_absent,
+    s.id          AS subject_id,
+    s.name        AS subject_name,
+    s.code        AS subject_code,
+    COALESCE(display_name(tp.full_name, tp.name_with_initials), '')::text AS teacher_name
+FROM class_students cs
+INNER JOIN classes c         ON c.id = cs.class_id
+INNER JOIN grades g          ON g.id = c.grade_id
+INNER JOIN academic_years ay ON ay.id = c.academic_year_id
+INNER JOIN terms t           ON t.academic_year_id = ay.id
+LEFT JOIN term_marks tm      ON tm.student_id = cs.student_id AND tm.term_id = t.id
+LEFT JOIN subjects s         ON s.id = tm.subject_id
+LEFT JOIN class_subject_teachers cst ON cst.class_id = c.id AND cst.subject_id = tm.subject_id
+LEFT JOIN teacher_profiles tp ON tp.id = cst.teacher_id
+WHERE cs.student_id = $1
+ORDER BY ay.start_date DESC, t.sort_order ASC, t.start_date ASC, s.code ASC
+`
+
+type ListStudentMarkHistoryRow struct {
+	AcademicYearID uuid.UUID      `json:"academic_year_id"`
+	AcademicYear   string         `json:"academic_year"`
+	YearIsCurrent  bool           `json:"year_is_current"`
+	ClassName      string         `json:"class_name"`
+	GradeName      string         `json:"grade_name"`
+	TermID         uuid.UUID      `json:"term_id"`
+	TermName       string         `json:"term_name"`
+	TermStart      pgtype.Date    `json:"term_start"`
+	TermEnd        pgtype.Date    `json:"term_end"`
+	TermIsCurrent  bool           `json:"term_is_current"`
+	MarkID         pgtype.UUID    `json:"mark_id"`
+	Marks          pgtype.Numeric `json:"marks"`
+	MaxMarks       pgtype.Numeric `json:"max_marks"`
+	IsAbsent       pgtype.Bool    `json:"is_absent"`
+	SubjectID      pgtype.UUID    `json:"subject_id"`
+	SubjectName    pgtype.Text    `json:"subject_name"`
+	SubjectCode    pgtype.Text    `json:"subject_code"`
+	TeacherName    string         `json:"teacher_name"`
+}
+
+// Every term of every year the student had a class, with each mark in it.
+// Mark columns are NULL for a term with no marks yet, so the term still shows.
+func (q *Queries) ListStudentMarkHistory(ctx context.Context, studentID uuid.UUID) ([]ListStudentMarkHistoryRow, error) {
+	rows, err := q.db.Query(ctx, listStudentMarkHistory, studentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListStudentMarkHistoryRow{}
+	for rows.Next() {
+		var i ListStudentMarkHistoryRow
+		if err := rows.Scan(
+			&i.AcademicYearID,
+			&i.AcademicYear,
+			&i.YearIsCurrent,
+			&i.ClassName,
+			&i.GradeName,
+			&i.TermID,
+			&i.TermName,
+			&i.TermStart,
+			&i.TermEnd,
+			&i.TermIsCurrent,
+			&i.MarkID,
+			&i.Marks,
+			&i.MaxMarks,
+			&i.IsAbsent,
+			&i.SubjectID,
+			&i.SubjectName,
+			&i.SubjectCode,
+			&i.TeacherName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listStudentMarksByTerm = `-- name: ListStudentMarksByTerm :many
 SELECT
     tm.id,
@@ -126,9 +221,9 @@ FROM term_marks tm
 INNER JOIN subjects s ON s.id = tm.subject_id
 INNER JOIN terms t ON t.id = tm.term_id
 LEFT JOIN class_students cs
-    ON cs.student_id = tm.student_id
+    ON cs.student_id = tm.student_id AND cs.academic_year_id = t.academic_year_id
 LEFT JOIN classes c
-    ON c.id = cs.class_id AND c.academic_year_id = t.academic_year_id
+    ON c.id = cs.class_id
 LEFT JOIN class_subject_teachers cst
     ON cst.class_id = c.id AND cst.subject_id = tm.subject_id
 LEFT JOIN teacher_profiles tp ON tp.id = cst.teacher_id
@@ -156,6 +251,7 @@ type ListStudentMarksByTermRow struct {
 
 // teacher_id/teacher_name are NULL if the student's current-year class has
 // no assigned teacher for that subject (or the student has no current class)
+// The class from the term's own year, so other years' classes add no extra rows.
 func (q *Queries) ListStudentMarksByTerm(ctx context.Context, arg ListStudentMarksByTermParams) ([]ListStudentMarksByTermRow, error) {
 	rows, err := q.db.Query(ctx, listStudentMarksByTerm, arg.StudentID, arg.TermID)
 	if err != nil {

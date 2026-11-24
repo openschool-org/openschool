@@ -14,6 +14,13 @@
   }
 
   &__header-left { flex: 1; min-width: 0; }
+  &__actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+  &__back {
+    display: inline-flex; align-items: center; gap: 0.375rem; margin: 0 0 0.5rem; padding: 0;
+    border: 0; background: none; cursor: pointer; font: inherit; font-size: 0.875rem;
+    color: var(--os-accent); text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
 
   &__title {
     font-size: 1.75rem;
@@ -1265,19 +1272,20 @@
 .os-agent-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; padding: 1rem 1.5rem; border-top: 1px solid var(--os-border-subtle); @media (max-width: 640px) { flex-direction: column; gap: 0.75rem; } }
 .os-capitalize-first::first-letter { text-transform: uppercase; }
 
-// About OpenSchool: brand-coloured card so product info reads apart from the school's settings.
+// About OpenSchool: light brand card so product info reads apart from the school's settings.
 .os-about-card {
   margin-bottom: 1.5rem;
   padding: 1.5rem;
   border-radius: $os-radius;
-  background: var(--os-accent-deeper);
-  color: $os-text-on-color;
-  &__title { margin: 0; font-size: 1.125rem; font-weight: 500; color: $os-text-on-color; }
-  &__tagline { margin: 0.25rem 0 1.25rem; font-size: 0.875rem; color: color-mix(in srgb, $os-text-on-color 72%, transparent); }
+  border: 1px solid var(--os-accent-border);
+  background: var(--os-accent-light);
+  color: var(--os-accent-dark);
+  &__title { margin: 0; font-size: 1.125rem; font-weight: 500; color: var(--os-accent-dark); }
+  &__tagline { margin: 0.25rem 0 1.25rem; font-size: 0.875rem; color: var(--os-text-secondary); }
   &__facts {
     margin: 0;
-    > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.625rem 0; border-top: 1px solid color-mix(in srgb, $os-text-on-color 16%, transparent); }
-    dt { font-size: 0.8125rem; color: color-mix(in srgb, $os-text-on-color 68%, transparent); }
+    > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.625rem 0; border-top: 1px solid var(--os-accent-border); }
+    dt { font-size: 0.8125rem; color: var(--os-text-tertiary); }
     dd { margin: 0; font-size: 0.875rem; font-weight: 500; text-align: right; }
   }
 }
@@ -1285,3 +1293,5 @@
 // Multi-select chips: dark-blue text and remove icon on the light theme tint (colours set in antdTheme.ts).
 .ant-select-multiple .ant-select-selection-item { color: var(--os-accent-dark); font-weight: 500; }
 .ant-select-multiple .ant-select-selection-item-remove { color: var(--os-accent-dark); &:hover { color: var(--os-accent); } }
+.os-stat-grid--three { grid-template-columns: repeat(3, 1fr); @media (max-width: 640px) { grid-template-columns: 1fr; } }
+.os-stat-grid--five { grid-template-columns: repeat(5, minmax(0, 1fr)); @media (max-width: 1100px) { grid-template-columns: repeat(3, minmax(0, 1fr)); } @media (max-width: 640px) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

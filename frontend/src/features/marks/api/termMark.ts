@@ -12,6 +12,38 @@ export interface ClassMarkRow {
   is_absent: boolean | null;
 }
 
+// Matches academics.MarkHistoryMark; NUMERIC columns can arrive as numbers or strings.
+export interface MarkHistoryMark {
+  id: string;
+  subject_id: string;
+  subject_name: string;
+  subject_code: string;
+  teacher_name: string;
+  marks: number | string | null;
+  max_marks: number | string | null;
+  is_absent: boolean;
+}
+
+// Matches academics.MarkHistoryTerm
+export interface MarkHistoryTerm {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_current: boolean;
+  marks: MarkHistoryMark[];
+}
+
+// Matches academics.MarkHistoryYear, newest year first.
+export interface MarkHistoryYear {
+  academic_year_id: string;
+  academic_year: string;
+  is_current: boolean;
+  class_name: string;
+  grade_name: string;
+  terms: MarkHistoryTerm[];
+}
+
 // Matches db.ListStudentMarksByTermRow
 export interface StudentMarkRow {
   id: string;

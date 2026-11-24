@@ -2,11 +2,9 @@ package timetable
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	db "github.com/openschool-org/openschool/db/sqlc"
@@ -124,38 +122,12 @@ func (r *timetableRepository) teachersByIDs(ctx context.Context, ids []uuid.UUID
 	return result, nil
 }
 
-func (r *timetableRepository) authorizedReviewers(ctx context.Context, gradeID, yearID uuid.UUID) ([]uuid.UUID, error) {
-	return gradeReviewers(ctx, r.queries, yearID, gradeID)
+func (r *timetableRepository) classLeaders(ctx context.Context, classID uuid.UUID) ([]uuid.UUID, error) {
+	return r.queries.ListLeadersOfClass(ctx, classID)
 }
 
-// gradeReviewers returns the grade TIC and the section head for a grade, skipping either when unset.
-func gradeReviewers(ctx context.Context, q *db.Queries, yearID, gradeID uuid.UUID) ([]uuid.UUID, error) {
-	result := make([]uuid.UUID, 0, 2)
-	tic, err := q.GetGradeTICForGrade(ctx, db.GetGradeTICForGradeParams{AcademicYearID: yearID, GradeID: gradeID})
-	if err == nil {
-		result = append(result, tic)
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return nil, err
-	}
-	section, err := q.GetGradeSectionForGrade(ctx, db.GetGradeSectionForGradeParams{AcademicYearID: yearID, GradeID: gradeID})
-	if err == nil && section.SectionHeadTeacherID.Valid {
-		result = append(result, uuid.UUID(section.SectionHeadTeacherID.Bytes))
-	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return nil, err
-	}
-	return result, nil
-}
-
-func (r *timetableRepository) gradeIDsHeadedByTeacher(ctx context.Context, teacherID, yearID uuid.UUID) ([]uuid.UUID, error) {
-	return r.queries.ListGradeIDsHeadedByTeacher(ctx, db.ListGradeIDsHeadedByTeacherParams{TeacherID: teacherID, AcademicYearID: yearID})
-}
-
-func (r *timetableRepository) gradeIDsForSectionHead(ctx context.Context, teacherID, yearID uuid.UUID) ([]uuid.UUID, error) {
-	return r.queries.ListGradeIDsForSectionHeadTeacher(ctx, db.ListGradeIDsForSectionHeadTeacherParams{SectionHeadTeacherID: pgtype.UUID{Bytes: teacherID, Valid: true}, AcademicYearID: yearID})
-}
-
-func (r *timetableRepository) listReviewQueue(ctx context.Context, yearID uuid.UUID, gradeIDs []uuid.UUID) ([]reviewQueueItem, error) {
-	rows, err := r.queries.ListUnderReviewTimetablesForGrades(ctx, db.ListUnderReviewTimetablesForGradesParams{AcademicYearID: yearID, Column2: gradeIDs})
+func (r *timetableRepository) listReviewQueue(ctx context.Context, yearID, teacherID uuid.UUID) ([]reviewQueueItem, error) {
+	rows, err := r.queries.ListUnderReviewTimetablesForLeader(ctx, db.ListUnderReviewTimetablesForLeaderParams{AcademicYearID: yearID, TeacherID: teacherID})
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +219,7 @@ func (r *timetableRepository) teacherSchedule(ctx context.Context, teacherID, ye
 	for i, row := range rows {
 		result[i] = TeacherScheduleItem{
 			DayOfWeek: row.DayOfWeek, PeriodNumber: row.PeriodNumber, SubjectID: entryUUID(row.SubjectID), SubjectName: entryText(row.SubjectName),
-			ClassroomID: entryUUID(row.ClassroomID), ClassroomName: entryText(row.ClassroomName), ClassID: row.ClassID, ClassName: row.ClassName, GradeName: row.GradeName,
+			ClassroomID: entryUUID(row.ClassroomID), ClassroomName: entryText(row.ClassroomName), ClassroomType: entryText(row.ClassroomType), ClassID: row.ClassID, ClassName: row.ClassName, GradeName: row.GradeName,
 		}
 	}
 	return result, nil
@@ -312,4 +284,13 @@ func mapTimetableAcademicYearRow(row db.ListTimetablesByAcademicYearRow) Timetab
 		ReviewComments: entryText(row.ReviewComments), PublishedAt: entryTime(row.PublishedAt), PublishedBy: entryUUID(row.PublishedBy),
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
+}
+
+func (r *timetableRepository) periodsForClass(ctx context.Context, classID uuid.UUID) ([]TimetablePeriod, error) {
+	rows, err := r.queries.ListTimetablePeriodsForClass(ctx, classID)
+	out := make([]TimetablePeriod, len(rows))
+	for i, row := range rows {
+		out[i] = mapTimetablePeriod(row)
+	}
+	return out, err
 }

@@ -48,8 +48,8 @@ func (r *Repository) listSessionsByClass(ctx context.Context, classID uuid.UUID)
 	}
 	return out, nil
 }
-func (r *Repository) listSessionsByDate(ctx context.Context, date time.Time, gradeIDs []uuid.UUID) ([]DailySession, error) {
-	rows, err := r.queries.ListAttendanceSessionsByDate(ctx, db.ListAttendanceSessionsByDateParams{Date: dateValue(date), GradeIds: gradeIDs})
+func (r *Repository) listSessionsByDate(ctx context.Context, date time.Time, classIDs []uuid.UUID) ([]DailySession, error) {
+	rows, err := r.queries.ListAttendanceSessionsByDate(ctx, db.ListAttendanceSessionsByDateParams{Date: dateValue(date), ClassIds: classIDs})
 	if err != nil {
 		return nil, err
 	}
@@ -349,4 +349,8 @@ func (r *Repository) markUnmarkedAbsent(ctx context.Context, date time.Time, kin
 
 func (r *Repository) enrolledIn(ctx context.Context, classID uuid.UUID, studentIDs []uuid.UUID) ([]uuid.UUID, error) {
 	return r.queries.ListClassStudentsAmong(ctx, db.ListClassStudentsAmongParams{ClassID: classID, StudentIds: studentIDs})
+}
+
+func (r *Repository) canTakeAttendance(ctx context.Context, classID, teacherID uuid.UUID, date time.Time) (bool, error) {
+	return r.queries.CanTeacherTakeClassAttendance(ctx, db.CanTeacherTakeClassAttendanceParams{ClassID: classID, TeacherID: teacherID, OnDate: pgtype.Date{Time: date, Valid: true}})
 }

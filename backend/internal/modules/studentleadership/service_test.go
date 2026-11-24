@@ -23,6 +23,7 @@ type studentLeadershipStore struct {
 	removedSocietyID uuid.UUID
 	removedMemberID  uuid.UUID
 	removeCount      int64
+	leftReason       string
 	prefect          Prefect
 	prefectYearID    uuid.UUID
 	prefectStudentID uuid.UUID
@@ -42,8 +43,8 @@ func (s *studentLeadershipStore) upsertSocietyMember(_ context.Context, societyI
 	return s.member, nil
 }
 
-func (s *studentLeadershipStore) removeSocietyMember(_ context.Context, societyID, memberID uuid.UUID) (int64, error) {
-	s.removedSocietyID, s.removedMemberID = societyID, memberID
+func (s *studentLeadershipStore) deactivateSocietyMember(_ context.Context, societyID, memberID uuid.UUID, reason string) (int64, error) {
+	s.removedSocietyID, s.removedMemberID, s.leftReason = societyID, memberID, reason
 	return s.removeCount, nil
 }
 
@@ -107,13 +108,24 @@ func TestMissingSocietyMapsToDomainError(t *testing.T) {
 	}
 }
 
-func TestRemoveMemberKeepsDeleteScopedToSociety(t *testing.T) {
+func TestDeactivateMemberIsScopedToSociety(t *testing.T) {
 	societyID, memberID := uuid.New(), uuid.New()
 	store := &studentLeadershipStore{society: Society{ID: societyID}, removeCount: 1}
-	if err := NewService(store).RemoveSocietyMember(context.Background(), Actor{Role: authz.RoleAdmin}, societyID, memberID); err != nil {
+	if err := NewService(store).DeactivateSocietyMember(context.Background(), Actor{Role: authz.RoleAdmin}, societyID, memberID, "  Left the school  "); err != nil {
 		t.Fatal(err)
 	}
 	if store.removedSocietyID != societyID || store.removedMemberID != memberID {
-		t.Fatalf("delete was not scoped correctly: society=%s member=%s", store.removedSocietyID, store.removedMemberID)
+		t.Fatalf("deactivate was not scoped correctly: society=%s member=%s", store.removedSocietyID, store.removedMemberID)
+	}
+	if store.leftReason != "Left the school" {
+		t.Fatalf("reason = %q, want it trimmed", store.leftReason)
+	}
+}
+
+func TestDeactivateMemberAlreadyInactive(t *testing.T) {
+	store := &studentLeadershipStore{society: Society{ID: uuid.New()}, removeCount: 0}
+	err := NewService(store).DeactivateSocietyMember(context.Background(), Actor{Role: authz.RoleAdmin}, uuid.New(), uuid.New(), "")
+	if !errors.Is(err, ErrSocietyMemberNotFound) {
+		t.Fatalf("error=%v, want ErrSocietyMemberNotFound", err)
 	}
 }

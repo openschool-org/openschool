@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router";
-import { Tag } from "antd";
-import { SkeletonText } from "@/shared/ui/Skeleton";
+import Pill from "@/shared/ui/Pill";
+import LoadingSpinner from "@/shared/ui/LoadingSpinner";
+import SectionCard from "@/shared/ui/SectionCard";
 import { useCurrentAcademicYear } from "@/features/school/queries/useAcademicYears";
 import { useTimetablesForLeadership } from "@/features/timetable/queries/useTimetables";
-import { TIMETABLE_STATUS_TAG } from "@/shared/lib/constants/tags";
+import { TIMETABLE_STATUS_TAG, TIMETABLE_STATUS_TONE } from "@/shared/lib/constants/tags";
 import DataGrid from "@/shared/ui/DataGrid";
-import { formatDateTime } from "@/shared/lib/date";
+import { formatDayMonthYear } from "@/shared/lib/date";
 import EmptyState from "@/shared/ui/EmptyState";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import PageHeader from "@/shared/ui/PageHeader";
@@ -20,12 +21,13 @@ export default function TeacherTimetables() {
 
   return (
     <div className="os-page">
-      <PageHeader title="All timetables" subtitle={<>Every class timetable for {currentYear?.label ?? "the current academic year"}.</>} />
+      <PageHeader title="All timetables" subtitle={`Every class timetable for ${currentYear?.label ?? "this year"}.`} />
 
-      <div className="os-section">
-        {isLoading ? (
-          <div className="os-p-6"><SkeletonText width="40%" /></div>
-        ) : isError ? (
+      {isLoading ? (
+        <LoadingSpinner />
+      ) : (
+      <SectionCard title="Class timetables" meta={<span className="os-text-sm os-c-tertiary">{timetables?.length ?? 0} timetables</span>} flush>
+        {isError ? (
           <ErrorMessage message="Could not load timetables." onRetry={refetch} />
         ) : !timetables?.length ? (
           <EmptyState title="No timetables yet" description="No class timetables have been created for this academic year." />
@@ -39,12 +41,13 @@ export default function TeacherTimetables() {
               { key: "grade", header: "Grade", render: (t) => t.grade_name },
               { key: "class", header: "Class", render: (t) => t.class_name },
               { key: "version", header: "Version", render: (t) => `v${t.version}` },
-              { key: "status", header: "Status", render: (t) => <Tag color={statusTag(t.status)?.color} variant="filled">{statusTag(t.status)?.label ?? t.status}</Tag> },
-              { key: "updated", header: "Updated", render: (t) => formatDateTime(t.updated_at) },
+              { key: "status", header: "Status", render: (t) => <Pill tone={TIMETABLE_STATUS_TONE[t.status as keyof typeof TIMETABLE_STATUS_TONE] ?? "neutral"}>{statusTag(t.status)?.label ?? t.status}</Pill> },
+              { key: "updated", header: "Updated", render: (t) => formatDayMonthYear(t.updated_at) },
             ]}
           />
         )}
-      </div>
+      </SectionCard>
+      )}
     </div>
   );
 }

@@ -138,39 +138,6 @@ func (q *Queries) GetGradeSectionForGrade(ctx context.Context, arg GetGradeSecti
 	return i, err
 }
 
-const listGradeIDsForSectionHeadTeacher = `-- name: ListGradeIDsForSectionHeadTeacher :many
-SELECT gsg.grade_id
-FROM grade_sections gs
-INNER JOIN grade_section_grades gsg ON gsg.grade_section_id = gs.id
-WHERE gs.section_head_teacher_id = $1 AND gs.academic_year_id = $2
-`
-
-type ListGradeIDsForSectionHeadTeacherParams struct {
-	SectionHeadTeacherID pgtype.UUID `json:"section_head_teacher_id"`
-	AcademicYearID       uuid.UUID   `json:"academic_year_id"`
-}
-
-// grades in sections this teacher is the group-level head of, for a given year
-func (q *Queries) ListGradeIDsForSectionHeadTeacher(ctx context.Context, arg ListGradeIDsForSectionHeadTeacherParams) ([]uuid.UUID, error) {
-	rows, err := q.db.Query(ctx, listGradeIDsForSectionHeadTeacher, arg.SectionHeadTeacherID, arg.AcademicYearID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []uuid.UUID{}
-	for rows.Next() {
-		var grade_id uuid.UUID
-		if err := rows.Scan(&grade_id); err != nil {
-			return nil, err
-		}
-		items = append(items, grade_id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listGradeSectionsByYear = `-- name: ListGradeSectionsByYear :many
 SELECT
     gs.id, gs.academic_year_id, gs.name, gs.interval_start_time, gs.interval_end_time, gs.section_head_teacher_id, gs.sort_order, gs.created_at,

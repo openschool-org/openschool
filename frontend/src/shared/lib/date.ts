@@ -87,6 +87,16 @@ export function formatMonth(input: DateInput): string {
   return d ? d.toLocaleDateString(locale, { month: "short", year: "numeric" }) : "-";
 }
 
+export function formatMonthLong(input: DateInput): string {
+  const d = toDate(input);
+  return d ? d.toLocaleDateString(locale, { month: "long", year: "numeric" }) : "-";
+}
+
+export function formatWeekday(input: DateInput): string {
+  const d = toDate(input);
+  return d ? d.toLocaleDateString(locale, { weekday: "long" }) : "-";
+}
+
 export function formatLongDate(input: DateInput): string {
   const d = toDate(input);
   return d ? d.toLocaleDateString(locale, { weekday: "long", year: "numeric", month: "long", day: "numeric" }) : "-";

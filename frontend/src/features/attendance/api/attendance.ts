@@ -7,6 +7,8 @@ export interface AttendanceSession {
   taken_by: string;
   // name with initials of whoever opened the session; only on the single-session response
   taken_by_name?: string;
+  // only on the single-session response: false means the caller may view but not mark
+  can_mark?: boolean;
   date: string;
   created_at: string | null;
   // only on a class's session list

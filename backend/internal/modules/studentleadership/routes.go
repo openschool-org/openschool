@@ -49,7 +49,7 @@ func RegisterRoutes(admin, teacherOrAdmin, studentAccess *gin.RouterGroup, servi
 	teacherOrAdmin.GET("/societies/years", h.listSocietyYears)
 	teacherOrAdmin.GET("/societies/:id/members", h.listSocietyMembers)
 	teacherOrAdmin.PUT("/societies/:id/members", h.assignSocietyMember)
-	teacherOrAdmin.DELETE("/societies/:id/members/:memberId", h.removeSocietyMember)
+	teacherOrAdmin.POST("/societies/:id/members/:memberId/deactivate", h.deactivateSocietyMember)
 	studentAccess.GET("/students/:id/society-memberships", h.listStudentSocieties)
 }
 
@@ -228,7 +228,7 @@ func (h *handler) assignSocietyMember(c *gin.Context) {
 	c.JSON(http.StatusOK, member)
 }
 
-func (h *handler) removeSocietyMember(c *gin.Context) {
+func (h *handler) deactivateSocietyMember(c *gin.Context) {
 	societyID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid society id"})
@@ -244,11 +244,16 @@ func (h *handler) removeSocietyMember(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid caller identity"})
 		return
 	}
-	if err := h.service.RemoveSocietyMember(c.Request.Context(), actor, societyID, memberID); err != nil {
+	var req DeactivateSocietyMemberRequest
+	if err := httpx.BindStrict(c, &req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.service.DeactivateSocietyMember(c.Request.Context(), actor, societyID, memberID, req.Reason); err != nil {
 		societyError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "society member removed"})
+	c.JSON(http.StatusOK, gin.H{"message": "society member deactivated"})
 }
 
 func (h *handler) listStudentSocieties(c *gin.Context) {

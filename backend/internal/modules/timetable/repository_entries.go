@@ -31,7 +31,7 @@ func (r *timetableEntryRepository) listEntries(ctx context.Context, timetableID 
 			SubjectID: entryUUID(row.SubjectID), TeacherID: entryUUID(row.TeacherID), ClassroomID: entryUUID(row.ClassroomID),
 			CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time, SubjectName: entryText(row.SubjectName),
 			TeacherName: entryText(pgtype.Text{String: row.TeacherName, Valid: row.TeacherName != ""}), ClassroomName: entryText(row.ClassroomName),
-			OptionBlockID: entryUUID(row.OptionBlockID), OptionBlockName: entryText(row.OptionBlockName),
+			ClassroomType: entryText(row.ClassroomType), OptionBlockID: entryUUID(row.OptionBlockID), OptionBlockName: entryText(row.OptionBlockName),
 		}
 	}
 	return result, nil
@@ -105,8 +105,8 @@ func (r *timetableEntryRepository) entrySubjectCounts(ctx context.Context, timet
 	}
 	return result, nil
 }
-func (r *timetableEntryRepository) authorizedReviewers(ctx context.Context, yearID, gradeID uuid.UUID) ([]uuid.UUID, error) {
-	return gradeReviewers(ctx, r.queries, yearID, gradeID)
+func (r *timetableEntryRepository) classLeaders(ctx context.Context, classID uuid.UUID) ([]uuid.UUID, error) {
+	return r.queries.ListLeadersOfClass(ctx, classID)
 }
 
 func (r *timetableEntryRepository) blockTeachers(ctx context.Context, classID, blockID uuid.UUID) ([]blockTeacher, error) {

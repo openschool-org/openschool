@@ -1,4 +1,6 @@
 // Source strings for the student and parent portals and the shared shell. Keys are grouped by screen.
+import { enPortal } from "@/shared/i18n/messages/en.portal";
+
 export const en = {
   "common.loading": "Loading…",
   "common.error": "Error",
@@ -47,14 +49,14 @@ export const en = {
   "nav.group.system": "System",
   "nav.dashboard": "Dashboard",
   "nav.attendance": "Attendance",
-  "nav.marks": "Marks",
+  "nav.marks": "Results",
   "nav.timetable": "Timetable",
-  "nav.subjectEnrolment": "Subject Enrolment",
-  "nav.progressReports": "Progress Reports",
-  "nav.activities": "Activities",
-  "nav.myGuardians": "My Guardians",
+  "nav.subjectEnrolment": "Subject enrolment",
+  "nav.progressReports": "Progress reports",
+  "nav.activities": "Portfolio",
+  "nav.myGuardians": "My guardians",
   "nav.notifications": "Notifications",
-  "nav.myChildren": "My Children",
+  "nav.myChildren": "My children",
 
   "bell.title": "Notifications",
   "bell.unreadLabel": "Notifications, {count} unread",
@@ -146,7 +148,7 @@ export const en = {
   "severity.severe": "Severe",
 
   "student.attendanceThisMonth": "Attendance this month",
-  "student.latestMarks": "Term average",
+  "student.latestMarks": "Latest term average",
   "student.todaysClasses": "Today's classes",
   "student.unreadNotices": "Unread notices",
   "student.details": "Student details",
@@ -165,7 +167,7 @@ export const en = {
   "attendance.emptyTitle": "No attendance recorded yet",
   "attendance.emptyDesc": "Records will show up here once a class session is marked.",
 
-  "marks.termMarks": "Term marks",
+  "marks.termMarks": "Results",
   "marks.term": "Term",
   "marks.chooseTerm": "Choose a term…",
   "marks.pickTitle": "Pick a term",
@@ -192,7 +194,7 @@ export const en = {
   "progress.emptyStudent": "Your reports will show up here once your teachers write them.",
   "progress.emptyChild": "Reports will show up here once teachers post them.",
 
-  "portfolio.title": "Student portfolio",
+  "portfolio.title": "Portfolio",
   "portfolio.prefects": "Prefect appointments",
   "portfolio.prefectsEmpty": "No prefect appointments recorded.",
   "portfolio.societies": "Societies and clubs",
@@ -204,7 +206,7 @@ export const en = {
   "portfolio.discipline": "Disciplinary records",
   "portfolio.disciplineEmpty": "No disciplinary records.",
 
-  "notif.title": "Notification centre",
+  "notif.title": "Notifications",
   "notif.subtitle": "Announcements and updates sent to you.",
   "notif.tabUnread": "Unread ({count})",
   "notif.tabRead": "Read ({count})",
@@ -243,7 +245,7 @@ export const en = {
   "parent.loadFailed": "Could not load your children.",
   "parent.emptyTitle": "No children linked yet",
   "parent.emptyDesc": "The school has not linked any students to your account. Contact the school if this looks wrong.",
-  "parent.latestAverage": "Latest average",
+  "parent.latestAverage": "Latest term average",
   "parent.noData": "No data yet",
   "parent.daysAttended": "{attended} of {total} days",
   "parent.statChildren": "Children",
@@ -258,10 +260,11 @@ export const en = {
   "child.sections": "Child sections",
   "child.tab.enrolments": "Enrolments",
   "child.tab.progress": "Progress reports",
-  "child.tab.portfolio": "Portfolio details",
+  "child.tab.portfolio": "Portfolio",
   "child.tab.guardians": "Guardians",
   "child.section.portfolio": "Co-curricular and portfolio details",
   "child.section.guardians": "Linked guardians",
+  ...enPortal,
 } as const;
 
 export type MessageKey = keyof typeof en;

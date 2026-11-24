@@ -1,4 +1,5 @@
 import api from "@/shared/api/client";
+import type { TimetablePeriod } from "@/features/timetable/api/gradeSection";
 
 export type TimetableStatus = "draft" | "under_review" | "approved" | "published" | "rejected" | "archived";
 
@@ -37,6 +38,8 @@ export interface TimetableEntry {
   teacher_name: string | null;
   classroom_id: string | null;
   classroom_name: string | null;
+  // "regular", "lab" or "eca"; a lab period is a practical.
+  classroom_type?: string | null;
   // An option block period: the class splits by subject, so there is no single subject or teacher.
   option_block_id?: string | null;
   option_block_name?: string | null;
@@ -80,6 +83,8 @@ export interface TeacherScheduleEntry {
   subject_name: string | null;
   classroom_id: string | null;
   classroom_name: string | null;
+  // "regular", "lab" or "eca"; a lab period is a practical.
+  classroom_type?: string | null;
   class_id: string;
   class_name: string;
   grade_name: string;
@@ -88,6 +93,8 @@ export interface TeacherScheduleEntry {
 export interface PublishedTimetableResponse {
   timetable: Timetable;
   entries: TimetableEntry[];
+  // The class's bell schedule; older cached copies may not have it.
+  periods?: TimetablePeriod[];
 }
 
 export const timetableApi = {

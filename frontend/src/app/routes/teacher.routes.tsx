@@ -9,6 +9,7 @@ const TeacherClasses = page(() => import("@/features/teachers/pages/self/Teacher
 const TeacherProfile = page(() => import("@/features/teachers/pages/self/TeacherProfile"));
 const TeacherAttendance = page(() => import("@/features/attendance/pages/teacher/TeacherAttendance"));
 const TeacherMyAttendance = page(() => import("@/features/attendance/pages/teacher/TeacherMyAttendance"));
+const SectionAttendance = page(() => import("@/features/attendance/pages/admin/Attendance"));
 const AttendanceMark = page(() => import("@/features/attendance/pages/admin/AttendanceMark"));
 const TeacherTimetable = page(() => import("@/features/timetable/pages/teacher/TeacherTimetable"));
 const TimetableReview = page(() => import("@/features/timetable/pages/teacher/TimetableReview"));
@@ -29,6 +30,7 @@ export function teacherRoutes() {
       <Route path="/t/classes" element={<TeacherClasses />} />
       <Route path="/t/attendance" element={<TeacherAttendance />} />
       <Route path="/t/my-attendance" element={<TeacherMyAttendance />} />
+      <Route path="/t/section-attendance" element={<SectionAttendance />} />
       <Route path="/t/leave" element={<MyLeave />} />
       <Route path="/t/leave-approvals" element={<LeaveRegister />} />
       <Route path="/t/timetable" element={<TeacherTimetable />} />

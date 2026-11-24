@@ -12,6 +12,35 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const canTeacherTakeClassAttendance = `-- name: CanTeacherTakeClassAttendance :one
+SELECT EXISTS (
+    SELECT 1 FROM classes c
+    WHERE c.id = $1 AND c.form_teacher_id = $2::uuid
+    UNION ALL
+    SELECT 1 FROM classes c
+    INNER JOIN teacher_leave_requests l ON l.teacher_id = c.form_teacher_id
+    WHERE c.id = $1
+      AND l.acting_teacher_id = $2::uuid
+      AND l.status = 'approved'
+      AND $3::date BETWEEN l.start_date AND l.end_date
+) AS allowed
+`
+
+type CanTeacherTakeClassAttendanceParams struct {
+	ClassID   uuid.UUID   `json:"class_id"`
+	TeacherID uuid.UUID   `json:"teacher_id"`
+	OnDate    pgtype.Date `json:"on_date"`
+}
+
+// Only the class teacher takes a class's attendance, or the acting teacher named
+// on the class teacher's approved leave for that date. Subject teachers only view.
+func (q *Queries) CanTeacherTakeClassAttendance(ctx context.Context, arg CanTeacherTakeClassAttendanceParams) (bool, error) {
+	row := q.db.QueryRow(ctx, canTeacherTakeClassAttendance, arg.ClassID, arg.TeacherID, arg.OnDate)
+	var allowed bool
+	err := row.Scan(&allowed)
+	return allowed, err
+}
+
 const clearAttendanceRecords = `-- name: ClearAttendanceRecords :exec
 DELETE FROM attendance_records
 WHERE session_id = $1 AND student_id = ANY($2::uuid[])
@@ -445,13 +474,13 @@ INNER JOIN grades  g ON g.id = c.grade_id
 INNER JOIN users   u ON u.id = ats.taken_by
 LEFT JOIN teacher_profiles tp ON tp.user_id = ats.taken_by
 WHERE ats.date = $1
-  AND ($2::uuid[] IS NULL OR g.id = ANY($2::uuid[]))
+  AND ($2::uuid[] IS NULL OR c.id = ANY($2::uuid[]))
 ORDER BY g.sort_order ASC, c.name ASC
 `
 
 type ListAttendanceSessionsByDateParams struct {
 	Date     pgtype.Date `json:"date"`
-	GradeIds []uuid.UUID `json:"grade_ids"`
+	ClassIds []uuid.UUID `json:"class_ids"`
 }
 
 type ListAttendanceSessionsByDateRow struct {
@@ -470,11 +499,11 @@ type ListAttendanceSessionsByDateRow struct {
 // the cross-class daily dashboard: every session on one date, with the class,
 // grade and teacher resolved, plus enough counts to show marked/pending and
 // how many of the enrolled students have a record so far.
-// grade_ids narrows to the caller's authorized grades (whole-school callers
+// class_ids narrows to the classes the caller leads (whole-school callers
 // pass NULL); filtered at the SQL WHERE clause level, not in application
-// code, so a scoped caller can never receive rows outside their grades.
+// code, so a scoped caller can never receive rows outside their classes.
 func (q *Queries) ListAttendanceSessionsByDate(ctx context.Context, arg ListAttendanceSessionsByDateParams) ([]ListAttendanceSessionsByDateRow, error) {
-	rows, err := q.db.Query(ctx, listAttendanceSessionsByDate, arg.Date, arg.GradeIds)
+	rows, err := q.db.Query(ctx, listAttendanceSessionsByDate, arg.Date, arg.ClassIds)
 	if err != nil {
 		return nil, err
 	}

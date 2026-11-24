@@ -1,17 +1,21 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Input, Tag } from "antd";
+import { Alert } from "antd";
 import { useQueries } from "@tanstack/react-query";
-import { ClockCircleOutlined, SearchOutlined } from "@ant-design/icons";
+import { CalendarOutlined, CheckCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import { useMyClasses } from "@/features/teachers/queries/useTeachers";
 import { classSessionsOptions } from "@/features/attendance/queries/useAttendance";
 import StartSessionButton from "@/features/attendance/components/StartSessionButton";
 import SessionCountCell from "@/features/attendance/components/SessionCountCell";
+import SessionStateBadge from "@/features/attendance/components/SessionStateBadge";
+import StatCard from "@/features/reports/components/dashboard/StatCard";
 import DataGrid from "@/shared/ui/DataGrid";
 import EmptyState from "@/shared/ui/EmptyState";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
-import { todayISODate } from "@/shared/lib/date";
+import { formatDayMonthYear, formatLongDate, todayISODate } from "@/shared/lib/date";
+import FilterBar from "@/shared/ui/FilterBar";
+import SectionCard from "@/shared/ui/SectionCard";
 import { classLabel } from "@/shared/lib/classLabel";
 import PageHeader from "@/shared/ui/PageHeader";
 
@@ -25,7 +29,9 @@ export default function TeacherAttendance() {
   const today = todayISODate();
   const todayClassIds = new Set(classIds.filter((_id, i) => (sessionQueries[i]?.data ?? []).some((s) => s.date === today)));
 
-  const pendingToday = myClasses.filter((c) => !todayClassIds.has(c.class_id));
+  // Only the class teacher takes attendance; other classes are listed to view.
+  const formClasses = myClasses.filter((c) => c.isFormTeacher);
+  const pendingToday = formClasses.filter((c) => !todayClassIds.has(c.class_id));
 
   const allSessions = classIds
     .flatMap((id, i) => {
@@ -36,13 +42,13 @@ export default function TeacherAttendance() {
 
   const visible = allSessions.filter(
     ({ className, session }) =>
-      className.toLowerCase().includes(query.toLowerCase()) || session.date.includes(query)
+      [className, session.date, formatLongDate(session.date)].join(" ").toLowerCase().includes(query.toLowerCase())
   );
 
   if (isLoading) return <LoadingSpinner />;
   if (isError) {
     return (
-      <div className="os-p-8">
+      <div className="os-page">
         <ErrorMessage message="Failed to load your classes" onRetry={refetch} />
       </div>
     );
@@ -50,54 +56,41 @@ export default function TeacherAttendance() {
 
   return (
     <div className="os-page">
-      <PageHeader title="Attendance" subtitle="Every session you've recorded, across your classes" />
+      <PageHeader title="Class attendance" subtitle="Take attendance for the class you lead, and view it for the classes you teach." />
 
       {pendingToday.length > 0 && (
-        <div className="os-bg-status-late os-border-warning os-py-3h os-px-5 os-mb-6 os-flex os-items-center os-gap-4 os-wrap">
-          <ClockCircleOutlined className="os-c-warning os-shrink-0 os-text-lg" />
-          <div className="os-flex-1">
-            <p className="os-mt-0 os-mx-0 os-mb-h os-fw-600 os-text-md os-c-warning-text">
-              {pendingToday.length} class{pendingToday.length > 1 ? "es" : ""} not marked today
-            </p>
-            <p className="os-m-0 os-text-xs os-c-warning-text">Start today's session for a class.</p>
-          </div>
-          {pendingToday.map((c) => (
-            <StartSessionButton key={c.class_id} classId={c.class_id}>{classLabel(c.grade_name, c.class_name)}</StartSessionButton>
-          ))}
-        </div>
+        <Alert
+          type="warning"
+          showIcon
+          className="os-mb-6"
+          title={`${pendingToday.length} ${pendingToday.length > 1 ? "classes" : "class"} not marked today`}
+          description="Start today's session for a class."
+          action={
+            <div className="os-flex os-gap-2 os-wrap">
+              {pendingToday.map((c) => (
+                <StartSessionButton key={c.class_id} classId={c.class_id} size="small">{classLabel(c.grade_name, c.class_name)}</StartSessionButton>
+              ))}
+            </div>
+          }
+        />
       )}
 
-      <div className="os-grid os-grid-cols-3 os-gap-4 os-mb-6">
-        {[
-          { label: "Total sessions", value: allSessions.length, borderColor: "var(--os-accent)", valueColor: "var(--os-text-primary)" },
-          { label: "Marked today", value: todayClassIds.size, borderColor: "var(--os-success)", valueColor: "var(--os-success)" },
-          {
-            label: "Pending today",
-            value: pendingToday.length,
-            borderColor: pendingToday.length > 0 ? "var(--os-danger)" : "var(--os-text-tertiary)",
-            valueColor: pendingToday.length > 0 ? "var(--os-danger)" : "var(--os-text-tertiary)",
-          },
-        ].map(({ label, value, borderColor, valueColor }) => (
-          <div key={label} className="os-stat-card" style={{ borderTop: `3px solid ${borderColor}` }}>
-            <p className="os-stat-card__label">{label}</p>
-            <p className="os-stat-card__value" style={{ color: valueColor }}>{value}</p>
-          </div>
-        ))}
+      <div className="os-stat-grid os-stat-grid--three">
+        <StatCard label="Total sessions" value={allSessions.length} loading={false} Icon={CalendarOutlined} />
+        <StatCard label="Marked today" value={formClasses.filter((c) => todayClassIds.has(c.class_id)).length} meta={formClasses.length ? `of ${formClasses.length} ${formClasses.length === 1 ? "class" : "classes"} you lead` : "You are not a class teacher"} loading={false} Icon={CheckCircleOutlined} />
+        <StatCard
+          label="Pending today"
+          value={pendingToday.length}
+          meta={pendingToday.length ? "Start the session above" : "All classes marked"}
+          loading={false}
+          Icon={ClockCircleOutlined}
+        />
       </div>
 
-      <div className="os-section">
-        <div className="os-toolbar">
-          <Input
-            className="os-max-w-22"
-            allowClear
-            prefix={<SearchOutlined />}
-            aria-label="Search sessions"
-            placeholder="Search by class or date…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
+      <SectionCard title="Sessions" meta={<span className="os-text-sm os-c-tertiary">{allSessions.length} recorded</span>} flush>
+        <div className="os-section__body">
+          <FilterBar search={{ value: query, onChange: setQuery, placeholder: "Search by class or date" }} />
         </div>
-
         {visible.length === 0 ? (
           <EmptyState title="No sessions found" description="Sessions you record will appear here." />
         ) : (
@@ -105,17 +98,17 @@ export default function TeacherAttendance() {
             rows={visible}
             getRowId={(r) => r.session.id}
             columns={[
-              { key: "date", header: "Date", render: (r) => <span className="os-table__mono os-text-xs">{r.session.date}</span> },
-              { key: "class", header: "Class", render: (r) => <span className="os-fw-600">{r.className}</span> },
-              { key: "present", header: "Present", render: (r) => <SessionCountCell count={r.session.present_count} status="present" /> },
-              { key: "absent", header: "Absent", render: (r) => <SessionCountCell count={r.session.absent_count} status="absent" /> },
-            { key: "late", header: "Late", render: (r) => <SessionCountCell count={r.session.late_count} status="late" /> },
-              { key: "status", header: "Status", render: () => <Tag color="success" variant="filled">Marked</Tag> },
+              { key: "date", header: "Date", render: (r) => formatDayMonthYear(r.session.date) },
+              { key: "class", header: "Class", render: (r) => r.className },
+              { key: "present", header: "Present", render: (r) => <SessionCountCell count={r.session.present_count} /> },
+              { key: "absent", header: "Absent", render: (r) => <SessionCountCell count={r.session.absent_count} /> },
+            { key: "late", header: "Late", render: (r) => <SessionCountCell count={r.session.late_count} /> },
+              { key: "status", header: "Status", render: () => <SessionStateBadge state="marked" /> },
               { key: "action", header: "Action", align: "end", render: (r) => <Link to={`/attendance/sessions/${r.session.id}/mark`} className="os-c-tertiary os-no-underline os-text-sm">View</Link> },
             ]}
           />
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 }

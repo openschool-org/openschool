@@ -1,4 +1,5 @@
-import { Checkbox, InputNumber, Tag } from "antd";
+import Pill from "@/shared/ui/Pill";
+import { Checkbox, InputNumber } from "antd";
 import type { ClassMarkRow } from "@/features/marks/api/termMark";
 import type { GridColumn } from "@/shared/ui/DataGrid";
 import type { ClassMarkEntry } from "@/features/marks/hooks/useClassMarksEntry";
@@ -13,7 +14,7 @@ export function classMarksColumns(
     {
       key: "student",
       header: "Student",
-      render: (r) => <>{r.student_name}{draft[r.student_id]?.is_absent && <Tag color="error" variant="filled" className="os-ml-2">AB</Tag>}</>,
+      render: (r) => <>{r.student_name}{draft[r.student_id]?.is_absent && <span className="os-ml-2"><Pill tone="danger">Absent</Pill></span>}</>,
     },
     {
       key: "marks",

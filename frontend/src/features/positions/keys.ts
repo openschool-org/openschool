@@ -3,4 +3,5 @@ export const positionKeys = {
   list: () => ["positions", "list"] as const,
   mine: () => ["positions", "me"] as const,
   myLeadershipOverview: () => ["positions", "me", "leadership-overview"] as const,
+  myLedClasses: () => ["positions", "me", "led-classes"] as const,
 };

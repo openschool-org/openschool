@@ -120,14 +120,19 @@ SELECT
     c.name        AS class_name,
     g.name        AS grade_name,
     h.name        AS house_name,
-    ay.label      AS academic_year
+    ay.label      AS academic_year,
+    ft.full_name          AS form_teacher_full_name,
+    ft.name_with_initials AS form_teacher_initials
 FROM student_profiles sp
 LEFT JOIN users u            ON u.id = sp.user_id
+-- Only the current year's class, so past years' classes never replace it.
 LEFT JOIN class_students cs ON cs.student_id = sp.id
+    AND cs.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE)
 LEFT JOIN classes c         ON c.id = cs.class_id
 LEFT JOIN grades g          ON g.id = c.grade_id
+LEFT JOIN teacher_profiles ft ON ft.id = c.form_teacher_id
 LEFT JOIN houses h          ON h.id = sp.house_id
-LEFT JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current = TRUE
+LEFT JOIN academic_years ay ON ay.id = c.academic_year_id
 WHERE sp.id = $1;
 
 -- name: ListStudentsByClass :many

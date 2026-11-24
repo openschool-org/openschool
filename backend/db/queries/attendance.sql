@@ -36,9 +36,9 @@ ORDER BY ats.date DESC;
 -- the cross-class daily dashboard: every session on one date, with the class,
 -- grade and teacher resolved, plus enough counts to show marked/pending and
 -- how many of the enrolled students have a record so far.
--- grade_ids narrows to the caller's authorized grades (whole-school callers
+-- class_ids narrows to the classes the caller leads (whole-school callers
 -- pass NULL); filtered at the SQL WHERE clause level, not in application
--- code, so a scoped caller can never receive rows outside their grades.
+-- code, so a scoped caller can never receive rows outside their classes.
 SELECT
     ats.id,
     ats.class_id,
@@ -56,7 +56,7 @@ INNER JOIN grades  g ON g.id = c.grade_id
 INNER JOIN users   u ON u.id = ats.taken_by
 LEFT JOIN teacher_profiles tp ON tp.user_id = ats.taken_by
 WHERE ats.date = $1
-  AND (sqlc.narg(grade_ids)::uuid[] IS NULL OR g.id = ANY(sqlc.narg(grade_ids)::uuid[]))
+  AND (sqlc.narg(class_ids)::uuid[] IS NULL OR c.id = ANY(sqlc.narg(class_ids)::uuid[]))
 ORDER BY g.sort_order ASC, c.name ASC;
 
 -- name: MarkAttendance :one
@@ -141,3 +141,18 @@ SELECT student_id
 FROM class_students
 WHERE class_id = sqlc.arg(class_id)
   AND student_id = ANY(sqlc.arg(student_ids)::uuid[]);
+
+-- name: CanTeacherTakeClassAttendance :one
+-- Only the class teacher takes a class's attendance, or the acting teacher named
+-- on the class teacher's approved leave for that date. Subject teachers only view.
+SELECT EXISTS (
+    SELECT 1 FROM classes c
+    WHERE c.id = sqlc.arg(class_id) AND c.form_teacher_id = sqlc.arg(teacher_id)::uuid
+    UNION ALL
+    SELECT 1 FROM classes c
+    INNER JOIN teacher_leave_requests l ON l.teacher_id = c.form_teacher_id
+    WHERE c.id = sqlc.arg(class_id)
+      AND l.acting_teacher_id = sqlc.arg(teacher_id)::uuid
+      AND l.status = 'approved'
+      AND sqlc.arg(on_date)::date BETWEEN l.start_date AND l.end_date
+) AS allowed;

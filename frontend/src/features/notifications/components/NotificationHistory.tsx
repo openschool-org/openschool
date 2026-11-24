@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Tag } from "antd";
 import SelectField from "@/shared/ui/SelectField";
 import { useNotificationHistory } from "@/features/notifications/queries/useNotifications";
 import { CATEGORIES, PRIORITIES } from "@/features/notifications/api/notification";
-import { NOTIFICATION_PRIORITY_COLOR } from "@/shared/lib/constants/tags";
+import Pill from "@/shared/ui/Pill";
+import { capitalize } from "@/shared/lib/text";
 import { useListFilters } from "@/shared/hooks/useListFilters";
 import { usePersistedPageSize } from "@/shared/hooks/usePersistedPageSize";
 import { formatDateTime } from "@/shared/lib/date";
@@ -92,7 +92,7 @@ export default function NotificationHistory() {
               render: (n) => (
                 <div>
                   <span className="os-fw-500">{n.title}</span>
-                  {n.priority !== "normal" && <Tag color={NOTIFICATION_PRIORITY_COLOR[n.priority]} variant="filled" className="os-ml-2">{n.priority}</Tag>}
+                  {n.priority !== "normal" && <span className="os-ml-2"><Pill tone={n.priority === "urgent" ? "danger" : "warning"}>{capitalize(n.priority)}</Pill></span>}
                   <p className="os-m-0 os-text-sm os-c-secondary os-truncate os-clamp-2">{n.message}</p>
                 </div>
               ),

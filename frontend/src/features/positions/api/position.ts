@@ -62,4 +62,13 @@ export const positionApi = {
 
   myLeadershipOverview: () =>
     api.get<LeadershipOverviewSummary>("/me/teacher/leadership-overview").then((r) => r.data),
+
+  myLedClasses: () => api.get<LedClass[]>("/me/teacher/led-classes").then((r) => r.data),
 };
+
+// Matches leadership.LedClass: a class a section head (or principal / vice principal) oversees.
+export interface LedClass {
+  id: string;
+  name: string;
+  grade_name: string;
+}

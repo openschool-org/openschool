@@ -23,11 +23,10 @@ export default function MarksOverview({ workload, termId, termSelector, onOpen }
 
   return (
     <div className="os-page">
-      <PageHeader title="My subjects &amp; classes" subtitle="Every subject and class you teach, with marks status for the selected term" />
+      <PageHeader title="Marks" subtitle="Every subject and class you teach, with marks status for the chosen term.">
+        {termSelector}
+      </PageHeader>
 
-      <div className="os-section os-mb-6">
-        <div className="os-section__header">{termSelector}</div>
-      </div>
 
       {!termId ? (
         <EmptyState title="Choose a term" description="Select a term above to see marks status for your classes." />

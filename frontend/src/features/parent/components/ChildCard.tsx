@@ -7,7 +7,6 @@ import { useT } from "@/shared/i18n/useT";
 import { displayName } from "@/shared/lib/name";
 import { classLabel } from "@/shared/lib/classLabel";
 import GradeAvatar from "@/shared/ui/GradeAvatar";
-import ProgressBar from "@/shared/ui/ProgressBar";
 
 interface Props {
   child: Child;
@@ -41,10 +40,7 @@ export default function ChildCard({ child, summary, summaryLoading }: Props) {
           <dd>
             {summaryLoading ? <SkeletonText width="3rem" /> : attendance === null ? t("parent.noData") : formatPercent(attendance)}
             {!summaryLoading && sessions > 0 && (
-              <>
-                <ProgressBar value={summary!.attended_this_month} max={sessions} label={t("student.attendanceThisMonth")} size="sm" tone={attendance! >= 80 ? "success" : "warning"} />
-                <span className="os-child-card__meta">{t("parent.daysAttended", { attended: summary!.attended_this_month, total: sessions })}</span>
-              </>
+              <span className="os-child-card__meta">{t("parent.daysAttended", { attended: summary!.attended_this_month, total: sessions })}</span>
             )}
           </dd>
         </div>

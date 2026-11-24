@@ -584,3 +584,18 @@ func mapStream(row db.Stream) Stream {
 func mapStreamGroup(row db.StreamGroup) StreamGroup {
 	return StreamGroup{ID: row.ID, StreamID: row.StreamID, Name: row.Name, CreatedAt: row.CreatedAt.Time}
 }
+
+func (r *termMarkRepository) history(ctx context.Context, student uuid.UUID) ([]markHistoryRow, error) {
+	rows, err := r.queries.ListStudentMarkHistory(ctx, student)
+	out := make([]markHistoryRow, len(rows))
+	for i, row := range rows {
+		out[i] = markHistoryRow{
+			AcademicYearID: row.AcademicYearID, AcademicYear: row.AcademicYear, YearIsCurrent: row.YearIsCurrent,
+			ClassName: row.ClassName, GradeName: row.GradeName, TermID: row.TermID, TermName: row.TermName,
+			TermStart: row.TermStart, TermEnd: row.TermEnd, TermIsCurrent: row.TermIsCurrent,
+			MarkID: row.MarkID, SubjectID: row.SubjectID, Marks: row.Marks, MaxMarks: row.MaxMarks, IsAbsent: row.IsAbsent,
+			SubjectName: row.SubjectName, SubjectCode: row.SubjectCode, TeacherName: row.TeacherName,
+		}
+	}
+	return out, err
+}

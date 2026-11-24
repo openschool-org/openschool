@@ -42,20 +42,140 @@ func (q *Queries) GetGradeTICForGrade(ctx context.Context, arg GetGradeTICForGra
 	return teacher_id, err
 }
 
-const listGradeIDsHeadedByTeacher = `-- name: ListGradeIDsHeadedByTeacher :many
-SELECT grade_id FROM section_heads
-WHERE teacher_id = $1 AND academic_year_id = $2 AND stream_id IS NULL
+const listClassIDsInGrades = `-- name: ListClassIDsInGrades :many
+SELECT id FROM classes
+WHERE academic_year_id = $1 AND grade_id = ANY($2::uuid[])
 `
 
-type ListGradeIDsHeadedByTeacherParams struct {
+type ListClassIDsInGradesParams struct {
+	AcademicYearID uuid.UUID   `json:"academic_year_id"`
+	GradeIds       []uuid.UUID `json:"grade_ids"`
+}
+
+// Every class of the given grades in a year, for a grade-scoped vice principal.
+func (q *Queries) ListClassIDsInGrades(ctx context.Context, arg ListClassIDsInGradesParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listClassIDsInGrades, arg.AcademicYearID, arg.GradeIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listClassIDsLedByTeacher = `-- name: ListClassIDsLedByTeacher :many
+SELECT c.id FROM classes c
+WHERE c.academic_year_id = $1
+  AND (
+      EXISTS (
+          SELECT 1 FROM section_heads sh
+          WHERE sh.teacher_id = $2 AND sh.academic_year_id = c.academic_year_id
+            AND sh.grade_id = c.grade_id AND (sh.stream_id IS NULL OR sh.stream_id = c.stream_id)
+      )
+      OR EXISTS (
+          SELECT 1 FROM grade_section_grades gsg
+          INNER JOIN grade_sections gs ON gs.id = gsg.grade_section_id
+          WHERE gsg.grade_id = c.grade_id AND gsg.academic_year_id = c.academic_year_id
+            AND gs.section_head_teacher_id = $2::uuid
+      )
+  )
+`
+
+type ListClassIDsLedByTeacherParams struct {
+	AcademicYearID uuid.UUID `json:"academic_year_id"`
+	TeacherID      uuid.UUID `json:"teacher_id"`
+}
+
+// The classes a section head leads in a year (same rule as ListLeadersOfClass).
+func (q *Queries) ListClassIDsLedByTeacher(ctx context.Context, arg ListClassIDsLedByTeacherParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listClassIDsLedByTeacher, arg.AcademicYearID, arg.TeacherID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listClassSummariesForYear = `-- name: ListClassSummariesForYear :many
+SELECT c.id, c.name, g.name AS grade_name
+FROM classes c
+INNER JOIN grades g ON g.id = c.grade_id
+WHERE c.academic_year_id = $1
+  AND ($2::uuid[] IS NULL OR c.id = ANY($2::uuid[]))
+ORDER BY g.sort_order ASC, c.name ASC
+`
+
+type ListClassSummariesForYearParams struct {
+	AcademicYearID uuid.UUID   `json:"academic_year_id"`
+	ClassIds       []uuid.UUID `json:"class_ids"`
+}
+
+type ListClassSummariesForYearRow struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	GradeName string    `json:"grade_name"`
+}
+
+// Class name and grade for the given classes in a year; NULL ids means every class.
+func (q *Queries) ListClassSummariesForYear(ctx context.Context, arg ListClassSummariesForYearParams) ([]ListClassSummariesForYearRow, error) {
+	rows, err := q.db.Query(ctx, listClassSummariesForYear, arg.AcademicYearID, arg.ClassIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListClassSummariesForYearRow{}
+	for rows.Next() {
+		var i ListClassSummariesForYearRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.GradeName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listGradeIDsLedByTeacher = `-- name: ListGradeIDsLedByTeacher :many
+SELECT sh.grade_id FROM section_heads sh
+WHERE sh.teacher_id = $1 AND sh.academic_year_id = $2
+UNION
+SELECT gsg.grade_id FROM grade_sections gs
+INNER JOIN grade_section_grades gsg ON gsg.grade_section_id = gs.id
+WHERE gs.section_head_teacher_id = $1::uuid AND gs.academic_year_id = $2
+`
+
+type ListGradeIDsLedByTeacherParams struct {
 	TeacherID      uuid.UUID `json:"teacher_id"`
 	AcademicYearID uuid.UUID `json:"academic_year_id"`
 }
 
-// whole-grade TICs only (stream_id IS NULL) — used to resolve which grades'
-// timetables this teacher is authorized to review
-func (q *Queries) ListGradeIDsHeadedByTeacher(ctx context.Context, arg ListGradeIDsHeadedByTeacherParams) ([]uuid.UUID, error) {
-	rows, err := q.db.Query(ctx, listGradeIDsHeadedByTeacher, arg.TeacherID, arg.AcademicYearID)
+// Grades a teacher leads in a year: as a whole-grade or stream head, or as the
+// head of a grade section. Any row makes them a Section Head.
+func (q *Queries) ListGradeIDsLedByTeacher(ctx context.Context, arg ListGradeIDsLedByTeacherParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listGradeIDsLedByTeacher, arg.TeacherID, arg.AcademicYearID)
 	if err != nil {
 		return nil, err
 	}
@@ -67,6 +187,42 @@ func (q *Queries) ListGradeIDsHeadedByTeacher(ctx context.Context, arg ListGrade
 			return nil, err
 		}
 		items = append(items, grade_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLeadersOfClass = `-- name: ListLeadersOfClass :many
+SELECT sh.teacher_id FROM classes c
+INNER JOIN section_heads sh
+    ON sh.academic_year_id = c.academic_year_id AND sh.grade_id = c.grade_id
+   AND (sh.stream_id IS NULL OR sh.stream_id = c.stream_id)
+WHERE c.id = $1
+UNION
+SELECT gs.section_head_teacher_id::uuid FROM classes c
+INNER JOIN grade_section_grades gsg ON gsg.grade_id = c.grade_id AND gsg.academic_year_id = c.academic_year_id
+INNER JOIN grade_sections gs        ON gs.id = gsg.grade_section_id
+WHERE c.id = $1 AND gs.section_head_teacher_id IS NOT NULL
+`
+
+// Who leads a class: the whole-grade head, the head of the class's stream in
+// that grade, and the head of the grade section the grade belongs to. They
+// review its timetable and may message it.
+func (q *Queries) ListLeadersOfClass(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listLeadersOfClass, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var teacher_id uuid.UUID
+		if err := rows.Scan(&teacher_id); err != nil {
+			return nil, err
+		}
+		items = append(items, teacher_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

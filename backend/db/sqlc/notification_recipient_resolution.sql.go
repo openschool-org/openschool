@@ -12,6 +12,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const isTeacherInChargeOfSociety = `-- name: IsTeacherInChargeOfSociety :one
+SELECT EXISTS (
+    SELECT 1 FROM societies WHERE id = $1 AND teacher_in_charge_id = $2
+) AS in_charge
+`
+
+type IsTeacherInChargeOfSocietyParams struct {
+	SocietyID uuid.UUID `json:"society_id"`
+	TeacherID uuid.UUID `json:"teacher_id"`
+}
+
+func (q *Queries) IsTeacherInChargeOfSociety(ctx context.Context, arg IsTeacherInChargeOfSocietyParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isTeacherInChargeOfSociety, arg.SocietyID, arg.TeacherID)
+	var in_charge bool
+	err := row.Scan(&in_charge)
+	return in_charge, err
+}
+
 const listAllUserIDs = `-- name: ListAllUserIDs :many
 
 SELECT id FROM users
@@ -98,6 +116,126 @@ func (q *Queries) ListGuardianUserIDsByClass(ctx context.Context, classID uuid.U
 	return items, nil
 }
 
+const listGuardianUserIDsBySociety = `-- name: ListGuardianUserIDsBySociety :many
+SELECT DISTINCT g.user_id FROM guardians g
+INNER JOIN student_guardians sg ON sg.guardian_id = g.id
+INNER JOIN society_members sm   ON sm.student_id = sg.student_id
+INNER JOIN societies so         ON so.id = sm.society_id
+WHERE sm.society_id = $1 AND sm.academic_year_id = so.academic_year_id AND sm.left_at IS NULL
+`
+
+func (q *Queries) ListGuardianUserIDsBySociety(ctx context.Context, societyID uuid.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listGuardianUserIDsBySociety, societyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var user_id pgtype.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNotifyClassesForTeacher = `-- name: ListNotifyClassesForTeacher :many
+SELECT c.id, c.name, g.name AS grade_name,
+       (c.form_teacher_id IS NOT NULL AND c.form_teacher_id = $1::uuid)::bool AS is_form_class
+FROM classes c
+INNER JOIN grades g          ON g.id = c.grade_id
+INNER JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current = TRUE
+WHERE c.form_teacher_id = $1::uuid
+   OR EXISTS (
+       SELECT 1 FROM class_subject_teachers cst
+       WHERE cst.class_id = c.id AND cst.teacher_id = $1::uuid
+   )
+   -- Classes they lead as a grade, stream or grade-section head.
+   OR EXISTS (
+       SELECT 1 FROM section_heads sh
+       WHERE sh.teacher_id = $1::uuid AND sh.academic_year_id = c.academic_year_id
+         AND sh.grade_id = c.grade_id AND (sh.stream_id IS NULL OR sh.stream_id = c.stream_id)
+   )
+   OR EXISTS (
+       SELECT 1 FROM grade_section_grades gsg
+       INNER JOIN grade_sections gs ON gs.id = gsg.grade_section_id
+       WHERE gsg.grade_id = c.grade_id AND gsg.academic_year_id = c.academic_year_id
+         AND gs.section_head_teacher_id = $1::uuid
+   )
+ORDER BY g.sort_order ASC, c.name ASC
+`
+
+type ListNotifyClassesForTeacherRow struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	GradeName   string    `json:"grade_name"`
+	IsFormClass bool      `json:"is_form_class"`
+}
+
+// Current-year classes a teacher may message: their form class, classes they teach, and classes they lead.
+func (q *Queries) ListNotifyClassesForTeacher(ctx context.Context, teacherID uuid.UUID) ([]ListNotifyClassesForTeacherRow, error) {
+	rows, err := q.db.Query(ctx, listNotifyClassesForTeacher, teacherID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListNotifyClassesForTeacherRow{}
+	for rows.Next() {
+		var i ListNotifyClassesForTeacherRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.GradeName,
+			&i.IsFormClass,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listNotifySocieties = `-- name: ListNotifySocieties :many
+SELECT so.id, so.name FROM societies so
+INNER JOIN academic_years ay ON ay.id = so.academic_year_id AND ay.is_current = TRUE
+WHERE $1::uuid IS NULL OR so.teacher_in_charge_id = $1::uuid
+ORDER BY so.name ASC
+`
+
+type ListNotifySocietiesRow struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+// Current-year societies; only those the teacher runs when teacher_id is given.
+func (q *Queries) ListNotifySocieties(ctx context.Context, teacherID pgtype.UUID) ([]ListNotifySocietiesRow, error) {
+	rows, err := q.db.Query(ctx, listNotifySocieties, teacherID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListNotifySocietiesRow{}
+	for rows.Next() {
+		var i ListNotifySocietiesRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listStudentIDsByGuardian = `-- name: ListStudentIDsByGuardian :many
 SELECT sg.student_id FROM student_guardians sg
 WHERE sg.guardian_id = $1
@@ -134,6 +272,34 @@ WHERE cs.class_id = $1
 
 func (q *Queries) ListStudentUserIDsByClass(ctx context.Context, classID uuid.UUID) ([]pgtype.UUID, error) {
 	rows, err := q.db.Query(ctx, listStudentUserIDsByClass, classID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []pgtype.UUID{}
+	for rows.Next() {
+		var user_id pgtype.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStudentUserIDsBySociety = `-- name: ListStudentUserIDsBySociety :many
+SELECT sp.user_id FROM student_profiles sp
+INNER JOIN society_members sm ON sm.student_id = sp.id
+INNER JOIN societies so       ON so.id = sm.society_id
+WHERE sm.society_id = $1 AND sm.academic_year_id = so.academic_year_id AND sm.left_at IS NULL
+`
+
+// Active members recorded for the society's own academic year.
+func (q *Queries) ListStudentUserIDsBySociety(ctx context.Context, societyID uuid.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listStudentUserIDsBySociety, societyID)
 	if err != nil {
 		return nil, err
 	}

@@ -13,7 +13,7 @@ import (
 // TimetableReader is the narrow timetable capability needed by parent and
 // teacher self-service; mutation remains owned by the Timetable module.
 type TimetableReader interface {
-	GetPublishedForStudent(context.Context, uuid.UUID) (timetablemodule.Timetable, []timetablemodule.TimetableEntry, error)
+	GetPublishedForStudent(context.Context, uuid.UUID) (timetablemodule.PublishedSchedule, error)
 	ListByAcademicYear(context.Context, uuid.UUID) ([]timetablemodule.TimetableListItem, error)
 }
 
@@ -23,6 +23,7 @@ type LeadershipReader interface {
 	SummaryForTeacher(context.Context, uuid.UUID, uuid.UUID) (leadershipmodule.PositionSummary, error)
 	RankForTeacher(context.Context, uuid.UUID, uuid.UUID) (leadershipmodule.PositionRank, leadershipmodule.Position, error)
 	LeadershipOverview(context.Context, uuid.UUID, uuid.UUID) (leadershipmodule.LeadershipOverviewSummary, error)
+	LedClasses(context.Context, uuid.UUID, uuid.UUID) ([]leadershipmodule.LedClass, error)
 }
 
 // SocietyReader exposes a teacher's current Teacher-in-Charge assignment.

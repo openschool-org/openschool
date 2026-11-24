@@ -68,6 +68,28 @@ $os-status-late-border:    $os-warning;
 $os-status-late-text:      #161616;
 $os-status-excused-bg:     #F6F2FF; // Carbon purple 10
 $os-status-excused-border: $os-chart-purple;
+// Timetable subject colours: 15 distinct hues, each at least 4.99:1 with white text (WCAG AA).
+// Ordered so a timetable with few subjects gets the most different hues first.
+$os-subject-1: #0043CE; // blue
+$os-subject-2: #B44A00; // orange
+$os-subject-3: #198038; // green
+$os-subject-4: #6929C4; // purple
+$os-subject-5: #DA1E28; // red
+$os-subject-6: #007D79; // teal
+$os-subject-7: #684E00; // olive brown
+$os-subject-8: #D02670; // pink
+$os-subject-9: #00539A; // navy
+$os-subject-10: #4A6B00; // olive green
+$os-subject-11: #9F1853; // wine
+$os-subject-12: #8A3FFC; // violet
+$os-subject-13: #525252; // gray
+$os-subject-14: #6B3E26; // brown
+$os-subject-15: #7A2E8E; // plum
+// Solid status fills for white text (all pass WCAG AA at small sizes).
+$os-status-present-solid:  #198038; // Carbon green 60
+$os-status-absent-solid:   #DA1E28; // Carbon red 60
+$os-status-late-solid:     #B44A00; // dark orange; yellow fails with white text
+$os-status-excused-solid:  #6929C4; // Carbon purple 70
 $os-status-excused-text:   #31135E; // Carbon purple 100
 
 :root {
@@ -122,6 +144,26 @@ $os-status-excused-text:   #31135E; // Carbon purple 100
   --os-status-excused-bg: #{$os-status-excused-bg};
   --os-status-excused-border: #{$os-status-excused-border};
   --os-status-excused-text: #{$os-status-excused-text};
+  --os-status-present-solid: #{$os-status-present-solid};
+  --os-status-absent-solid: #{$os-status-absent-solid};
+  --os-status-late-solid: #{$os-status-late-solid};
+  --os-status-excused-solid: #{$os-status-excused-solid};
+  --os-text-on-color: #{$os-text-on-color};
+  --os-subject-1: #{$os-subject-1};
+  --os-subject-2: #{$os-subject-2};
+  --os-subject-3: #{$os-subject-3};
+  --os-subject-4: #{$os-subject-4};
+  --os-subject-5: #{$os-subject-5};
+  --os-subject-6: #{$os-subject-6};
+  --os-subject-7: #{$os-subject-7};
+  --os-subject-8: #{$os-subject-8};
+  --os-subject-9: #{$os-subject-9};
+  --os-subject-10: #{$os-subject-10};
+  --os-subject-11: #{$os-subject-11};
+  --os-subject-12: #{$os-subject-12};
+  --os-subject-13: #{$os-subject-13};
+  --os-subject-14: #{$os-subject-14};
+  --os-subject-15: #{$os-subject-15};
 }
 
 $os-scrim: rgba(0, 20, 26, 0.45);

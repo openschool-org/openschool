@@ -12,11 +12,13 @@ import (
 )
 
 type fakeStore struct {
-	session     Session
-	records     []Record
-	marked      []MarkInput
-	assigned    bool
-	userPresent bool
+	session  Session
+	records  []Record
+	marked   []MarkInput
+	assigned bool
+	// classTeacher lets the caller take attendance; a subject teacher only views.
+	classTeacher bool
+	userPresent  bool
 	// outside lists students not enrolled in the session's class.
 	outside map[uuid.UUID]bool
 }
@@ -76,6 +78,10 @@ func (f *fakeStore) teacherByUser(context.Context, uuid.UUID) (uuid.UUID, error)
 func (f *fakeStore) teacherAssigned(context.Context, uuid.UUID, uuid.UUID) (bool, error) {
 	return f.assigned, nil
 }
+
+func (f *fakeStore) canTakeAttendance(context.Context, uuid.UUID, uuid.UUID, time.Time) (bool, error) {
+	return f.classTeacher, nil
+}
 func (f *fakeStore) studentClass(context.Context, uuid.UUID) (uuid.UUID, error) {
 	return f.session.ClassID, nil
 }
@@ -111,7 +117,7 @@ func testSession(created time.Time) Session {
 
 func TestTeacherCannotEditLockedSession(t *testing.T) {
 	now := time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
-	store := &fakeStore{session: testSession(now.Add(-25 * time.Hour)), assigned: true, userPresent: true}
+	store := &fakeStore{session: testSession(now.Add(-25 * time.Hour)), assigned: true, classTeacher: true, userPresent: true}
 	service := NewService(store, nil, nil, nil)
 	service.now = func() time.Time { return now }
 
@@ -163,7 +169,7 @@ func TestAdminLockedCorrectionIsAuditedAndNewAbsenceNotified(t *testing.T) {
 func TestMarkAttendanceRejectsStudentOutsideClass(t *testing.T) {
 	now := time.Now()
 	stranger := uuid.New()
-	store := &fakeStore{session: testSession(now), assigned: true, userPresent: true, outside: map[uuid.UUID]bool{stranger: true}}
+	store := &fakeStore{session: testSession(now), assigned: true, classTeacher: true, userPresent: true, outside: map[uuid.UUID]bool{stranger: true}}
 	notifier := &fakeNotifier{}
 	service := NewService(store, notifier, nil, nil)
 	service.now = func() time.Time { return now }
@@ -175,5 +181,36 @@ func TestMarkAttendanceRejectsStudentOutsideClass(t *testing.T) {
 	}
 	if len(store.marked) != 0 || notifier.calls != 0 {
 		t.Fatal("a record or absence notice went out for a student outside the class")
+	}
+}
+
+func TestSubjectTeacherViewsButCannotTakeAttendance(t *testing.T) {
+	now := time.Date(2026, 9, 14, 8, 0, 0, 0, time.UTC)
+	store := &fakeStore{session: testSession(now), assigned: true, classTeacher: false, userPresent: true}
+	service := NewService(store, nil, nil, nil)
+	service.now = func() time.Time { return now }
+	teacher := Actor{ID: uuid.New(), Role: authz.RoleTeacher}
+
+	session, err := service.GetSession(context.Background(), teacher, store.session.ID)
+	if err != nil {
+		t.Fatalf("subject teacher should view the session: %v", err)
+	}
+	if session.CanMark == nil || *session.CanMark {
+		t.Fatalf("can_mark = %v, want false", session.CanMark)
+	}
+	if err := service.MarkAttendance(context.Background(), teacher, store.session.ID, MarkAttendanceRequest{}); !errors.Is(err, ErrNotClassTeacher) {
+		t.Fatalf("mark: got %v, want ErrNotClassTeacher", err)
+	}
+	if _, err := service.CreateSession(context.Background(), teacher, CreateAttendanceSessionRequest{ClassID: uuid.NewString(), Date: "2026-09-14"}); !errors.Is(err, ErrNotClassTeacher) {
+		t.Fatalf("create: got %v, want ErrNotClassTeacher", err)
+	}
+	if err := service.DeleteSession(context.Background(), teacher, store.session.ID); !errors.Is(err, ErrNotSectionHead) {
+		t.Fatalf("delete: got %v, want ErrNotSectionHead", err)
+	}
+
+	admin := Actor{ID: uuid.New(), Role: authz.RoleAdmin}
+	adminView, err := service.GetSession(context.Background(), admin, store.session.ID)
+	if err != nil || adminView.CanMark == nil || !*adminView.CanMark {
+		t.Fatalf("admin can_mark = %v, err %v", adminView.CanMark, err)
 	}
 }

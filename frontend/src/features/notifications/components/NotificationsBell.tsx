@@ -1,6 +1,7 @@
+import Pill from "@/shared/ui/Pill";
 import { useState } from "react";
 import { Link } from "react-router";
-import { Badge, Button, Empty, Popover, Tag, Tooltip } from "antd";
+import { Badge, Button, Empty, Popover, Tooltip } from "antd";
 import { BellOutlined } from "@ant-design/icons";
 import { formatDayGroup, formatTime } from "@/shared/lib/date";
 import {
@@ -66,9 +67,9 @@ export default function NotificationsBell() {
                     <span className="os-bell__item-title">{n.title}</span>
                     {!n.is_read && <span className="os-sr-only">{t("bell.unread")}</span>}
                     {n.priority !== "normal" && (
-                      <Tag color={n.priority === "urgent" ? "error" : "warning"} variant="filled">
+                      <Pill tone={n.priority === "urgent" ? "danger" : "warning"}>
                         {t(`priority.${n.priority as "important" | "urgent"}`)}
-                      </Tag>
+                      </Pill>
                     )}
                   </span>
                   <span className="os-bell__item-msg">{n.message}</span>

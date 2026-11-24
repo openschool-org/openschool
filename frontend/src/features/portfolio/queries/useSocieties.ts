@@ -42,10 +42,11 @@ export const useAssignSocietyMember = (societyId: string) => {
   });
 };
 
-export const useRemoveSocietyMember = (societyId: string) => {
+// Marks a member as left; they stay on the roster's former list and in their portfolio.
+export const useDeactivateSocietyMember = (societyId: string) => {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: ({ memberId }: { memberId: string; studentId: string }) => societyApi.removeMember(societyId, memberId),
+    mutationFn: ({ memberId, reason }: { memberId: string; studentId: string; reason: string }) => societyApi.deactivateMember(societyId, memberId, reason),
     onSuccess: (_result, variables) => invalidate(societyKeys.all, portfolioKeys.societyMemberships(variables.studentId)),
   });
 };

@@ -19,6 +19,8 @@ func nid(n int) uuid.UUID { return uuid.MustParse(fmt.Sprintf("00000000-0000-000
 type ruleStore struct {
 	store
 	principal bool
+	// headsNothing turns teacher 1 into a plain class teacher with no grade authority.
+	headsNothing bool
 }
 
 var (
@@ -70,7 +72,7 @@ func (s *ruleStore) ListGradeIDs(context.Context, uuid.UUID) ([]uuid.UUID, error
 	return []uuid.UUID{ruleGradeMine, ruleGradeOther}, nil
 }
 func (s *ruleStore) GetGradeTIC(_ context.Context, _, grade uuid.UUID) (uuid.UUID, error) {
-	if grade == ruleGradeMine {
+	if grade == ruleGradeMine && !s.headsNothing {
 		return ruleTeacher, nil
 	}
 	return uuid.Nil, pgx.ErrNoRows

@@ -1,9 +1,10 @@
+import Pill from "@/shared/ui/Pill";
 // Shared by the full Timetable Review page and the Section Head's dashboard
 // panel, one row of the review queue with inline Approve/Reject actions.
 
 import { useState } from "react";
 import { Link } from "react-router";
-import { Button, Tag } from "antd";
+import { Button } from "antd";
 import { formatDateTime } from "@/shared/lib/date";
 import { useApproveTimetable, useRejectTimetable } from "@/features/timetable/queries/useTimetables";
 import type { TimetableWithClass } from "@/features/timetable/api/timetable";
@@ -28,9 +29,7 @@ export default function TimetableReviewRow({ timetable }: { timetable: Timetable
       <div className="os-flex-1">
         <p className="os-m-0 os-fw-500 os-text-md">
           {classLabel(timetable.grade_name, timetable.class_name)}{" "}
-          <Tag variant="filled">
-            v{timetable.version}
-          </Tag>
+          <Pill>v{timetable.version}</Pill>
         </p>
         <p className="os-m-0 os-text-xs os-c-tertiary">
           Submitted {formatDateTime(timetable.submitted_at)}

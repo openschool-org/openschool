@@ -48,19 +48,6 @@ WHERE t.academic_year_id = $1 AND t.status = 'published'
       INNER JOIN class_subject_teachers cst ON cst.subject_id = bs.subject_id AND cst.class_id = t.class_id
       WHERE bs.block_id = te.option_block_id AND cst.teacher_id = $2));
 
--- name: ListUnderReviewTimetablesForGrades :many
-SELECT
-    t.*,
-    c.name  AS class_name,
-    g.name  AS grade_name
-FROM timetables t
-INNER JOIN classes c ON c.id = t.class_id
-INNER JOIN grades g  ON g.id = c.grade_id
-WHERE t.academic_year_id = $1
-  AND t.status = 'under_review'
-  AND c.grade_id = ANY($2::uuid[])
-ORDER BY g.sort_order ASC, c.name ASC;
-
 -- name: SubmitTimetableForReview :one
 UPDATE timetables
 SET status = 'under_review', submitted_at = NOW(), submitted_by = $2, updated_at = NOW()
@@ -99,3 +86,29 @@ RETURNING *;
 -- name: DeleteDraftTimetable :execrows
 DELETE FROM timetables
 WHERE id = $1 AND status = 'draft';
+
+-- name: ListUnderReviewTimetablesForLeader :many
+-- Timetables waiting for this teacher: the same rule as ListLeadersOfClass.
+SELECT
+    t.*,
+    c.name  AS class_name,
+    g.name  AS grade_name
+FROM timetables t
+INNER JOIN classes c ON c.id = t.class_id
+INNER JOIN grades g  ON g.id = c.grade_id
+WHERE t.academic_year_id = sqlc.arg(academic_year_id)
+  AND t.status = 'under_review'
+  AND (
+      EXISTS (
+          SELECT 1 FROM section_heads sh
+          WHERE sh.teacher_id = sqlc.arg(teacher_id) AND sh.academic_year_id = c.academic_year_id
+            AND sh.grade_id = c.grade_id AND (sh.stream_id IS NULL OR sh.stream_id = c.stream_id)
+      )
+      OR EXISTS (
+          SELECT 1 FROM grade_section_grades gsg
+          INNER JOIN grade_sections gs ON gs.id = gsg.grade_section_id
+          WHERE gsg.grade_id = c.grade_id AND gsg.academic_year_id = c.academic_year_id
+            AND gs.section_head_teacher_id = sqlc.arg(teacher_id)::uuid
+      )
+  )
+ORDER BY g.sort_order ASC, c.name ASC;

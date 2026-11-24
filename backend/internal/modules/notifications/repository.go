@@ -298,3 +298,53 @@ func (r *NotificationRepository) CountBoxes(ctx context.Context, userID uuid.UUI
 	row, err := r.queries.CountMyNotificationBoxes(ctx, userID)
 	return InboxCounts{Unread: row.Unread, Read: row.Read, Archived: row.Archived}, err
 }
+
+func (r *NotificationRepository) ListStudentUserIDsBySociety(ctx context.Context, societyID uuid.UUID) ([]pgtype.UUID, error) {
+	return r.queries.ListStudentUserIDsBySociety(ctx, societyID)
+}
+func (r *NotificationRepository) ListGuardianUserIDsBySociety(ctx context.Context, societyID uuid.UUID) ([]pgtype.UUID, error) {
+	return r.queries.ListGuardianUserIDsBySociety(ctx, societyID)
+}
+func (r *NotificationRepository) IsTeacherInChargeOfSociety(ctx context.Context, societyID, teacherID uuid.UUID) (bool, error) {
+	return r.queries.IsTeacherInChargeOfSociety(ctx, db.IsTeacherInChargeOfSocietyParams{SocietyID: societyID, TeacherID: teacherID})
+}
+func (r *NotificationRepository) ListNotifyClasses(ctx context.Context, teacherID uuid.UUID) ([]NotifyClass, error) {
+	rows, err := r.queries.ListNotifyClassesForTeacher(ctx, teacherID)
+	out := make([]NotifyClass, len(rows))
+	for i, row := range rows {
+		out[i] = NotifyClass{ID: row.ID, Name: row.Name, GradeName: row.GradeName, IsFormClass: row.IsFormClass}
+	}
+	return out, err
+}
+func (r *NotificationRepository) ListNotifySocieties(ctx context.Context, teacherID *uuid.UUID) ([]NotifySociety, error) {
+	param := pgtype.UUID{}
+	if teacherID != nil {
+		param = pgtype.UUID{Bytes: *teacherID, Valid: true}
+	}
+	rows, err := r.queries.ListNotifySocieties(ctx, param)
+	out := make([]NotifySociety, len(rows))
+	for i, row := range rows {
+		out[i] = NotifySociety{ID: row.ID, Name: row.Name}
+	}
+	return out, err
+}
+func (r *NotificationRepository) ListAllGradeIDs(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := r.queries.ListGrades(ctx)
+	out := make([]uuid.UUID, len(rows))
+	for i, row := range rows {
+		out[i] = row.ID
+	}
+	return out, err
+}
+func (r *NotificationRepository) ListGradeSectionIDs(ctx context.Context, yearID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.queries.ListGradeSectionsByYear(ctx, yearID)
+	out := make([]uuid.UUID, len(rows))
+	for i, row := range rows {
+		out[i] = row.ID
+	}
+	return out, err
+}
+
+func (r *NotificationRepository) ListLeadersOfClass(ctx context.Context, classID uuid.UUID) ([]uuid.UUID, error) {
+	return r.queries.ListLeadersOfClass(ctx, classID)
+}

@@ -8,6 +8,7 @@ import { useStudents } from "@/features/students/queries/useStudents";
 import { useGuardians } from "@/features/guardians/queries/useGuardians";
 import { useTeachers } from "@/features/teachers/queries/useTeachers";
 import type { TargetRuleType } from "@/features/notifications/lib/recipientRules";
+import type { NotifyScope } from "@/features/notifications/api/notification";
 import { displayName } from "@/shared/lib/name";
 
 // One pickable target: `text` is shown in the search box, `label` names the rule once added.
@@ -24,8 +25,8 @@ export interface TargetSource {
   onSearch?: (q: string) => void;
 }
 
-// Everything the recipient picker can target, normalised so one combobox serves every rule type.
-export function useRecipientTargets(): Record<TargetRuleType, TargetSource> {
+// Everything the recipient picker can target, limited to the sender's scope, normalised so one combobox serves every rule type.
+export function useRecipientTargets(scope: NotifyScope | undefined): Record<TargetRuleType, TargetSource> {
   const { data: currentYear } = useCurrentAcademicYear();
   const { data: grades } = useGrades();
   const { data: classes } = useCurrentClasses();
@@ -39,14 +40,22 @@ export function useRecipientTargets(): Record<TargetRuleType, TargetSource> {
   const { data: teachers } = useTeachers({ limit: 25, search: teacherSearch });
 
   const named = (rows: { id: string; name: string }[] | undefined) => (rows ?? []).map((r) => ({ id: r.id, text: r.name, label: r.name }));
+  const full = !!scope?.full;
+  // A teacher only sees the grades, sections and classes they may message.
+  const within = <T extends { id: string }>(rows: T[] | undefined, ids: string[] | undefined) => (full ? rows : (rows ?? []).filter((r) => ids?.includes(r.id)));
+  const classItems = full
+    ? (classes ?? []).map((c) => ({ id: c.id, text: `${c.grade_name} - ${c.name}`, label: `${c.grade_name} - ${c.name}` }))
+    : (scope?.classes ?? []).map((c) => ({
+        id: c.id,
+        text: `${c.grade_name} - ${c.name}${c.is_form_class ? " (my class)" : ""}`,
+        label: `${c.grade_name} - ${c.name}`,
+      }));
 
   return {
-    grade: { name: "grades", items: named(grades) },
-    class: {
-      name: "classes",
-      items: (classes ?? []).map((c) => ({ id: c.id, text: `${c.grade_name} - ${c.name}`, label: `${c.grade_name} - ${c.name}` })),
-    },
-    grade_section: { name: "grade sections", items: named(gradeSections) },
+    grade: { name: "grades", items: named(within(grades, scope?.grade_ids)) },
+    class: { name: "classes", items: classItems },
+    grade_section: { name: "grade sections", items: named(within(gradeSections, scope?.grade_section_ids)) },
+    society: { name: "societies", items: named(scope?.societies) },
     subject: { name: "subjects", items: named(subjects) },
     student: {
       name: "students",

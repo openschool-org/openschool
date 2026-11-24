@@ -5,6 +5,7 @@ import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
 import ErrorMessage from "@/shared/ui/ErrorMessage";
 import SectionCard from "@/shared/ui/SectionCard";
+import PageHeader from "@/shared/ui/PageHeader";
 import { useT } from "@/shared/i18n/useT";
 
 export default function StudentGuardians() {
@@ -12,23 +13,24 @@ export default function StudentGuardians() {
   const profile = useMyStudentProfile();
   const guardians = useGuardiansByStudent(profile.data?.id ?? "");
 
-  if (profile.isLoading || guardians.isLoading) return <LoadingSpinner />;
-  if (profile.isError || guardians.isError) {
-    return (
-      <div className="os-p-8">
-        <ErrorMessage message={t("guardians.loadFailed")} onRetry={() => { profile.refetch(); guardians.refetch(); }} />
-      </div>
-    );
-  }
+  const loading = profile.isLoading || guardians.isLoading;
+  const failed = profile.isError || guardians.isError;
   return (
-    <div className="os-p-8">
-      <SectionCard title={t("guardians.mine")} flush>
+    <div className="os-page">
+      <PageHeader title={t("nav.myGuardians")} subtitle={t("page.guardians.sub")} />
+      {loading ? (
+        <LoadingSpinner />
+      ) : failed ? (
+        <ErrorMessage message={t("guardians.loadFailed")} onRetry={() => { profile.refetch(); guardians.refetch(); }} />
+      ) : (
+      <SectionCard title={t("child.section.guardians")} flush>
         {guardians.data?.length ? (
           <GuardiansTable rows={guardians.data} />
         ) : (
           <EmptyState title={t("guardians.emptyTitle")} description={t("guardians.emptyStudent")} />
         )}
       </SectionCard>
+      )}
     </div>
   );
 }

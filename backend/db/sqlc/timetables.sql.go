@@ -436,7 +436,7 @@ func (q *Queries) ListTimetablesByClass(ctx context.Context, arg ListTimetablesB
 	return items, nil
 }
 
-const listUnderReviewTimetablesForGrades = `-- name: ListUnderReviewTimetablesForGrades :many
+const listUnderReviewTimetablesForLeader = `-- name: ListUnderReviewTimetablesForLeader :many
 SELECT
     t.id, t.academic_year_id, t.class_id, t.version, t.status, t.parent_timetable_id, t.created_by, t.submitted_at, t.submitted_by, t.reviewed_by, t.reviewed_at, t.review_comments, t.published_at, t.published_by, t.created_at, t.updated_at,
     c.name  AS class_name,
@@ -446,16 +446,28 @@ INNER JOIN classes c ON c.id = t.class_id
 INNER JOIN grades g  ON g.id = c.grade_id
 WHERE t.academic_year_id = $1
   AND t.status = 'under_review'
-  AND c.grade_id = ANY($2::uuid[])
+  AND (
+      EXISTS (
+          SELECT 1 FROM section_heads sh
+          WHERE sh.teacher_id = $2 AND sh.academic_year_id = c.academic_year_id
+            AND sh.grade_id = c.grade_id AND (sh.stream_id IS NULL OR sh.stream_id = c.stream_id)
+      )
+      OR EXISTS (
+          SELECT 1 FROM grade_section_grades gsg
+          INNER JOIN grade_sections gs ON gs.id = gsg.grade_section_id
+          WHERE gsg.grade_id = c.grade_id AND gsg.academic_year_id = c.academic_year_id
+            AND gs.section_head_teacher_id = $2::uuid
+      )
+  )
 ORDER BY g.sort_order ASC, c.name ASC
 `
 
-type ListUnderReviewTimetablesForGradesParams struct {
-	AcademicYearID uuid.UUID   `json:"academic_year_id"`
-	Column2        []uuid.UUID `json:"column_2"`
+type ListUnderReviewTimetablesForLeaderParams struct {
+	AcademicYearID uuid.UUID `json:"academic_year_id"`
+	TeacherID      uuid.UUID `json:"teacher_id"`
 }
 
-type ListUnderReviewTimetablesForGradesRow struct {
+type ListUnderReviewTimetablesForLeaderRow struct {
 	ID                uuid.UUID          `json:"id"`
 	AcademicYearID    uuid.UUID          `json:"academic_year_id"`
 	ClassID           uuid.UUID          `json:"class_id"`
@@ -476,15 +488,16 @@ type ListUnderReviewTimetablesForGradesRow struct {
 	GradeName         string             `json:"grade_name"`
 }
 
-func (q *Queries) ListUnderReviewTimetablesForGrades(ctx context.Context, arg ListUnderReviewTimetablesForGradesParams) ([]ListUnderReviewTimetablesForGradesRow, error) {
-	rows, err := q.db.Query(ctx, listUnderReviewTimetablesForGrades, arg.AcademicYearID, arg.Column2)
+// Timetables waiting for this teacher: the same rule as ListLeadersOfClass.
+func (q *Queries) ListUnderReviewTimetablesForLeader(ctx context.Context, arg ListUnderReviewTimetablesForLeaderParams) ([]ListUnderReviewTimetablesForLeaderRow, error) {
+	rows, err := q.db.Query(ctx, listUnderReviewTimetablesForLeader, arg.AcademicYearID, arg.TeacherID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListUnderReviewTimetablesForGradesRow{}
+	items := []ListUnderReviewTimetablesForLeaderRow{}
 	for rows.Next() {
-		var i ListUnderReviewTimetablesForGradesRow
+		var i ListUnderReviewTimetablesForLeaderRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.AcademicYearID,

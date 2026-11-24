@@ -79,6 +79,9 @@ type store interface {
 	listSectionHeads(context.Context, uuid.UUID) ([]SectionHeadListItem, error)
 	deleteSectionHead(context.Context, uuid.UUID) (int64, error)
 	listGradeIDsHeadedByTeacher(context.Context, uuid.UUID, uuid.UUID) ([]uuid.UUID, error)
+	listClassIDsLedByTeacher(ctx context.Context, teacherID, yearID uuid.UUID) ([]uuid.UUID, error)
+	listClassIDsInGrades(ctx context.Context, yearID uuid.UUID, gradeIDs []uuid.UUID) ([]uuid.UUID, error)
+	listClassSummaries(ctx context.Context, yearID uuid.UUID, classIDs []uuid.UUID) ([]LedClass, error)
 	teacherClassAccess(ctx context.Context, userID, classID uuid.UUID) (classAccess, error)
 	currentClassOfStudent(context.Context, uuid.UUID) (uuid.UUID, error)
 }
@@ -282,6 +285,7 @@ func (s *Service) RankForTeacher(ctx context.Context, teacherID, academicYearID 
 	return RankTeacher, Position{}, nil
 }
 
+// LeadershipScope returns whole school, or the exact class IDs the teacher leads in the year.
 func (s *Service) LeadershipScope(ctx context.Context, teacherID, academicYearID uuid.UUID) (bool, []uuid.UUID, error) {
 	rank, position, err := s.RankForTeacher(ctx, teacherID, academicYearID)
 	if err != nil {
@@ -298,14 +302,16 @@ func (s *Service) LeadershipScope(ctx context.Context, teacherID, academicYearID
 		if err != nil {
 			return false, nil, err
 		}
-		ids := make([]uuid.UUID, len(rows))
+		grades := make([]uuid.UUID, len(rows))
 		for i, row := range rows {
-			ids[i] = row.ID
+			grades[i] = row.ID
 		}
-		return false, ids, nil
+		classIDs, err := s.store.listClassIDsInGrades(ctx, academicYearID, grades)
+		return false, classIDs, err
 	case RankSectionHead:
-		gradeIDs, err := s.store.listGradeIDsHeadedByTeacher(ctx, teacherID, academicYearID)
-		return false, gradeIDs, err
+		// A stream head leads only their stream's classes, not the whole grade.
+		classIDs, err := s.store.listClassIDsLedByTeacher(ctx, teacherID, academicYearID)
+		return false, classIDs, err
 	default:
 		return false, nil, ErrInsufficientRank
 	}
@@ -321,29 +327,50 @@ type LeadershipOverviewSummary struct {
 }
 
 func (s *Service) LeadershipOverview(ctx context.Context, teacherID, academicYearID uuid.UUID) (LeadershipOverviewSummary, error) {
-	wholeSchool, gradeIDs, err := s.LeadershipScope(ctx, teacherID, academicYearID)
+	wholeSchool, classIDs, err := s.LeadershipScope(ctx, teacherID, academicYearID)
 	if err != nil {
 		return LeadershipOverviewSummary{}, err
 	}
 	scope := "grades"
-	queryGradeIDs := gradeIDs
+	queryClassIDs := classIDs
 	if wholeSchool {
 		scope = "school"
-		queryGradeIDs = nil
+		queryClassIDs = nil
+	} else if len(classIDs) == 0 {
+		return LeadershipOverviewSummary{Scope: scope, GradeNames: []string{}}, nil
 	}
-	counts, err := s.store.leadershipOverviewCounts(ctx, queryGradeIDs)
+	counts, err := s.store.leadershipOverviewCounts(ctx, queryClassIDs)
 	if err != nil {
 		return LeadershipOverviewSummary{}, err
 	}
 	var gradeNames []string
 	if !wholeSchool {
-		if len(gradeIDs) == 0 {
-			return LeadershipOverviewSummary{Scope: scope, GradeNames: []string{}}, nil
-		}
-		gradeNames, err = s.store.leadershipOverviewGradeNames(ctx, gradeIDs)
+		gradeNames, err = s.store.leadershipOverviewGradeNames(ctx, classIDs)
 		if err != nil {
 			return LeadershipOverviewSummary{}, err
 		}
 	}
 	return LeadershipOverviewSummary{Scope: scope, GradeNames: gradeNames, ClassCount: counts.ClassCount, StudentCount: counts.StudentCount, SessionsMarkedToday: counts.SessionsMarkedToday, SessionsPendingToday: counts.ClassCount - counts.SessionsMarkedToday}, nil
+}
+
+// LedClass is one class a leader oversees.
+type LedClass struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	GradeName string    `json:"grade_name"`
+}
+
+// LedClasses lists the classes a leader oversees this year (every class for whole-school leaders).
+func (s *Service) LedClasses(ctx context.Context, teacherID, academicYearID uuid.UUID) ([]LedClass, error) {
+	wholeSchool, classIDs, err := s.LeadershipScope(ctx, teacherID, academicYearID)
+	if err != nil {
+		return nil, err
+	}
+	if !wholeSchool && len(classIDs) == 0 {
+		return []LedClass{}, nil
+	}
+	if wholeSchool {
+		classIDs = nil
+	}
+	return s.store.listClassSummaries(ctx, academicYearID, classIDs)
 }

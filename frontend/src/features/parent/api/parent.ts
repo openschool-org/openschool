@@ -1,4 +1,5 @@
 import api from "@/shared/api/client";
+import type { MarkHistoryYear } from "@/features/marks/api/termMark";
 
 // Matches db.ListStudentsByGuardianUserIDRow
 export interface Child {
@@ -22,19 +23,6 @@ export interface ChildAttendanceRecord {
   class_name: string;
 }
 
-// Matches db.ListStudentMarksByTermRow
-export interface ChildMark {
-  id: string;
-  marks: number;
-  max_marks: number;
-  is_absent: boolean;
-  subject_id: string;
-  subject_name: string;
-  subject_code: string;
-  teacher_id: string | null;
-  teacher_name: string | null;
-}
-
 // Matches db.GetGuardianChildrenSummaryRow: one row per child, this month and the latest term.
 export interface ChildSummary {
   student_id: string;
@@ -55,8 +43,7 @@ export const parentApi = {
       .get<ChildAttendanceRecord[]>(`/me/children/${studentId}/attendance`)
       .then((r) => r.data),
 
-  childMarks: (studentId: string, termId: string) =>
-    api
-      .get<ChildMark[]>(`/me/children/${studentId}/marks`, { params: { term_id: termId } })
-      .then((r) => r.data),
+
+  childMarkHistory: (studentId: string) =>
+    api.get<MarkHistoryYear[]>(`/me/children/${studentId}/marks/history`).then((r) => r.data),
 };

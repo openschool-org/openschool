@@ -6,5 +6,4 @@ export const useMyStudentProfile = () => useQuery({ queryKey: studentKeys.me.pro
 
 export const useMyAttendance = () => useQuery({ queryKey: studentKeys.me.attendance(), queryFn: studentSelfApi.attendance });
 
-export const useMyMarks = (termId: string) =>
-  useQuery({ queryKey: studentKeys.me.marks(termId), queryFn: () => studentSelfApi.marks(termId), enabled: !!termId });
+export const useMyMarkHistory = () => useQuery({ queryKey: studentKeys.me.markHistory(), queryFn: studentSelfApi.markHistory });

@@ -135,6 +135,20 @@ func (h *ParentHandler) ChildMarks(c *gin.Context) {
 	c.JSON(http.StatusOK, marks)
 }
 
+// ChildMarkHistory returns a linked child's marks for every year and term.
+func (h *ParentHandler) ChildMarkHistory(c *gin.Context) {
+	studentID, ok := h.ownChild(c)
+	if !ok {
+		return
+	}
+	years, err := h.marks.StudentMarkHistory(c.Request.Context(), studentID)
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, years)
+}
+
 // ChildTimetable returns a linked child's published class timetable.
 func (h *ParentHandler) ChildTimetable(c *gin.Context) {
 	studentID, ok := h.ownChild(c)
@@ -142,11 +156,11 @@ func (h *ParentHandler) ChildTimetable(c *gin.Context) {
 		return
 	}
 
-	tt, entries, err := h.timetables.GetPublishedForStudent(c.Request.Context(), studentID)
+	schedule, err := h.timetables.GetPublishedForStudent(c.Request.Context(), studentID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "no published timetable found for this child's class"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"timetable": tt, "entries": entries})
+	c.JSON(http.StatusOK, schedule)
 }

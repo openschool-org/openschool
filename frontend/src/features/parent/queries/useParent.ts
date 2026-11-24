@@ -9,9 +9,5 @@ export const useChildrenSummary = () => useQuery({ queryKey: parentKeys.summary(
 export const useChildAttendance = (studentId: string) =>
   useQuery({ queryKey: parentKeys.childAttendance(studentId), queryFn: () => parentApi.childAttendance(studentId), enabled: !!studentId });
 
-export const useChildMarks = (studentId: string, termId: string) =>
-  useQuery({
-    queryKey: parentKeys.childMarks(studentId, termId),
-    queryFn: () => parentApi.childMarks(studentId, termId),
-    enabled: !!studentId && !!termId,
-  });
+export const useChildMarkHistory = (studentId: string) =>
+  useQuery({ queryKey: parentKeys.childMarkHistory(studentId), queryFn: () => parentApi.childMarkHistory(studentId), enabled: !!studentId });
