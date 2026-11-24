@@ -17,7 +17,7 @@ WITH scoped_classes AS (
     SELECT c.id
     FROM classes c
     WHERE c.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE LIMIT 1)
-      AND ($1::uuid[] IS NULL OR c.grade_id = ANY($1::uuid[]))
+      AND ($1::uuid[] IS NULL OR c.id = ANY($1::uuid[]))
 )
 SELECT
     (SELECT COUNT(*) FROM scoped_classes) AS class_count,
@@ -38,22 +38,24 @@ type LeadershipOverviewCountsRow struct {
 // filtered in application code) so a grade-scoped caller can never receive
 // counts for a grade outside their scope — the same class of bug §0.1
 // flagged for the cross-school attendance dashboard.
-// grade_ids narrows to specific grades; NULL means whole school.
-func (q *Queries) LeadershipOverviewCounts(ctx context.Context, gradeIds []uuid.UUID) (LeadershipOverviewCountsRow, error) {
-	row := q.db.QueryRow(ctx, leadershipOverviewCounts, gradeIds)
+// class_ids narrows to the classes the caller leads; NULL means whole school.
+func (q *Queries) LeadershipOverviewCounts(ctx context.Context, classIds []uuid.UUID) (LeadershipOverviewCountsRow, error) {
+	row := q.db.QueryRow(ctx, leadershipOverviewCounts, classIds)
 	var i LeadershipOverviewCountsRow
 	err := row.Scan(&i.ClassCount, &i.StudentCount, &i.SessionsMarkedToday)
 	return i, err
 }
 
 const leadershipOverviewGradeNames = `-- name: LeadershipOverviewGradeNames :many
-SELECT DISTINCT g.name
-FROM grades g
-WHERE g.id = ANY($1::uuid[])
-ORDER BY g.name ASC
+SELECT DISTINCT (g.name || COALESCE(' ' || st.name, ''))::text AS name
+FROM classes c
+INNER JOIN grades g   ON g.id = c.grade_id
+LEFT JOIN streams st  ON st.id = c.stream_id
+WHERE c.id = ANY($1::uuid[])
+ORDER BY 1 ASC
 `
 
-// Human-readable grade names for a grade-scoped caller's panel heading.
+// Panel heading for a scoped caller: each led grade, with the stream when they lead only part of it.
 func (q *Queries) LeadershipOverviewGradeNames(ctx context.Context, dollar_1 []uuid.UUID) ([]string, error) {
 	rows, err := q.db.Query(ctx, leadershipOverviewGradeNames, dollar_1)
 	if err != nil {

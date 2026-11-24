@@ -383,9 +383,9 @@ type Querier interface {
 	// filtered in application code) so a grade-scoped caller can never receive
 	// counts for a grade outside their scope — the same class of bug §0.1
 	// flagged for the cross-school attendance dashboard.
-	// grade_ids narrows to specific grades; NULL means whole school.
-	LeadershipOverviewCounts(ctx context.Context, gradeIds []uuid.UUID) (LeadershipOverviewCountsRow, error)
-	// Human-readable grade names for a grade-scoped caller's panel heading.
+	// class_ids narrows to the classes the caller leads; NULL means whole school.
+	LeadershipOverviewCounts(ctx context.Context, classIds []uuid.UUID) (LeadershipOverviewCountsRow, error)
+	// Panel heading for a scoped caller: each led grade, with the stream when they lead only part of it.
 	LeadershipOverviewGradeNames(ctx context.Context, dollar_1 []uuid.UUID) ([]string, error)
 	// The verified email fills the guardian's email only when none is on file.
 	LinkActivatedGuardian(ctx context.Context, arg LinkActivatedGuardianParams) (int64, error)
@@ -435,9 +435,9 @@ type Querier interface {
 	// the cross-class daily dashboard: every session on one date, with the class,
 	// grade and teacher resolved, plus enough counts to show marked/pending and
 	// how many of the enrolled students have a record so far.
-	// grade_ids narrows to the caller's authorized grades (whole-school callers
+	// class_ids narrows to the classes the caller leads (whole-school callers
 	// pass NULL); filtered at the SQL WHERE clause level, not in application
-	// code, so a scoped caller can never receive rows outside their grades.
+	// code, so a scoped caller can never receive rows outside their classes.
 	ListAttendanceSessionsByDate(ctx context.Context, arg ListAttendanceSessionsByDateParams) ([]ListAttendanceSessionsByDateRow, error)
 	// ── Audit-log anomaly watcher ────────────────────────────────────────────────
 	// Replaces a single fixed threshold with a per-actor statistical baseline:
@@ -474,6 +474,10 @@ type Querier interface {
 	// ListCurrentYearClassesMissingTodaySession) is not what this is for.
 	ListClassAttendanceComplianceRecent(ctx context.Context, windowDays int32) ([]ListClassAttendanceComplianceRecentRow, error)
 	ListClassIDsByGrade(ctx context.Context, arg ListClassIDsByGradeParams) ([]uuid.UUID, error)
+	// Every class of the given grades in a year, for a grade-scoped vice principal.
+	ListClassIDsInGrades(ctx context.Context, arg ListClassIDsInGradesParams) ([]uuid.UUID, error)
+	// The classes a section head leads in a year (same rule as ListLeadersOfClass).
+	ListClassIDsLedByTeacher(ctx context.Context, arg ListClassIDsLedByTeacherParams) ([]uuid.UUID, error)
 	// Every student in the class, with their mark for this term+subject if one
 	// has been entered yet (NULL columns otherwise) — powers the marks-entry
 	// grid, which needs to show blanks for students not yet marked.
@@ -481,6 +485,8 @@ type Querier interface {
 	// Of the given student_ids, the ones enrolled in class_id. Attendance may only
 	// be recorded for these (S2).
 	ListClassStudentsAmong(ctx context.Context, arg ListClassStudentsAmongParams) ([]uuid.UUID, error)
+	// Class name and grade for the given classes in a year; NULL ids means every class.
+	ListClassSummariesForYear(ctx context.Context, arg ListClassSummariesForYearParams) ([]ListClassSummariesForYearRow, error)
 	ListClassesByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]ListClassesByAcademicYearRow, error)
 	// every class belonging to any grade in a grade_section, for a given
 	// academic year — the auto-generator's unit of work (teachers/labs shared
@@ -514,11 +520,9 @@ type Querier interface {
 	// school.school_type (Phase 11 item 1) — e.g. the type was flipped after
 	// students of the other gender were already enrolled.
 	ListGenderSchoolTypeMismatches(ctx context.Context) ([]ListGenderSchoolTypeMismatchesRow, error)
-	// grades in sections this teacher is the group-level head of, for a given year
-	ListGradeIDsForSectionHeadTeacher(ctx context.Context, arg ListGradeIDsForSectionHeadTeacherParams) ([]uuid.UUID, error)
-	// whole-grade TICs only (stream_id IS NULL) — used to resolve which grades'
-	// timetables this teacher is authorized to review
-	ListGradeIDsHeadedByTeacher(ctx context.Context, arg ListGradeIDsHeadedByTeacherParams) ([]uuid.UUID, error)
+	// Grades a teacher leads in a year: as a whole-grade or stream head, or as the
+	// head of a grade section. Any row makes them a Section Head.
+	ListGradeIDsLedByTeacher(ctx context.Context, arg ListGradeIDsLedByTeacherParams) ([]uuid.UUID, error)
 	ListGradeSectionsByYear(ctx context.Context, academicYearID uuid.UUID) ([]ListGradeSectionsByYearRow, error)
 	ListGrades(ctx context.Context) ([]Grade, error)
 	ListGradesBySection(ctx context.Context, gradeSectionID uuid.UUID) ([]Grade, error)
@@ -553,6 +557,10 @@ type Querier interface {
 	ListJobSettings(ctx context.Context) ([]JobSetting, error)
 	// one row per job_name: its most recent run, for the Automation panel.
 	ListLatestJobRuns(ctx context.Context) ([]JobRun, error)
+	// Who leads a class: the whole-grade head, the head of the class's stream in
+	// that grade, and the head of the grade section the grade belongs to. They
+	// review its timetable and may message it.
+	ListLeadersOfClass(ctx context.Context, id uuid.UUID) ([]uuid.UUID, error)
 	// administrators review the Principal's applications; the Principal reviews a Vice Principal's.
 	ListLeaveApproverUserIDs(ctx context.Context, excludeTeacherID uuid.UUID) ([]uuid.UUID, error)
 	// approved days per type for every active teacher in a leave year
@@ -582,7 +590,7 @@ type Querier interface {
 	ListNonAcademicStaff(ctx context.Context, arg ListNonAcademicStaffParams) ([]ListNonAcademicStaffRow, error)
 	ListNonAcademicStaffAttendanceByDate(ctx context.Context, date pgtype.Date) ([]ListNonAcademicStaffAttendanceByDateRow, error)
 	ListNonAcademicStaffAttendanceHistory(ctx context.Context, arg ListNonAcademicStaffAttendanceHistoryParams) ([]StaffAttendanceRecord, error)
-	// Current-year classes a teacher may message: their form class and every class they teach a subject in.
+	// Current-year classes a teacher may message: their form class, classes they teach, and classes they lead.
 	ListNotifyClassesForTeacher(ctx context.Context, teacherID uuid.UUID) ([]ListNotifyClassesForTeacherRow, error)
 	// Current-year societies; only those the teacher runs when teacher_id is given.
 	ListNotifySocieties(ctx context.Context, teacherID pgtype.UUID) ([]ListNotifySocietiesRow, error)
@@ -774,7 +782,8 @@ type Querier interface {
 	ListTimetableStatusHistory(ctx context.Context, timetableID uuid.UUID) ([]ListTimetableStatusHistoryRow, error)
 	ListTimetablesByAcademicYear(ctx context.Context, academicYearID uuid.UUID) ([]ListTimetablesByAcademicYearRow, error)
 	ListTimetablesByClass(ctx context.Context, arg ListTimetablesByClassParams) ([]ListTimetablesByClassRow, error)
-	ListUnderReviewTimetablesForGrades(ctx context.Context, arg ListUnderReviewTimetablesForGradesParams) ([]ListUnderReviewTimetablesForGradesRow, error)
+	// Timetables waiting for this teacher: the same rule as ListLeadersOfClass.
+	ListUnderReviewTimetablesForLeader(ctx context.Context, arg ListUnderReviewTimetablesForLeaderParams) ([]ListUnderReviewTimetablesForLeaderRow, error)
 	// Latest unread, unarchived agent notice per title for one admin; drives the page banners.
 	ListUnreadFindingsByTitle(ctx context.Context, arg ListUnreadFindingsByTitleParams) ([]ListUnreadFindingsByTitleRow, error)
 	ListUserIDsForTeachers(ctx context.Context, teacherIds []uuid.UUID) ([]uuid.UUID, error)

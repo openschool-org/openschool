@@ -54,13 +54,6 @@ INNER JOIN grade_section_grades gsg ON gsg.grade_id = g.id
 WHERE gsg.grade_section_id = $1
 ORDER BY g.sort_order ASC;
 
--- name: ListGradeIDsForSectionHeadTeacher :many
--- grades in sections this teacher is the group-level head of, for a given year
-SELECT gsg.grade_id
-FROM grade_sections gs
-INNER JOIN grade_section_grades gsg ON gsg.grade_section_id = gs.id
-WHERE gs.section_head_teacher_id = $1 AND gs.academic_year_id = $2;
-
 -- name: GetGradeSectionForGrade :one
 -- resolves which grade_section a grade belongs to for a given academic year,
 -- used to find the section-level head and the period grid to use

@@ -6,12 +6,12 @@
 -- flagged for the cross-school attendance dashboard.
 
 -- name: LeadershipOverviewCounts :one
--- grade_ids narrows to specific grades; NULL means whole school.
+-- class_ids narrows to the classes the caller leads; NULL means whole school.
 WITH scoped_classes AS (
     SELECT c.id
     FROM classes c
     WHERE c.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE LIMIT 1)
-      AND (sqlc.narg(grade_ids)::uuid[] IS NULL OR c.grade_id = ANY(sqlc.narg(grade_ids)::uuid[]))
+      AND (sqlc.narg(class_ids)::uuid[] IS NULL OR c.id = ANY(sqlc.narg(class_ids)::uuid[]))
 )
 SELECT
     (SELECT COUNT(*) FROM scoped_classes) AS class_count,
@@ -20,8 +20,10 @@ SELECT
         WHERE ats.class_id IN (SELECT id FROM scoped_classes) AND ats.date = CURRENT_DATE) AS sessions_marked_today;
 
 -- name: LeadershipOverviewGradeNames :many
--- Human-readable grade names for a grade-scoped caller's panel heading.
-SELECT DISTINCT g.name
-FROM grades g
-WHERE g.id = ANY($1::uuid[])
-ORDER BY g.name ASC;
+-- Panel heading for a scoped caller: each led grade, with the stream when they lead only part of it.
+SELECT DISTINCT (g.name || COALESCE(' ' || st.name, ''))::text AS name
+FROM classes c
+INNER JOIN grades g   ON g.id = c.grade_id
+LEFT JOIN streams st  ON st.id = c.stream_id
+WHERE c.id = ANY($1::uuid[])
+ORDER BY 1 ASC;

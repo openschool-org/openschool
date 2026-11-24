@@ -30,6 +30,7 @@ func TestRegisterRoutesPreservesPortalEndpoints(t *testing.T) {
 		"GET /me/teacher":                     true,
 		"GET /me/teacher/position":            true,
 		"GET /me/teacher/leadership-overview": true,
+		"GET /me/teacher/led-classes":         true,
 		"GET /me/teacher/society":             true,
 		"GET /me/teacher/analytics":           true,
 		"GET /me/teacher/timetables":          true,

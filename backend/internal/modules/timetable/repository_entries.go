@@ -105,8 +105,8 @@ func (r *timetableEntryRepository) entrySubjectCounts(ctx context.Context, timet
 	}
 	return result, nil
 }
-func (r *timetableEntryRepository) authorizedReviewers(ctx context.Context, yearID, gradeID uuid.UUID) ([]uuid.UUID, error) {
-	return gradeReviewers(ctx, r.queries, yearID, gradeID)
+func (r *timetableEntryRepository) classLeaders(ctx context.Context, classID uuid.UUID) ([]uuid.UUID, error) {
+	return r.queries.ListLeadersOfClass(ctx, classID)
 }
 
 func (r *timetableEntryRepository) blockTeachers(ctx context.Context, classID, blockID uuid.UUID) ([]blockTeacher, error) {

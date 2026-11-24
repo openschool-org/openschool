@@ -21,7 +21,9 @@ import { classLabel } from "@/shared/lib/classLabel";
 import PageHeader from "@/shared/ui/PageHeader";
 
 export default function TeacherClasses() {
-  const { teacher, classes: myClasses, isLoading, isError, refetch } = useMyClasses();
+  const { teacher, classes: allClasses, isLoading, isError, refetch } = useMyClasses();
+  // My classes is the class teacher's own class; subject classes live under Class attendance and Marks.
+  const myClasses = allClasses.filter((c) => c.isFormTeacher);
   const { data: qualified } = useTeacherSubjects(teacher?.id ?? "");
   const [activeClassId, setActiveClassId] = useState("");
   const [query, setQuery] = useState("");
@@ -45,8 +47,8 @@ export default function TeacherClasses() {
       <div className="os-page">
         <PageHeader title="My classes" />
         <EmptyState
-          title="No classes assigned yet"
-          description="Classes you teach will appear here once an admin assigns you to a subject in a class."
+          title="You are not a class teacher"
+          description="My classes is for the class you lead. See your teaching classes under Class attendance and Marks."
         />
       </div>
     );

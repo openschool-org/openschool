@@ -1,3 +1,5 @@
+import { useMyLedClasses } from "@/features/positions/queries/usePositions";
+import { useLocation } from "react-router";
 import { useState } from "react";
 import { Button, Tag } from "antd";
 import { PlusCircleOutlined } from "@ant-design/icons";
@@ -22,8 +24,11 @@ import PageHeader from "@/shared/ui/PageHeader";
 const HEADERS = ["Class", "Grade", "Teacher", "Records", "Status", "Actions"];
 
 export default function Attendance() {
+  // The same page serves a section head at /t/section-attendance, scoped to the classes they lead.
+  const isSectionView = useLocation().pathname.startsWith("/t/");
   const [date, setDate] = useState(todayISODate());
-  const day = useDailySessionsPage(date);
+  const { data: ledClasses } = useMyLedClasses(isSectionView);
+  const day = useDailySessionsPage(date, isSectionView ? (ledClasses ?? []) : undefined);
   const deleteSession = useDeleteSession();
   const { role } = useRole();
   const [toDelete, setToDelete] = useState<DailySession | null>(null);
@@ -31,7 +36,7 @@ export default function Attendance() {
 
   return (
     <div className="os-page">
-      <PageHeader title="Attendance" subtitle={<>{formatLongDate(`${date}T00:00:00`)}</>}>
+      <PageHeader title={isSectionView ? "Section attendance" : "Attendance"} subtitle={<>{isSectionView ? "Classes you lead · " : ""}{formatLongDate(`${date}T00:00:00`)}</>}>
         <div className="os-min-w-12">
           <DateField value={date} onChange={(ymd) => ymd && setDate(ymd)} id="attendance-date" labelText="Attendance date" hideLabel />
         </div>
@@ -98,10 +103,10 @@ export default function Attendance() {
                   ? "Create sessions for every class at once above, or go to a class's Attendance tab to start one."
                   : "Sessions are created from a class's Attendance tab - go to a class to start one."
               }
-              action={<LinkButton to="/classes" type="primary">Go to Classes</LinkButton>}
+              action={isSectionView ? undefined : <LinkButton to="/classes" type="primary">Go to Classes</LinkButton>}
             />
           ) : (
-            <DataGrid rows={sessions} columns={sessionColumns(role === "admin", setToDelete)} getRowId={(s) => s.id} noHover pageSize={20} />
+            <DataGrid rows={sessions} columns={sessionColumns(role === "admin", setToDelete, !isSectionView)} getRowId={(s) => s.id} noHover pageSize={20} />
           )}
         </div>
       )}

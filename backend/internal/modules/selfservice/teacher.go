@@ -151,6 +151,24 @@ func (h *TeacherSelfHandler) LeadershipOverview(c *gin.Context) {
 	c.JSON(http.StatusOK, overview)
 }
 
+// LedClasses returns the classes the signed-in section head (or principal / vice principal) oversees.
+func (h *TeacherSelfHandler) LedClasses(c *gin.Context) {
+	teacherID, yearID, ok := h.currentTeacher(c)
+	if !ok {
+		return
+	}
+	classes, err := h.positions.LedClasses(c.Request.Context(), teacherID, yearID)
+	if errors.Is(err, leadershipmodule.ErrInsufficientRank) {
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		return
+	}
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, classes)
+}
+
 // Analytics returns school-wide analytics for the signed-in Principal or Vice Principal.
 func (h *TeacherSelfHandler) Analytics(c *gin.Context) {
 	if _, ok := h.leadershipTeacher(c); !ok {

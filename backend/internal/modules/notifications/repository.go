@@ -344,3 +344,7 @@ func (r *NotificationRepository) ListGradeSectionIDs(ctx context.Context, yearID
 	}
 	return out, err
 }
+
+func (r *NotificationRepository) ListLeadersOfClass(ctx context.Context, classID uuid.UUID) ([]uuid.UUID, error) {
+	return r.queries.ListLeadersOfClass(ctx, classID)
+}

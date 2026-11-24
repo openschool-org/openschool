@@ -204,8 +204,8 @@ func TestSubjectTeacherViewsButCannotTakeAttendance(t *testing.T) {
 	if _, err := service.CreateSession(context.Background(), teacher, CreateAttendanceSessionRequest{ClassID: uuid.NewString(), Date: "2026-09-14"}); !errors.Is(err, ErrNotClassTeacher) {
 		t.Fatalf("create: got %v, want ErrNotClassTeacher", err)
 	}
-	if err := service.DeleteSession(context.Background(), teacher, store.session.ID); !errors.Is(err, ErrNotClassTeacher) {
-		t.Fatalf("delete: got %v, want ErrNotClassTeacher", err)
+	if err := service.DeleteSession(context.Background(), teacher, store.session.ID); !errors.Is(err, ErrNotSectionHead) {
+		t.Fatalf("delete: got %v, want ErrNotSectionHead", err)
 	}
 
 	admin := Actor{ID: uuid.New(), Role: authz.RoleAdmin}

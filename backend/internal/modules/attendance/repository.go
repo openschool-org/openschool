@@ -48,8 +48,8 @@ func (r *Repository) listSessionsByClass(ctx context.Context, classID uuid.UUID)
 	}
 	return out, nil
 }
-func (r *Repository) listSessionsByDate(ctx context.Context, date time.Time, gradeIDs []uuid.UUID) ([]DailySession, error) {
-	rows, err := r.queries.ListAttendanceSessionsByDate(ctx, db.ListAttendanceSessionsByDateParams{Date: dateValue(date), GradeIds: gradeIDs})
+func (r *Repository) listSessionsByDate(ctx context.Context, date time.Time, classIDs []uuid.UUID) ([]DailySession, error) {
+	rows, err := r.queries.ListAttendanceSessionsByDate(ctx, db.ListAttendanceSessionsByDateParams{Date: dateValue(date), ClassIds: classIDs})
 	if err != nil {
 		return nil, err
 	}

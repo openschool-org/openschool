@@ -13,6 +13,16 @@ import (
 
 var ruleSocietyMine, ruleSocietyOther = nid(700), nid(701)
 
+// ruleClassLed is a class teacher 1 does not teach but leads as its stream head.
+var ruleClassLed = nid(102)
+
+func (s *ruleStore) ListLeadersOfClass(_ context.Context, class uuid.UUID) ([]uuid.UUID, error) {
+	if class == ruleClassLed {
+		return []uuid.UUID{ruleTeacher}, nil
+	}
+	return nil, nil
+}
+
 func (s *ruleStore) ListAllGradeIDs(context.Context) ([]uuid.UUID, error) {
 	return []uuid.UUID{ruleGradeMine, ruleGradeOther}, nil
 }
@@ -55,6 +65,8 @@ func TestPlainClassTeacherRules(t *testing.T) {
 		{"other society", RecipientRule{Type: RuleSociety, SocietyID: ptr(ruleSocietyOther)}, false},
 		{"society without id", RecipientRule{Type: RuleSociety}, false},
 		{"any teacher", RecipientRule{Type: RuleTeacher, TeacherID: ptr(ruleColleague)}, true},
+		{"class led as stream head", RecipientRule{Type: RuleClass, ClassID: ptr(ruleClassLed), Audience: AudienceGuardians}, true},
+		{"class neither taught nor led", RecipientRule{Type: RuleClass, ClassID: ptr(ruleClassOther)}, false},
 	}
 	service := NewNotificationService(&ruleStore{headsNothing: true})
 	for _, tc := range cases {

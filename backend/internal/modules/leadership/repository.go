@@ -88,13 +88,21 @@ func (r *Repository) isSubjectTeacher(ctx context.Context, teacherID, academicYe
 	return r.queries.IsSubjectTeacherOfAnyClass(ctx, db.IsSubjectTeacherOfAnyClassParams{TeacherID: teacherID, AcademicYearID: academicYearID})
 }
 
-func (r *Repository) leadershipOverviewCounts(ctx context.Context, gradeIDs []uuid.UUID) (overviewCounts, error) {
-	value, err := r.queries.LeadershipOverviewCounts(ctx, gradeIDs)
+func (r *Repository) leadershipOverviewCounts(ctx context.Context, classIDs []uuid.UUID) (overviewCounts, error) {
+	value, err := r.queries.LeadershipOverviewCounts(ctx, classIDs)
 	return overviewCounts{ClassCount: value.ClassCount, StudentCount: value.StudentCount, SessionsMarkedToday: value.SessionsMarkedToday}, err
 }
 
-func (r *Repository) leadershipOverviewGradeNames(ctx context.Context, gradeIDs []uuid.UUID) ([]string, error) {
-	return r.queries.LeadershipOverviewGradeNames(ctx, gradeIDs)
+func (r *Repository) leadershipOverviewGradeNames(ctx context.Context, classIDs []uuid.UUID) ([]string, error) {
+	return r.queries.LeadershipOverviewGradeNames(ctx, classIDs)
+}
+
+func (r *Repository) listClassIDsLedByTeacher(ctx context.Context, teacherID, yearID uuid.UUID) ([]uuid.UUID, error) {
+	return r.queries.ListClassIDsLedByTeacher(ctx, db.ListClassIDsLedByTeacherParams{TeacherID: teacherID, AcademicYearID: yearID})
+}
+
+func (r *Repository) listClassIDsInGrades(ctx context.Context, yearID uuid.UUID, gradeIDs []uuid.UUID) ([]uuid.UUID, error) {
+	return r.queries.ListClassIDsInGrades(ctx, db.ListClassIDsInGradesParams{AcademicYearID: yearID, GradeIds: gradeIDs})
 }
 
 func mapSectionHead(value db.SectionHead) SectionHead {
@@ -128,7 +136,8 @@ func (r *Repository) deleteSectionHead(ctx context.Context, id uuid.UUID) (int64
 }
 
 func (r *Repository) listGradeIDsHeadedByTeacher(ctx context.Context, teacherID, yearID uuid.UUID) ([]uuid.UUID, error) {
-	return r.queries.ListGradeIDsHeadedByTeacher(ctx, db.ListGradeIDsHeadedByTeacherParams{TeacherID: teacherID, AcademicYearID: yearID})
+	// Whole-grade, stream and grade-section heads all count as leading the grade.
+	return r.queries.ListGradeIDsLedByTeacher(ctx, db.ListGradeIDsLedByTeacherParams{TeacherID: teacherID, AcademicYearID: yearID})
 }
 
 func (r *Repository) teacherClassAccess(ctx context.Context, userID, classID uuid.UUID) (classAccess, error) {
@@ -138,4 +147,13 @@ func (r *Repository) teacherClassAccess(ctx context.Context, userID, classID uui
 
 func (r *Repository) currentClassOfStudent(ctx context.Context, studentID uuid.UUID) (uuid.UUID, error) {
 	return r.queries.CurrentClassOfStudent(ctx, studentID)
+}
+
+func (r *Repository) listClassSummaries(ctx context.Context, yearID uuid.UUID, classIDs []uuid.UUID) ([]LedClass, error) {
+	rows, err := r.queries.ListClassSummariesForYear(ctx, db.ListClassSummariesForYearParams{AcademicYearID: yearID, ClassIds: classIDs})
+	out := make([]LedClass, len(rows))
+	for i, row := range rows {
+		out[i] = LedClass{ID: row.ID, Name: row.Name, GradeName: row.GradeName}
+	}
+	return out, err
 }

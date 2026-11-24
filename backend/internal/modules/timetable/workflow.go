@@ -46,10 +46,9 @@ type workflowStore interface {
 	class(context.Context, uuid.UUID) (workflowClass, error)
 	teacherByUser(context.Context, uuid.UUID) (workflowTeacher, error)
 	teachersByIDs(context.Context, []uuid.UUID) ([]workflowTeacher, error)
-	authorizedReviewers(context.Context, uuid.UUID, uuid.UUID) ([]uuid.UUID, error)
-	gradeIDsHeadedByTeacher(context.Context, uuid.UUID, uuid.UUID) ([]uuid.UUID, error)
-	gradeIDsForSectionHead(context.Context, uuid.UUID, uuid.UUID) ([]uuid.UUID, error)
-	listReviewQueue(context.Context, uuid.UUID, []uuid.UUID) ([]reviewQueueItem, error)
+	// classLeaders: the whole-grade head, the class's stream head and the grade-section head.
+	classLeaders(context.Context, uuid.UUID) ([]uuid.UUID, error)
+	listReviewQueue(ctx context.Context, yearID, teacherID uuid.UUID) ([]reviewQueueItem, error)
 	submit(context.Context, uuid.UUID, uuid.UUID) (Timetable, error)
 	approve(context.Context, uuid.UUID, uuid.UUID, string) (Timetable, error)
 	reject(context.Context, uuid.UUID, uuid.UUID, string) (Timetable, error)
@@ -152,7 +151,7 @@ func (s *workflowService) authorizedReview(ctx context.Context, id, actor uuid.U
 	if err != nil {
 		return Timetable{}, workflowTeacher{}, workflowClass{}, err
 	}
-	reviewers, err := s.store.authorizedReviewers(ctx, class.GradeID, timetable.AcademicYearID)
+	reviewers, err := s.store.classLeaders(ctx, class.ID)
 	if err != nil {
 		return Timetable{}, workflowTeacher{}, workflowClass{}, err
 	}
@@ -191,26 +190,7 @@ func (s *workflowService) reviewQueue(ctx context.Context, actor, yearID uuid.UU
 	if err != nil {
 		return []reviewQueueItem{}, nil
 	}
-	tic, err := s.store.gradeIDsHeadedByTeacher(ctx, teacher.ID, yearID)
-	if err != nil {
-		return nil, err
-	}
-	section, err := s.store.gradeIDsForSectionHead(ctx, teacher.ID, yearID)
-	if err != nil {
-		return nil, err
-	}
-	seen := make(map[uuid.UUID]bool)
-	grades := make([]uuid.UUID, 0, len(tic)+len(section))
-	for _, gradeID := range append(tic, section...) {
-		if !seen[gradeID] {
-			seen[gradeID] = true
-			grades = append(grades, gradeID)
-		}
-	}
-	if len(grades) == 0 {
-		return []reviewQueueItem{}, nil
-	}
-	return s.store.listReviewQueue(ctx, yearID, grades)
+	return s.store.listReviewQueue(ctx, yearID, teacher.ID)
 }
 
 func (s *workflowService) notifySubmit(ctx context.Context, timetable Timetable, actor uuid.UUID) {
@@ -218,7 +198,7 @@ func (s *workflowService) notifySubmit(ctx context.Context, timetable Timetable,
 	if err != nil {
 		return
 	}
-	reviewerIDs, err := s.store.authorizedReviewers(ctx, class.GradeID, timetable.AcademicYearID)
+	reviewerIDs, err := s.store.classLeaders(ctx, class.ID)
 	if err != nil {
 		return
 	}

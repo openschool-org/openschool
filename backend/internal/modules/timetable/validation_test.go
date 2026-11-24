@@ -49,7 +49,7 @@ func (s *validationStoreStub) entrySubjectCounts(context.Context, uuid.UUID) (ma
 func (s *validationStoreStub) blockTeachers(context.Context, uuid.UUID, uuid.UUID) ([]blockTeacher, error) {
 	return nil, nil
 }
-func (s *validationStoreStub) authorizedReviewers(context.Context, uuid.UUID, uuid.UUID) ([]uuid.UUID, error) {
+func (s *validationStoreStub) classLeaders(context.Context, uuid.UUID) ([]uuid.UUID, error) {
 	return s.reviewers, nil
 }
 

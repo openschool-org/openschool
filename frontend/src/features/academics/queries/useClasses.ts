@@ -7,7 +7,8 @@ import { studentKeys } from "@/features/students/keys";
 import { useInvalidate } from "@/shared/api/useInvalidate";
 import { timetableKeys } from "@/features/timetable/keys";
 
-export const useCurrentClasses = () => useQuery({ queryKey: classKeys.current(), queryFn: classApi.listCurrent });
+export const useCurrentClasses = (options: { enabled?: boolean } = {}) =>
+  useQuery({ queryKey: classKeys.current(), queryFn: classApi.listCurrent, enabled: options.enabled ?? true });
 
 export const useClassesByAcademicYear = (academicYearId: string) =>
   useQuery({

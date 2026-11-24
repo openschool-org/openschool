@@ -155,6 +155,18 @@ WHERE c.form_teacher_id = $1::uuid
        SELECT 1 FROM class_subject_teachers cst
        WHERE cst.class_id = c.id AND cst.teacher_id = $1::uuid
    )
+   -- Classes they lead as a grade, stream or grade-section head.
+   OR EXISTS (
+       SELECT 1 FROM section_heads sh
+       WHERE sh.teacher_id = $1::uuid AND sh.academic_year_id = c.academic_year_id
+         AND sh.grade_id = c.grade_id AND (sh.stream_id IS NULL OR sh.stream_id = c.stream_id)
+   )
+   OR EXISTS (
+       SELECT 1 FROM grade_section_grades gsg
+       INNER JOIN grade_sections gs ON gs.id = gsg.grade_section_id
+       WHERE gsg.grade_id = c.grade_id AND gsg.academic_year_id = c.academic_year_id
+         AND gs.section_head_teacher_id = $1::uuid
+   )
 ORDER BY g.sort_order ASC, c.name ASC
 `
 
@@ -165,7 +177,7 @@ type ListNotifyClassesForTeacherRow struct {
 	IsFormClass bool      `json:"is_form_class"`
 }
 
-// Current-year classes a teacher may message: their form class and every class they teach a subject in.
+// Current-year classes a teacher may message: their form class, classes they teach, and classes they lead.
 func (q *Queries) ListNotifyClassesForTeacher(ctx context.Context, teacherID uuid.UUID) ([]ListNotifyClassesForTeacherRow, error) {
 	rows, err := q.db.Query(ctx, listNotifyClassesForTeacher, teacherID)
 	if err != nil {

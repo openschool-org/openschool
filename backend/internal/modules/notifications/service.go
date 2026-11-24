@@ -102,6 +102,7 @@ type store interface {
 	ListNotifySocieties(context.Context, *uuid.UUID) ([]NotifySociety, error)
 	ListAllGradeIDs(context.Context) ([]uuid.UUID, error)
 	ListGradeSectionIDs(context.Context, uuid.UUID) ([]uuid.UUID, error)
+	ListLeadersOfClass(context.Context, uuid.UUID) ([]uuid.UUID, error)
 }
 
 func addUUID(seen map[uuid.UUID]bool, out *[]uuid.UUID, id uuid.UUID) {
@@ -236,7 +237,7 @@ func (s *NotificationService) checkClassRule(ctx context.Context, teacherID uuid
 	if rule.ClassID == nil || !validAudience(rule.Audience) {
 		return ErrForbiddenRecipients
 	}
-	return allowed(s.repo.IsTeacherAssignedToClass(ctx, *rule.ClassID, teacherID))
+	return allowed(s.canReachClass(ctx, *rule.ClassID, teacherID))
 }
 
 // checkGradeRule requires the teacher to head every grade the rule covers; lookup errors are returned as is.
@@ -281,7 +282,7 @@ func (s *NotificationService) checkStudentRule(ctx context.Context, teacherID uu
 	if err != nil {
 		return ErrForbiddenRecipients
 	}
-	return allowed(s.repo.IsTeacherAssignedToClass(ctx, classID, teacherID))
+	return allowed(s.canReachClass(ctx, classID, teacherID))
 }
 
 func (s *NotificationService) checkGuardianRule(ctx context.Context, teacherID uuid.UUID, rule RecipientRule) error {
@@ -292,7 +293,37 @@ func (s *NotificationService) checkGuardianRule(ctx context.Context, teacherID u
 	if err != nil {
 		return err
 	}
-	return allowed(s.repo.IsTeacherAssignedToAnyStudentClass(ctx, studentIDs, teacherID))
+	if ok, err := s.repo.IsTeacherAssignedToAnyStudentClass(ctx, studentIDs, teacherID); err == nil && ok {
+		return nil
+	}
+	// A leader of any child's class may also reach the guardian.
+	for _, studentID := range studentIDs {
+		classID, err := s.repo.StudentCurrentClass(ctx, studentID)
+		if err != nil {
+			continue
+		}
+		if ok, _ := s.canReachClass(ctx, classID, teacherID); ok {
+			return nil
+		}
+	}
+	return ErrForbiddenRecipients
+}
+
+// canReachClass: the teacher teaches the class, or leads it as a grade, stream or grade-section head.
+func (s *NotificationService) canReachClass(ctx context.Context, classID, teacherID uuid.UUID) (bool, error) {
+	if ok, err := s.repo.IsTeacherAssignedToClass(ctx, classID, teacherID); err != nil || ok {
+		return ok, err
+	}
+	leaders, err := s.repo.ListLeadersOfClass(ctx, classID)
+	if err != nil {
+		return false, err
+	}
+	for _, id := range leaders {
+		if id == teacherID {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // recipientSet collects user ids once each, in the order first seen.

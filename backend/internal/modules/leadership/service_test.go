@@ -21,6 +21,21 @@ type leadershipStore struct {
 	replacedScopes  []uuid.UUID
 	streamSection   SectionHead
 	streamArguments []uuid.UUID
+	// classesByGrade maps a grade to its classes; ledClasses are the classes a section head leads.
+	classesByGrade map[uuid.UUID][]uuid.UUID
+	ledClasses     []uuid.UUID
+}
+
+func (s *leadershipStore) listClassIDsInGrades(_ context.Context, _ uuid.UUID, gradeIDs []uuid.UUID) ([]uuid.UUID, error) {
+	var out []uuid.UUID
+	for _, g := range gradeIDs {
+		out = append(out, s.classesByGrade[g]...)
+	}
+	return out, nil
+}
+
+func (s *leadershipStore) listClassIDsLedByTeacher(context.Context, uuid.UUID, uuid.UUID) ([]uuid.UUID, error) {
+	return s.ledClasses, nil
 }
 
 func (s *leadershipStore) upsertVicePrincipal(_ context.Context, teacherID uuid.UUID, wholeSchool bool) (Position, error) {
@@ -139,18 +154,32 @@ func TestRankForTeacherUsesHighestMatchingRank(t *testing.T) {
 	}
 }
 
-func TestLeadershipScopeMapsVicePrincipalGrades(t *testing.T) {
+func TestLeadershipScopeMapsVicePrincipalGradesToClasses(t *testing.T) {
 	positionID, first, second := uuid.New(), uuid.New(), uuid.New()
+	a, b, c := uuid.New(), uuid.New(), uuid.New()
 	store := &leadershipStore{
-		position:    Position{ID: positionID, Position: "vice_principal"},
-		scopeGrades: []scopeGrade{{ID: first}, {ID: second}},
+		position:       Position{ID: positionID, Position: "vice_principal"},
+		scopeGrades:    []scopeGrade{{ID: first}, {ID: second}},
+		classesByGrade: map[uuid.UUID][]uuid.UUID{first: {a, b}, second: {c}},
 	}
-	wholeSchool, grades, err := NewService(store, nil).LeadershipScope(context.Background(), uuid.New(), uuid.New())
+	wholeSchool, classes, err := NewService(store, nil).LeadershipScope(context.Background(), uuid.New(), uuid.New())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if wholeSchool || len(grades) != 2 || grades[0] != first || grades[1] != second {
-		t.Fatalf("unexpected scope: wholeSchool=%v grades=%v", wholeSchool, grades)
+	if wholeSchool || len(classes) != 3 || classes[0] != a || classes[2] != c {
+		t.Fatalf("unexpected scope: wholeSchool=%v classes=%v", wholeSchool, classes)
+	}
+}
+
+func TestLeadershipScopeOfStreamHeadIsOnlyTheirClasses(t *testing.T) {
+	scienceClass := uuid.New()
+	store := &leadershipStore{headedGrades: []uuid.UUID{uuid.New()}, ledClasses: []uuid.UUID{scienceClass}}
+	wholeSchool, classes, err := NewService(store, nil).LeadershipScope(context.Background(), uuid.New(), uuid.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if wholeSchool || len(classes) != 1 || classes[0] != scienceClass {
+		t.Fatalf("stream head scope: wholeSchool=%v classes=%v", wholeSchool, classes)
 	}
 }
 

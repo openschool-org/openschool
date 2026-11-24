@@ -116,8 +116,8 @@ export default function TeacherDashboard() {
         <>
           {isLeader && <p className="os-dash-section-label">Your classes</p>}
           <div className="os-stat-grid">
-            <StatCard label="My classes" value={myClasses.length} loading={false} Icon={BankOutlined} path="/t/classes" />
-            <StatCard label="Students" value={totalStudents} loading={false} Icon={TeamOutlined} path="/t/classes" />
+            <StatCard label="My classes" value={myClasses.length} loading={false} Icon={BankOutlined} path={formClasses.length ? "/t/classes" : "/t/attendance"} />
+            <StatCard label="Students" value={totalStudents} loading={false} Icon={TeamOutlined} path={formClasses.length ? "/t/classes" : "/t/attendance"} />
             <StatCard {...sessionCard} label="Marked today" value={markedCount} Icon={CheckCircleOutlined} path="/t/attendance" />
             <StatCard {...sessionCard} label="Not marked yet" value={pendingCount} Icon={ClockCircleOutlined} path="/t/attendance" />
           </div>

@@ -23,6 +23,7 @@ type leadershipFixture struct {
 	principalTeacherID, vicePrincipalTeacherID  uuid.UUID
 	sectionHeadTeacherID                        uuid.UUID
 	academicYearID, firstGradeID, secondGradeID uuid.UUID
+	firstGradeClassID                           uuid.UUID
 }
 
 func TestLeadershipWorkflowsWithPostgres(t *testing.T) {
@@ -47,9 +48,10 @@ func TestLeadershipWorkflowsWithPostgres(t *testing.T) {
 	}
 	assertLeadershipCount(t, pool, "SELECT COUNT(*) FROM vice_principal_grade_scopes WHERE position_id = $1", 1, vicePosition.ID)
 
-	wholeSchool, gradeIDs, err := service.LeadershipScope(context.Background(), fixture.vicePrincipalTeacherID, fixture.academicYearID)
-	if err != nil || wholeSchool || len(gradeIDs) != 1 || gradeIDs[0] != fixture.firstGradeID {
-		t.Fatalf("vice principal scope: whole=%t grades=%v err=%v", wholeSchool, gradeIDs, err)
+	// The scope is class-level: the one class in the vice principal's grade.
+	wholeSchool, classIDs, err := service.LeadershipScope(context.Background(), fixture.vicePrincipalTeacherID, fixture.academicYearID)
+	if err != nil || wholeSchool || len(classIDs) != 1 || classIDs[0] != fixture.firstGradeClassID {
+		t.Fatalf("vice principal scope: whole=%t classes=%v err=%v", wholeSchool, classIDs, err)
 	}
 	overview, err := service.LeadershipOverview(context.Background(), fixture.vicePrincipalTeacherID, fixture.academicYearID)
 	if err != nil || overview.Scope != "grades" || overview.ClassCount != 1 || overview.StudentCount != 1 || len(overview.GradeNames) != 1 || overview.GradeNames[0] != "Leadership Grade 7" {
@@ -88,9 +90,10 @@ func TestLeadershipWorkflowsWithPostgres(t *testing.T) {
 	if err != nil || sectionRank != RankSectionHead {
 		t.Fatalf("section head rank=%v err=%v", sectionRank, err)
 	}
-	wholeSchool, gradeIDs, err = service.LeadershipScope(context.Background(), fixture.sectionHeadTeacherID, fixture.academicYearID)
-	if err != nil || wholeSchool || len(gradeIDs) != 1 || gradeIDs[0] != fixture.secondGradeID {
-		t.Fatalf("section head scope: whole=%t grades=%v err=%v", wholeSchool, gradeIDs, err)
+	// The grade they head has no classes yet, so they lead none.
+	wholeSchool, classIDs, err = service.LeadershipScope(context.Background(), fixture.sectionHeadTeacherID, fixture.academicYearID)
+	if err != nil || wholeSchool || len(classIDs) != 0 {
+		t.Fatalf("section head scope: whole=%t classes=%v err=%v", wholeSchool, classIDs, err)
 	}
 
 	deletedSectionHead := performLeadershipRequest(t, router, http.MethodDelete, "/section-heads/"+assignedSectionHead.ID.String(), nil)
@@ -139,10 +142,11 @@ func seedLeadershipFixture(t *testing.T, pool *pgxpool.Pool) leadershipFixture {
 	if err := pool.QueryRow(ctx, "INSERT INTO grades (name, sort_order) VALUES ('Leadership Grade 8', 8) RETURNING id").Scan(&fixture.secondGradeID); err != nil {
 		t.Fatal(err)
 	}
-	var classID, studentID uuid.UUID
-	if err := pool.QueryRow(ctx, "INSERT INTO classes (grade_id, academic_year_id, name) VALUES ($1, $2, 'A') RETURNING id", fixture.firstGradeID, fixture.academicYearID).Scan(&classID); err != nil {
+	var studentID uuid.UUID
+	if err := pool.QueryRow(ctx, "INSERT INTO classes (grade_id, academic_year_id, name) VALUES ($1, $2, 'A') RETURNING id", fixture.firstGradeID, fixture.academicYearID).Scan(&fixture.firstGradeClassID); err != nil {
 		t.Fatal(err)
 	}
+	classID := fixture.firstGradeClassID
 	if err := pool.QueryRow(ctx, "INSERT INTO student_profiles (full_name, index_number) VALUES ('Leadership Student', 'LEAD-STUDENT-1') RETURNING id").Scan(&studentID); err != nil {
 		t.Fatal(err)
 	}

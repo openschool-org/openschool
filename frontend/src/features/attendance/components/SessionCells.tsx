@@ -15,8 +15,8 @@ export function SessionStatus({ session }: { session: DailySession }) {
 }
 
 // A marked session, or one locked after 24 hours for a non-admin, opens read-only.
-export function SessionActions({ session, isAdmin, onDelete }: { session: DailySession; isAdmin: boolean; onDelete: (s: DailySession) => void }) {
-  const readOnly = session.marked_count > 0 || (isLockedAfter24Hours(session.created_at) && !isAdmin);
+export function SessionActions({ session, isAdmin, onDelete, canMark = true }: { session: DailySession; isAdmin: boolean; onDelete: (s: DailySession) => void; canMark?: boolean }) {
+  const readOnly = !canMark || session.marked_count > 0 || (isLockedAfter24Hours(session.created_at) && !isAdmin);
   return (
     <div className="os-grid__actions os-nowrap-flex">
       <LinkButton to={`/attendance/sessions/${session.id}/mark`} type={readOnly ? "link" : "primary"} size="small">

@@ -2,13 +2,14 @@ import { AuditOutlined, BankOutlined, BellOutlined, BulbOutlined, CalendarOutlin
 import type { NavGroup } from "@/layouts/nav/types";
 
 // Only a Section Head can act on the review queue, so others do not get the item.
-function teachingGroups(isSectionHead: boolean): NavGroup[] {
+function teachingGroups(isSectionHead: boolean, isClassTeacher: boolean): NavGroup[] {
   return [
     {
       label: "Academics",
       Icon: ReadOutlined,
       items: [
-        { path: "/t/classes", label: "My classes", Icon: BankOutlined },
+        // Only a class teacher has a class of their own.
+        ...(isClassTeacher ? [{ path: "/t/classes", label: "My classes", Icon: BankOutlined }] : []),
         { path: "/t/timetable", label: "My timetable", Icon: TableOutlined, exact: true },
         { path: "/t/marks", label: "Marks", Icon: FileDoneOutlined },
         ...(isSectionHead ? [{ path: "/t/timetable/review", label: "Review timetables", Icon: ReloadOutlined, exact: true }] : []),
@@ -20,6 +21,7 @@ function teachingGroups(isSectionHead: boolean): NavGroup[] {
       Icon: ScheduleOutlined,
       items: [
         { path: "/t/attendance", label: "Class attendance", Icon: ScheduleOutlined },
+        ...(isSectionHead ? [{ path: "/t/section-attendance", label: "Section attendance", Icon: AuditOutlined, exact: true }] : []),
         { path: "/t/my-attendance", label: "My attendance", Icon: CalendarOutlined, exact: true },
         { path: "/t/leave", label: "My leave", Icon: CarryOutOutlined, exact: true },
       ],
@@ -57,10 +59,10 @@ const SYSTEM_GROUP: NavGroup = {
   items: [{ path: "/t/profile", label: "My profile", Icon: UserOutlined }],
 };
 
-export function teacherNav(opts: { isLeadership: boolean; isSectionHead: boolean }): NavGroup[] {
+export function teacherNav(opts: { isLeadership: boolean; isSectionHead: boolean; isClassTeacher: boolean }): NavGroup[] {
   return [
     { label: "Overview", items: [{ path: "/", label: "Dashboard", Icon: HomeOutlined }] },
-    ...(opts.isLeadership ? LEADERSHIP_GROUPS : teachingGroups(opts.isSectionHead)),
+    ...(opts.isLeadership ? LEADERSHIP_GROUPS : teachingGroups(opts.isSectionHead, opts.isClassTeacher)),
     COMMUNICATION_GROUP,
     SYSTEM_GROUP,
   ];
