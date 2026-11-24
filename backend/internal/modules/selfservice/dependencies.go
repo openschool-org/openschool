@@ -13,7 +13,7 @@ import (
 // TimetableReader is the narrow timetable capability needed by parent and
 // teacher self-service; mutation remains owned by the Timetable module.
 type TimetableReader interface {
-	GetPublishedForStudent(context.Context, uuid.UUID) (timetablemodule.Timetable, []timetablemodule.TimetableEntry, error)
+	GetPublishedForStudent(context.Context, uuid.UUID) (timetablemodule.PublishedSchedule, error)
 	ListByAcademicYear(context.Context, uuid.UUID) ([]timetablemodule.TimetableListItem, error)
 }
 

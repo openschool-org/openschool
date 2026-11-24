@@ -98,6 +98,44 @@ func (q *Queries) ListTimetablePeriodsBySection(ctx context.Context, gradeSectio
 	return items, nil
 }
 
+const listTimetablePeriodsForClass = `-- name: ListTimetablePeriodsForClass :many
+SELECT tp.id, tp.grade_section_id, tp.sort_order, tp.period_number, tp.start_time, tp.end_time, tp.slot_type, tp.created_at FROM timetable_periods tp
+INNER JOIN grade_section_grades gsg ON gsg.grade_section_id = tp.grade_section_id
+INNER JOIN classes c ON c.grade_id = gsg.grade_id AND c.academic_year_id = gsg.academic_year_id
+WHERE c.id = $1
+ORDER BY tp.sort_order ASC
+`
+
+// The bell schedule of the grade section the class's grade belongs to in the class's year.
+func (q *Queries) ListTimetablePeriodsForClass(ctx context.Context, id uuid.UUID) ([]TimetablePeriod, error) {
+	rows, err := q.db.Query(ctx, listTimetablePeriodsForClass, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TimetablePeriod{}
+	for rows.Next() {
+		var i TimetablePeriod
+		if err := rows.Scan(
+			&i.ID,
+			&i.GradeSectionID,
+			&i.SortOrder,
+			&i.PeriodNumber,
+			&i.StartTime,
+			&i.EndTime,
+			&i.SlotType,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateTimetablePeriod = `-- name: UpdateTimetablePeriod :one
 UPDATE timetable_periods
 SET start_time = $2, end_time = $3

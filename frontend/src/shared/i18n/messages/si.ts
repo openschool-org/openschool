@@ -1,4 +1,5 @@
 import type { Messages } from "@/shared/i18n/messages/en";
+import { siPortal } from "@/shared/i18n/messages/si.portal";
 
 // Sinhala. Draft translation; have a Sinhala-speaking teacher review before release.
 export const si: Messages = {
@@ -264,4 +265,5 @@ export const si: Messages = {
   "child.tab.guardians": "භාරකරුවන්",
   "child.section.portfolio": "විෂය සමගාමී සහ පෝට්ෆෝලියෝ විස්තර",
   "child.section.guardians": "සම්බන්ධ භාරකරුවන්",
+  ...siPortal,
 };

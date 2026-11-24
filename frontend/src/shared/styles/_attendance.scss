@@ -18,10 +18,13 @@
 
   &--selected {
     font-weight: 600;
-    &.os-status-toggle--present  { border-color: var(--os-status-present-border);  background: var(--os-status-present-bg);  color: var(--os-status-present-text);  svg { fill: var(--os-status-present-text); } }
-    &.os-status-toggle--absent   { border-color: var(--os-status-absent-border);   background: var(--os-status-absent-bg);   color: var(--os-status-absent-text);   svg { fill: var(--os-status-absent-text); } }
-    &.os-status-toggle--late     { border-color: var(--os-status-late-border);     background: var(--os-status-late-bg);     color: var(--os-status-late-text);     svg { fill: var(--os-status-late-text); } }
-    &.os-status-toggle--excused  { border-color: var(--os-status-excused-border);  background: var(--os-status-excused-bg);  color: var(--os-status-excused-text);  svg { fill: var(--os-status-excused-text); } }
+    // Selected status uses the same solid fill and white text as the read-only badges.
+    color: var(--os-text-on-color);
+    svg { fill: var(--os-text-on-color); }
+    &.os-status-toggle--present  { border-color: var(--os-status-present-solid);  background: var(--os-status-present-solid); }
+    &.os-status-toggle--absent   { border-color: var(--os-status-absent-solid);   background: var(--os-status-absent-solid); }
+    &.os-status-toggle--late     { border-color: var(--os-status-late-solid);     background: var(--os-status-late-solid); }
+    &.os-status-toggle--excused  { border-color: var(--os-status-excused-solid);  background: var(--os-status-excused-solid); }
   }
 }
 
@@ -261,3 +264,33 @@
 @each $s in present, absent, late, excused {
   .os-grid .os-attendance-row--#{$s} > td { background: color-mix(in srgb, var(--os-status-#{$s}-bg) 45%, var(--os-layer)); }
 }
+
+// Read-only status badge: solid fill, white text.
+.os-att-badge {
+  display: inline-block;
+  min-width: 4.75rem;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  color: var(--os-text-on-color);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.375rem;
+  text-align: center;
+  white-space: nowrap;
+  background: var(--os-text-tertiary);
+  &.is-present { background: var(--os-status-present-solid); }
+  &.is-absent  { background: var(--os-status-absent-solid); }
+  &.is-late    { background: var(--os-status-late-solid); }
+  &.is-excused { background: var(--os-status-excused-solid); }
+}
+
+.os-att-badge.is-leave { background: var(--os-status-leave); }
+// Session states use the same pill: marked green, pending or not marked orange, locked magenta.
+.os-att-badge.is-marked { background: var(--os-status-present-solid); }
+.os-att-badge.is-pending,
+.os-att-badge.is-unmarked { background: var(--os-status-late-solid); }
+.os-att-badge.is-locked { background: var(--os-grade-al); }
+.os-att-badge.is-leave-approved { background: var(--os-status-present-solid); }
+.os-att-badge.is-leave-pending { background: var(--os-status-late-solid); }
+.os-att-badge.is-leave-rejected { background: var(--os-status-absent-solid); }
+.os-att-badge.is-leave-cancelled { background: var(--os-text-tertiary); }

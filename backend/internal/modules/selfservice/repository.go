@@ -36,6 +36,7 @@ func (r *Repository) studentWithClass(ctx context.Context, studentID uuid.UUID) 
 		HouseID: optionalUUID(row.HouseID), EnrollmentStatus: row.EnrollmentStatus, Email: optionalText(row.Email),
 		ClassName: optionalText(row.ClassName), GradeName: optionalText(row.GradeName),
 		HouseName: optionalText(row.HouseName), AcademicYear: optionalText(row.AcademicYear),
+		FormTeacherName: formTeacherName(row.FormTeacherFullName, row.FormTeacherInitials),
 	}, nil
 }
 
@@ -62,6 +63,14 @@ func (r *Repository) teacherForUser(ctx context.Context, userID uuid.UUID) (Teac
 func (r *Repository) currentAcademicYearID(ctx context.Context) (uuid.UUID, error) {
 	row, err := r.queries.GetCurrentAcademicYear(ctx)
 	return row.ID, err
+}
+
+// formTeacherName prefers the name with initials, as the rest of the portal does.
+func formTeacherName(full, initials pgtype.Text) *string {
+	if initials.Valid && initials.String != "" {
+		return &initials.String
+	}
+	return optionalText(full)
 }
 
 func optionalText(value pgtype.Text) *string {

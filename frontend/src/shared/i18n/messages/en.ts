@@ -1,4 +1,6 @@
 // Source strings for the student and parent portals and the shared shell. Keys are grouped by screen.
+import { enPortal } from "@/shared/i18n/messages/en.portal";
+
 export const en = {
   "common.loading": "Loading…",
   "common.error": "Error",
@@ -262,6 +264,7 @@ export const en = {
   "child.tab.guardians": "Guardians",
   "child.section.portfolio": "Co-curricular and portfolio details",
   "child.section.guardians": "Linked guardians",
+  ...enPortal,
 } as const;
 
 export type MessageKey = keyof typeof en;

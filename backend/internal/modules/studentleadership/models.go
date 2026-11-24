@@ -55,6 +55,9 @@ type SocietyMember struct {
 	Role           string             `json:"role"`
 	AcademicYearID uuid.UUID          `json:"academic_year_id"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	// LeftAt is set once the member is deactivated; the row stays as history.
+	LeftAt     pgtype.Timestamptz `json:"left_at"`
+	LeftReason pgtype.Text        `json:"left_reason"`
 }
 
 type SocietyMemberListItem struct {
@@ -70,6 +73,7 @@ type SocietyMembership struct {
 	Role              string             `json:"role"`
 	AcademicYearID    uuid.UUID          `json:"academic_year_id"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	LeftAt            pgtype.Timestamptz `json:"left_at"`
 	SocietyName       string             `json:"society_name"`
 	AcademicYearLabel string             `json:"academic_year_label"`
 }

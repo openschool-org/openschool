@@ -42,6 +42,9 @@ export interface SocietyMember {
   student_name: string;
   student_index: string;
   grade_name: string | null;
+  // Set once the member is deactivated; the row stays as history.
+  left_at: string | null;
+  left_reason: string | null;
 }
 
 // Matches db.ListSocietyMembershipsByStudentRow, for the student portfolio.
@@ -53,6 +56,7 @@ export interface SocietyMembership {
   created_at: string;
   society_name: string;
   academic_year_label: string;
+  left_at: string | null;
 }
 
 export interface CreateSocietyRequest {
@@ -94,8 +98,8 @@ export const societyApi = {
   assignMember: (societyId: string, data: AssignSocietyMemberRequest) =>
     api.put<SocietyMember>(`/societies/${societyId}/members`, data).then((r) => r.data),
 
-  removeMember: (societyId: string, memberId: string) =>
-    api.delete(`/societies/${societyId}/members/${memberId}`).then((r) => r.data),
+  deactivateMember: (societyId: string, memberId: string, reason: string) =>
+    api.post(`/societies/${societyId}/members/${memberId}/deactivate`, { reason }).then((r) => r.data),
 
   listByStudent: (studentId: string) =>
     api.get<SocietyMembership[]>(`/students/${studentId}/society-memberships`).then((r) => r.data),

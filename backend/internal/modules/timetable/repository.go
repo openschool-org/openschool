@@ -247,7 +247,7 @@ func (r *timetableRepository) teacherSchedule(ctx context.Context, teacherID, ye
 	for i, row := range rows {
 		result[i] = TeacherScheduleItem{
 			DayOfWeek: row.DayOfWeek, PeriodNumber: row.PeriodNumber, SubjectID: entryUUID(row.SubjectID), SubjectName: entryText(row.SubjectName),
-			ClassroomID: entryUUID(row.ClassroomID), ClassroomName: entryText(row.ClassroomName), ClassID: row.ClassID, ClassName: row.ClassName, GradeName: row.GradeName,
+			ClassroomID: entryUUID(row.ClassroomID), ClassroomName: entryText(row.ClassroomName), ClassroomType: entryText(row.ClassroomType), ClassID: row.ClassID, ClassName: row.ClassName, GradeName: row.GradeName,
 		}
 	}
 	return result, nil
@@ -312,4 +312,13 @@ func mapTimetableAcademicYearRow(row db.ListTimetablesByAcademicYearRow) Timetab
 		ReviewComments: entryText(row.ReviewComments), PublishedAt: entryTime(row.PublishedAt), PublishedBy: entryUUID(row.PublishedBy),
 		CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time,
 	}
+}
+
+func (r *timetableRepository) periodsForClass(ctx context.Context, classID uuid.UUID) ([]TimetablePeriod, error) {
+	rows, err := r.queries.ListTimetablePeriodsForClass(ctx, classID)
+	out := make([]TimetablePeriod, len(rows))
+	for i, row := range rows {
+		out[i] = mapTimetablePeriod(row)
+	}
+	return out, err
 }

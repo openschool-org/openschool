@@ -1,4 +1,5 @@
 import type { Messages } from "@/shared/i18n/messages/en";
+import { taPortal } from "@/shared/i18n/messages/ta.portal";
 
 // Tamil (Sri Lankan usage). Draft translation; have a Tamil-speaking teacher review before release.
 export const ta: Messages = {
@@ -264,4 +265,5 @@ export const ta: Messages = {
   "child.tab.guardians": "பாதுகாவலர்கள்",
   "child.section.portfolio": "இணைப்பாடவிதான மற்றும் சாதனைக் கோப்பு விவரங்கள்",
   "child.section.guardians": "இணைக்கப்பட்ட பாதுகாவலர்கள்",
+  ...taPortal,
 };

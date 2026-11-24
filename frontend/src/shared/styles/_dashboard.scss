@@ -48,7 +48,10 @@
 @media (max-width: 1000px) { .os-dash-lower { display: block; } }
 
 // Stat cards: label + number, nothing else.
+// Grid cells stretch, so every stat card matches the tallest one in its row.
+.os-stat-grid > a { display: block; height: 100%; }
 .os-dash-stat.ant-card {
+  height: 100%;
   background: var(--os-layer);
   border: 1px solid var(--os-border-strong);
   border-radius: $os-radius;
@@ -267,3 +270,72 @@ a.os-dash-item:hover { background: var(--os-layer-hover); }
 .os-glance__item { padding: 0.75rem 0; border-bottom: 1px solid var(--os-border-subtle); &:first-child { padding-top: 0; } &:last-child { border-bottom: 0; } dt { font-size: 0.8125rem; color: var(--os-text-tertiary); } dd { margin: 0.25rem 0 0; font-size: 0.9375rem; color: var(--os-text-secondary); strong { font-size: 1.125rem; font-weight: 500; color: var(--os-text-primary); } } }
 
 .os-delta { flex-shrink: 0; padding: 0.125rem 0.5rem; border-radius: 1rem; font-size: 0.8125rem; font-weight: 500; background: var(--os-layer-hover); color: var(--os-text-secondary); &.is-up { background: var(--os-status-present-bg); color: var(--os-success); } &.is-down { background: var(--os-status-absent-bg); color: var(--os-danger); } }
+
+// Student dashboard: "where am I in the school year" strip.
+.os-dash-context {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin-bottom: 1rem;
+  border: 1px solid var(--os-border-strong);
+  border-radius: $os-radius;
+  background: var(--os-layer);
+  overflow: hidden;
+  &__item { padding: 0.75rem 1.25rem; border-right: 1px solid var(--os-border-subtle); min-width: 0; }
+  &__item:last-child { border-right: 0; }
+  &__label { margin: 0 0 0.25rem; color: var(--os-text-tertiary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  &__value { margin: 0; color: var(--os-text-primary); font-size: 1rem; font-weight: 600; }
+  &__meta { margin: 0.25rem 0 0; color: var(--os-text-tertiary); font-size: 0.8125rem; }
+  .ant-progress { margin: 0.5rem 0 0; }
+  @media (max-width: 1100px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    &__item:nth-child(2) { border-right: 0; }
+    &__item:nth-child(-n + 2) { border-bottom: 1px solid var(--os-border-subtle); }
+  }
+  @media (max-width: 640px) {
+    grid-template-columns: minmax(0, 1fr);
+    &__item { border-right: 0; border-bottom: 1px solid var(--os-border-subtle); }
+    &__item:last-child { border-bottom: 0; }
+  }
+}
+// Three panels side by side so a student dashboard fits one screen without scrolling.
+.os-dash-panels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+  > .os-section { margin: 0; height: 100%; }
+  @media (max-width: 1200px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 760px) { grid-template-columns: minmax(0, 1fr); }
+}
+.os-dash-list { margin: 0; padding: 0; list-style: none; }
+.os-dash-list__row {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding: 0.625rem 1.25rem; border-bottom: 1px solid var(--os-border-subtle);
+  &:last-child { border-bottom: 0; }
+}
+.os-dash-list__main { min-width: 0; }
+.os-dash-list__title { margin: 0; color: var(--os-text-primary); font-weight: 500; }
+.os-dash-list__sub { margin: 0.125rem 0 0; color: var(--os-text-tertiary); font-size: 0.8125rem; }
+.os-dash-badges { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 1rem 1.25rem; }
+// Tighter stat row on the student dashboard.
+.os-stat-grid--compact { margin-bottom: 1rem; .os-dash-stat.ant-card .ant-card-body { padding: 1rem 1.25rem; } .os-dash-stat__value { font-size: 1.75rem; } }
+
+// Society office bearers: one card per bearer, accent bar by role.
+.os-bearers { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 1rem; }
+.os-bearer {
+  display: flex; align-items: center; gap: 0.875rem;
+  padding: 1rem; border: 1px solid var(--os-border-strong); border-left: 4px solid var(--os-accent);
+  border-radius: $os-radius; background: var(--os-layer);
+  &.is-leader { border-left-color: var(--os-chart-yellow); }
+  &.is-deputy_leader { border-left-color: var(--os-chart-orange); }
+  &.is-treasurer { border-left-color: var(--os-status-present-solid); }
+  &__avatar {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    width: 2.75rem; height: 2.75rem; border-radius: 50%;
+    background: var(--os-accent-light); color: var(--os-accent-dark); font-weight: 700;
+  }
+  &__role { margin: 0; color: var(--os-text-tertiary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  &__name { margin: 0.125rem 0 0; color: var(--os-text-primary); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  &__meta { margin: 0.125rem 0 0; color: var(--os-text-tertiary); font-size: 0.8125rem; }
+}

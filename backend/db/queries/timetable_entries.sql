@@ -30,6 +30,7 @@ SELECT
     s.name       AS subject_name,
     COALESCE(display_name(tp.full_name, tp.name_with_initials), '')::text AS teacher_name,
     cr.name      AS classroom_name,
+    cr.room_type AS classroom_type,
     ob.name      AS option_block_name
 FROM timetable_entries te
 LEFT JOIN subjects                s  ON s.id  = te.subject_id
@@ -107,7 +108,7 @@ GROUP BY x.subject_id;
 SELECT
     te.day_of_week, te.period_number,
     te.subject_id, s.name AS subject_name,
-    te.classroom_id, cr.name AS classroom_name,
+    te.classroom_id, cr.name AS classroom_name, cr.room_type AS classroom_type,
     t.class_id, c.name AS class_name, g.name AS grade_name
 FROM timetable_entries te
 INNER JOIN timetables t ON t.id = te.timetable_id
@@ -118,7 +119,7 @@ LEFT JOIN classrooms cr ON cr.id = te.classroom_id
 WHERE te.teacher_id = $1 AND t.academic_year_id = $2 AND t.status = 'published'
 UNION ALL
 -- option block periods where this teacher takes the class's students for one of the block's subjects
-SELECT te.day_of_week, te.period_number, bs.subject_id, s.name, NULL::uuid, NULL::text, t.class_id, c.name, g.name
+SELECT te.day_of_week, te.period_number, bs.subject_id, s.name, NULL::uuid, NULL::text, NULL::text, t.class_id, c.name, g.name
 FROM timetable_entries te
 INNER JOIN timetables t ON t.id = te.timetable_id
 INNER JOIN classes c    ON c.id = t.class_id

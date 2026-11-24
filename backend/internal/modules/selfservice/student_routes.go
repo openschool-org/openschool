@@ -17,6 +17,7 @@ func registerStudentRoutes(student *gin.RouterGroup, profiles *StudentProfiles, 
 	student.GET("/me/student", handler.Profile)
 	student.GET("/me/student/attendance", handler.Attendance)
 	student.GET("/me/student/marks", handler.Marks)
+	student.GET("/me/student/marks/history", handler.MarkHistory)
 	// Read only: subject choices are made through the admin's year-end workflow.
 	// The student submit and confirm routes were removed because they accepted
 	// any level and year and no screen used them (V6).

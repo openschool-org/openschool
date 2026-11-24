@@ -101,9 +101,22 @@ func TestStudentLeadershipWorkflowsWithPostgres(t *testing.T) {
 		t.Fatalf("list societies: code=%d body=%s", societies.Code, societies.Body.String())
 	}
 
-	removedMember := performStudentLeadershipRequest(t, teacherRouter, http.MethodDelete, "/societies/"+society.ID.String()+"/members/"+societyMember.ID.String(), nil)
-	if removedMember.Code != http.StatusOK {
-		t.Fatalf("remove society member: code=%d body=%s", removedMember.Code, removedMember.Body.String())
+	deactivated := performStudentLeadershipRequest(t, teacherRouter, http.MethodPost, "/societies/"+society.ID.String()+"/members/"+societyMember.ID.String()+"/deactivate", DeactivateSocietyMemberRequest{Reason: "Left the school"})
+	if deactivated.Code != http.StatusOK {
+		t.Fatalf("deactivate society member: code=%d body=%s", deactivated.Code, deactivated.Body.String())
+	}
+	// The membership stays on the student's record as a former one, and stops counting.
+	formerMemberships := performStudentLeadershipRequest(t, adminRouter, http.MethodGet, "/students/"+fixture.studentID.String()+"/society-memberships", nil)
+	if formerMemberships.Code != http.StatusOK || bytes.Contains(formerMemberships.Body.Bytes(), []byte(`"left_at":null`)) {
+		t.Fatalf("former membership missing: code=%d body=%s", formerMemberships.Code, formerMemberships.Body.String())
+	}
+	afterLeaving := performStudentLeadershipRequest(t, teacherRouter, http.MethodGet, "/societies?academic_year_id="+fixture.academicYearID.String(), nil)
+	if !bytes.Contains(afterLeaving.Body.Bytes(), []byte(`"member_count":0`)) {
+		t.Fatalf("former member still counted: body=%s", afterLeaving.Body.String())
+	}
+	again := performStudentLeadershipRequest(t, teacherRouter, http.MethodPost, "/societies/"+society.ID.String()+"/members/"+societyMember.ID.String()+"/deactivate", DeactivateSocietyMemberRequest{})
+	if again.Code != http.StatusNotFound {
+		t.Fatalf("second deactivate: code=%d body=%s", again.Code, again.Body.String())
 	}
 	deletedSociety := performStudentLeadershipRequest(t, adminRouter, http.MethodDelete, "/societies/"+society.ID.String(), nil)
 	if deletedSociety.Code != http.StatusOK {

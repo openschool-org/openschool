@@ -1,5 +1,6 @@
-import { Alert, Button } from "antd";
-import { SaveOutlined } from "@ant-design/icons";
+import { useState } from "react";
+import { Alert, Button, Input } from "antd";
+import { SaveOutlined, SearchOutlined } from "@ant-design/icons";
 import DataGrid from "@/shared/ui/DataGrid";
 import SelectField from "@/shared/ui/SelectField";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
@@ -57,6 +58,9 @@ export default function ClassMarks({ classId, academicYearId }: { classId: strin
 
 function ClassMarksBody({ entry }: { entry: Entry }) {
   const { saveMarks, rows } = entry;
+  const [search, setSearch] = useState("");
+  const words = search.trim().toLowerCase();
+  const shown = (rows ?? []).filter((r) => !words || `${r.student_name} ${r.index_number}`.toLowerCase().includes(words));
   if (!entry.termId || !entry.subjectId) {
     return <EmptyState title="Pick a term and subject" description="Choose which term test and subject you're recording marks for." />;
   }
@@ -76,7 +80,22 @@ function ClassMarksBody({ entry }: { entry: Entry }) {
       {saveMarks.isSuccess && (
         <Alert type="success" showIcon closable onClose={() => saveMarks.reset()} className="os-mt-0 os-mx-6 os-mb-4" title="Marks saved" />
       )}
-      <DataGrid rows={rows} columns={classMarksColumns(entry.draft, entry.update)} getRowId={(r) => r.student_id} pagination={false} noHover />
+      <div className="os-py-3h os-px-6 os-border-b">
+        <Input
+          className="os-max-w-px-280"
+          allowClear
+          prefix={<SearchOutlined />}
+          aria-label="Search students"
+          placeholder="Search student by name or index…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+      {shown.length === 0 ? (
+        <p className="os-m-0 os-py-6 os-px-6 os-c-tertiary">No students match "{search}".</p>
+      ) : (
+        <DataGrid rows={shown} columns={classMarksColumns(entry.draft, entry.update)} getRowId={(r) => r.student_id} pagination={false} noHover />
+      )}
       <div className="os-py-4 os-px-6 os-border-t">
         <Button type="primary" icon={<SaveOutlined />} onClick={entry.save} loading={saveMarks.isPending}>
           {saveMarks.isPending ? "Saving…" : "Save marks"}

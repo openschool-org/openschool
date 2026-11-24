@@ -12,6 +12,6 @@ export const studentKeys = {
   me: {
     profile: () => ["students", "me", "profile"] as const,
     attendance: () => ["students", "me", "attendance"] as const,
-    marks: (termId: string) => ["students", "me", "marks", termId] as const,
+    markHistory: () => ["students", "me", "marks", "history"] as const,
   },
 };

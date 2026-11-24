@@ -97,3 +97,6 @@ export const useDeleteNotificationDraft = () => {
     onSuccess: invalidate,
   });
 };
+
+// Audiences the signed-in sender may pick; changes only when assignments do.
+export const useNotifyScope = () => useQuery({ queryKey: keys.scope(), queryFn: notificationApi.scope, staleTime: 5 * 60 * 1000 });

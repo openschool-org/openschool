@@ -21,6 +21,7 @@ import { useRole } from "@/shared/auth/useRole";
 import { useMyPosition } from "@/features/positions/queries/usePositions";
 import { ruleKey } from "@/features/notifications/constants";
 import RecipientPicker from "@/features/notifications/components/RecipientPicker";
+import { useSocietyPrefill } from "@/features/notifications/hooks/useSocietyPrefill";
 import NotificationHistory from "@/features/notifications/components/NotificationHistory";
 import DraftRow from "@/features/notifications/components/DraftRow";
 import PageHeader from "@/shared/ui/PageHeader";
@@ -77,6 +78,10 @@ export default function NotificationComposer() {
     create.reset();
     setComposeOpen(true);
   };
+  useSocietyPrefill((prefilled) => {
+    openComposer();
+    setRules(prefilled);
+  });
   const closeComposer = () => {
     if (create.isPending) return;
     composeSession.current += 1;

@@ -9,9 +9,13 @@ export type RecipientRuleType =
   | "subject"
   | "student"
   | "guardian"
-  | "teacher";
+  | "teacher"
+  | "society";
 
 export type SubjectAudience = "students" | "teachers";
+
+// Narrows a class or society rule; "all" on a class also reaches its teachers.
+export type Audience = "all" | "students" | "guardians";
 
 export interface RecipientRule {
   type: RecipientRuleType;
@@ -24,6 +28,17 @@ export interface RecipientRule {
   student_id?: string;
   guardian_id?: string;
   teacher_id?: string;
+  society_id?: string;
+  audience?: Audience;
+}
+
+// Matches notifications.NotifyScope: what the signed-in sender may target.
+export interface NotifyScope {
+  full: boolean;
+  classes: { id: string; name: string; grade_name: string; is_form_class: boolean }[];
+  societies: { id: string; name: string }[];
+  grade_ids: string[];
+  grade_section_ids: string[];
 }
 
 export type NotificationCategory =
@@ -157,6 +172,8 @@ export const notificationApi = {
   inbox: (params: InboxParams) => api.get<InboxPage>("/me/notifications/inbox", { params: compact(params) }).then((r) => r.data),
 
   listDrafts: () => api.get<Notification[]>("/notifications/drafts").then((r) => r.data),
+
+  scope: () => api.get<NotifyScope>("/notifications/scope").then((r) => r.data),
 
   listMine: () => api.get<MyNotification[]>("/me/notifications").then((r) => r.data),
 

@@ -17,5 +17,6 @@ func registerParentRoutes(parent *gin.RouterGroup, guardians ports.GuardianAcces
 	parent.GET("/me/children/summary", handler.ChildrenSummary)
 	parent.GET("/me/children/:id/attendance", handler.ChildAttendance)
 	parent.GET("/me/children/:id/marks", handler.ChildMarks)
+	parent.GET("/me/children/:id/marks/history", handler.ChildMarkHistory)
 	parent.GET("/me/children/:id/timetable", handler.ChildTimetable)
 }

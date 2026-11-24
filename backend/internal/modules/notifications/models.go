@@ -18,6 +18,16 @@ const (
 	RuleStudent      RecipientRuleType = "student"
 	RuleGuardian     RecipientRuleType = "guardian"
 	RuleTeacher      RecipientRuleType = "teacher"
+	RuleSociety      RecipientRuleType = "society"
+)
+
+// Audience narrows a class or society rule; empty or "all" keeps the class default.
+type Audience string
+
+const (
+	AudienceAll       Audience = "all"
+	AudienceMembers   Audience = "students"
+	AudienceGuardians Audience = "guardians"
 )
 
 type SubjectAudience string
@@ -48,6 +58,8 @@ type RecipientRule struct {
 	StudentID       *uuid.UUID        `json:"student_id,omitempty"`
 	GuardianID      *uuid.UUID        `json:"guardian_id,omitempty"`
 	TeacherID       *uuid.UUID        `json:"teacher_id,omitempty"`
+	SocietyID       *uuid.UUID        `json:"society_id,omitempty"`
+	Audience        Audience          `json:"audience,omitempty"`
 }
 
 type CreateNotificationRequest struct {

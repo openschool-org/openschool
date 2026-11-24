@@ -57,3 +57,43 @@ WHERE sp.id IN (
     INNER JOIN classes c         ON c.id = cst.class_id
     WHERE cst.subject_id = $1 AND c.academic_year_id = $2
 );
+
+-- name: ListStudentUserIDsBySociety :many
+-- Active members recorded for the society's own academic year.
+SELECT sp.user_id FROM student_profiles sp
+INNER JOIN society_members sm ON sm.student_id = sp.id
+INNER JOIN societies so       ON so.id = sm.society_id
+WHERE sm.society_id = $1 AND sm.academic_year_id = so.academic_year_id AND sm.left_at IS NULL;
+
+-- name: ListGuardianUserIDsBySociety :many
+SELECT DISTINCT g.user_id FROM guardians g
+INNER JOIN student_guardians sg ON sg.guardian_id = g.id
+INNER JOIN society_members sm   ON sm.student_id = sg.student_id
+INNER JOIN societies so         ON so.id = sm.society_id
+WHERE sm.society_id = $1 AND sm.academic_year_id = so.academic_year_id AND sm.left_at IS NULL;
+
+-- name: IsTeacherInChargeOfSociety :one
+SELECT EXISTS (
+    SELECT 1 FROM societies WHERE id = sqlc.arg(society_id) AND teacher_in_charge_id = sqlc.arg(teacher_id)
+) AS in_charge;
+
+-- name: ListNotifyClassesForTeacher :many
+-- Current-year classes a teacher may message: their form class and every class they teach a subject in.
+SELECT c.id, c.name, g.name AS grade_name,
+       (c.form_teacher_id IS NOT NULL AND c.form_teacher_id = sqlc.arg(teacher_id)::uuid)::bool AS is_form_class
+FROM classes c
+INNER JOIN grades g          ON g.id = c.grade_id
+INNER JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current = TRUE
+WHERE c.form_teacher_id = sqlc.arg(teacher_id)::uuid
+   OR EXISTS (
+       SELECT 1 FROM class_subject_teachers cst
+       WHERE cst.class_id = c.id AND cst.teacher_id = sqlc.arg(teacher_id)::uuid
+   )
+ORDER BY g.sort_order ASC, c.name ASC;
+
+-- name: ListNotifySocieties :many
+-- Current-year societies; only those the teacher runs when teacher_id is given.
+SELECT so.id, so.name FROM societies so
+INNER JOIN academic_years ay ON ay.id = so.academic_year_id AND ay.is_current = TRUE
+WHERE sqlc.narg(teacher_id)::uuid IS NULL OR so.teacher_in_charge_id = sqlc.narg(teacher_id)::uuid
+ORDER BY so.name ASC;

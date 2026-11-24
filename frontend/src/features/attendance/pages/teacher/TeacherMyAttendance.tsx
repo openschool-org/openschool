@@ -1,107 +1,96 @@
-import { STAFF_ATTENDANCE_STYLES } from "@/shared/lib/constants/attendance";
 import { useState } from "react";
-import type { ReactNode } from "react";
-import { Button, Tag, Tooltip } from "antd";
-import { CarryOutOutlined, CheckCircleFilled, ClockCircleOutlined, CloseCircleFilled, LeftOutlined, RightOutlined } from "@ant-design/icons";
+import type { ComponentType } from "react";
+import { Button, Tooltip } from "antd";
+import { CarryOutOutlined, CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
 import { useMyStaffAttendanceHistory } from "@/features/attendance/queries/useStaffAttendance";
 import type { StaffAttendanceStatus } from "@/features/attendance/api/staffAttendance";
+import AttendanceStatusBadge from "@/features/attendance/components/AttendanceStatusBadge";
+import StatCard from "@/features/reports/components/dashboard/StatCard";
+import { STAFF_ATTENDANCE_STYLES } from "@/shared/lib/constants/attendance";
 import DataGrid from "@/shared/ui/DataGrid";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
 import PageHeader from "@/shared/ui/PageHeader";
+import SectionCard from "@/shared/ui/SectionCard";
+import { formatLongDate, formatMonthLong } from "@/shared/lib/date";
+import { formatPercent } from "@/shared/lib/number";
 
-const STATUS_ICONS: Record<StaffAttendanceStatus, ReactNode> = {
-  present: <CheckCircleFilled />,
-  absent: <CloseCircleFilled />,
-  late: <ClockCircleOutlined />,
-  leave: <CarryOutOutlined />,
+const STATUS_ICONS: Record<StaffAttendanceStatus, ComponentType<{ className?: string }>> = {
+  present: CheckCircleOutlined,
+  absent: CloseCircleOutlined,
+  late: ClockCircleOutlined,
+  leave: CarryOutOutlined,
 };
-
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
 
 export default function TeacherMyAttendance() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-
   const { data: records, isLoading, isError } = useMyStaffAttendanceHistory(year, month);
 
-  const goPrevMonth = () => {
-    if (month === 1) { setYear((y) => y - 1); setMonth(12); } else { setMonth((m) => m - 1); }
-  };
-  const goNextMonth = () => {
-    if (month === 12) { setYear((y) => y + 1); setMonth(1); } else { setMonth((m) => m + 1); }
-  };
+  const goPrevMonth = () => (month === 1 ? (setYear((y) => y - 1), setMonth(12)) : setMonth((m) => m - 1));
+  const goNextMonth = () => (month === 12 ? (setYear((y) => y + 1), setMonth(1)) : setMonth((m) => m + 1));
 
-  const counts = (records ?? []).reduce(
-    (acc, r) => {
-      acc[r.status] = (acc[r.status] ?? 0) + 1;
-      return acc;
-    },
-    {} as Record<StaffAttendanceStatus, number>,
+  const rows = records ?? [];
+  const counts = rows.reduce((acc, r) => ({ ...acc, [r.status]: (acc[r.status] ?? 0) + 1 }), {} as Partial<Record<StaffAttendanceStatus, number>>);
+  const sorted = [...rows].sort((a, b) => b.date.localeCompare(a.date));
+  const monthTitle = formatMonthLong(`${year}-${String(month).padStart(2, "0")}-01`);
+
+  const navigator = (
+    <div className="os-flex os-items-center os-gap-2">
+      <Tooltip title="Previous month"><Button type="text" size="small" aria-label="Previous month" icon={<LeftOutlined />} onClick={goPrevMonth} /></Tooltip>
+      <span className="os-fw-600 os-min-w-10 os-text-center">{monthTitle}</span>
+      <Tooltip title="Next month"><Button type="text" size="small" aria-label="Next month" icon={<RightOutlined />} onClick={goNextMonth} /></Tooltip>
+    </div>
   );
-
-  const sorted = [...(records ?? [])].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
     <div className="os-page">
-      <PageHeader title="My attendance" subtitle="Your own attendance record - marked by an administrator" />
+      <PageHeader title="My attendance" subtitle="Your own attendance record, marked by an administrator" />
 
-      <div className="os-section os-mb-6">
-        <div className="os-section__header os-flex os-items-center os-gap-3">
-          <Tooltip title="Previous month"><Button type="text" size="small" aria-label="Previous month" icon={<LeftOutlined />} onClick={goPrevMonth} /></Tooltip>
-          <h2 className="os-section__title os-min-w-10 os-text-center">
-            {MONTH_NAMES[month - 1]} {year}
-          </h2>
-          <Tooltip title="Next month"><Button type="text" size="small" aria-label="Next month" icon={<RightOutlined />} onClick={goNextMonth} /></Tooltip>
-        </div>
-
-        <div className="os-section__body os-flex os-gap-4 os-wrap">
-          {(Object.keys(STAFF_ATTENDANCE_STYLES) as StaffAttendanceStatus[]).map((status) => {
-            const cfg = { ...STAFF_ATTENDANCE_STYLES[status], Icon: STATUS_ICONS[status] };
-            return (
-              <div
-                key={status} className="os-flex-basis-8 os-py-3h os-px-4 os-rounded-sm" style={{ background: cfg.bg, border: `1px solid ${cfg.border}` }}
-              >
-                <p className="os-mt-0 os-mx-0 os-mb-1 os-text-2xs os-fw-600 os-uppercase os-tracking" style={{ color: cfg.color }}>
-                  {cfg.label}
-                </p>
-                <p className="os-m-0 os-text-2xl os-fw-300" style={{ color: cfg.color }}>{counts[status] ?? 0}</p>
-              </div>
-            );
-          })}
-        </div>
+      <div className="os-stat-grid">
+        {(Object.keys(STAFF_ATTENDANCE_STYLES) as StaffAttendanceStatus[]).map((status) => (
+          <StatCard
+            key={status}
+            label={STAFF_ATTENDANCE_STYLES[status].label}
+            value={counts[status] ?? 0}
+            meta={rows.length ? `${formatPercent(((counts[status] ?? 0) / rows.length) * 100)} of ${rows.length} marked days` : monthTitle}
+            loading={isLoading}
+            error={isError}
+            Icon={STATUS_ICONS[status]}
+          />
+        ))}
       </div>
 
-      <div className="os-section">
+      <SectionCard title="Daily record" meta={navigator} flush>
         {isLoading ? (
           <LoadingSpinner />
         ) : isError ? (
           <EmptyState title="Could not load attendance" description="Please try again later." />
         ) : sorted.length === 0 ? (
-          <EmptyState title="No attendance marked yet" description="No attendance has been recorded for you this month." />
+          <EmptyState title="No attendance marked yet" description={`No attendance has been recorded for you in ${monthTitle}.`} />
         ) : (
           <DataGrid
             rows={sorted}
             getRowId={(r) => r.id}
+            noHover
             columns={[
-              { key: "date", header: "Date", render: (r) => <span className="os-table__mono">{r.date}</span> },
               {
-                key: "status",
-                header: "Status",
-                render: (r) => {
-                  const cfg = STAFF_ATTENDANCE_STYLES[r.status];
-                  return <Tag icon={STATUS_ICONS[r.status]} variant="filled" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</Tag>;
-                },
+                key: "date",
+                header: "Date",
+                render: (r) => (
+                  <>
+                    <span className="os-table__mono">{r.date}</span>
+                    <span className="os-table__muted os-text-sm os-block">{formatLongDate(r.date)}</span>
+                  </>
+                ),
               },
+              { key: "status", header: "Status", render: (r) => <AttendanceStatusBadge status={r.status} /> },
               { key: "note", header: "Note", render: (r) => <span className="os-table__muted">{r.note ?? "-"}</span> },
             ]}
           />
         )}
-      </div>
+      </SectionCard>
     </div>
   );
 }

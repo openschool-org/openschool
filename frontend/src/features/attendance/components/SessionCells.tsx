@@ -1,5 +1,5 @@
-import { Button, Tag } from "antd";
-import { CheckCircleFilled, ExclamationCircleFilled } from "@ant-design/icons";
+import { Button } from "antd";
+import SessionStateBadge from "@/features/attendance/components/SessionStateBadge";
 import LinkButton from "@/shared/ui/LinkButton";
 import type { DailySession } from "@/features/attendance/api/attendance";
 import { isLockedAfter24Hours } from "@/shared/lib/date";
@@ -8,10 +8,8 @@ export function SessionStatus({ session }: { session: DailySession }) {
   const isMarked = session.marked_count > 0;
   return (
     <div className="os-flex os-gap-1h os-wrap">
-      <Tag color={isMarked ? "success" : "warning"} variant="filled" icon={isMarked ? <CheckCircleFilled /> : <ExclamationCircleFilled />}>
-        {isMarked ? "Marked" : "Pending"}
-      </Tag>
-      {isLockedAfter24Hours(session.created_at) && <Tag color="magenta" variant="filled">Locked</Tag>}
+      <SessionStateBadge state={isMarked ? "marked" : "pending"} />
+      {isLockedAfter24Hours(session.created_at) && <SessionStateBadge state="locked" />}
     </div>
   );
 }

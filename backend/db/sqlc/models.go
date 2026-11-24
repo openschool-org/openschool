@@ -337,6 +337,8 @@ type SocietyMember struct {
 	Role           string             `json:"role"`
 	AcademicYearID uuid.UUID          `json:"academic_year_id"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	LeftAt         pgtype.Timestamptz `json:"left_at"`
+	LeftReason     pgtype.Text        `json:"left_reason"`
 }
 
 type StaffAttendanceRecord struct {

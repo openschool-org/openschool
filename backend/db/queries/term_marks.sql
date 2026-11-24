@@ -56,10 +56,11 @@ SELECT
 FROM term_marks tm
 INNER JOIN subjects s ON s.id = tm.subject_id
 INNER JOIN terms t ON t.id = tm.term_id
+-- The class from the term's own year, so other years' classes add no extra rows.
 LEFT JOIN class_students cs
-    ON cs.student_id = tm.student_id
+    ON cs.student_id = tm.student_id AND cs.academic_year_id = t.academic_year_id
 LEFT JOIN classes c
-    ON c.id = cs.class_id AND c.academic_year_id = t.academic_year_id
+    ON c.id = cs.class_id
 LEFT JOIN class_subject_teachers cst
     ON cst.class_id = c.id AND cst.subject_id = tm.subject_id
 LEFT JOIN teacher_profiles tp ON tp.id = cst.teacher_id
@@ -84,3 +85,37 @@ SELECT EXISTS (
     INNER JOIN classes c ON c.academic_year_id = t.academic_year_id
     WHERE t.id = sqlc.arg(term_id) AND c.id = sqlc.arg(class_id)
 ) AS ok;
+
+-- name: ListStudentMarkHistory :many
+-- Every term of every year the student had a class, with each mark in it.
+-- Mark columns are NULL for a term with no marks yet, so the term still shows.
+SELECT
+    ay.id         AS academic_year_id,
+    ay.label      AS academic_year,
+    ay.is_current AS year_is_current,
+    c.name        AS class_name,
+    g.name        AS grade_name,
+    t.id          AS term_id,
+    t.name        AS term_name,
+    t.start_date  AS term_start,
+    t.end_date    AS term_end,
+    t.is_current  AS term_is_current,
+    tm.id         AS mark_id,
+    tm.marks,
+    tm.max_marks,
+    tm.is_absent,
+    s.id          AS subject_id,
+    s.name        AS subject_name,
+    s.code        AS subject_code,
+    COALESCE(display_name(tp.full_name, tp.name_with_initials), '')::text AS teacher_name
+FROM class_students cs
+INNER JOIN classes c         ON c.id = cs.class_id
+INNER JOIN grades g          ON g.id = c.grade_id
+INNER JOIN academic_years ay ON ay.id = c.academic_year_id
+INNER JOIN terms t           ON t.academic_year_id = ay.id
+LEFT JOIN term_marks tm      ON tm.student_id = cs.student_id AND tm.term_id = t.id
+LEFT JOIN subjects s         ON s.id = tm.subject_id
+LEFT JOIN class_subject_teachers cst ON cst.class_id = c.id AND cst.subject_id = tm.subject_id
+LEFT JOIN teacher_profiles tp ON tp.id = cst.teacher_id
+WHERE cs.student_id = $1
+ORDER BY ay.start_date DESC, t.sort_order ASC, t.start_date ASC, s.code ASC;

@@ -29,3 +29,8 @@ type AssignSocietyMemberRequest struct {
 	StudentID string `json:"student_id" binding:"required"`
 	Role      string `json:"role" binding:"required,oneof=leader deputy_leader secretary treasurer member"`
 }
+
+// DeactivateSocietyMemberRequest marks a member as left; the reason is optional.
+type DeactivateSocietyMemberRequest struct {
+	Reason string `json:"reason" binding:"max=500"`
+}

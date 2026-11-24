@@ -3,9 +3,10 @@ import { Button } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import SelectField from "@/shared/ui/SelectField";
 import EntityCombobox from "@/shared/ui/EntityCombobox";
-import type { RecipientRule, RecipientRuleType, SubjectAudience } from "@/features/notifications/api/notification";
-import { buildRule, RULE_TYPES } from "@/features/notifications/lib/recipientRules";
+import type { Audience, RecipientRule, RecipientRuleType, SubjectAudience } from "@/features/notifications/api/notification";
+import { allowedRuleTypes, AUDIENCE_OPTIONS, buildRule, RULE_TYPES } from "@/features/notifications/lib/recipientRules";
 import { useRecipientTargets } from "@/features/notifications/hooks/useRecipientTargets";
+import { useNotifyScope } from "@/features/notifications/queries/useNotifications";
 
 const TARGET_LABELS: Record<string, string> = {
   grade: "Grade",
@@ -15,6 +16,7 @@ const TARGET_LABELS: Record<string, string> = {
   student: "Student",
   guardian: "Guardian",
   teacher: "Teacher",
+  society: "Society",
 };
 
 export default function RecipientPicker({
@@ -26,13 +28,19 @@ export default function RecipientPicker({
   canBroadcastEveryone: boolean;
   disabled?: boolean;
 }) {
-  const targets = useRecipientTargets();
-  const [ruleType, setRuleType] = useState<RecipientRuleType>("grade");
+  const { data: scope } = useNotifyScope();
+  const targets = useRecipientTargets(scope);
+  const allowed = allowedRuleTypes(scope, canBroadcastEveryone);
+  const [chosenType, setRuleType] = useState<RecipientRuleType | "">("");
   const [selectedId, setSelectedId] = useState("");
   const [subjectAudience, setSubjectAudience] = useState<SubjectAudience>("students");
+  const [audience, setAudience] = useState<Audience>("all");
 
-  const availableRuleTypes = canBroadcastEveryone ? RULE_TYPES : RULE_TYPES.filter((r) => r.value !== "everyone");
+  // Falls back to the first allowed type until the sender picks one, so a teacher never starts on "By grade".
+  const ruleType: RecipientRuleType = chosenType && allowed.includes(chosenType) ? chosenType : allowed.find((t) => t !== "everyone") ?? allowed[0];
+  const availableRuleTypes = RULE_TYPES.filter((r) => allowed.includes(r.value));
   const source = ruleType === "everyone" ? null : targets[ruleType];
+  const audienceOptions = ruleType === "class" || ruleType === "society" ? AUDIENCE_OPTIONS[ruleType] : null;
 
   const handleAdd = () => {
     if (ruleType === "everyone") {
@@ -41,7 +49,7 @@ export default function RecipientPicker({
     }
     if (!selectedId || !source) return;
     const picked = source.items.find((item) => item.id === selectedId);
-    onAdd(buildRule(ruleType, selectedId, picked?.label, subjectAudience));
+    onAdd(buildRule(ruleType, selectedId, picked?.label, subjectAudience, audienceOptions ? audience : undefined));
     setSelectedId("");
   };
 
@@ -56,6 +64,7 @@ export default function RecipientPicker({
         onChange={(v) => {
           setRuleType(v as RecipientRuleType);
           setSelectedId("");
+          setAudience(v === "society" ? "students" : "all");
         }}
         options={availableRuleTypes.map((r) => ({ value: r.value, label: r.label }))}
       />
@@ -83,6 +92,17 @@ export default function RecipientPicker({
           onChange={(v) => setSubjectAudience(v as SubjectAudience)}
           disabled={disabled}
           options={[{ value: "students", label: "Students taking this subject" }, { value: "teachers", label: "Teachers of this subject" }]}
+        />
+      )}
+
+      {audienceOptions && (
+        <SelectField
+          id="rule-audience"
+          label="Audience"
+          value={audience}
+          onChange={(v) => setAudience(v as Audience)}
+          disabled={disabled}
+          options={audienceOptions}
         />
       )}
 

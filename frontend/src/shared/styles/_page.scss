@@ -1285,3 +1285,4 @@
 // Multi-select chips: dark-blue text and remove icon on the light theme tint (colours set in antdTheme.ts).
 .ant-select-multiple .ant-select-selection-item { color: var(--os-accent-dark); font-weight: 500; }
 .ant-select-multiple .ant-select-selection-item-remove { color: var(--os-accent-dark); &:hover { color: var(--os-accent); } }
+.os-stat-grid--three { grid-template-columns: repeat(3, 1fr); @media (max-width: 640px) { grid-template-columns: 1fr; } }

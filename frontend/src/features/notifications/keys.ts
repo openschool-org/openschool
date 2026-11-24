@@ -6,4 +6,5 @@ export const notificationKeys = {
   history: (params: object) => ["notifications", "history", params] as const,
   inbox: (params: object) => ["notifications", "mine", "inbox", params] as const,
   drafts: () => ["notifications", "drafts"] as const,
+  scope: () => ["notifications", "scope"] as const,
 };

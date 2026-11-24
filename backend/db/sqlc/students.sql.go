@@ -226,42 +226,49 @@ SELECT
     c.name        AS class_name,
     g.name        AS grade_name,
     h.name        AS house_name,
-    ay.label      AS academic_year
+    ay.label      AS academic_year,
+    ft.full_name          AS form_teacher_full_name,
+    ft.name_with_initials AS form_teacher_initials
 FROM student_profiles sp
 LEFT JOIN users u            ON u.id = sp.user_id
 LEFT JOIN class_students cs ON cs.student_id = sp.id
+    AND cs.academic_year_id = (SELECT id FROM academic_years WHERE is_current = TRUE)
 LEFT JOIN classes c         ON c.id = cs.class_id
 LEFT JOIN grades g          ON g.id = c.grade_id
+LEFT JOIN teacher_profiles ft ON ft.id = c.form_teacher_id
 LEFT JOIN houses h          ON h.id = sp.house_id
-LEFT JOIN academic_years ay ON ay.id = c.academic_year_id AND ay.is_current = TRUE
+LEFT JOIN academic_years ay ON ay.id = c.academic_year_id
 WHERE sp.id = $1
 `
 
 type GetStudentWithClassRow struct {
-	ID               uuid.UUID          `json:"id"`
-	UserID           pgtype.UUID        `json:"user_id"`
-	FullName         string             `json:"full_name"`
-	IndexNumber      string             `json:"index_number"`
-	Address          pgtype.Text        `json:"address"`
-	Phone            pgtype.Text        `json:"phone"`
-	Whatsapp         pgtype.Text        `json:"whatsapp"`
-	SpecialRemarks   pgtype.Text        `json:"special_remarks"`
-	CreatedAt        pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
-	Gender           pgtype.Text        `json:"gender"`
-	HouseID          pgtype.UUID        `json:"house_id"`
-	EnrollmentStatus string             `json:"enrollment_status"`
-	LeftAt           pgtype.Timestamptz `json:"left_at"`
-	ErasedAt         pgtype.Timestamptz `json:"erased_at"`
-	NameWithInitials string             `json:"name_with_initials"`
-	CallingName      string             `json:"calling_name"`
-	Email            pgtype.Text        `json:"email"`
-	ClassName        pgtype.Text        `json:"class_name"`
-	GradeName        pgtype.Text        `json:"grade_name"`
-	HouseName        pgtype.Text        `json:"house_name"`
-	AcademicYear     pgtype.Text        `json:"academic_year"`
+	ID                  uuid.UUID          `json:"id"`
+	UserID              pgtype.UUID        `json:"user_id"`
+	FullName            string             `json:"full_name"`
+	IndexNumber         string             `json:"index_number"`
+	Address             pgtype.Text        `json:"address"`
+	Phone               pgtype.Text        `json:"phone"`
+	Whatsapp            pgtype.Text        `json:"whatsapp"`
+	SpecialRemarks      pgtype.Text        `json:"special_remarks"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	Gender              pgtype.Text        `json:"gender"`
+	HouseID             pgtype.UUID        `json:"house_id"`
+	EnrollmentStatus    string             `json:"enrollment_status"`
+	LeftAt              pgtype.Timestamptz `json:"left_at"`
+	ErasedAt            pgtype.Timestamptz `json:"erased_at"`
+	NameWithInitials    string             `json:"name_with_initials"`
+	CallingName         string             `json:"calling_name"`
+	Email               pgtype.Text        `json:"email"`
+	ClassName           pgtype.Text        `json:"class_name"`
+	GradeName           pgtype.Text        `json:"grade_name"`
+	HouseName           pgtype.Text        `json:"house_name"`
+	AcademicYear        pgtype.Text        `json:"academic_year"`
+	FormTeacherFullName pgtype.Text        `json:"form_teacher_full_name"`
+	FormTeacherInitials pgtype.Text        `json:"form_teacher_initials"`
 }
 
+// Only the current year's class, so past years' classes never replace it.
 func (q *Queries) GetStudentWithClass(ctx context.Context, id uuid.UUID) (GetStudentWithClassRow, error) {
 	row := q.db.QueryRow(ctx, getStudentWithClass, id)
 	var i GetStudentWithClassRow
@@ -288,6 +295,8 @@ func (q *Queries) GetStudentWithClass(ctx context.Context, id uuid.UUID) (GetStu
 		&i.GradeName,
 		&i.HouseName,
 		&i.AcademicYear,
+		&i.FormTeacherFullName,
+		&i.FormTeacherInitials,
 	)
 	return i, err
 }

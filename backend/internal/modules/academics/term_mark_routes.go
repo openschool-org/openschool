@@ -20,6 +20,7 @@ type TermMarkActor struct {
 }
 type TermMarkReader interface {
 	ListStudentMarks(context.Context, uuid.UUID, uuid.UUID) (any, error)
+	StudentMarkHistory(context.Context, uuid.UUID) ([]MarkHistoryYear, error)
 }
 type TermMarkRunner interface {
 	TermMarkReader

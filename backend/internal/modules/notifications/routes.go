@@ -31,6 +31,7 @@ func RegisterRoutes(teacherOrAdmin, protected *gin.RouterGroup, service *Notific
 	teacherOrAdmin.GET("/notifications/sent", h.ListSent)
 	teacherOrAdmin.GET("/notifications/history", h.History)
 	teacherOrAdmin.GET("/notifications/drafts", h.ListDrafts)
+	teacherOrAdmin.GET("/notifications/scope", h.Scope)
 	teacherOrAdmin.GET("/notifications/:id/stats", h.Stats)
 	protected.GET("/me/notifications", h.ListMine)
 	protected.GET("/me/notifications/archived", h.ListMyArchived)
@@ -225,6 +226,24 @@ func (h *NotificationHandler) ListDrafts(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, list)
+}
+
+// Scope returns the audiences the caller may pick in the composer.
+func (h *NotificationHandler) Scope(c *gin.Context) {
+	callerID, role, ok := h.caller(c)
+	if !ok {
+		return
+	}
+	scope, err := h.service.Scope(c.Request.Context(), callerID, role)
+	if errors.Is(err, ErrForbiddenRecipients) {
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
+		return
+	}
+	if err != nil {
+		apierror.RespondInternal(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, scope)
 }
 
 func (h *NotificationHandler) Stats(c *gin.Context) {

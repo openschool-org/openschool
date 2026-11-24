@@ -7,10 +7,10 @@ import {
   ChildEnrollmentsTab,
   ChildGuardiansTab,
   ChildMarksTab,
+  ChildPortfolioTab,
   ChildProgressReportsTab,
   ChildTimetableTab,
 } from "@/features/parent/components/ChildAcademicTabs";
-import StudentPortfolioSummary from "@/features/portfolio/components/StudentPortfolioSummary";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
 import TabSection from "@/shared/ui/TabSection";
@@ -68,7 +68,7 @@ export default function ChildDetail() {
             { key: "timetable", label: t("nav.timetable"), children: <TabSection title={t("nav.timetable")}><ChildTimetableTab studentId={child.id} /></TabSection> },
             { key: "enrolments", label: t("child.tab.enrolments"), children: <TabSection title={t("enrol.title")}><ChildEnrollmentsTab studentId={child.id} /></TabSection> },
             { key: "progress", label: t("child.tab.progress"), children: <TabSection title={t("progress.title")}><ChildProgressReportsTab studentId={child.id} /></TabSection> },
-            { key: "portfolio", label: t("child.tab.portfolio"), children: <TabSection title={t("child.section.portfolio")}><StudentPortfolioSummary studentId={child.id} /></TabSection> },
+            { key: "portfolio", label: t("child.tab.portfolio"), children: <TabSection title={t("child.section.portfolio")}><ChildPortfolioTab studentId={child.id} /></TabSection> },
             { key: "guardians", label: t("child.tab.guardians"), children: <TabSection title={t("child.section.guardians")}><ChildGuardiansTab studentId={child.id} /></TabSection> },
           ]}
         />

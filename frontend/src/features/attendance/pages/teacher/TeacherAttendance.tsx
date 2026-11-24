@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Input, Tag } from "antd";
+import { Input } from "antd";
 import { useQueries } from "@tanstack/react-query";
-import { ClockCircleOutlined, SearchOutlined } from "@ant-design/icons";
+import { CalendarOutlined, CheckCircleOutlined, ClockCircleOutlined, SearchOutlined } from "@ant-design/icons";
 import { useMyClasses } from "@/features/teachers/queries/useTeachers";
 import { classSessionsOptions } from "@/features/attendance/queries/useAttendance";
 import StartSessionButton from "@/features/attendance/components/StartSessionButton";
 import SessionCountCell from "@/features/attendance/components/SessionCountCell";
+import SessionStateBadge from "@/features/attendance/components/SessionStateBadge";
+import StatCard from "@/features/reports/components/dashboard/StatCard";
 import DataGrid from "@/shared/ui/DataGrid";
 import EmptyState from "@/shared/ui/EmptyState";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
@@ -67,22 +69,16 @@ export default function TeacherAttendance() {
         </div>
       )}
 
-      <div className="os-grid os-grid-cols-3 os-gap-4 os-mb-6">
-        {[
-          { label: "Total sessions", value: allSessions.length, borderColor: "var(--os-accent)", valueColor: "var(--os-text-primary)" },
-          { label: "Marked today", value: todayClassIds.size, borderColor: "var(--os-success)", valueColor: "var(--os-success)" },
-          {
-            label: "Pending today",
-            value: pendingToday.length,
-            borderColor: pendingToday.length > 0 ? "var(--os-danger)" : "var(--os-text-tertiary)",
-            valueColor: pendingToday.length > 0 ? "var(--os-danger)" : "var(--os-text-tertiary)",
-          },
-        ].map(({ label, value, borderColor, valueColor }) => (
-          <div key={label} className="os-stat-card" style={{ borderTop: `3px solid ${borderColor}` }}>
-            <p className="os-stat-card__label">{label}</p>
-            <p className="os-stat-card__value" style={{ color: valueColor }}>{value}</p>
-          </div>
-        ))}
+      <div className="os-stat-grid os-stat-grid--three">
+        <StatCard label="Total sessions" value={allSessions.length} loading={false} Icon={CalendarOutlined} />
+        <StatCard label="Marked today" value={todayClassIds.size} meta={`of ${myClasses.length} classes`} loading={false} Icon={CheckCircleOutlined} />
+        <StatCard
+          label="Pending today"
+          value={pendingToday.length}
+          meta={pendingToday.length ? "Start the session above" : "All classes marked"}
+          loading={false}
+          Icon={ClockCircleOutlined}
+        />
       </div>
 
       <div className="os-section">
@@ -107,10 +103,10 @@ export default function TeacherAttendance() {
             columns={[
               { key: "date", header: "Date", render: (r) => <span className="os-table__mono os-text-xs">{r.session.date}</span> },
               { key: "class", header: "Class", render: (r) => <span className="os-fw-600">{r.className}</span> },
-              { key: "present", header: "Present", render: (r) => <SessionCountCell count={r.session.present_count} status="present" /> },
-              { key: "absent", header: "Absent", render: (r) => <SessionCountCell count={r.session.absent_count} status="absent" /> },
-            { key: "late", header: "Late", render: (r) => <SessionCountCell count={r.session.late_count} status="late" /> },
-              { key: "status", header: "Status", render: () => <Tag color="success" variant="filled">Marked</Tag> },
+              { key: "present", header: "Present", render: (r) => <SessionCountCell count={r.session.present_count} /> },
+              { key: "absent", header: "Absent", render: (r) => <SessionCountCell count={r.session.absent_count} /> },
+            { key: "late", header: "Late", render: (r) => <SessionCountCell count={r.session.late_count} /> },
+              { key: "status", header: "Status", render: () => <SessionStateBadge state="marked" /> },
               { key: "action", header: "Action", align: "end", render: (r) => <Link to={`/attendance/sessions/${r.session.id}/mark`} className="os-c-tertiary os-no-underline os-text-sm">View</Link> },
             ]}
           />

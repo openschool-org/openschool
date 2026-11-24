@@ -31,7 +31,7 @@ func (r *timetableEntryRepository) listEntries(ctx context.Context, timetableID 
 			SubjectID: entryUUID(row.SubjectID), TeacherID: entryUUID(row.TeacherID), ClassroomID: entryUUID(row.ClassroomID),
 			CreatedAt: row.CreatedAt.Time, UpdatedAt: row.UpdatedAt.Time, SubjectName: entryText(row.SubjectName),
 			TeacherName: entryText(pgtype.Text{String: row.TeacherName, Valid: row.TeacherName != ""}), ClassroomName: entryText(row.ClassroomName),
-			OptionBlockID: entryUUID(row.OptionBlockID), OptionBlockName: entryText(row.OptionBlockName),
+			ClassroomType: entryText(row.ClassroomType), OptionBlockID: entryUUID(row.OptionBlockID), OptionBlockName: entryText(row.OptionBlockName),
 		}
 	}
 	return result, nil

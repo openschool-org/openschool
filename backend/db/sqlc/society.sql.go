@@ -37,6 +37,29 @@ func (q *Queries) CreateSociety(ctx context.Context, arg CreateSocietyParams) (S
 	return i, err
 }
 
+const deactivateSocietyMember = `-- name: DeactivateSocietyMember :execrows
+UPDATE society_members
+SET left_at = NOW(), left_reason = $1
+WHERE id = $2 AND society_id = $3 AND left_at IS NULL
+`
+
+type DeactivateSocietyMemberParams struct {
+	Reason    pgtype.Text `json:"reason"`
+	ID        uuid.UUID   `json:"id"`
+	SocietyID uuid.UUID   `json:"society_id"`
+}
+
+// Marks an active member as left instead of deleting them, so the history stays.
+// Scoped by society_id as well as id: the caller is only authorized for one
+// society (authorizeTeacherInCharge), so this must not reach another society's row.
+func (q *Queries) DeactivateSocietyMember(ctx context.Context, arg DeactivateSocietyMemberParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deactivateSocietyMember, arg.Reason, arg.ID, arg.SocietyID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteSociety = `-- name: DeleteSociety :execrows
 DELETE FROM societies WHERE id = $1
 `
@@ -99,7 +122,7 @@ SELECT
     s.academic_year_id,
     s.created_at,
     COALESCE(NULLIF(tp.name_with_initials, ''), tp.full_name) AS teacher_name,
-    (SELECT COUNT(*) FROM society_members sm WHERE sm.society_id = s.id) AS member_count
+    (SELECT COUNT(*) FROM society_members sm WHERE sm.society_id = s.id AND sm.left_at IS NULL) AS member_count
 FROM societies s
 INNER JOIN teacher_profiles tp ON tp.id = s.teacher_in_charge_id
 WHERE s.academic_year_id = $1
@@ -152,6 +175,8 @@ SELECT
     sm.role,
     sm.academic_year_id,
     sm.created_at,
+    sm.left_at,
+    sm.left_reason,
     display_name(sp.full_name, sp.name_with_initials)::text AS student_name,
     sp.index_number AS student_index,
     g.name          AS grade_name
@@ -162,6 +187,7 @@ LEFT JOIN  classes c           ON c.id = cs.class_id
 LEFT JOIN  grades g            ON g.id = c.grade_id
 WHERE sm.society_id = $1
 ORDER BY
+    (sm.left_at IS NOT NULL),
     CASE sm.role
         WHEN 'leader' THEN 1
         WHEN 'deputy_leader' THEN 2
@@ -179,6 +205,8 @@ type ListSocietyMembersBySocietyRow struct {
 	Role           string             `json:"role"`
 	AcademicYearID uuid.UUID          `json:"academic_year_id"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	LeftAt         pgtype.Timestamptz `json:"left_at"`
+	LeftReason     pgtype.Text        `json:"left_reason"`
 	StudentName    string             `json:"student_name"`
 	StudentIndex   string             `json:"student_index"`
 	GradeName      pgtype.Text        `json:"grade_name"`
@@ -189,6 +217,7 @@ type ListSocietyMembersBySocietyRow struct {
 // keeps this to at most one row per student; without it, a student with
 // class history in other years produced one duplicate output row per
 // extra year, each with grade_name NULL except the matching one.
+// Active members first, then former members.
 func (q *Queries) ListSocietyMembersBySociety(ctx context.Context, societyID uuid.UUID) ([]ListSocietyMembersBySocietyRow, error) {
 	rows, err := q.db.Query(ctx, listSocietyMembersBySociety, societyID)
 	if err != nil {
@@ -205,6 +234,8 @@ func (q *Queries) ListSocietyMembersBySociety(ctx context.Context, societyID uui
 			&i.Role,
 			&i.AcademicYearID,
 			&i.CreatedAt,
+			&i.LeftAt,
+			&i.LeftReason,
 			&i.StudentName,
 			&i.StudentIndex,
 			&i.GradeName,
@@ -226,6 +257,7 @@ SELECT
     sm.role,
     sm.academic_year_id,
     sm.created_at,
+    sm.left_at,
     s.name   AS society_name,
     ay.label AS academic_year_label
 FROM society_members sm
@@ -241,6 +273,7 @@ type ListSocietyMembershipsByStudentRow struct {
 	Role              string             `json:"role"`
 	AcademicYearID    uuid.UUID          `json:"academic_year_id"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	LeftAt            pgtype.Timestamptz `json:"left_at"`
 	SocietyName       string             `json:"society_name"`
 	AcademicYearLabel string             `json:"academic_year_label"`
 }
@@ -262,6 +295,7 @@ func (q *Queries) ListSocietyMembershipsByStudent(ctx context.Context, studentID
 			&i.Role,
 			&i.AcademicYearID,
 			&i.CreatedAt,
+			&i.LeftAt,
 			&i.SocietyName,
 			&i.AcademicYearLabel,
 		); err != nil {
@@ -310,26 +344,6 @@ func (q *Queries) ListSocietyYears(ctx context.Context) ([]ListSocietyYearsRow, 
 	return items, nil
 }
 
-const removeSocietyMember = `-- name: RemoveSocietyMember :execrows
-DELETE FROM society_members WHERE id = $1 AND society_id = $2
-`
-
-type RemoveSocietyMemberParams struct {
-	ID        uuid.UUID `json:"id"`
-	SocietyID uuid.UUID `json:"society_id"`
-}
-
-// scoped by society_id as well as id: the caller is only authorized for one
-// society (SocietyService.authorizeTeacherInCharge), so the delete itself
-// must not be able to reach a membership row belonging to a different one.
-func (q *Queries) RemoveSocietyMember(ctx context.Context, arg RemoveSocietyMemberParams) (int64, error) {
-	result, err := q.db.Exec(ctx, removeSocietyMember, arg.ID, arg.SocietyID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const updateSociety = `-- name: UpdateSociety :one
 UPDATE societies
 SET name = $2, teacher_in_charge_id = $3
@@ -360,8 +374,8 @@ const upsertSocietyMember = `-- name: UpsertSocietyMember :one
 INSERT INTO society_members (society_id, student_id, role, academic_year_id)
 VALUES ($1, $2, $3, $4)
 ON CONFLICT (society_id, student_id, academic_year_id)
-DO UPDATE SET role = EXCLUDED.role
-RETURNING id, society_id, student_id, role, academic_year_id, created_at
+DO UPDATE SET role = EXCLUDED.role, left_at = NULL, left_reason = NULL
+RETURNING id, society_id, student_id, role, academic_year_id, created_at, left_at, left_reason
 `
 
 type UpsertSocietyMemberParams struct {
@@ -371,6 +385,7 @@ type UpsertSocietyMemberParams struct {
 	AcademicYearID uuid.UUID `json:"academic_year_id"`
 }
 
+// Adding a former member again makes them active again with the new role.
 func (q *Queries) UpsertSocietyMember(ctx context.Context, arg UpsertSocietyMemberParams) (SocietyMember, error) {
 	row := q.db.QueryRow(ctx, upsertSocietyMember,
 		arg.SocietyID,
@@ -386,6 +401,8 @@ func (q *Queries) UpsertSocietyMember(ctx context.Context, arg UpsertSocietyMemb
 		&i.Role,
 		&i.AcademicYearID,
 		&i.CreatedAt,
+		&i.LeftAt,
+		&i.LeftReason,
 	)
 	return i, err
 }

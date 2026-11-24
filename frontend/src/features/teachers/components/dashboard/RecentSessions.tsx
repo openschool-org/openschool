@@ -21,9 +21,9 @@ export default function RecentSessions({ sessions }: { sessions: Row[] }) {
           columns={[
             { key: "date", header: "Date", render: (r) => <span className="os-text-sm os-c-secondary">{formatDayMonthYear(r.session.date)}</span> },
             { key: "class", header: "Class", render: (r) => <Link to={`/attendance/sessions/${r.session.id}/mark`} className="os-table__link">{r.className}</Link> },
-            { key: "present", header: "Present", render: (r) => <SessionCountCell count={r.session.present_count} status="present" /> },
-            { key: "absent", header: "Absent", render: (r) => <SessionCountCell count={r.session.absent_count} status="absent" /> },
-            { key: "late", header: "Late", render: (r) => <SessionCountCell count={r.session.late_count} status="late" /> },
+            { key: "present", header: "Present", render: (r) => <SessionCountCell count={r.session.present_count} /> },
+            { key: "absent", header: "Absent", render: (r) => <SessionCountCell count={r.session.absent_count} /> },
+            { key: "late", header: "Late", render: (r) => <SessionCountCell count={r.session.late_count} /> },
           ]}
         />
       )}

@@ -1,12 +1,13 @@
 import { Input } from "antd";
-import StatusTag from "@/shared/ui/StatusTag";
-import { STATUS_STYLES, type Status } from "@/features/attendance/constants";
+import type { Status } from "@/features/attendance/constants";
+import AttendanceStatusBadge from "@/features/attendance/components/AttendanceStatusBadge";
+import SessionStateBadge from "@/features/attendance/components/SessionStateBadge";
 import StatusButton from "@/features/attendance/components/StatusButton";
 
 // Cells for one student on the attendance marking grid (pages/admin/AttendanceMark.tsx).
 
 export function AttendanceStatusCell({ status, readOnly, onMark }: { status: Status; readOnly: boolean; onMark: (status: NonNullable<Status>) => void }) {
-  if (readOnly) return status ? <StatusTag {...STATUS_STYLES[status]} /> : <span className="os-c-disabled os-text-xs">Not marked</span>;
+  if (readOnly) return status ? <AttendanceStatusBadge status={status} /> : <SessionStateBadge state="unmarked" />;
   return (
     <div className="os-flex os-gap-1h os-wrap">
       {(["present", "absent", "late", "excused"] as const).map((s) => (

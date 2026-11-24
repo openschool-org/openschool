@@ -95,6 +95,13 @@ type store interface {
 	StudentUserID(context.Context, uuid.UUID) (pgtype.UUID, error)
 	GuardianUserID(context.Context, uuid.UUID) (pgtype.UUID, error)
 	TeacherUserID(context.Context, uuid.UUID) (uuid.UUID, error)
+	ListStudentUserIDsBySociety(context.Context, uuid.UUID) ([]pgtype.UUID, error)
+	ListGuardianUserIDsBySociety(context.Context, uuid.UUID) ([]pgtype.UUID, error)
+	IsTeacherInChargeOfSociety(context.Context, uuid.UUID, uuid.UUID) (bool, error)
+	ListNotifyClasses(context.Context, uuid.UUID) ([]NotifyClass, error)
+	ListNotifySocieties(context.Context, *uuid.UUID) ([]NotifySociety, error)
+	ListAllGradeIDs(context.Context) ([]uuid.UUID, error)
+	ListGradeSectionIDs(context.Context, uuid.UUID) ([]uuid.UUID, error)
 }
 
 func addUUID(seen map[uuid.UUID]bool, out *[]uuid.UUID, id uuid.UUID) {
@@ -214,6 +221,7 @@ var senderChecks = map[RecipientRuleType]senderCheck{
 	RuleGuardian:     (*NotificationService).checkGuardianRule,
 	// Colleague-to-colleague messaging is low-risk; any teacher may do it.
 	RuleTeacher: func(*NotificationService, context.Context, uuid.UUID, RecipientRule) error { return nil },
+	RuleSociety: (*NotificationService).checkSocietyRule,
 }
 
 // allowed turns a yes/no lookup into nil or ErrForbiddenRecipients.
@@ -225,7 +233,7 @@ func allowed(ok bool, err error) error {
 }
 
 func (s *NotificationService) checkClassRule(ctx context.Context, teacherID uuid.UUID, rule RecipientRule) error {
-	if rule.ClassID == nil {
+	if rule.ClassID == nil || !validAudience(rule.Audience) {
 		return ErrForbiddenRecipients
 	}
 	return allowed(s.repo.IsTeacherAssignedToClass(ctx, *rule.ClassID, teacherID))
@@ -252,9 +260,14 @@ func (s *NotificationService) checkGradeRule(ctx context.Context, teacherID uuid
 	return nil
 }
 
-// checkSubjectRule lets a subject teacher reach that subject's students, but not its other teachers.
+// checkSubjectRule lets a grade-heading subject teacher reach that subject's students, but not its other teachers.
 func (s *NotificationService) checkSubjectRule(ctx context.Context, teacherID uuid.UUID, rule RecipientRule) error {
 	if rule.SubjectID == nil || rule.SubjectAudience != AudienceStudents {
+		return ErrForbiddenRecipients
+	}
+	// A subject rule reaches the subject's students across the school, so only grade or section heads may use it.
+	grades, err := s.authorizedGradeIDs(ctx, teacherID)
+	if err != nil || len(grades) == 0 {
 		return ErrForbiddenRecipients
 	}
 	return allowed(s.repo.IsTeacherAssignedToSubject(ctx, teacherID, *rule.SubjectID))
@@ -329,8 +342,9 @@ var recipientResolvers = map[RecipientRuleType]recipientResolver{
 		if rule.ClassID == nil {
 			return nil
 		}
-		return s.addClass(ctx, *rule.ClassID, set)
+		return s.addClassAudience(ctx, *rule.ClassID, rule.Audience, set)
 	},
+	RuleSociety:      (*NotificationService).addSociety,
 	RuleGrade:        (*NotificationService).addGrades,
 	RuleGradeSection: (*NotificationService).addGrades,
 	RuleSubject:      (*NotificationService).addSubject,

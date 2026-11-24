@@ -1,5 +1,5 @@
 import { useMyClassTimetable } from "@/features/timetable/queries/useTimetables";
-import TimetableByDay from "@/features/timetable/components/TimetableByDay";
+import WeeklyTimetable from "@/features/timetable/components/WeeklyTimetable";
 import LoadingSpinner from "@/shared/ui/LoadingSpinner";
 import EmptyState from "@/shared/ui/EmptyState";
 import SectionCard from "@/shared/ui/SectionCard";
@@ -17,7 +17,7 @@ export default function StudentTimetable() {
         ) : (
           <div className="os-grid os-gap-6">
             {isError && <p className="os-m-0 os-text-sm os-c-secondary">{t("timetable.savedCopy")}</p>}
-            <TimetableByDay entries={data.entries} getRowId={(e) => e.id} middle={{ key: "teacher", header: t("table.teacher"), render: (e) => e.teacher_name ?? "-" }} />
+            <WeeklyTimetable entries={data.entries} periods={data.periods} detail={(e) => e.teacher_name ?? ""} />
           </div>
         )}
       </SectionCard>
